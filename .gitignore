@@ -1,0 +1,10 @@
+build/
+*.pdb
+*.lib
+*.exp
+*.bak
+*~
+\#*
+.\#*
+.DS_Store
+*.kate-swp
