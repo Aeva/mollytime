@@ -63,6 +63,17 @@ foreach(X IN LISTS MOLLYTIME_IMGUI_HEADERS)
 endforeach()
 
 #######################################################################
+## ImFileDialog:
+
+add_library(ImFileDialog OBJECT
+	"external/ImFileDialog/ImFileDialog.cpp"
+	"external/stb/stb.cpp")
+target_link_libraries(ImFileDialog PUBLIC imgui)
+target_include_directories(ImFileDialog
+	PUBLIC "external/ImFileDialog" #/ImFileDialog.h"
+	PRIVATE "external/stb") #/stb_image.h")
+
+#######################################################################
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++##
 #######################################################################
 ## The executable:
@@ -81,6 +92,7 @@ target_link_libraries(mollytime PRIVATE
 	fmt
 	glm
 	imgui
+	ImFileDialog
 	tinfo # see https://gitlab.kitware.com/cmake/cmake/-/issues/23236
 	${CMAKE_THREAD_LIBS_INIT}
 	${CMAKE_DL_LIBS})

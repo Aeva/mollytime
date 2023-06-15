@@ -12,8 +12,11 @@
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_opengl2.h>
+#include <ImFileDialog.h>
 
 #include <fmt/format.h>
+
+#include "midi_file.h"
 
 #include <chrono>
 #include <string>
@@ -232,12 +235,12 @@ void MainLoop()
 					ImGui::PushID(i++);
 					if (Device.Available)
 					{
-						ImGui::TextColored(ImVec4(0.0, 1.0, 0.0, 1.0), Device.Name.c_str());
+						ImGui::TextColored(ImVec4(0.0, 1.0, 0.0, 1.0), "%s", Device.Name.c_str());
 					}
 					else
 					{
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5, 0.5, 0.5, 1.0));
-						ImGui::Text(Device.Name.c_str());
+						ImGui::Text("%s", Device.Name.c_str());
 					}
 
 #define PORT_CAP(CAP) \
@@ -422,6 +425,27 @@ StatusCode Boot()
 		ImGui_ImplSDL2_InitForOpenGL(Window, Context);
 		ImGui_ImplOpenGL2_Init();
 		std::cout << "Done!\n";
+	}
+	// Required by ImFileDialog
+	{
+		ifd::FileDialog::Instance().CreateTexture = [](uint8_t* Data, int Width, int Height, char Format) -> void*
+		{
+			GLuint Texture;
+			glGenTextures(1, &Texture);
+			glBindTexture(GL_TEXTURE_2D, Texture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, (Format == 0) ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE, Data);
+			glBindTexture(GL_TEXTURE_2D, 0);
+			return (void*)(size_t(Texture));
+		};
+		ifd::FileDialog::Instance().DeleteTexture = [](void* OpaqueHandle)
+		{
+			GLuint Texture = (GLuint)((uintptr_t)OpaqueHandle);
+			glDeleteTextures(1, &Texture);
+		};
 	}
 	{
 		std::cout << "Creating ALSA client... ";
