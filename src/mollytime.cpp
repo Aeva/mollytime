@@ -18,6 +18,7 @@
 
 #include "midi_file.h"
 
+#include <stdlib.h>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -120,6 +121,8 @@ bool ShowFrameRate = false;
 float PresentFrequency = 0.0;
 float PresentDeltaMs = 0.0;
 
+std::filesystem::path LastOpenDir;
+
 void MainLoop()
 {
 	bool Live = true;
@@ -168,6 +171,19 @@ void MainLoop()
 		{
 			if (ImGui::BeginMenu("File"))
 			{
+				if (ImGui::MenuItem("Open", "Ctrl+O"))
+				{
+					std::string Filter = "";
+					{
+						std::string Separator = "";
+
+						Filter = fmt::format("{}{}MIDI Files (*.mid){{.mid}}", Filter, Separator);
+						Separator = ",";
+
+						Filter = fmt::format("{}{}.*", Filter, Separator);
+					}
+					ifd::FileDialog::Instance().Open("OpenMidiFileDialog", "Open a MIDI file", Filter, false, LastOpenDir.string());
+				}
 				if (ImGui::MenuItem("Exit"))
 				{
 					Live = false;
@@ -201,6 +217,19 @@ void MainLoop()
 			}
 
 			ImGui::EndMainMenuBar();
+		}
+
+		if (ifd::FileDialog::Instance().IsDone("OpenMidiFileDialog"))
+		{
+			if (ifd::FileDialog::Instance().HasResult())
+			{
+				const std::vector<std::filesystem::path>& Results = ifd::FileDialog::Instance().GetResults();
+				const std::string Path = Results[0].string();
+				LastOpenDir =  Results[0].parent_path();
+
+				ReadMidiFile(Path);
+			}
+			ifd::FileDialog::Instance().Close();
 		}
 
 		if (ShowDemoWindow)
@@ -490,6 +519,8 @@ void Teardown()
 
 int main(int argc, char* argv[])
 {
+	LastOpenDir = getenv("HOME");
+
 	if (Boot() == StatusCode::PASS)
 	{
 		MainLoop();
