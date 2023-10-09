@@ -1,0 +1,17 @@
+distrib
+windows/.vs
+windows/x64
+windows/enc_temp_folder
+windows/packages
+linux/build/
+WinPixEventRuntime.dll
+*.exe
+*.pdb
+*.lib
+*.exp
+*.bak
+*~
+\#*
+.\#*
+.DS_Store
+*.kate-swp
