@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="MollyTime">
+      <UniqueIdentifier>{fa89d69e-140b-4780-8e4c-7b6ecbb8cc17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External">
+      <UniqueIdentifier>{d07f2dc5-1c12-44ec-b057-640322f335e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\FMT">
+      <UniqueIdentifier>{39460add-c426-45c0-b5a5-debd011b85e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\Glad">
+      <UniqueIdentifier>{74529338-095e-4528-b0e7-ab4dbb578d46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\RmlUi">
+      <UniqueIdentifier>{4b6e7b40-72f0-475d-b448-41be7317c3c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\RmlUi\Backends">
+      <UniqueIdentifier>{ba00ac93-9439-4cc6-8383-398297519a9a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\mollytime.cpp">
+      <Filter>MollyTime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\fmt\src\format.cc">
+      <Filter>External\FMT</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\glad\src\gl.c">
+      <Filter>External\Glad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\RmlUi-5.1-win64\Backends\RmlUi_Platform_SDL.cpp">
+      <Filter>External\RmlUi\Backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\RmlUi_Backend_SDL_GL3.cpp">
+      <Filter>MollyTime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\RmlUi_Renderer_GL3.cpp">
+      <Filter>MollyTime</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\external\RmlUi-5.1-win64\Backends\RmlUi_Backend.h">
+      <Filter>External\RmlUi\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\RmlUi-5.1-win64\Backends\RmlUi_Platform_SDL.h">
+      <Filter>External\RmlUi\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\RmlUi-5.1-win64\Backends\RmlUi_Renderer_GL3.h">
+      <Filter>External\RmlUi\Backends</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
