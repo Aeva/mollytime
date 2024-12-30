@@ -108,6 +108,8 @@ try:
     last_held = set()
     redraw = True
 
+    mouse_state = False
+
     while True:
         live = True
 
@@ -128,6 +130,29 @@ try:
             elif event.type == pygame.FINGERUP:
                 if fingers.get(event.finger_id) is not None:
                     del fingers[event.finger_id]
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_state = True
+                finger_id = "m"
+                index = find_button(*event.pos)
+                if index:
+                    fingers[finger_id] = index
+                elif fingers.get(finger_id) is not None:
+                    del fingers[finger_id]
+
+            elif event.type == pygame.MOUSEMOTION and mouse_state:
+                finger_id = "m"
+                index = find_button(*event.pos)
+                if index:
+                    fingers[finger_id] = index
+                elif fingers.get(finger_id) is not None:
+                    del fingers[finger_id]
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                mouse_state = False
+                finger_id = "m"
+                if fingers.get(finger_id) is not None:
+                    del fingers[finger_id]
 
         if not live:
             for index in last_held:
