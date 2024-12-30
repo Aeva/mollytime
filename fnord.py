@@ -140,6 +140,7 @@ try:
 
         released = last_held - held
         pressed = held - last_held
+        updates = None
 
         if released or pressed:
             redraw = True
@@ -155,6 +156,8 @@ try:
             client.drain_output()
             last_held = held
 
+            updates = [buttons[i][0] for i in (released ^ pressed)]
+
         if redraw:
             redraw = False
             screen.fill((0, 0, 0))
@@ -165,7 +168,10 @@ try:
                     color = [int(c * 255) for c in color]
                 pygame.draw.rect(screen, color, rect)
 
-            pygame.display.flip()
+            if updates:
+                pygame.display.update(updates)
+            else:
+                pygame.display.flip()
 
         else:
             time.sleep(1e-9)
