@@ -1,4 +1,20 @@
 
+import os
+
+# Correct support of HiDPI on Linux requires setting both of these environment variables as well
+# as passing the desired unscaled resolution to `pygame.display.set_mode` via the `size` parameter.
+os.environ["SDL_VIDEODRIVER"] = "wayland,x11"
+os.environ["SDL_VIDEO_SCALE_METHOD"] = "letterbox"
+#os.environ["SDL_MOUSE_TOUCH_EVENTS"] = "1"
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+import warnings
+warnings.simplefilter("ignore")
+
+import math
+import random
+import itertools
+
 import pygame
 
 
@@ -33,9 +49,108 @@ class Plato:
 
         # Rects needed to draw the widget, in order.  Usually filled in by populate.
         self.rects = []
+        self.colors = []
 
     def populate(self, pip_to_rect):
         self.rects = [pip_to_rect(self.pip_min_x, self.pip_min_y, self.pip_w, self.pip_h)]
+        self.colors = [(0, 0, 0)]
+
+
+class Piano(Plato):
+    def __init__(self, x, y, root=60, scale=[2, 2, 1, 2, 2, 2, 1], notes=13, wht_w=3, blk_h=5, wht_h=8, spill_mode=3):
+
+        for note in scale:
+            assert(note == 1 or note == 2)
+
+        self.root = root
+        self.scale = scale
+
+        distance = 0
+        for i in range(notes):
+            distance += scale[i % len(scale)]
+            if distance >= notes:
+                self.scale = (scale * math.ceil(i / len(scale) + 1))[:i+1]
+                break
+
+        if sum(self.scale) > notes:
+            self.scale[-1] = 1
+
+        self.blk_h = int(blk_h)
+        self.wht_w = int(wht_w)
+        self.wht_h = int(wht_h)
+
+        self.spill_mode = spill_mode
+
+        pip_w = len(self.scale) * self.wht_w
+        pip_h = self.wht_h
+
+        super().__init__(x, y, pip_w, pip_h)
+
+
+    def populate(self, pip_to_rect):
+        super().populate(pip_to_rect)
+
+        wht_keys = [None] * len(self.scale)
+        offset = 0
+        for index, note in enumerate(self.scale):
+            rect = pip_to_rect(self.pip_min_x + offset, self.pip_min_y, self.wht_w, self.wht_h)
+            wht_keys[index] = rect
+            offset += self.wht_w
+        self.rects += wht_keys
+
+        blk_keys = []
+
+        wht_ref = pip_to_rect(0, 0, self.wht_w, self.wht_h)
+        blk_ref = pip_to_rect(0, 0, 0, self.blk_h)
+        unit_ref = pip_to_rect(0, 0, 1, 1)
+
+        blk_keys = [[]]
+
+        for index, note in enumerate(self.scale):
+            flat = wht_keys[index]
+            is_last_index = (index + 1) == len(self.scale)
+            if note == 2:
+                rect = pygame.Rect(flat.x, flat.y, 1, blk_ref.h)
+                blk_keys[-1].append(rect)
+            else:
+                blk_keys.append([])
+
+        for group in blk_keys:
+            if len(group) >= 1:
+                full_span = wht_ref.w * (len(group) + 1)
+                spacing = full_span / (len(group) * 2 + 1)
+
+                x_min = group[0].x + spacing
+                x_max = group[0].x + full_span - spacing
+
+                if len(group) > 1:
+                    for index, rect in enumerate(group):
+                        last_index = len(group) - 1
+                        alpha = index / last_index
+                        pivot = spacing * alpha
+                        x = ((1 - alpha) * x_min + alpha * x_max) - pivot
+                        new_rect = pygame.Rect(x, rect.y, spacing, rect.h)
+                        group[index] = new_rect
+
+                else:
+                    rect = group[0]
+                    new_rect = pygame.Rect(x_min, rect.y, spacing, rect.h)
+                    group[0] = new_rect
+
+        blk_keys = list(itertools.chain(*blk_keys))
+
+        if blk_keys[-1].x + blk_keys[-1].w > self.rects[0].x + self.rects[0].w:
+            if self.spill_mode == 1:
+                # clamp on spill
+                blk_keys[-1] = blk_keys[-1].clip(self.rects[0])
+            elif self.spill_mode == 2:
+                # expand on spill
+                self.rects[0].union_ip(blk_keys[-1])
+            elif self.spill_mode == 3:
+                # discard on spill
+                blk_keys.pop()
+
+        self.rects += blk_keys
 
 
 class TileArray(Plato):
@@ -69,8 +184,6 @@ class TileArray(Plato):
         tile_count = self.tile_w * self.tile_h
         self.tile_rects = [None] * tile_count
 
-        print(tile_count)
-
         for i in range(tile_count):
             tile_x = i % self.tile_w
             tile_y = i // self.tile_w
@@ -79,7 +192,6 @@ class TileArray(Plato):
             self.tile_rects[i] = pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips)
 
         self.rects += self.tile_rects
-        print(self.rects)
 
 
 class PlaySurface:
@@ -124,28 +236,75 @@ class PlaySurface:
 
 
 if __name__ == "__main__":
-    screen = 9 * 2 + 1
+    # screen = 9 * 2 + 1
+    # plates = [
+    #     #Plato(-2, -2, 1, 1),
+    #     TileArray(0, 0, 2, 2),
+    #
+    # ]
+    # surface = PlaySurface((screen, screen), plates)
+    #
+    # pixels = ["."] * (screen * screen)
+    # def draw_rect(rect, char):
+    #     for y in range(rect[1], rect[1] + rect[3]):
+    #         for x in range(rect[0], rect[0] + rect[2]):
+    #             i = min(y, screen-1) * screen + min(x, screen-1)
+    #             pixels[i] = char
+    #
+    # for plate_index, plate in enumerate(plates):
+    #     for rect_index, rect in enumerate(plate.rects):
+    #         if rect_index == 0:
+    #             draw_rect(rect, str(plate_index % 10))
+    #         else:
+    #             draw_rect(rect, "-")
+    #
+    # for y in range(screen):
+    #     row = pixels[y*screen:(y+1)*screen]
+    #     print(" " + " ".join(row))
+
+    pygame.init()
+
+    sizes = pygame.display.get_desktop_sizes()
+    display_index = len(sizes) - 1
+    display_size = sizes[display_index]
+    screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
+
     plates = [
-        #Plato(-2, -2, 1, 1),
-        TileArray(0, 0, 2, 2),
-
+        Plato(17, 1, 1, 1),
+        TileArray(0, 0, 3, 4),
+        #Piano(0, -9, notes=12*2+1),
+        Piano(0, -9, scale=[2, 2, 2, 1, 2, 2, 1], notes=12*2+1)
     ]
-    surface = PlaySurface((screen, screen), plates)
 
-    pixels = ["."] * (screen * screen)
-    def draw_rect(rect, char):
-        for y in range(rect[1], rect[1] + rect[3]):
-            for x in range(rect[0], rect[0] + rect[2]):
-                i = min(y, screen-1) * screen + min(x, screen-1)
-                pixels[i] = char
+    screen.fill((0, 0, 0))
+    pygame.display.flip()
 
-    for plate_index, plate in enumerate(plates):
-        for rect_index, rect in enumerate(plate.rects):
-            if rect_index == 0:
-                draw_rect(rect, str(plate_index % 10))
-            else:
-                draw_rect(rect, "-")
+    play_surface = PlaySurface(display_size, plates)
 
-    for y in range(screen):
-        row = pixels[y*screen:(y+1)*screen]
-        print(" " + " ".join(row))
+    while True:
+        live = True
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                live = False
+
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                live = False
+
+        if not live:
+            break
+
+        random.seed(0)
+
+        update_rects = []
+        for plate_index, plate in enumerate(plates):
+            for rect_index, rect in enumerate(plate.rects):
+                if rect_index == 0:
+                    update_rects.append(rect)
+                    screen.fill((64, 64, 64), rect)
+                else:
+                    r = random.randint(32, 255)
+                    g = random.randint(32, 255)
+                    b = random.randint(32, 255)
+                    screen.fill((r, g, b), rect)
+        pygame.display.update(update_rects)
