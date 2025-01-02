@@ -58,6 +58,27 @@ class Plato:
 
 class Piano(Plato):
     def __init__(self, x, y, root=60, scale=[2, 2, 1, 2, 2, 2, 1], notes=13, wht_w=3, blk_h=5, wht_h=8, spill_mode=3):
+        """
+        Args `x`, `y`, `wht_w`, `blk_h`, and `wht_h` are specified as pip counts.
+        Arg `root` is the midi note corresponding on the left-most key.
+        Arg `scale` is the list of midi offsets needed to enumerate the white keys, and
+        each interval must be either a 1 or a 2.
+        Arg `spill_mode` indicates how to adjust if the last key in the sequence is a
+        black key.
+
+        The valid spill modes are:
+
+         - 0: Let it dangle outside the plate's bounding rect.
+
+         - 1: Clamp the key to the plate's bounding rect.
+
+         - 2: Expand the plate's bounding rect.
+
+         - 3: Delete the spilling key.
+
+        The default spill mode is 3 (delete) so as to match the appearance of standard
+        piano keyboards.
+        """
 
         for note in scale:
             assert(note == 1 or note == 2)
@@ -236,32 +257,6 @@ class PlaySurface:
 
 
 if __name__ == "__main__":
-    # screen = 9 * 2 + 1
-    # plates = [
-    #     #Plato(-2, -2, 1, 1),
-    #     TileArray(0, 0, 2, 2),
-    #
-    # ]
-    # surface = PlaySurface((screen, screen), plates)
-    #
-    # pixels = ["."] * (screen * screen)
-    # def draw_rect(rect, char):
-    #     for y in range(rect[1], rect[1] + rect[3]):
-    #         for x in range(rect[0], rect[0] + rect[2]):
-    #             i = min(y, screen-1) * screen + min(x, screen-1)
-    #             pixels[i] = char
-    #
-    # for plate_index, plate in enumerate(plates):
-    #     for rect_index, rect in enumerate(plate.rects):
-    #         if rect_index == 0:
-    #             draw_rect(rect, str(plate_index % 10))
-    #         else:
-    #             draw_rect(rect, "-")
-    #
-    # for y in range(screen):
-    #     row = pixels[y*screen:(y+1)*screen]
-    #     print(" " + " ".join(row))
-
     pygame.init()
 
     sizes = pygame.display.get_desktop_sizes()
