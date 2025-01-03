@@ -14,6 +14,7 @@ FONTS = {}
 
 FONT_NAMES = {
     "overpass" : resources.files(media) / "overpass" / "static" / "Overpass-ExtraLight.ttf",
+    "gentium_book_plus" : resources.files(media) / "gentium_book_plus" / "GentiumBookPlus-Regular.ttf",
 }
 
 

@@ -4,6 +4,7 @@ import overrides
 import math
 import time
 import random
+import string
 import itertools
 
 import pygame
@@ -33,15 +34,17 @@ class Tile:
 
 
 class PianoTile(Tile):
-    def __init__(self, rect, color, note, text_color=None):
+    def __init__(self, rect, color, note, text, text_color=None):
         self.note = note
         self.rect = rect
 
         size = (rect.w, rect.h)
-        if text_color:
-            text = str(note)
-            font_size = rect.w * .75
-            self.idle_surface = surface_tools.text_rect(size, color, "overpass", font_size, text, text_color, v_align=.9)
+        if text and text_color:
+            exemplar = string.digits +"ABCDEFG♭♯"
+            font_size = rect.w * .5
+            self.idle_surface = surface_tools.text_rect(
+                size, color, "gentium_book_plus", font_size, text, text_color,
+                v_align=1, exemplar=exemplar)
         else:
             self.idle_surface = surface_tools.rect(size, color)
         self.held_surface = surface_tools.rect(size, random_color())
@@ -253,15 +256,33 @@ class Piano(Plato):
                 blk_notes.append(note + 1)
             note += interval
 
+        # note = self.root
+        # spelling = []
+        # for interval in self.scale:
+        #     spelling.append(midi_octave_labels[note % 12])
+        #     note += interval
+        #
+        # for lhs_i, chs_i, rhs_i in zip(range(0, len(spelling)-2), range(1, len(spelling)-2), range(2, len(spelling))):
+        #     lhs = spelling[lhs_i]
+        #     chs = spelling[chs_i]
+        #     rhs = spelling[rhs_i]
+        #     if len(chs) == 2:
+        #         if lhs[0] == chs[0][0]:
+        #             if lhs[0] == chs[0][0]:
+
         wht_colors = [(240, 240, 240), (224, 224, 224)]
         for index, (wht_key, note) in enumerate(zip(wht_keys, wht_notes)):
+            text = midi.simple_note_name(note, tie=-1)
             text_color = None
             if (note - self.root) % 12 == 0:
                 text_color = (128, 128, 128)
-            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)], note, text_color))
+            else:
+                text_color = (192, 192, 192)
+            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)], note, text, text_color))
 
         for blk_key, note in zip(blk_keys, blk_notes):
-            self.tiles.append(PianoTile(blk_key, (32, 32, 32), note))
+            text = midi.simple_note_name(note)
+            self.tiles.append(PianoTile(blk_key, (32, 32, 32), note, text, (128, 128, 128)))
 
 
 class TileArray(Plato):

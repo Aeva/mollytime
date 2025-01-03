@@ -6,6 +6,26 @@ import time
 from alsa_midi import SequencerClient, WRITE_PORT, READ_PORT, NoteOnEvent, NoteOffEvent, ProgramChangeEvent
 
 
+octave_labels = (
+    ("C"),
+    ("C♯", "D♭"),
+    ("D"),
+    ("D♯", "E♭"),
+    ("E"),
+    ("F"),
+    ("F♯", "G♭"),
+    ("G"),
+    ("G♯", "A♭"),
+    ("A"),
+    ("A♯", "B♭"),
+    ("B"))
+
+def simple_note_name(note, tie=0):
+    octave = note // 12
+    index = note % 12
+    return f"{octave_labels[index][tie]}{octave - 2}"
+
+
 client = SequencerClient("fnordboard")
 port = client.create_port(
     "output",
