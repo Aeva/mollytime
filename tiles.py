@@ -18,6 +18,21 @@ import itertools
 import pygame
 
 
+class Tile:
+    def __init__(self, rect, color):
+        surface = pygame.Surface((rect.w, rect.h))
+        if not color:
+            color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        surface.fill(color)
+        self.draw_params = [(surface, rect)]
+
+    def hold(self):
+        pass
+
+    def release(self):
+        pass
+
+
 class Plato:
     def __init__(self, x, y, w, h):
         """
@@ -48,13 +63,41 @@ class Plato:
         self.pip_max_y = self.pip_min_y + self.pip_h - 1
 
         # Rects needed to draw the widget, in order.  Usually filled in by populate.
-        self.rects = []
-        self.colors = []
+        self.frame = None
+        self.tiles = []
 
     def populate(self, pip_to_rect):
-        self.rects = [pip_to_rect(self.pip_min_x, self.pip_min_y, self.pip_w, self.pip_h)]
-        self.colors = [(64, 64, 64)]
+        self.frame = pip_to_rect(self.pip_min_x, self.pip_min_y, self.pip_w, self.pip_h)
+        self.tiles = [Tile(self.frame, (64, 64, 64))]
 
+    def match(self, point):
+        if self.frame.collidepoint(point):
+            for tile in reversed(self.tiles):
+                for surface, rect in tile.draw_params:
+                    if rect.collidepoint(point):
+                        return tile
+        return None
+
+
+class PianoKey(Tile):
+    def __init__(self, rect, color):
+        self.rect = rect
+
+        self.idle_surface = pygame.Surface((rect.w, rect.h))
+        self.idle_surface.fill(color)
+
+        held_color = [random.randint(64, 192), random.randint(0, 128), random.randint(128, 255)]
+        random.shuffle(held_color)
+        self.held_surface = pygame.Surface((rect.w, rect.h))
+        self.held_surface.fill(held_color)
+
+        self.draw_params = [(self.idle_surface, self.rect)]
+
+    def hold(self):
+        self.draw_params = [(self.held_surface, self.rect)]
+
+    def release(self):
+        self.draw_params = [(self.idle_surface, self.rect)]
 
 class Piano(Plato):
     def __init__(self, x, y, root=60, scale=[2, 2, 1, 2, 2, 2, 1], notes=13, wht_w=3, blk_h=5, wht_h=8, spill_mode=3):
@@ -117,7 +160,6 @@ class Piano(Plato):
             rect = pip_to_rect(self.pip_min_x + offset, self.pip_min_y, self.wht_w, self.wht_h)
             wht_keys[index] = rect
             offset += self.wht_w
-        self.rects += wht_keys
 
         blk_keys = []
 
@@ -160,24 +202,23 @@ class Piano(Plato):
 
         blk_keys = list(itertools.chain(*blk_keys))
 
-        if blk_keys[-1].x + blk_keys[-1].w > self.rects[0].x + self.rects[0].w:
+        if blk_keys[-1].x + blk_keys[-1].w > self.frame.x + self.frame.w:
             if self.spill_mode == 1:
                 # clamp on spill
-                blk_keys[-1] = blk_keys[-1].clip(self.rects[0])
+                blk_keys[-1] = blk_keys[-1].clip(self.frame)
             elif self.spill_mode == 2:
                 # expand on spill
-                self.rects[0].union_ip(blk_keys[-1])
+                self.frame.union_ip(blk_keys[-1])
             elif self.spill_mode == 3:
                 # discard on spill
                 blk_keys.pop()
 
         wht_colors = [(240, 240, 240), (224, 224, 224)]
         for index, wht_key in enumerate(wht_keys):
-            self.colors.append(wht_colors[index % len(wht_colors)])
-        for blk_key in blk_keys:
-            self.colors.append((32, 32, 32))
+            self.tiles.append(PianoKey(wht_key, wht_colors[index % len(wht_colors)]))
 
-        self.rects += blk_keys
+        for blk_key in blk_keys:
+            self.tiles.append(PianoKey(blk_key, (32, 32, 32)))
 
 
 class TileArray(Plato):
@@ -209,16 +250,13 @@ class TileArray(Plato):
         super().populate(pip_to_rect)
 
         tile_count = self.tile_w * self.tile_h
-        self.tile_rects = [None] * tile_count
 
         for i in range(tile_count):
             tile_x = i % self.tile_w
             tile_y = i // self.tile_w
             pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
             pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
-            self.tile_rects[i] = pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips)
-
-        self.rects += self.tile_rects
+            self.tiles.append(Tile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), None))
 
 
 class PlaySurface:
@@ -261,6 +299,86 @@ class PlaySurface:
         for plate in plates:
             plate.populate(pip_rect)
 
+        self.fingers = {}
+        self.last_held = set()
+        self.mouse_state = False
+
+    def test_point(self, point):
+        for plate in self.plates:
+            if tile := plate.match(point):
+                return tile
+        return None
+
+    def input_event(self, event):
+        if event.type == pygame.FINGERDOWN or event.type == pygame.FINGERMOTION:
+            point = (round(event.x * (screen_w - 1)), round(event.y * (screen_h - 1)))
+            if tile := self.test_point(point):
+                self.fingers[finger_id] = tile
+            elif self.fingers.get(event.finger_id) is not None:
+                del self.fingers[event.finger_id]
+
+        elif event.type == pygame.FINGERUP:
+            if self.fingers.get(event.finger_id) is not None:
+                del self.fingers[event.finger_id]
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.mouse_state = True
+            finger_id = "m"
+            if tile := self.test_point(event.pos):
+                self.fingers[finger_id] = tile
+            elif self.fingers.get(finger_id) is not None:
+                del self.fingers[finger_id]
+
+        elif event.type == pygame.MOUSEMOTION and self.mouse_state:
+            finger_id = "m"
+            if tile := self.test_point(event.pos):
+                self.fingers[finger_id] = tile
+            elif self.fingers.get(finger_id) is not None:
+                del self.fingers[finger_id]
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.mouse_state = False
+            finger_id = "m"
+            if self.fingers.get(finger_id) is not None:
+                del self.fingers[finger_id]
+
+    def draw(self):
+        update_rects = []
+        blit_sequence = []
+
+        for plate in plates:
+            update_rects.append(plate.frame)
+            for tile in plate.tiles:
+                blit_sequence += tile.draw_params
+
+        return update_rects, blit_sequence
+
+    def crank(self):
+        held = set(self.fingers.values())
+
+        released = self.last_held - held
+        pressed = held - self.last_held
+
+        self.last_held = held
+
+        if released:
+            print(f"released: {released}")
+
+        if pressed:
+           print(f"pressed: {pressed}")
+
+        for tile in released:
+            tile.release()
+
+        for tile in pressed:
+            tile.hold()
+
+        if pressed or released:
+            return self.draw()
+
+        else:
+            return None, None
+
 
 if __name__ == "__main__":
     pygame.init()
@@ -282,6 +400,10 @@ if __name__ == "__main__":
 
     play_surface = PlaySurface(display_size, plates)
 
+    update_rects, blit_sequence = play_surface.draw()
+    screen.blits(blit_sequence=blit_sequence)
+    pygame.display.update(update_rects)
+
     while True:
         live = True
 
@@ -292,22 +414,15 @@ if __name__ == "__main__":
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 live = False
 
+            else:
+                play_surface.input_event(event)
+
         if not live:
             break
 
-        random.seed(3)
+        update_rects, blit_sequence = play_surface.crank()
 
-        update_rects = []
-        for plate_index, plate in enumerate(plates):
-            colors = plate.colors
-            pad = max(len(plate.rects) - len(colors), 0)
-            colors += [[random.randint(0, 255) for i in range(3)] for i in range(pad)]
-
-
-            for rect_index, (rect, color) in enumerate(zip(plate.rects, colors)):
-                if rect_index == 0:
-                    update_rects.append(rect)
-                if color:
-                    screen.fill(color, rect)
-
-        pygame.display.update(update_rects)
+        if blit_sequence:
+            screen.blits(blit_sequence=blit_sequence)
+            if update_rects:
+                pygame.display.update(update_rects)
