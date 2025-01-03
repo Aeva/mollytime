@@ -1,29 +1,25 @@
 
-import os
-
-# Correct support of HiDPI on Linux requires setting both of these environment variables as well
-# as passing the desired unscaled resolution to `pygame.display.set_mode` via the `size` parameter.
-os.environ["SDL_VIDEODRIVER"] = "wayland,x11"
-os.environ["SDL_VIDEO_SCALE_METHOD"] = "letterbox"
-#os.environ["SDL_MOUSE_TOUCH_EVENTS"] = "1"
-
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
-import warnings
-warnings.simplefilter("ignore")
+import overrides
 
 import math
 import random
 import itertools
 
 import pygame
+import surface_tools
+
+
+def random_color():
+    held_color = [random.randint(64, 192), random.randint(0, 128), random.randint(128, 255)]
+    random.shuffle(held_color)
+    return tuple(held_color)
 
 
 class Tile:
     def __init__(self, rect, color):
-        surface = pygame.Surface((rect.w, rect.h))
         if not color:
             color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        surface.fill(color)
+        surface = surface_tools.rect((rect.w, rect.h), color)
         self.draw_params = [(surface, rect)]
 
     def hold(self):
@@ -31,6 +27,44 @@ class Tile:
 
     def release(self):
         pass
+
+
+class PianoTile(Tile):
+    def __init__(self, rect, color):
+        self.rect = rect
+
+        self.idle_surface = surface_tools.rect((rect.w, rect.h), color)
+        self.held_surface = surface_tools.rect((rect.w, rect.h), random_color())
+
+        self.draw_params = [(self.idle_surface, self.rect)]
+
+    def hold(self):
+        self.draw_params = [(self.held_surface, self.rect)]
+
+    def release(self):
+        self.draw_params = [(self.idle_surface, self.rect)]
+
+
+class PadTile(Tile):
+    def __init__(self, rect):
+        self.rect = rect
+
+        size = (rect.w, rect.h)
+        font_size = rect.h * .75
+        text = str(random.randint(0, 100))
+        idle_color = random_color()
+        hold_color = (255, 255, 255)
+
+        self.idle_surface = surface_tools.text_rect(size, idle_color, "overpass", font_size, text)
+        self.held_surface = surface_tools.text_rect(size, hold_color, "overpass", font_size, text)
+
+        self.draw_params = [(self.idle_surface, self.rect)]
+
+    def hold(self):
+        self.draw_params = [(self.held_surface, self.rect)]
+
+    def release(self):
+        self.draw_params = [(self.idle_surface, self.rect)]
 
 
 class Plato:
@@ -78,26 +112,6 @@ class Plato:
                         return tile
         return None
 
-
-class PianoKey(Tile):
-    def __init__(self, rect, color):
-        self.rect = rect
-
-        self.idle_surface = pygame.Surface((rect.w, rect.h))
-        self.idle_surface.fill(color)
-
-        held_color = [random.randint(64, 192), random.randint(0, 128), random.randint(128, 255)]
-        random.shuffle(held_color)
-        self.held_surface = pygame.Surface((rect.w, rect.h))
-        self.held_surface.fill(held_color)
-
-        self.draw_params = [(self.idle_surface, self.rect)]
-
-    def hold(self):
-        self.draw_params = [(self.held_surface, self.rect)]
-
-    def release(self):
-        self.draw_params = [(self.idle_surface, self.rect)]
 
 class Piano(Plato):
     def __init__(self, x, y, root=60, scale=[2, 2, 1, 2, 2, 2, 1], notes=13, wht_w=3, blk_h=5, wht_h=8, spill_mode=3):
@@ -215,10 +229,10 @@ class Piano(Plato):
 
         wht_colors = [(240, 240, 240), (224, 224, 224)]
         for index, wht_key in enumerate(wht_keys):
-            self.tiles.append(PianoKey(wht_key, wht_colors[index % len(wht_colors)]))
+            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)]))
 
         for blk_key in blk_keys:
-            self.tiles.append(PianoKey(blk_key, (32, 32, 32)))
+            self.tiles.append(PianoTile(blk_key, (32, 32, 32)))
 
 
 class TileArray(Plato):
@@ -256,7 +270,7 @@ class TileArray(Plato):
             tile_y = i // self.tile_w
             pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
             pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
-            self.tiles.append(Tile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), None))
+            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips)))
 
 
 class PlaySurface:
@@ -361,12 +375,6 @@ class PlaySurface:
 
         self.last_held = held
 
-        if released:
-            print(f"released: {released}")
-
-        if pressed:
-           print(f"pressed: {pressed}")
-
         for tile in released:
             tile.release()
 
@@ -426,3 +434,6 @@ if __name__ == "__main__":
             screen.blits(blit_sequence=blit_sequence)
             if update_rects:
                 pygame.display.update(update_rects)
+
+    surface_tools.reset_memo()
+
