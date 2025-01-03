@@ -53,7 +53,7 @@ class Plato:
 
     def populate(self, pip_to_rect):
         self.rects = [pip_to_rect(self.pip_min_x, self.pip_min_y, self.pip_w, self.pip_h)]
-        self.colors = [(0, 0, 0)]
+        self.colors = [(64, 64, 64)]
 
 
 class Piano(Plato):
@@ -171,6 +171,12 @@ class Piano(Plato):
                 # discard on spill
                 blk_keys.pop()
 
+        wht_colors = [(240, 240, 240), (224, 224, 224)]
+        for index, wht_key in enumerate(wht_keys):
+            self.colors.append(wht_colors[index % len(wht_colors)])
+        for blk_key in blk_keys:
+            self.colors.append((32, 32, 32))
+
         self.rects += blk_keys
 
 
@@ -216,7 +222,7 @@ class TileArray(Plato):
 
 
 class PlaySurface:
-    def __init__(self, screen_size, plates):
+    def __init__(self, screen_size, plates, horizontal_align=.5, vertical_align=.5):
         self.screen_w, self.screen_h = screen_size
         self.plates = plates
 
@@ -239,8 +245,8 @@ class PlaySurface:
         play_height = pip_size * pip_height
 
         # Align to bottom-center:
-        align_x = (self.screen_w - play_width) * .5
-        align_y = (self.screen_h - play_height) * 1
+        align_x = (self.screen_w - play_width) * horizontal_align
+        align_y = (self.screen_h - play_height) * vertical_align
 
         def pip_to_screen(pip_x, pip_y):
             pip_x -= pip_min_x
@@ -265,10 +271,10 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
 
     plates = [
-        Plato(17, 1, 1, 1),
-        TileArray(0, 0, 3, 4),
-        #Piano(0, -9, notes=12*2+1),
-        Piano(0, -9, scale=[2, 2, 2, 1, 2, 2, 1], notes=12*2+1)
+        TileArray(0, 0, 3, 2),
+        Piano(0, -18, notes=12*2+1),
+        Piano(0, -9, scale=[2, 1, 2, 2, 2, 1, 2], notes=12*2+1), #, spill_mode=0),
+        Plato(17, 0, 1, 1),
     ]
 
     screen.fill((0, 0, 0))
@@ -289,17 +295,19 @@ if __name__ == "__main__":
         if not live:
             break
 
-        random.seed(0)
+        random.seed(3)
 
         update_rects = []
         for plate_index, plate in enumerate(plates):
-            for rect_index, rect in enumerate(plate.rects):
+            colors = plate.colors
+            pad = max(len(plate.rects) - len(colors), 0)
+            colors += [[random.randint(0, 255) for i in range(3)] for i in range(pad)]
+
+
+            for rect_index, (rect, color) in enumerate(zip(plate.rects, colors)):
                 if rect_index == 0:
                     update_rects.append(rect)
-                    screen.fill((64, 64, 64), rect)
-                else:
-                    r = random.randint(32, 255)
-                    g = random.randint(32, 255)
-                    b = random.randint(32, 255)
-                    screen.fill((r, g, b), rect)
+                if color:
+                    screen.fill(color, rect)
+
         pygame.display.update(update_rects)
