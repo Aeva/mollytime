@@ -33,12 +33,18 @@ class Tile:
 
 
 class PianoTile(Tile):
-    def __init__(self, rect, color, note):
+    def __init__(self, rect, color, note, text_color=None):
         self.note = note
         self.rect = rect
 
-        self.idle_surface = surface_tools.rect((rect.w, rect.h), color)
-        self.held_surface = surface_tools.rect((rect.w, rect.h), random_color())
+        size = (rect.w, rect.h)
+        if text_color:
+            text = str(note)
+            font_size = rect.w * .75
+            self.idle_surface = surface_tools.text_rect(size, color, "overpass", font_size, text, text_color, v_align=.9)
+        else:
+            self.idle_surface = surface_tools.rect(size, color)
+        self.held_surface = surface_tools.rect(size, random_color())
 
         self.draw_params = [(self.idle_surface, self.rect)]
 
@@ -249,7 +255,10 @@ class Piano(Plato):
 
         wht_colors = [(240, 240, 240), (224, 224, 224)]
         for index, (wht_key, note) in enumerate(zip(wht_keys, wht_notes)):
-            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)], note))
+            text_color = None
+            if (note - self.root) % 12 == 0:
+                text_color = (128, 128, 128)
+            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)], note, text_color))
 
         for blk_key, note in zip(blk_keys, blk_notes):
             self.tiles.append(PianoTile(blk_key, (32, 32, 32), note))

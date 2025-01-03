@@ -57,14 +57,14 @@ def text(font_name, font_size, label, color):
     return surface
 
 
-def text_rect(size, bg_color, font_name, font_size, label, fg_color=(0, 0, 0), align=string.digits):
+def text_rect(size, bg_color, font_name, font_size, label, fg_color=(0, 0, 0), h_align=.5, v_align=.5, exemplar=string.digits):
     global SURFACE_VAULT
     global FONTS
 
     font_key = (font_name, int(font_size))
     text_key = (font_key, label, fg_color)
     rect_key = (size, bg_color)
-    surface_key = (rect_key, text_key, align)
+    surface_key = (rect_key, text_key, h_align, v_align, exemplar)
 
     surface = SURFACE_VAULT.get(surface_key, None)
     if surface:
@@ -78,15 +78,19 @@ def text_rect(size, bg_color, font_name, font_size, label, fg_color=(0, 0, 0), a
 
     font_min_y = 100000
     font_max_y = -100000
-    for min_x, max_x, min_y, max_y, advance in font.metrics(align):
+    for min_x, max_x, min_y, max_y, advance in font.metrics(exemplar):
         font_min_y = min(font_min_y, min_y)
         font_max_y = max(font_max_y, max_y)
 
-    x = (bg.get_width() - fg.get_width()) * .5
-    y = font.get_ascent() - font_max_y + font_min_y
+    x = (bg.get_width() - fg.get_width()) * h_align
+    y = -(font.get_ascent() - (font_min_y + font_max_y)) # starting top align offset
+
+    char_height = abs(font_max_y - font_min_y) # expected visible area of text
+    y += (bg.get_height() - char_height) * v_align
 
     surface = bg.copy()
     surface.blit(fg, (x, y))
+
     SURFACE_VAULT[surface_key] = surface
 
     return surface
