@@ -37,6 +37,7 @@ def flush():
 
 def run(main_thunk):
     global connection
+    global timidity_proc
 
     for target in device_priority:
         for device in client.list_ports(output=True):

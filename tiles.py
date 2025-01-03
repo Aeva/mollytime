@@ -346,9 +346,9 @@ class PlaySurface:
 
     def input_event(self, event):
         if event.type == pygame.FINGERDOWN or event.type == pygame.FINGERMOTION:
-            point = (round(event.x * (screen_w - 1)), round(event.y * (screen_h - 1)))
+            point = (round(event.x * (self.screen_w - 1)), round(event.y * (self.screen_h - 1)))
             if tile := self.test_point(point):
-                self.fingers[finger_id] = tile
+                self.fingers[event.finger_id] = tile
             elif self.fingers.get(event.finger_id) is not None:
                 del self.fingers[event.finger_id]
 
