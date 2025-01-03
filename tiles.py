@@ -2,11 +2,14 @@
 import overrides
 
 import math
+import time
 import random
 import itertools
 
 import pygame
+
 import surface_tools
+import midi
 
 
 def random_color():
@@ -30,7 +33,8 @@ class Tile:
 
 
 class PianoTile(Tile):
-    def __init__(self, rect, color):
+    def __init__(self, rect, color, note):
+        self.note = note
         self.rect = rect
 
         self.idle_surface = surface_tools.rect((rect.w, rect.h), color)
@@ -39,19 +43,22 @@ class PianoTile(Tile):
         self.draw_params = [(self.idle_surface, self.rect)]
 
     def hold(self):
+        midi.note_on(self.note, 127)
         self.draw_params = [(self.held_surface, self.rect)]
 
     def release(self):
+        midi.note_off(self.note)
         self.draw_params = [(self.idle_surface, self.rect)]
 
 
 class PadTile(Tile):
-    def __init__(self, rect):
+    def __init__(self, rect, note):
         self.rect = rect
+        self.note = note
 
         size = (rect.w, rect.h)
         font_size = rect.h * .75
-        text = str(random.randint(0, 100))
+        text = str(note)
         idle_color = random_color()
         hold_color = (255, 255, 255)
 
@@ -61,9 +68,11 @@ class PadTile(Tile):
         self.draw_params = [(self.idle_surface, self.rect)]
 
     def hold(self):
+        midi.note_on(self.note, 127)
         self.draw_params = [(self.held_surface, self.rect)]
 
     def release(self):
+        midi.note_off(self.note)
         self.draw_params = [(self.idle_surface, self.rect)]
 
 
@@ -227,12 +236,23 @@ class Piano(Plato):
                 # discard on spill
                 blk_keys.pop()
 
-        wht_colors = [(240, 240, 240), (224, 224, 224)]
-        for index, wht_key in enumerate(wht_keys):
-            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)]))
+        note = self.root
+        blk_notes = []
+        wht_notes = []
+        for interval in self.scale:
+            if interval == 1:
+                wht_notes.append(note)
+            elif interval == 2:
+                wht_notes.append(note)
+                blk_notes.append(note + 1)
+            note += interval
 
-        for blk_key in blk_keys:
-            self.tiles.append(PianoTile(blk_key, (32, 32, 32)))
+        wht_colors = [(240, 240, 240), (224, 224, 224)]
+        for index, (wht_key, note) in enumerate(zip(wht_keys, wht_notes)):
+            self.tiles.append(PianoTile(wht_key, wht_colors[index % len(wht_colors)], note))
+
+        for blk_key, note in zip(blk_keys, blk_notes):
+            self.tiles.append(PianoTile(blk_key, (32, 32, 32), note))
 
 
 class TileArray(Plato):
@@ -270,7 +290,8 @@ class TileArray(Plato):
             tile_y = i // self.tile_w
             pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
             pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
-            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips)))
+            note = random.randint(60, 84)
+            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), note))
 
 
 class PlaySurface:
@@ -360,7 +381,7 @@ class PlaySurface:
         update_rects = []
         blit_sequence = []
 
-        for plate in plates:
+        for plate in self.plates:
             update_rects.append(plate.frame)
             for tile in plate.tiles:
                 blit_sequence += tile.draw_params
@@ -382,13 +403,14 @@ class PlaySurface:
             tile.hold()
 
         if pressed or released:
+            midi.flush()
             return self.draw()
 
         else:
             return None, None
 
 
-if __name__ == "__main__":
+def main():
     pygame.init()
 
     sizes = pygame.display.get_desktop_sizes()
@@ -410,7 +432,7 @@ if __name__ == "__main__":
 
     update_rects, blit_sequence = play_surface.draw()
     screen.blits(blit_sequence=blit_sequence)
-    pygame.display.update(update_rects)
+    pygame.display.flip()
 
     while True:
         live = True
@@ -432,8 +454,14 @@ if __name__ == "__main__":
 
         if blit_sequence:
             screen.blits(blit_sequence=blit_sequence)
-            if update_rects:
-                pygame.display.update(update_rects)
+            pygame.display.update(update_rects)
+        else:
+            time.sleep(1e-9)
 
     surface_tools.reset_memo()
+    pygame.quit()
+
+
+if __name__ == "__main__":
+    midi.run(main)
 
