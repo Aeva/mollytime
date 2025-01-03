@@ -419,58 +419,64 @@ class PlaySurface:
             return None, None
 
 
-def main():
-    pygame.init()
+class Instrument:
+    def __init__(self, plates, horizontal_align=.5, vertical_align=1):
+        self.plates = plates
+        self.h_align = horizontal_align
+        self.v_align = vertical_align
 
-    sizes = pygame.display.get_desktop_sizes()
-    display_index = len(sizes) - 1
-    display_size = sizes[display_index]
-    screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
+    def __call__(self):
+        pygame.init()
 
+        sizes = pygame.display.get_desktop_sizes()
+        display_index = len(sizes) - 1
+        display_size = sizes[display_index]
+        screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
+
+        screen.fill((0, 0, 0))
+        pygame.display.flip()
+
+        play_surface = PlaySurface(display_size, self.plates, self.h_align, self.v_align)
+
+        update_rects, blit_sequence = play_surface.draw()
+        screen.blits(blit_sequence=blit_sequence)
+        pygame.display.flip()
+
+        while True:
+            live = True
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    live = False
+
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    live = False
+
+                else:
+                    play_surface.input_event(event)
+
+            if not live:
+                break
+
+            update_rects, blit_sequence = play_surface.crank()
+
+            if blit_sequence:
+                screen.blits(blit_sequence=blit_sequence)
+                pygame.display.update(update_rects)
+            else:
+                time.sleep(1e-9)
+
+        surface_tools.reset_memo()
+        pygame.quit()
+
+
+if __name__ == "__main__":
     plates = [
         TileArray(0, 0, 3, 2),
         Piano(0, -18, notes=12*2+1),
         Piano(0, -9, scale=[2, 1, 2, 2, 2, 1, 2], notes=12*2+1), #, spill_mode=0),
         Plato(17, 0, 1, 1),
     ]
-
-    screen.fill((0, 0, 0))
-    pygame.display.flip()
-
-    play_surface = PlaySurface(display_size, plates)
-
-    update_rects, blit_sequence = play_surface.draw()
-    screen.blits(blit_sequence=blit_sequence)
-    pygame.display.flip()
-
-    while True:
-        live = True
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                live = False
-
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                live = False
-
-            else:
-                play_surface.input_event(event)
-
-        if not live:
-            break
-
-        update_rects, blit_sequence = play_surface.crank()
-
-        if blit_sequence:
-            screen.blits(blit_sequence=blit_sequence)
-            pygame.display.update(update_rects)
-        else:
-            time.sleep(1e-9)
-
-    surface_tools.reset_memo()
-    pygame.quit()
-
-
-if __name__ == "__main__":
-    midi.run(main)
+    debug = Instrument(plates)
+    midi.run(debug)
 
