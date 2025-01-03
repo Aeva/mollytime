@@ -23,7 +23,7 @@ octave_labels = (
 def simple_note_name(note, tie=0):
     octave = note // 12
     index = note % 12
-    return f"{octave_labels[index][tie]}{octave - 2}"
+    return f"{octave_labels[index][tie]}{octave - 1}"
 
 
 client = SequencerClient("fnordboard")

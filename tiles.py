@@ -61,18 +61,19 @@ class PianoTile(Tile):
 
 
 class PadTile(Tile):
-    def __init__(self, rect, note):
+    def __init__(self, rect, note, idle_color, hold_color=None):
         self.rect = rect
         self.note = note
 
         size = (rect.w, rect.h)
-        font_size = rect.h * .75
-        text = str(note)
-        idle_color = random_color()
-        hold_color = (255, 255, 255)
+        font_size = rect.h * .5
+        text = midi.simple_note_name(note)
+        hold_color = hold_color or (255, 255, 255)
 
-        self.idle_surface = surface_tools.text_rect(size, idle_color, "overpass", font_size, text)
-        self.held_surface = surface_tools.text_rect(size, hold_color, "overpass", font_size, text)
+        text_args = ["gentium_book_plus", font_size, text, (0, 0, 0)]
+
+        self.idle_surface = surface_tools.text_rect(size, idle_color, *text_args, v_align=.64, exemplar=string.digits+"ABCDEFG♭♯")
+        self.held_surface = surface_tools.text_rect(size, hold_color, *text_args, v_align=.64, exemplar=string.digits+"ABCDEFG♭♯")
 
         self.draw_params = [(self.idle_surface, self.rect)]
 
@@ -118,9 +119,9 @@ class Plato:
         self.frame = None
         self.tiles = []
 
-    def populate(self, pip_to_rect):
+    def populate(self, pip_to_rect, frame_color=(64, 64, 64)):
         self.frame = pip_to_rect(self.pip_min_x, self.pip_min_y, self.pip_w, self.pip_h)
-        self.tiles = [Tile(self.frame, (64, 64, 64))]
+        self.tiles = [Tile(self.frame, frame_color)]
 
     def match(self, point):
         if self.frame.collidepoint(point):
@@ -309,9 +310,17 @@ class TileArray(Plato):
 
         super().__init__(x, y, pip_w, pip_h)
 
+    def get_note(self, i, tile_x, tile_y):
+        return random.randint(60, 84)
+
+    def get_idle_color(self, i, tile_x, tile_y):
+        return random_color()
+
+    def get_hold_color(self, i, tile_x, tile_y):
+        return None
 
     def populate(self, pip_to_rect):
-        super().populate(pip_to_rect)
+        super().populate(pip_to_rect, (0, 0, 0))
 
         tile_count = self.tile_w * self.tile_h
 
@@ -320,8 +329,10 @@ class TileArray(Plato):
             tile_y = i // self.tile_w
             pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
             pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
-            note = random.randint(60, 84)
-            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), note))
+            note = self.get_note(i, tile_x, tile_y)
+            idle_color = self.get_idle_color(i, tile_x, tile_y)
+            hold_color = self.get_hold_color(i, tile_x, tile_y)
+            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), note, idle_color, hold_color))
 
 
 class PlaySurface:
