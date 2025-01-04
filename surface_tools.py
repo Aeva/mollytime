@@ -1,9 +1,8 @@
 
-import overrides
-
 import string
 from importlib import resources
 
+import pygame_setup
 import pygame
 
 import media

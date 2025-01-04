@@ -1,49 +1,92 @@
 
-import overrides
+import string
 
-import math
-
+import pygame_setup
 import pygame
 
 import midi
-from tiles import TileArray, Instrument
+import surface_tools
+from color import random_color, rainbow_gradient
+from widgets import Tile, Plato, Instrument
 
 
-def hue_to_rgb(h):
-    h = (h * 6) % 6
-    a = h - math.floor(h)
-    r = 0
-    g = 0
-    b = 0
-    if h < 1:
-        r = 1
-        g = a
-    elif h < 2:
-        r = 1 - a
-        g = 1
-    elif h < 3:
-        g = 1
-        b = a
-    elif h < 4:
-        g = 1 - a
-        b = 1
-    elif h < 5:
-        r = a
-        b = 1
-    else:
-        r = 1
-        b = 1 - a
-    return (r, g, b)
+class PadTile(Tile):
+    def __init__(self, rect, note, idle_color, hold_color=None):
+        self.rect = rect
+        self.note = note
+
+        size = (rect.w, rect.h)
+        font_size = rect.h * .5
+        text = midi.simple_note_name(note)
+        hold_color = hold_color or (255, 255, 255)
+
+        text_args = ["gentium_book_plus", font_size, text, (0, 0, 0)]
+
+        self.idle_surface = surface_tools.text_rect(size, idle_color, *text_args, v_align=.64, exemplar=string.digits+"ABCDEFG♭♯")
+        self.held_surface = surface_tools.text_rect(size, hold_color, *text_args, v_align=.64, exemplar=string.digits+"ABCDEFG♭♯")
+
+        self.draw_params = [(self.idle_surface, self.rect)]
+
+    def hold(self):
+        midi.note_on(self.note, 127)
+        self.draw_params = [(self.held_surface, self.rect)]
+
+    def release(self):
+        midi.note_off(self.note)
+        self.draw_params = [(self.idle_surface, self.rect)]
 
 
-def byte_color(float_color):
-    return tuple([min(max(int(f * 255), 0), 255) for f in float_color])
 
 
-def heat_map(note, low, high):
-    midi_range = abs(high - low)
-    a = (note - low) / midi_range
-    return byte_color(hue_to_rgb(a))
+class TileArray(Plato):
+    def __init__(self, x, y, w, h, tile_pips=4, margin_pips=1, spacing_pips=1):
+        """
+        Args `x`, and `y`, are specified as pip counts.
+        Args `w`, and `h`, are specified in tile counts.
+        """
+
+        self.tile_w = int(abs(w))
+        self.tile_h = int(abs(h))
+
+        self.tile_pips = int(abs(tile_pips))
+        self.margin_pips = int(abs(margin_pips))
+        self.spacing_pips = int(abs(spacing_pips))
+
+        pip_w = self.tile_w * self.tile_pips + max(self.tile_w - 1, 0) * self.spacing_pips + 2 * self.margin_pips
+        pip_h = self.tile_h * self.tile_pips + max(self.tile_h - 1, 0) * self.spacing_pips + 2 * self.margin_pips
+
+        if w < 0:
+            x -= pip_w
+        if h < 0:
+            y -= pip_h
+
+        super().__init__(x, y, pip_w, pip_h)
+
+    def get_note(self, i, tile_x, tile_y):
+        return random.randint(60, 84)
+
+    def get_idle_color(self, i, tile_x, tile_y):
+        return random_color()
+
+    def get_hold_color(self, i, tile_x, tile_y):
+        return None
+
+    def populate(self, pip_to_rect):
+        super().populate(pip_to_rect, (0, 0, 0))
+
+        tile_count = self.tile_w * self.tile_h
+
+        for i in range(tile_count):
+            tile_x = i % self.tile_w
+            tile_y = i // self.tile_w
+            pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
+            pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
+            note = self.get_note(i, tile_x, tile_y)
+            idle_color = self.get_idle_color(i, tile_x, tile_y)
+            hold_color = self.get_hold_color(i, tile_x, tile_y)
+            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), note, idle_color, hold_color))
+
+
 
 
 class PadArray(TileArray):
@@ -70,7 +113,7 @@ class PadArray(TileArray):
         min_note = min(*self.note_lut)
         max_note = max(*self.note_lut)
 
-        self.color_lut = [heat_map(note, min_note, max_note) for note in self.note_lut]
+        self.color_lut = [rainbow_gradient(note, min_note, max_note) for note in self.note_lut]
 
     def get_note(self, i, tile_x, tile_y):
         return self.note_lut[i]
