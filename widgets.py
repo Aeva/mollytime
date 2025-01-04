@@ -219,6 +219,8 @@ class PlaySurface:
                 del self.fingers[event.finger_id]
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.touch:
+                return
             self.mouse_state = True
             finger_id = "m"
             if tile := self.test_point(event.pos):
@@ -227,6 +229,8 @@ class PlaySurface:
                 del self.fingers[finger_id]
 
         elif event.type == pygame.MOUSEMOTION and self.mouse_state:
+            if event.touch:
+                return
             finger_id = "m"
             if tile := self.test_point(event.pos):
                 self.fingers[finger_id] = tile
@@ -234,6 +238,8 @@ class PlaySurface:
                 del self.fingers[finger_id]
 
         elif event.type == pygame.MOUSEBUTTONUP:
+            if event.touch:
+                return
             self.mouse_state = False
             finger_id = "m"
             if self.fingers.get(finger_id) is not None:
