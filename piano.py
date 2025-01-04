@@ -12,7 +12,14 @@ from color import random_color
 from widgets import Tile, Plato, Instrument
 
 
+
+
 class PianoTile(Tile):
+    """
+    Implements an interactive MIDI piano key which is played at maximum velocity.  May
+    be a white key or a black key.
+    """
+
     def __init__(self, rect, color, note, text, text_color=None):
         self.note = note
         self.rect = rect
@@ -44,6 +51,11 @@ class PianoTile(Tile):
 
 
 class Piano(Plato):
+    """
+    Implements a row of interactive piano keys with an arbitrary root note and scale.
+    """
+
+
     def __init__(self, x, y, root=60, scale=[2, 2, 1, 2, 2, 2, 1], notes=13, wht_w=3, blk_h=5, wht_h=8, spill_mode=3):
         """
         Args `x`, `y`, `wht_w`, `blk_h`, and `wht_h` are specified as pip counts.

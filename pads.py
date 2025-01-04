@@ -10,7 +10,13 @@ from color import random_color, rainbow_gradient
 from widgets import Tile, Plato, Instrument
 
 
+
+
 class PadTile(Tile):
+    """
+    This implements an interactive MIDI pad that plays one note at maximum velocity.
+    """
+
     def __init__(self, rect, note, idle_color, hold_color=None):
         self.rect = rect
         self.note = note
@@ -27,9 +33,11 @@ class PadTile(Tile):
 
         self.draw_params = [(self.idle_surface, self.rect)]
 
+
     def hold(self):
         midi.note_on(self.note, 127)
         self.draw_params = [(self.held_surface, self.rect)]
+
 
     def release(self):
         midi.note_off(self.note)
@@ -39,6 +47,13 @@ class PadTile(Tile):
 
 
 class TileArray(Plato):
+    """
+    This is a generic-ish subclass of Plato for creating 2D grids of pads with uniform
+    spacing.  This doesn't strictly need to be separate from PadArray, but all of the
+    overrided functions are cold paths.  Might be useful for other widgets to use, but
+    some refactoring would be required to change the Tile type that is instanced.
+    """
+
     def __init__(self, x, y, w, h, tile_pips=4, margin_pips=1, spacing_pips=1):
         """
         Args `x`, and `y`, are specified as pip counts.
@@ -62,14 +77,31 @@ class TileArray(Plato):
 
         super().__init__(x, y, pip_w, pip_h)
 
-    def get_note(self, i, tile_x, tile_y):
+
+    def get_note(self, tile_index, tile_x, tile_y):
+        """
+        Return the MIDI note number corresponding to a given tile location.
+        Used for constructing the PadTile instances.
+        """
+
         return random.randint(60, 84)
 
-    def get_idle_color(self, i, tile_x, tile_y):
+
+    def get_idle_color(self, tile_index, tile_x, tile_y):
+        """
+        Return the idle color associated to a given tile location.
+        """
+
         return random_color()
 
-    def get_hold_color(self, i, tile_x, tile_y):
+
+    def get_hold_color(self, tile_index, tile_x, tile_y):
+        """
+        Return the hold color associated to a given tile location.
+        """
+
         return None
+
 
     def populate(self, pip_to_rect):
         super().populate(pip_to_rect, (0, 0, 0))
@@ -90,6 +122,10 @@ class TileArray(Plato):
 
 
 class PadArray(TileArray):
+    """
+    This implements the pad grid Plato object.
+    """
+
     def __init__(self, x, y, w, h, center_note, x_offset, y_offset):
         super().__init__(x, y, w, h)
         self.center_note = center_note
@@ -115,11 +151,15 @@ class PadArray(TileArray):
 
         self.color_lut = [rainbow_gradient(note, min_note, max_note) for note in self.note_lut]
 
-    def get_note(self, i, tile_x, tile_y):
-        return self.note_lut[i]
 
-    def get_idle_color(self, i, tile_x, tile_y):
-        return self.color_lut[i]
+    def get_note(self, tile_index, tile_x, tile_y):
+        return self.note_lut[tile_index]
+
+
+    def get_idle_color(self, tile_index, tile_x, tile_y):
+        return self.color_lut[tile_index]
+
+
 
 
 if __name__ == "__main__":
@@ -130,6 +170,7 @@ if __name__ == "__main__":
     root = 60
     tile_h = 9
 
+    # try to match the screen ratio, but always select an odd number
     tile_w = int(tile_h * ratio)
     if tile_w % 2 == 0:
         tile_w -= 1
@@ -137,5 +178,5 @@ if __name__ == "__main__":
     plates = [
         PadArray(0, 0, tile_w, tile_h, root, 2, 3)
     ]
-    keyboards = Instrument(plates)
-    midi.run(keyboards)
+    pad_grid = Instrument(plates)
+    midi.run(pad_grid)
