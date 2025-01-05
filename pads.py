@@ -45,19 +45,19 @@ class PadTile(Tile):
 
 
 
-
-class TileArray(Plato):
+class PadArray(Plato):
     """
-    This is a generic-ish subclass of Plato for creating 2D grids of pads with uniform
-    spacing.  This doesn't strictly need to be separate from PadArray, but all of the
-    overrided functions are cold paths.  Might be useful for other widgets to use, but
-    some refactoring would be required to change the Tile type that is instanced.
+    This implements a 2D array of PadTile objects with an isomorphic note layout.
     """
 
-    def __init__(self, x, y, w, h, tile_pips=4, margin_pips=1, spacing_pips=1):
+    def __init__(self, x, y, w, h, center_note, x_offset, y_offset, tile_pips=4, margin_pips=1, spacing_pips=1):
         """
-        Args `x`, and `y`, are specified as pip counts.
+        Args `x`, `y`, `tile_pips`, `margin_pips`, and `spacing_pips are specified as pip counts.
         Args `w`, and `h`, are specified in tile counts.
+        Arg `center_note` is a MIDI note number.
+        Args `x_offset` and `y_offset are relative MIDI note offsets.
+
+        This is a cold path.
         """
 
         self.tile_w = int(abs(w))
@@ -77,87 +77,53 @@ class TileArray(Plato):
 
         super().__init__(x, y, pip_w, pip_h)
 
+        # The pad notes are calculated here instead of in populate to avoid
+        # storing parameters persistently as extra object attributes
 
-    def get_note(self, tile_index, tile_x, tile_y):
-        """
-        Return the MIDI note number corresponding to a given tile location.
-        Used for constructing the PadTile instances.
-        """
+        center_x = self.tile_w // 2
+        center_y = self.tile_h // 2
+        tile_count = self.tile_w * self.tile_h
+        self.note_lut = [0] * tile_count
 
-        return random.randint(60, 84)
+        for tile_index in range(tile_count):
+            tile_x = tile_index % self.tile_w
+            tile_y = tile_index // self.tile_w
 
+            note = center_note
+            note += (tile_x - center_x) * x_offset
+            note -= (tile_y - center_y) * y_offset
 
-    def get_idle_color(self, tile_index, tile_x, tile_y):
-        """
-        Return the idle color associated to a given tile location.
-        """
-
-        return random_color()
-
-
-    def get_hold_color(self, tile_index, tile_x, tile_y):
-        """
-        Return the hold color associated to a given tile location.
-        """
-
-        return None
+            self.note_lut[tile_index] = note
 
 
     def populate(self, pip_to_rect):
+        """
+        Create the PadTile instances belonging to this plate.
+
+        This is a cold path.
+        """
         super().populate(pip_to_rect, (0, 0, 0))
 
         tile_count = self.tile_w * self.tile_h
 
-        for i in range(tile_count):
-            tile_x = i % self.tile_w
-            tile_y = i // self.tile_w
-            pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
-            pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
-            note = self.get_note(i, tile_x, tile_y)
-            idle_color = self.get_idle_color(i, tile_x, tile_y)
-            hold_color = self.get_hold_color(i, tile_x, tile_y)
-            self.tiles.append(PadTile(pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips), note, idle_color, hold_color))
-
-
-
-
-class PadArray(TileArray):
-    """
-    This implements the pad grid Plato object.
-    """
-
-    def __init__(self, x, y, w, h, center_note, x_offset, y_offset):
-        super().__init__(x, y, w, h)
-        self.center_note = center_note
-        self.note_x_offset = x_offset
-        self.note_y_offset = y_offset
-        self.center_x = self.tile_w // 2
-        self.center_y = self.tile_h // 2
-
-        self.note_lut = []
-
-        tile_count = self.tile_w * self.tile_h
-        for i in range(tile_count):
-            tile_x = i % self.tile_w
-            tile_y = i // self.tile_w
-            note = self.center_note \
-                + (tile_x - self.center_x) * self.note_x_offset \
-                - (tile_y - self.center_y) * self.note_y_offset
-
-            self.note_lut.append(note)
-
         min_note = min(*self.note_lut)
         max_note = max(*self.note_lut)
 
-        self.color_lut = [rainbow_gradient(note, min_note, max_note) for note in self.note_lut]
+        self.tiles = [None] * tile_count
 
+        for tile_index in range(tile_count):
+            tile_x = tile_index % self.tile_w
+            tile_y = tile_index // self.tile_w
+            pip_x = self.pip_min_x + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_x
+            pip_y = self.pip_min_y + self.margin_pips + (self.tile_pips + self.spacing_pips) * tile_y
 
-    def get_note(self, tile_index, tile_x, tile_y):
-        return self.note_lut[tile_index]
+            rect = pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips)
+            note = self.note_lut[tile_index]
+            idle_color = rainbow_gradient(note, min_note, max_note)
+            hold_color = None
 
-
-    def get_idle_color(self, tile_index, tile_x, tile_y):
-        return self.color_lut[tile_index]
+            tile = PadTile(rect, note, idle_color, hold_color)
+            self.tiles[tile_index] = tile
 
 
 
