@@ -53,6 +53,16 @@ def byte_color(float_color):
     return tuple([min(max(int(f * 255), 0), 255) for f in float_color])
 
 
+def hsv(h, s, v):
+    """
+    Args `h`, `s`, and `v` must all be provided as numbers betwen zero and one inclusive,
+    and correspond to hue, saturation, and value respectively.
+    Returns a byte color tuple suitable for use with Pygame.
+    """
+    color = hue_to_rgb(h)
+    return byte_color([((1.0 - s) + s * c) * v for c in color])
+
+
 def rainbow_gradient(value, low, high):
     """
     Takes a value and it's bounding range and return a saturated byte color.
