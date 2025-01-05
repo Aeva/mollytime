@@ -27,14 +27,14 @@ def simple_note_name(note, tie=0):
     return f"{octave_labels[index][tie]}{octave - 1}"
 
 
-client = SequencerClient("fnordboard")
+client = SequencerClient("MollyTime")
 port = client.create_port(
     "output",
     caps=READ_PORT)
 
 timidity_proc = None
 connection = None
-device_priority = ["Arturia MicroFreak", "EP-1320", "MiniFuse 2 MIDI 1", "TiMidity"]
+device_priority = ["Arturia MicroFreak", "EP-1320", "VCV Rack input", "MiniFuse 2 MIDI 1", "TiMidity"]
 
 
 def note_on(note, velocity, channel=0):
@@ -130,6 +130,11 @@ def run(main_thunk):
         print(f"Connected to {connection}")
 
     else:
+        if client.list_ports(output=True):
+            print("MIDI devices on system:")
+            for device in client.list_ports(output=True):
+                print(f" - {(device.client_name, device.name)}")
+
         import subprocess
         try:
             timidity_proc = subprocess.Popen(["timidity", "-iA", "-Os", "--volume=200"])
