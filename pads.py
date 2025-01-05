@@ -17,14 +17,14 @@ class PadTile(Tile):
     This implements an interactive MIDI pad that plays one note at maximum velocity.
     """
 
-    def __init__(self, rect, note, idle_color, hold_color=None):
+    def __init__(self, rect, note, idle_color):
         self.rect = rect
         self.note = note
 
         size = (rect.w, rect.h)
         font_size = rect.h * .5
         text = midi.simple_note_name(note)
-        hold_color = hold_color or (255, 255, 255)
+        hold_color = (255, 255, 255)
 
         text_args = ["gentium_book_plus", font_size, text, (0, 0, 0)]
 
@@ -120,9 +120,8 @@ class PadArray(Plato):
             rect = pip_to_rect(pip_x, pip_y, self.tile_pips, self.tile_pips)
             note = self.note_lut[tile_index]
             idle_color = rainbow_gradient(note, min_note, max_note)
-            hold_color = None
 
-            tile = PadTile(rect, note, idle_color, hold_color)
+            tile = PadTile(rect, note, idle_color)
             self.tiles[tile_index] = tile
 
 

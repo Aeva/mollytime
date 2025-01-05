@@ -2,7 +2,9 @@
 
 import time
 
-from alsa_midi import SequencerClient, WRITE_PORT, READ_PORT, NoteOnEvent, NoteOffEvent, ProgramChangeEvent
+from alsa_midi import SequencerClient, WRITE_PORT, READ_PORT
+from alsa_midi import NoteOnEvent, NoteOffEvent, KeyPressureEvent, ControlChangeEvent
+from alsa_midi import ProgramChangeEvent, ChannelPressureEvent, PitchBendEvent
 
 
 octave_labels = (
@@ -35,18 +37,73 @@ connection = None
 device_priority = ["Arturia MicroFreak", "EP-1320", "MiniFuse 2 MIDI 1", "TiMidity"]
 
 
-def program_change(channel, program):
-    event = ProgramChangeEvent(channel=channel, value=program)
+def note_on(note, velocity, channel=0):
+    """
+    Args `note` and `velocity` are integers between 0 and 127 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+    event = NoteOnEvent(note, channel, velocity)
     client.event_output(event, port=port)
 
 
-def note_on(note, velocity):
-    event = NoteOnEvent(note=note, velocity=velocity)
+def note_off(note, velocity=0, channel=0):
+    """
+    Args `note` and `velocity` are integers between 0 and 127 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+    event = NoteOffEvent(note, channel, velocity)
     client.event_output(event, port=port)
 
 
-def note_off(note):
-    event = NoteOffEvent(note=note, velocity=0)
+def polyphonic_pressure(note, pressure, channel=0):
+    """
+    Args `note` and `pressure` are integers between 0 and 127 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+    event = KeyPressureEvent(note, channel, pressure)
+    client.event_output(event, port=port)
+
+
+def control_change(controller_number, value, channel=0):
+    """
+    Args `controller_number` and `value` are integers between 0 and 127 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+    event = ControlChangeEvent(channel, controller_number, value)
+    client.event_output(event, port=port)
+
+
+def program_change(program_number, channel=0):
+    """
+    Arg `program_number` is an integer between 0 and 127 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+    event = ProgramChangeEvent(channel, program_number)
+    client.event_output(event, port=port)
+
+
+def channel_pressure(pressure, channel=0):
+    """
+    Arg `pressure` is an integer between 0 and 127 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+    event = ChannelPressureEvent(channel, pressure)
+    client.event_output(event, port=port)
+
+
+def pitch_bend(bend, channel=0):
+    """
+    Arg `bend` is a float between -1.0 and 1.0 inclusive.
+    Arg 'channel' is an integer between 0 and 15 inclusive.
+    """
+
+    if bend < 0:
+        bend = 0x3FFF - max(-1, abs(bend)) * 0x1FFF
+    elif bend > 0:
+        bend = min(bend, 1) * 0x1FFF
+
+    event = PitchBendEvent(channel, int(bend))
+
     client.event_output(event, port=port)
 
 
