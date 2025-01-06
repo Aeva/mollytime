@@ -49,14 +49,6 @@ You can install alsa-midi like so:
 
  `pip install alsa-midi`
  
-### TiMidity++
-
-MollyTime will try to start a [TiMidity++](https://sourceforge.net/projects/timidity/)
-subprocess if MIDI device selection fails to find a better option.  This is primarily
-intended as a development convinience, as TiMidity++ introduces enough latency to render
-the system unplayable.  You will need to install TiMidity++ through your distro package
-manager.
-
 ## Installation (All)
 
 MollyTime is not currently available as a pip package.  In fact, there is no way to install
@@ -85,8 +77,7 @@ carefully can prevent virtual MIDI controllers from being useful for real time p
 
  - Your operating system.  The stock Linux kernel shipped in the Fedora distrobution seems fine.
  
- - Virtual synthesizers.  MollyTime currently uses TiMidity++ as a fallback for development when
-   no valid device is found, but TiMidity++ introduces unplayable latency into the system.
+ - Virtual synthesizers.  TiMidity++ is known to introduce significant latency.
    
  - Your hardware.  The touch screen I have happens to be fine, but I can't make this guarantee
    for all hardware.

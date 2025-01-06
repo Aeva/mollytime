@@ -5,6 +5,10 @@ import time
 from alsa_midi import SequencerClient, WRITE_PORT, READ_PORT
 from alsa_midi import NoteOnEvent, NoteOffEvent, KeyPressureEvent, ControlChangeEvent
 from alsa_midi import ProgramChangeEvent, ChannelPressureEvent, PitchBendEvent
+from alsa_midi.port import PortCaps, PortType
+
+
+device_priority = ["Arturia MicroFreak", "EP-1320", "VCV Rack", "MiniFuse 2", "TiMidity"]
 
 
 octave_labels = (
@@ -30,11 +34,8 @@ def simple_note_name(note, tie=0):
 client = SequencerClient("MollyTime")
 port = client.create_port(
     "output",
-    caps=READ_PORT)
-
-timidity_proc = None
-connection = None
-device_priority = ["Arturia MicroFreak", "EP-1320", "VCV Rack input", "MiniFuse 2 MIDI 1", "TiMidity"]
+    caps=READ_PORT,
+    type=PortType.APPLICATION | PortType.SOFTWARE)
 
 
 def note_on(note, velocity, channel=0):
@@ -111,62 +112,45 @@ def flush():
     client.drain_output()
 
 
-def run(main_thunk):
-    global connection
-    global timidity_proc
+def print_verbose_device_info():
+    #devices = client.list_ports()
+    devices = client.list_ports(output=True)
+    for device in devices:
+        print("-" * 79)
+        print((device.name, device.client_name))
 
+        for key in dir(device):
+            if key.startswith("_") or key in ("capability", "type", "name", "client_name"):
+                continue
+            print(f" - {key}: {getattr(device, key, '')}")
+
+        print(" - capability:")
+        for flag in PortCaps:
+            if (device.capability & flag.value) == flag.value:
+                print(f"    - {flag.name}")
+
+        print(" - type:")
+        for flag in PortType:
+            if (device.type & flag.value) == flag.value:
+                print(f"    - {flag.name}")
+
+
+def auto_connect():
     for target in device_priority:
         for device in client.list_ports(output=True):
             if device.client_name == target:
-                connection = device.client_name
                 port.connect_to(device)
-                break
-            elif device.name == target:
-                connection = device.name
-                port.connect_to(device)
-                break
+                return device.client_name
 
-    if connection != None:
+            elif device.name == target:
+                port.connect_to(device)
+                return device.name
+    return None
+
+
+def run(main_thunk):
+    #print_verbose_device_info()
+    if connection := auto_connect():
         print(f"Connected to {connection}")
 
-    else:
-        if client.list_ports(output=True):
-            print("MIDI devices on system:")
-            for device in client.list_ports(output=True):
-                print(f" - {(device.client_name, device.name)}")
-
-        import subprocess
-        try:
-            timidity_proc = subprocess.Popen(["timidity", "-iA", "-Os", "--volume=200"])
-            time.sleep(1)
-        except OSError:
-            print("Unable to start timidity :(")
-            timidity_proc = None
-
-        target = "TiMidity"
-        for device in client.list_ports(output=True):
-            if device.client_name == target:
-                connection = device.client_name
-                port.connect_to(device)
-
-    if connection == "TiMidity":
-        # programs 21, 53, 91, 93, 94, 95, and 97 all work pretty well here
-        event = ProgramChangeEvent(channel=0, value=95)
-        client.event_output(event, port=port)
-
-    time.sleep(1)
-    if not connection:
-        print(f"Unable to connect midi output :(")
-
-    if connection == "TiMidity":
-        client.drain_output()
-
-    try:
-        main_thunk()
-
-    finally:
-        if timidity_proc:
-            print("halting timidity subprocess")
-            timidity_proc.kill()
-            time.sleep(1)
-            print("done")
+    main_thunk()
