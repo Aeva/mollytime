@@ -8,7 +8,7 @@ MollyTime implements two virtual MIDI controllers that are intended to be operat
 via a touch screen interface or a mouse.
 
 MollyTime is also intended to be useful for building stuff like simple MIDI sequencers and
-editors, but it currently *lacks* functionality that woud be useful for that (like editing
+editors, but it currently *lacks* functionality that would be useful for that (like editing
 tracker files or MIDI files).
 
 Here are some examples of virtual MIDI controllers made with MollyTime:
@@ -31,6 +31,7 @@ In theory, MollyTime should™ work on any operating system supported by
 [RtMidi](http://www.music.mcgill.ca/~gary/rtmidi/index.html).
 
 In practice, MollyTime has only been tested on Windows and Linux.
+
 What is the difference between theory and practice?  In theory there is no difference!
 
 ## Required Dependencies (All)
@@ -72,7 +73,7 @@ MollyTime right now!  Just download it somewhere on your computer and run the sc
 Unless you happen to have the same MIDI instruments as I do, you will first need to modify the
 `device_priority` list in 'midi.py' to tell the device selection code what you want it to match.
 
-Plug a MIDI istrument into your computer and run either `piano.py` or `pads.py` to jam on a virtual
+Plug a MIDI instrument into your computer and run either `piano.py` or `pads.py` to jam on a virtual
 MIDI controller.
 
 If MollyTime fails to find an ideal device from the `device_priority` list, MollyTime will just run
@@ -93,7 +94,7 @@ There are a lot of things that can cause latency, and most of these are things a
 MollyTime can control.  Here are some things that can introduce latency, which if not managed
 carefully can prevent virtual MIDI controllers from being useful for real time performances:
 
- - Your operating system.  The stock Linux kernel shipped in the Fedora distrobution seems fine.
+ - Your operating system.  The stock Linux kernel shipped in the Fedora distribution seems fine.
  
  - Virtual synthesizers.  TiMidity++ is known to introduce significant latency.  The wavetable
    synthesizer included with Windows also introduces perceptible latency, but appears to be
@@ -148,7 +149,7 @@ If you are having latency problems, try to isolate the problem by swapping out s
    a uniform pixel size on screen regardless of placement.  However, tiles can cheat and use
    fractional positions, as is demonstrated in `piano.py`.
    
- - **Instrument**:  The word "instrument" may refere to either a literal musical instrument, or
+ - **Instrument**:  The word "instrument" may refer to either a literal musical instrument, or
    it may refer specifically to the `Instrument` class, which confusingly you do *not* need to
    subclass to create a new instrument.  I will probably rename the `Instrument` class to avoid
    confusion.
@@ -169,7 +170,7 @@ events to their tiles, and do little else.
 The second important object category is a *tile*, which is a subclass of the `Tile` class.  Tiles
 implement virtually all of the interactive behavior of your widget.  Tiles generally do *not* have
 any inherent awareness of one another or the plate they are attached to, but that is not a strict
-requirement.  Generally an instrument would deterine up front what MIDI note a tile corresponds to,
+requirement.  Generally an instrument would determine up front what MIDI note a tile corresponds to,
 and the tile would send the events to the midi subsystem directly via the tile's event handler callbacks.
 
 When these objects are constructed into a play space, the result is a shallow hierarchy that can be
