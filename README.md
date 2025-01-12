@@ -57,8 +57,7 @@ You can install alsa-midi like so:
 ### python-rtmidi
 
 MollyTime uses [python-rtmidi](https://pypi.org/project/python-rtmidi/) on non-Linux platforms.
-In theory this means MollyTime should work on any platform supported by both Pygame and RtMidi.
-In practice, MollyTime has only been tested on Windows and Linux.  God speed.
+If RtMidi does not support your platform the MollyTime will not work on it either.
 
  `pip install python-rtmidi`
  
