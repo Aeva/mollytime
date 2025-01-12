@@ -26,9 +26,12 @@ MollyTime does not require a portable touch screen monitor, but having one is re
 
 # Getting Started
 
-Currently MollyTime requires ALSA for working with MIDI devices.  Other platform
-backends may be added as needed in the future, but today this means MollyTime only
-supports Linux.
+In theory, MollyTime should™ work on any operating system supported by
+[pygame](https://www.pygame.org/) and
+[RtMidi](http://www.music.mcgill.ca/~gary/rtmidi/index.html).
+
+In practice, MollyTime has only been tested on Windows and Linux.
+What is the difference between theory and practice?  In theory there is no difference!
 
 ## Required Dependencies (All)
 
@@ -39,15 +42,24 @@ You can install pygame like so:
 
  `pip install pygame`
 
-
 ## Required Dependencies (Linux Specific)
 
 ### alsa-midi
 
-MollyTime uses [alsa-midi](https://python-alsa-midi.readthedocs.io/en/latest/).
+MollyTime uses [alsa-midi](https://python-alsa-midi.readthedocs.io/en/latest/) on Linux.
 You can install alsa-midi like so:
 
  `pip install alsa-midi`
+
+## Required Dependencies (Non-Linux)
+
+### python-rtmidi
+
+MollyTime uses [python-rtmidi](https://pypi.org/project/python-rtmidi/) on non-Linux platforms.
+In theory this means MollyTime should work on any platform supported by both Pygame and RtMidi.
+In practice, MollyTime has only been tested on Windows and Linux.  God speed.
+
+ `pip install python-rtmidi`
  
 ## Installation (All)
 
@@ -58,10 +70,16 @@ MollyTime right now!  Just download it somewhere on your computer and run the sc
 # Running MollyTime
 
 Unless you happen to have the same MIDI instruments as I do, you will first need to modify the
-`device_priority` variable in 'midi.py' to tell the device selection code what you want it to match.
+`device_priority` list in 'midi.py' to tell the device selection code what you want it to match.
 
 Plug a MIDI istrument into your computer and run either `piano.py` or `pads.py` to jam on a virtual
 MIDI controller.
+
+If MollyTime fails to find an ideal device from the `device_priority` list, MollyTime will just run
+without connecting to anything.  On Linux, or platforms where RtMidi supports virtual ports, then
+MollyTime will create a MIDI output device for itself that other programs can connect to.  Unfortunately
+RtMidi cannot create virtual ports on Windows, but the Windows MIDI synthesizer is on the fallback list
+as a consolation prise.
 
 Also note that MollyTime always selects the last display on the assumption that it is a portable
 USB touch screen that you plugged in some time after logging into your computer but before running
@@ -77,7 +95,9 @@ carefully can prevent virtual MIDI controllers from being useful for real time p
 
  - Your operating system.  The stock Linux kernel shipped in the Fedora distrobution seems fine.
  
- - Virtual synthesizers.  TiMidity++ is known to introduce significant latency.
+ - Virtual synthesizers.  TiMidity++ is known to introduce significant latency.  The wavetable
+   synthesizer included with Windows also introduces perceptible latency, but appears to be
+   moderately playable.
    
  - Your hardware.  The touch screen I have happens to be fine, but I can't make this guarantee
    for all hardware.
