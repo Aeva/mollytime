@@ -109,6 +109,10 @@ def print_verbose_device_info():
                 print(f"    - {flag.name}")
 
 
+def device_names():
+    return [d.client_name for d in client.list_ports(output=True)]
+
+
 def auto_connect_inner(device_priority):
     for target in device_priority:
         for device in client.list_ports(output=True):

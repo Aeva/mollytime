@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<mollytime>
+    <autoconnect>
+        <device>VCV Rack</device>
+        <device>Arturia MicroFreak</device>
+        <device>EP-1320</device>
+        <device>MiniFuse 2</device>
+        <device>TiMidity</device>
+        <device os="Windows">Microsoft GS Wavetable Synth 0</device>
+    </autoconnect>
+</mollytime>

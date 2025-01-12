@@ -82,6 +82,10 @@ def print_verbose_device_info():
         print(f"{index}: {name}")
 
 
+def device_names():
+    return midiout.get_ports()
+
+
 def auto_connect_inner(device_priority):
     available_ports = midiout.get_ports()
     for target in device_priority:

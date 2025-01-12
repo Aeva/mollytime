@@ -1,9 +1,8 @@
 
-
+import os
 import time
 import platform
 operating_system = platform.system()
-
 
 if operating_system == "Linux":
     from linux_midi import *
@@ -11,14 +10,7 @@ if operating_system == "Linux":
 else:
     from generic_midi import *
 
-
-device_priority = [
-    "VCV Rack",
-    "Arturia MicroFreak",
-    "EP-1320",
-    "MiniFuse 2",
-    "TiMidity",
-    "Microsoft GS Wavetable Synth 0"]
+import xml.etree.ElementTree as etree
 
 
 octave_labels = (
@@ -43,6 +35,20 @@ def simple_note_name(note, tie=0):
 
 
 def auto_connect():
+    settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.xml")
+    tree = etree.parse(settings_path)
+    settings = tree.getroot()
+
+    device_priority = []
+    for category in settings:
+        if category.tag == "autoconnect":
+            for device in category:
+                if device.tag == "device":
+                    target_os = device.attrib.get("os", operating_system)
+                    if target_os != operating_system:
+                        continue
+                    device_priority.append(device.text.strip())
+
     return auto_connect_inner(device_priority)
 
 

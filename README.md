@@ -19,10 +19,12 @@ Here are some examples of virtual MIDI controllers made with MollyTime:
 
 # Who is MollyTime For?
 
-A basic working knowledge of Python and a bit of courage is required to use MollyTime,
-as you will need to edit a source file to change what MIDI devices it looks for.
+A basic working knowledge of Python and a bit of courage are recommended to use MollyTime,
+as you will get the most out of it if you customize it, but some basic virtual MIDI controllers
+are provided that might work fine out of the box if you can get as far as installing the
+prerequisites.
 
-MollyTime does not require a portable touch screen monitor, but having one is recommended.
+MollyTime does not require a portable touch screen monitor, but having one is a lot more fun.
 
 # Getting Started
 
@@ -36,10 +38,15 @@ What is the difference between theory and practice?  In theory there is no diffe
 
 ## Required Dependencies (All)
 
+### python
+
+To run MollyTime, you will need to install the [python](https://www.python.org/) programming
+language on your system.
+
 ### pygame
 
 MollyTime uses [pygame](https://www.pygame.org/) to draw the UI and manage input events.
-You can install pygame like so:
+You can install pygame like so from the commandline:
 
  `pip install pygame`
 
@@ -69,13 +76,15 @@ MollyTime right now!  Just download it somewhere on your computer and run the sc
 
 # Running MollyTime
 
-Unless you happen to have the same MIDI instruments as I do, you will first need to modify the
-`device_priority` list in 'midi.py' to tell the device selection code what you want it to match.
+Unless you happen to have the same MIDI devices as I do, you will first need to modify the
+`autoconnect` list in [settings.xml](settings.xml) to tell the device selection code what you want
+it to match.  Run the `available_devices.py` python script in this project via the commandline to
+see the names of all MIDI devices currently available on your system.
 
 Plug a MIDI instrument into your computer and run either `piano.py` or `pads.py` to jam on a virtual
 MIDI controller.
 
-If MollyTime fails to find an ideal device from the `device_priority` list, MollyTime will just run
+If MollyTime fails to find an ideal device from the `autoconnect` list, MollyTime will just run
 without connecting to anything.  On Linux, or platforms where RtMidi supports virtual ports, then
 MollyTime will create a MIDI output device for itself that other programs can connect to.  Unfortunately
 RtMidi cannot create virtual ports on Windows, but the Windows MIDI synthesizer is on the fallback list
