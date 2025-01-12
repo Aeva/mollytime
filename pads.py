@@ -60,6 +60,8 @@ class PadArray(Plato):
         This is a cold path.
         """
 
+        self.tile_type = PadTile
+
         self.tile_w = int(abs(w))
         self.tile_h = int(abs(h))
 
@@ -121,7 +123,7 @@ class PadArray(Plato):
             note = self.note_lut[tile_index]
             idle_color = rainbow_gradient(note, min_note, max_note)
 
-            tile = PadTile(rect, note, idle_color)
+            tile = self.tile_type(rect, note, idle_color)
             self.tiles[tile_index] = tile
 
 
