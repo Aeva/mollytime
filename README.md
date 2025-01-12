@@ -27,7 +27,7 @@ MollyTime does not require a portable touch screen monitor, but having one is re
 # Getting Started
 
 In theory, MollyTime should™ work on any operating system supported by
-[pygame](https://www.pygame.org/) and
+[Pygame](https://www.pygame.org/) and
 [RtMidi](http://www.music.mcgill.ca/~gary/rtmidi/index.html).
 
 In practice, MollyTime has only been tested on Windows and Linux.
