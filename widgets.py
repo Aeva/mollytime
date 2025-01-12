@@ -29,10 +29,27 @@ class Tile:
         # The parameters needed to draw this object.  A tile can draw multiple surfaces.
         self.draw_params = [(surface, rect)]
 
+        # The bounding rect that is the union of all rects from self.draw_params.
+        # Filled in automatically by the play surface.
+        self.bounding_rect = None
 
-    def hold(self):
+
+    def hold(self, x, y):
         """
         Called when the Tile becomes active.
+        Args `x` and `y` are values between 0.0 and 1.0 inclusive, and indicate where
+        the tile was pressed relative to the tile's top left corner.
+
+        This is a hot path.
+        """
+        pass
+
+
+    def rub(self, x, y):
+        """
+        Called on an active Tile when the pressing finger or mouse cursor move within the tile.
+        Args `x` and `y` are values between 0.0 and 1.0 inclusive, and indicate the new press
+        position relative to the tile's top left corner.
 
         This is a hot path.
         """
@@ -106,6 +123,15 @@ class Plato:
         """
         self.frame = pip_to_rect(self.pip_min_x, self.pip_min_y, self.pip_w, self.pip_h)
         self.tiles = [Tile(self.frame, frame_color)]
+
+
+    def get_tiles(self):
+        """
+        Returns all tiles controlled by this Plato object.
+
+        This is a cold path.
+        """
+        return self.tiles
 
 
     def match(self, point):
@@ -186,6 +212,14 @@ class PlaySurface:
         for plate in plates:
             plate.populate(pip_rect)
 
+        for plate in plates:
+            for tile in plate.get_tiles():
+                # Used to track rubbing.
+                tile.__last_xy = (None, None)
+                tile.__next_xy = (None, None)
+                first, *rest = [rect for surface, rect in tile.draw_params]
+                tile.bounding_rect = first.unionall(rest)
+
         self.fingers = {}
         self.last_held = set()
         self.mouse_state = False
@@ -196,8 +230,13 @@ class PlaySurface:
         This is a hot path.
         """
 
+        x, y = point
+
         for plate in self.plates:
             if tile := plate.match(point):
+                x = (x - tile.bounding_rect.x) / tile.bounding_rect.width
+                y = (y - tile.bounding_rect.y) / tile.bounding_rect.height
+                tile.__next_xy = (x, y)
                 return tile
         return None
 
@@ -271,16 +310,27 @@ class PlaySurface:
 
         released = self.last_held - held
         pressed = held - self.last_held
+        sustained = held & self.last_held
 
         self.last_held = held
 
         for tile in released:
             tile.release()
+            tile.__last_xy = (None, None)
+            tile.__next_xy = (None, None)
 
         for tile in pressed:
-            tile.hold()
+            tile.hold(*tile.__next_xy)
+            tile.__last_xy = tile.__next_xy
 
-        if pressed or released:
+        rubbed = set()
+        for tile in sustained:
+            if tile.__next_xy != tile.__last_xy:
+                tile.rub(*tile.__next_xy)
+                tile.__last_xy = tile.__next_xy
+                rubbed.add(tile)
+
+        if pressed or released or rubbed:
             midi.flush()
             return self.draw()
 

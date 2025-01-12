@@ -38,7 +38,7 @@ class PianoTile(Tile):
         self.draw_params = [(self.idle_surface, self.rect)]
 
 
-    def hold(self):
+    def hold(self, x, y):
         midi.note_on(self.note, 127)
         self.draw_params = [(self.held_surface, self.rect)]
 
