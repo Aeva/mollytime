@@ -1,4 +1,5 @@
 
+import re
 import rtmidi
 # See https://github.com/SpotlightKid/python-rtmidi
 # and https://learn.sparkfun.com/tutorials/midi-tutorial/all#messages
@@ -75,28 +76,28 @@ def rt_start():
     """
     Sends the "start" system realtime message.
     """
-    pass
+    midiout.send_message([0xFA])
 
 
 def rt_continue():
     """
     Sends the "continue" system realtime message.
     """
-    pass
+    midiout.send_message([0xFB])
 
 
 def rt_stop():
     """
     Sends the "stop" system realtime message.
     """
-    pass
+    midiout.send_message([0xFC])
 
 
 def rt_clock():
     """
     Sends the "clock" system realtime message.
     """
-    pass
+    midiout.send_message([0xF8])
 
 
 def flush():
@@ -104,9 +105,20 @@ def flush():
     pass
 
 
-def print_verbose_device_info():
+def _get_ports_and_aliases():
+    found = []
     available_ports = midiout.get_ports()
     for index, name in enumerate(available_ports):
+        found.append((index, name))
+        m = re.match(f"^(.+) {str(index)}$", name)
+        if m:
+            found.append((index, m.groups()[0]))
+    return found
+
+
+def print_verbose_device_info():
+    available_ports = _get_ports_and_aliases()
+    for index, name in available_ports:
         print(f"{index}: {name}")
 
 
@@ -115,9 +127,9 @@ def device_names():
 
 
 def auto_connect_inner(device_priority):
-    available_ports = midiout.get_ports()
+    available_ports = _get_ports_and_aliases()
     for target in device_priority:
-        for index, name in enumerate(available_ports):
+        for index, name in available_ports:
             if name == target:
                 midiout.open_port(index)
                 return name
