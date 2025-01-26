@@ -18,9 +18,11 @@ def thunk():
 
     try:
         note = 0
+        loop_count = 0
         paused = False
 
         tempo = [120, 120, 60, -120, 240, 240]
+        print(tempo)
 
         while True:
             bpm = tempo[note]
@@ -43,6 +45,14 @@ def thunk():
                 time.sleep(interval)
 
             note = (note + 1) % len(tempo)
+            if note == 0:
+                loop_count += 1
+
+                if (loop_count % 3) == 0:
+                    random.shuffle(tempo)
+                    while tempo[0] < 0 or tempo[-1] < 0:
+                        random.shuffle(tempo)
+                    print(tempo)
 
     except KeyboardInterrupt:
         midi.rt_stop()
