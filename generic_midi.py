@@ -71,6 +71,34 @@ def pitch_bend(bend, channel=0):
     midiout.send_message([0xC0 | 0xF & channel, bend & 0x7f, (bend >> 7) & 0x7f])
 
 
+def rt_start():
+    """
+    Sends the "start" system realtime message.
+    """
+    pass
+
+
+def rt_continue():
+    """
+    Sends the "continue" system realtime message.
+    """
+    pass
+
+
+def rt_stop():
+    """
+    Sends the "stop" system realtime message.
+    """
+    pass
+
+
+def rt_clock():
+    """
+    Sends the "clock" system realtime message.
+    """
+    pass
+
+
 def flush():
     # Unused in this backend.
     pass

@@ -2,6 +2,7 @@
 from alsa_midi import SequencerClient, WRITE_PORT, READ_PORT
 from alsa_midi import NoteOnEvent, NoteOffEvent, KeyPressureEvent, ControlChangeEvent
 from alsa_midi import ProgramChangeEvent, ChannelPressureEvent, PitchBendEvent
+from alsa_midi import MidiBytesEvent, StartEvent, StopEvent, ContinueEvent, ClockEvent
 from alsa_midi.port import PortCaps, PortType
 
 
@@ -82,7 +83,42 @@ def pitch_bend(bend, channel=0):
     client.event_output(event, port=port)
 
 
+def rt_start():
+    """
+    Sends the "start" system realtime message.
+    """
+    event = StartEvent()
+    client.event_output(event, port=port)
+
+
+def rt_continue():
+    """
+    Sends the "continue" system realtime message.
+    """
+    event = ContinueEvent()
+    client.event_output(event, port=port)
+
+
+def rt_stop():
+    """
+    Sends the "stop" system realtime message.
+    """
+    event = StopEvent()
+    client.event_output(event, port=port)
+
+
+def rt_clock():
+    """
+    Sends the "clock" system realtime message.
+    """
+    event = ClockEvent()
+    client.event_output(event, port=port)
+
+
 def flush():
+    """
+    Flushes all pending output messages.
+    """
     client.drain_output()
 
 
