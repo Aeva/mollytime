@@ -6,6 +6,14 @@ import random
 
 def thunk():
     midi.rt_start()
+
+    # At this time of writing, I have my MicroFreak set to channel 3.
+    # CC 92 controls the tempo for the MicroFreak.  The MIDI Control Center says this is
+    # "Tremolo Depth" (which is the generic name for the control), but this very definitely
+    # controls the MicroFreak's tempo.  The values range from 0 to 127, with 0 being 1/1 and
+    # 127 being 1/32.  The MIDI Control Center says 0x26 corresponds to 1/4.
+    midi.control_change(92, 0x26, channel=3)
+
     midi.flush()
 
     try:
