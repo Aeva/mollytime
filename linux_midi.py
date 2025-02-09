@@ -5,12 +5,11 @@ from alsa_midi import ProgramChangeEvent, ChannelPressureEvent, PitchBendEvent
 from alsa_midi import MidiBytesEvent, StartEvent, StopEvent, ContinueEvent, ClockEvent
 from alsa_midi.port import PortCaps, PortType
 
-
 client = SequencerClient("MollyTime")
 port = client.create_port(
     "output",
     caps=READ_PORT,
-    type=PortType.APPLICATION | PortType.SOFTWARE)
+    type=PortType.APPLICATION | PortType.SOFTWARE | PortType.MIDI_GENERIC)
 
 
 def note_on(note, velocity, channel=0):
