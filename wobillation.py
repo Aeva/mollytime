@@ -1,11 +1,14 @@
 
 import time
 import math
+import os
+import ctypes
 
 import pygame_setup
 import pygame
 
 import midi
+
 
 CHROMA_KEY = (0, 0, 0)
 THUMB = None
@@ -95,6 +98,8 @@ class dial:
 def main():
     global THUMB
 
+    backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
+    backend.wobillation_init(ctypes.c_double(440))
     pygame.init()
 
     sizes = pygame.display.get_desktop_sizes()
@@ -180,6 +185,7 @@ def main():
         pygame.display.flip()
 
     pygame.quit()
+    backend.wobillation_shutdown()
 
 if __name__ == "__main__":
     midi.run(main)
