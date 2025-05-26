@@ -100,6 +100,8 @@ struct PipeWireStream
 
     PipeWireStream(int SampleRate, double Frequency);
 
+    void Tune(double NewFrequency);
+
     void Run();
 
     void Reset();
@@ -139,7 +141,7 @@ PipeWireStream::PipeWireStream(int SampleRate, double Frequency)
         &StreamEvents,
         &RealTimeThread);
 
-    BufferState.Frequency.store(Frequency);
+    Tune(Frequency);
     RealTimeThread.SetupPorts(&BufferState, Stream, SampleRate);
 
     {
@@ -165,6 +167,12 @@ PipeWireStream::PipeWireStream(int SampleRate, double Frequency)
             Reset();
         }
     }
+}
+
+
+void PipeWireStream::Tune(double Frequency)
+{
+    BufferState.Frequency.store(Frequency);
 }
 
 
@@ -207,7 +215,7 @@ PipeWireStream::~PipeWireStream()
 
 
 extern "C"
-void wobillation_init(double Frequency)
+void init(double Frequency)
 {
     if (!PipeWireInitialized)
     {
@@ -226,7 +234,17 @@ void wobillation_init(double Frequency)
 
 
 extern "C"
-void wobillation_shutdown()
+void tune(double Frequency)
+{
+    if (PipeWireSession != nullptr)
+    {
+        PipeWireSession->Tune(Frequency);
+    }
+}
+
+
+extern "C"
+void halt()
 {
     if (PipeWireSession != nullptr)
     {

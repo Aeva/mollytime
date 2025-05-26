@@ -14,6 +14,20 @@ CHROMA_KEY = (0, 0, 0)
 THUMB = None
 
 
+class backend:
+    def __init__(self):
+        self.backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
+
+    def init(self, frequency = 440):
+        self.backend.init(ctypes.c_double(frequency))
+
+    def halt(self):
+        self.backend.halt()
+
+    def tune(self, frequency):
+        self.backend.tune(ctypes.c_double(frequency))
+
+
 class dial:
     def __init__(self, x, y, r, highlight):
         self.highlight = highlight
@@ -98,8 +112,6 @@ class dial:
 def main():
     global THUMB
 
-    backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
-    backend.wobillation_init(ctypes.c_double(440))
     pygame.init()
 
     sizes = pygame.display.get_desktop_sizes()
@@ -122,6 +134,9 @@ def main():
     mouse_pos = None
     grab_rel = None
     update_ctrl = -1
+
+    synth = backend()
+    synth.init()
 
     live = True
     while live:
@@ -171,11 +186,11 @@ def main():
                     grab_rel = test_rel
 
         screen.fill("black")
-
-        for i, widget in enumerate(widgets):
-            a = round(math.degrees(widget.angle)) % 127
-            n = int(min(max(a, 0), 127))
-            midi.note_on(n, 127, i)
+        synth.tune(440 * math.pow(2, widgets[0].angle / 12))
+        # for i, widget in enumerate(widgets):
+        #     a = round(math.degrees(widget.angle)) % 127
+        #     n = int(min(max(a, 0), 127))
+        #     midi.note_on(n, 127, i)
 
         for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)
@@ -184,8 +199,9 @@ def main():
 
         pygame.display.flip()
 
+    synth.halt()
     pygame.quit()
-    backend.wobillation_shutdown()
+
 
 if __name__ == "__main__":
     midi.run(main)
