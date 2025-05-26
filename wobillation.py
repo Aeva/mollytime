@@ -18,14 +18,17 @@ class backend:
     def __init__(self):
         self.backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
 
-    def init(self, frequency = 440):
-        self.backend.init(ctypes.c_double(frequency))
+    def init(self, carrier_hz, modulator_hz):
+        self.backend.init(ctypes.c_double(carrier_hz), ctypes.c_double(modulator_hz))
 
     def halt(self):
         self.backend.halt()
 
-    def tune(self, frequency):
-        self.backend.tune(ctypes.c_double(frequency))
+    def tune(self, oscillator, frequency):
+        self.backend.tune(ctypes.c_int(oscillator), ctypes.c_double(frequency))
+
+    def set_feedback(self, amount):
+        self.backend.set_feedback(ctypes.c_double(amount))
 
 
 class dial:
@@ -135,8 +138,14 @@ def main():
     grab_rel = None
     update_ctrl = -1
 
+    #phi = (1.0 + math.sqrt(5.0)) / 2.0;
+    #carrier_hz = phi * 123.0
+    carrier_hz = 440
+    modulator_ratio = 5.0 / 3.0
+    modulator_hz = carrier_hz * modulator_ratio
+
     synth = backend()
-    synth.init()
+    synth.init(carrier_hz, modulator_hz)
 
     live = True
     while live:
@@ -186,11 +195,12 @@ def main():
                     grab_rel = test_rel
 
         screen.fill("black")
-        synth.tune(440 * math.pow(2, widgets[0].angle / 12))
-        # for i, widget in enumerate(widgets):
-        #     a = round(math.degrees(widget.angle)) % 127
-        #     n = int(min(max(a, 0), 127))
-        #     midi.note_on(n, 127, i)
+        synth.tune(0, carrier_hz * math.pow(2, widgets[0].angle / 12))
+
+        modulator_hz = carrier_hz * (modulator_ratio + widgets[1].angle * 0.1)
+        synth.tune(1, modulator_hz)
+
+        synth.set_feedback(widgets[2].angle / (math.pi * 2))
 
         for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)

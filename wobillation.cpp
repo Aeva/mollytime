@@ -10,13 +10,16 @@
 
 
 constinit double Tau = M_PI * 2.0;
+
 bool PipeWireInitialized = false;
 struct PipeWireStream* PipeWireSession = nullptr;
 
 
 struct ThreadShared
 {
-    std::atomic<double> Frequency = 440.0;
+    std::atomic<double> CarrierHz = 440.0;
+    std::atomic<double> ModulatorHz = 440.0;
+    std::atomic<double> Feedback = 0.0;
 };
 
 
@@ -29,9 +32,11 @@ struct StreamRealTimeThread
 private:
     ThreadShared* BufferState = nullptr;
     pw_stream* Stream = nullptr;
+    double SampleInterval = 0.0;
 
-    double SampleInterval = 0.0f;
-    double Phase = 0.0f;
+    double CarrierPhase = 0.0;
+    double ModulatorPhase = 0.0;
+    double LastSample = 0.0;
 
     void OnProcessInner();
 };
@@ -72,17 +77,29 @@ void StreamRealTimeThread::OnProcessInner()
     }
 
     float* WritePtr = (float*)StreamMetaData.data;
-    double Frequency = BufferState->Frequency.load();
+    double CarrierHz = BufferState->CarrierHz.load();
+    double ModulatorHz = BufferState->ModulatorHz.load();
+    double Feedback = BufferState->Feedback.load();
+    double Modulation = 0.0;
 
     for (int Frame = 0; Frame < FrameCount; ++Frame)
     {
-        Phase += Tau * Frequency * SampleInterval;
-        if (Phase > Tau)
+        Modulation = LastSample * Feedback;
+        ModulatorPhase += Tau * (ModulatorHz + ModulatorHz * Modulation) * SampleInterval;
+        if (ModulatorPhase > Tau)
         {
-            Phase -= Tau;
+            ModulatorPhase -= Tau;
         }
 
-        WritePtr[Frame] = sin(Phase) * 0.5;
+        Modulation = sin(ModulatorPhase) * 0.5;
+        CarrierPhase += Tau * (CarrierHz + CarrierHz * Modulation) * SampleInterval;
+        if (CarrierPhase > Tau)
+        {
+            CarrierPhase -= Tau;
+        }
+
+        LastSample = sin(CarrierPhase);
+        WritePtr[Frame] = float(LastSample * 0.5);
     }
 
     StreamMetaData.chunk->offset = 0;
@@ -98,9 +115,11 @@ struct PipeWireStream
     struct pw_thread_loop* Loop = nullptr;
     struct pw_stream* Stream = nullptr;
 
-    PipeWireStream(int SampleRate, double Frequency);
+    PipeWireStream(int SampleRate, double CarrierHz, double ModulatorHz);
 
-    void Tune(double NewFrequency);
+    void Tune(int Index, double Frequency);
+
+    void SetFeedback(double Amount);
 
     void Run();
 
@@ -114,7 +133,7 @@ private:
 };
 
 
-PipeWireStream::PipeWireStream(int SampleRate, double Frequency)
+PipeWireStream::PipeWireStream(int SampleRate, double CarrierHz, double ModulatorHz)
 {
     std::vector<const spa_pod*> Params;
 
@@ -141,7 +160,8 @@ PipeWireStream::PipeWireStream(int SampleRate, double Frequency)
         &StreamEvents,
         &RealTimeThread);
 
-    Tune(Frequency);
+    Tune(0, CarrierHz);
+    Tune(1, ModulatorHz);
     RealTimeThread.SetupPorts(&BufferState, Stream, SampleRate);
 
     {
@@ -170,9 +190,25 @@ PipeWireStream::PipeWireStream(int SampleRate, double Frequency)
 }
 
 
-void PipeWireStream::Tune(double Frequency)
+void PipeWireStream::Tune(int Index, double Frequency)
 {
-    BufferState.Frequency.store(Frequency);
+    switch (Index)
+    {
+    case 0:
+        BufferState.CarrierHz.store(Frequency);
+        break;
+    case 1:
+        BufferState.ModulatorHz.store(Frequency);
+        break;
+    default:
+        break;
+    }
+}
+
+
+void PipeWireStream::SetFeedback(double Amount)
+{
+    BufferState.Feedback.store(Amount);
 }
 
 
@@ -215,7 +251,7 @@ PipeWireStream::~PipeWireStream()
 
 
 extern "C"
-void init(double Frequency)
+void init(double CarrierHz, double ModulatorHz)
 {
     if (!PipeWireInitialized)
     {
@@ -227,18 +263,28 @@ void init(double Frequency)
 
     if (PipeWireSession == nullptr)
     {
-        PipeWireSession = new PipeWireStream(44100, Frequency);
+        PipeWireSession = new PipeWireStream(44100, CarrierHz, ModulatorHz);
         PipeWireSession->Run();
     }
 }
 
 
 extern "C"
-void tune(double Frequency)
+void tune(int Index, double Frequency)
 {
     if (PipeWireSession != nullptr)
     {
-        PipeWireSession->Tune(Frequency);
+        PipeWireSession->Tune(Index, Frequency);
+    }
+}
+
+
+extern "C"
+void set_feedback(double Amount)
+{
+    if (PipeWireSession != nullptr)
+    {
+        PipeWireSession->SetFeedback(Amount);
     }
 }
 
