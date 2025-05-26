@@ -5,7 +5,10 @@ import math
 import pygame_setup
 import pygame
 
+import midi
+
 CHROMA_KEY = (0, 0, 0)
+THUMB = None
 
 
 class dial:
@@ -82,13 +85,15 @@ class dial:
             point_b = (pivot[0] + v[0] * self.line_r2, pivot[1] + v[1] * self.line_r2)
             point_c = ((point_a[0] + point_b[0]) * 0.5, (point_a[1] + point_b[1]) * 0.5)
 
-            pygame.draw.circle(self.surf1, CHROMA_KEY, point_b, thumb * .5)
+            pygame.draw.circle(self.surf1, CHROMA_KEY, point_b, THUMB * .5)
             pygame.draw.line(self.surf1, line_color, point_a, point_b, 1)
 
         screen.blits(((self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)))
 
 
-if __name__ == "__main__":
+def main():
+    global THUMB
+
     pygame.init()
 
     sizes = pygame.display.get_desktop_sizes()
@@ -97,10 +102,10 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
     w, h = display_size
 
-    thumb = max(min(w, h) // 40, 8)
+    THUMB = max(min(w, h) // 40, 8)
 
     #ring_pivot = (w // 4, h // 2)
-    ring_r = thumb * 3
+    ring_r = THUMB * 3
 
     widgets = [
         dial(int(w * (1/4)), h // 2, ring_r),
@@ -162,8 +167,18 @@ if __name__ == "__main__":
         screen.fill("black")
 
         for i, widget in enumerate(widgets):
+            a = round(math.degrees(widget.angle)) % 127
+            n = int(min(max(a, 0), 127))
+            midi.note_on(n, 127, i)
+
+        for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)
+
+
 
         pygame.display.flip()
 
     pygame.quit()
+
+if __name__ == "__main__":
+    midi.run(main)
