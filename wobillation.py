@@ -99,15 +99,18 @@ if __name__ == "__main__":
 
     thumb = max(min(w, h) // 40, 8)
 
-    ring_pivot = (w // 4, h // 2)
+    #ring_pivot = (w // 4, h // 2)
     ring_r = thumb * 3
 
-    fnord = dial(ring_pivot[0], ring_pivot[1], ring_r)
+    widgets = [
+        dial(int(w * (1/4)), h // 2, ring_r),
+        dial(int(w * (2/4)), h // 2, ring_r),
+        dial(int(w * (3/4)), h // 2, ring_r)]
 
-    mouse_grab = False
+    mouse_grab = -1
     mouse_pos = None
     grab_rel = None
-    update_ctrl = False
+    update_ctrl = -1
 
     live = True
     while live:
@@ -117,23 +120,26 @@ if __name__ == "__main__":
 
             elif event.type == pygame.MOUSEMOTION and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
                 mouse_pos = event.pos
-                if mouse_grab:
-                    update_ctrl = True
+                update_ctrl = mouse_grab
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
                 mouse_pos = event.pos
-                grab_rel = fnord.overlap(mouse_pos)
-                if grab_rel is not None:
-                    mouse_grab = True
-                    update_ctrl = True
+                mouse_grab = -1
+                update_ctrl = -1
+                for i in range(len(widgets)):
+                    grab_rel = widgets[i].overlap(mouse_pos)
+                    if grab_rel is not None:
+                        mouse_grab = i
+                        update_ctrl = i
+                        break
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
-                mouse_grab = False
-                update_ctrl = False
+                mouse_grab = -1
+                update_ctrl = -1
 
-        if update_ctrl:
+        if update_ctrl > -1:
             update_ctrl = False
-            test_rel = fnord.toward(mouse_pos)
+            test_rel = widgets[mouse_grab].toward(mouse_pos)
             if test_rel is not None:
                 dot = (grab_rel[0] * test_rel[0] + grab_rel[1] * test_rel[1])
                 dot = min(abs(dot), 1.0)
@@ -150,14 +156,13 @@ if __name__ == "__main__":
                     elif grab_rel[1] <= 0.0 and test_rel[1] <= 0.0 and rel_rel[0] < 0:
                         offset = -offset
 
-                    fnord.angle += offset
+                    widgets[mouse_grab].angle += offset
                     grab_rel = test_rel
 
         screen.fill("black")
-        fnord.draw(screen, mouse_grab)
 
-
-
+        for i, widget in enumerate(widgets):
+            widget.draw(screen, mouse_grab == i)
 
         pygame.display.flip()
 
