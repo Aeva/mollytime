@@ -20,8 +20,8 @@ class dial:
 
         self.angle = 0
 
-        self.line_r1 = thumb + self.r1 * (1/10)
-        self.line_r2 = self.r1 * (9/10)
+        self.line_r1 = self.r1 * (1/3)
+        self.line_r2 = self.r1 - 2
 
         self.pos3 = (x - self.r3, y - self.r3)
         self.pos2 = (x - self.r2, y - self.r2)
@@ -41,7 +41,7 @@ class dial:
     def overlap(self, pos):
         rel = (pos[0] - self.pivot[0], pos[1] - self.pivot[1])
         d = math.sqrt(rel[0] * rel[0] + rel[1] * rel[1])
-        if d >= thumb - 4 and d < self.r1 + 16:
+        if d > 0 and d < self.r1 + 16:
             return (rel[0] / d, rel[1] / d)
         else:
             return None
@@ -72,7 +72,6 @@ class dial:
         self.surf1.fill(CHROMA_KEY)
         pivot = (self.r1, self.r1)
         pygame.draw.circle(self.surf1, (128, 128, 128), pivot, self.r1, 4)
-        pygame.draw.circle(self.surf1, (128, 128, 128), pivot, thumb, 4)
 
         line_color = (0, 255, 255) if focused else (128, 128, 128)
 
@@ -83,7 +82,7 @@ class dial:
             point_b = (pivot[0] + v[0] * self.line_r2, pivot[1] + v[1] * self.line_r2)
             point_c = ((point_a[0] + point_b[0]) * 0.5, (point_a[1] + point_b[1]) * 0.5)
 
-            pygame.draw.circle(self.surf1, CHROMA_KEY, point_c, thumb * 1.65)
+            pygame.draw.circle(self.surf1, CHROMA_KEY, point_b, thumb * .5)
             pygame.draw.line(self.surf1, line_color, point_a, point_b, 1)
 
         screen.blits(((self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)))
@@ -101,7 +100,7 @@ if __name__ == "__main__":
     thumb = max(min(w, h) // 40, 8)
 
     ring_pivot = (w // 4, h // 2)
-    ring_r = thumb * 4
+    ring_r = thumb * 3
 
     fnord = dial(ring_pivot[0], ring_pivot[1], ring_r)
 
