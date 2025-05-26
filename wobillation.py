@@ -12,7 +12,8 @@ THUMB = None
 
 
 class dial:
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r, highlight):
+        self.highlight = highlight
         x = int(x)
         y = int(y)
         r = int(r)
@@ -76,7 +77,7 @@ class dial:
         pivot = (self.r1, self.r1)
         pygame.draw.circle(self.surf1, (128, 128, 128), pivot, self.r1, 4)
 
-        line_color = (0, 255, 255) if focused else (128, 128, 128)
+        line_color = self.highlight if focused else (128, 128, 128)
 
         for i in range(5):
             a = self.angle + math.pi * .5 + math.pi * 2 * (i / 5)
@@ -108,9 +109,9 @@ def main():
     ring_r = THUMB * 3
 
     widgets = [
-        dial(int(w * (1/4)), h // 2, ring_r),
-        dial(int(w * (2/4)), h // 2, ring_r),
-        dial(int(w * (3/4)), h // 2, ring_r)]
+        dial(int(w * (1/4)), h // 2, ring_r, (0, 255, 255)),
+        dial(int(w * (2/4)), h // 2, ring_r, (255, 0, 255)),
+        dial(int(w * (3/4)), h // 2, ring_r, (255, 255, 0))]
 
     mouse_grab = -1
     mouse_pos = None
