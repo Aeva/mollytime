@@ -310,6 +310,8 @@ struct PipeWireStream
 
     void ProgramChange(SynthProgram* PendingProgram);
 
+    void SetVar(std::uint16_t Handle, double Value);
+
     void Reset();
 
     ~PipeWireStream();
@@ -392,6 +394,16 @@ void PipeWireStream::ProgramChange(SynthProgram* PendingProgram)
         delete BufferState.PendingProgram;
     }
     BufferState.PendingProgram = PendingProgram;
+}
+
+
+void PipeWireStream::SetVar(std::uint16_t Handle, double Value)
+{
+    std::lock_guard<std::mutex> Lock(BufferState.Mutex);
+    if (Handle < BufferState.Variables.size())
+    {
+        BufferState.Variables[Handle] = Value;
+    }
 }
 
 
@@ -483,6 +495,16 @@ int push_var(double InitValue)
     }
     std::print("invalid use of push_var\n");
     return -1;
+}
+
+
+extern "C"
+void set_var(std::uint16_t Handle, double Value)
+{
+    if (PipeWireSession != nullptr)
+    {
+        PipeWireSession->SetVar(Handle, Value);
+    }
 }
 
 
