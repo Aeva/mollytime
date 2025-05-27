@@ -17,18 +17,53 @@ THUMB = None
 class backend:
     def __init__(self):
         self.backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
+        self.backend.init()
 
-    def init(self, carrier_hz, modulator_hz):
-        self.backend.init(ctypes.c_double(carrier_hz), ctypes.c_double(modulator_hz))
+    def clear(self):
+        return self.backend.clear();
+
+    def push_var(self, value):
+        return self.backend.push_var(ctypes.c_double(value));
+
+    def push_sin(self, frequency):
+        return self.backend.push_sin(ctypes.c_uint16(frequency));
+
+    def push_mul(self, lhs, rhs):
+        return self.backend.push_mul(ctypes.c_uint16(lhs), ctypes.c_uint16(rhs));
+
+    def push_add(self, lhs, rhs):
+        return self.backend.push_add(ctypes.c_uint16(lhs), ctypes.c_uint16(rhs));
+
+    def commit(self):
+        self.backend.commit_program();
 
     def halt(self):
         self.backend.halt()
 
-    def tune(self, oscillator, frequency):
-        self.backend.tune(ctypes.c_int(oscillator), ctypes.c_double(frequency))
 
-    def set_feedback(self, amount):
-        self.backend.set_feedback(ctypes.c_double(amount))
+class fm_synth(backend):
+    def __init__(self):
+        super().__init__()
+
+        self.clear()
+
+        self.__carier_hz = self.push_var(440)
+        self.__modulator_hz = self.push_var(440 * 0.75)
+        self.__mod_amount = self.push_var(0.5)
+        self.__volume = self.push_var(0.25)
+
+        self.push_mul(
+            self.__volume,
+            self.push_sin(
+                self.push_add(
+                    self.__carier_hz,
+                    self.push_mul(
+                        self.__carier_hz,
+                        self.push_mul(
+                            self.push_sin(self.__modulator_hz),
+                            self.__mod_amount)))))
+
+        self.commit()
 
 
 class dial:
@@ -125,7 +160,6 @@ def main():
 
     THUMB = max(min(w, h) // 40, 8)
 
-    #ring_pivot = (w // 4, h // 2)
     ring_r = THUMB * 3
 
     widgets = [
@@ -138,14 +172,11 @@ def main():
     grab_rel = None
     update_ctrl = -1
 
-    #phi = (1.0 + math.sqrt(5.0)) / 2.0;
-    #carrier_hz = phi * 123.0
     carrier_hz = 440
     modulator_ratio = 5.0 / 3.0
     modulator_hz = carrier_hz * modulator_ratio
 
-    synth = backend()
-    synth.init(carrier_hz, modulator_hz)
+    synth = fm_synth()
 
     live = True
     while live:
@@ -195,12 +226,12 @@ def main():
                     grab_rel = test_rel
 
         screen.fill("black")
-        synth.tune(0, carrier_hz * math.pow(2, widgets[0].angle / 12))
+        #synth.tune(0, carrier_hz * math.pow(2, widgets[0].angle / 12))
 
         modulator_hz = carrier_hz * (modulator_ratio + widgets[1].angle * 0.1)
-        synth.tune(1, modulator_hz)
+        #synth.tune(1, modulator_hz)
 
-        synth.set_feedback(widgets[2].angle / (math.pi * 2))
+        #synth.set_feedback(widgets[2].angle / (math.pi * 2))
 
         for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)

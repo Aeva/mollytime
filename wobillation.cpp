@@ -7,6 +7,7 @@
 #include <vector>
 #include <print>
 #include <mutex>
+#include <cstring>
 
 
 constinit double Tau = M_PI * 2.0;
@@ -15,12 +16,192 @@ bool PipeWireInitialized = false;
 struct PipeWireStream* PipeWireSession = nullptr;
 
 
+enum class OpCode : std::uint8_t
+{
+    Var,
+    Sin,
+    Mul,
+    Add
+};
+
+
+struct SynthInstruction
+{
+    OpCode Name;
+    std::uint16_t Param1;
+    std::uint16_t Param2;
+
+    SynthInstruction(OpCode InName)
+        : Name(InName)
+        , Param1(0)
+        , Param2(0)
+    {
+    }
+
+    SynthInstruction(OpCode InName, std::uint16_t InParam1)
+        : Name(InName)
+        , Param1(InParam1)
+        , Param2(0)
+    {
+    }
+
+    SynthInstruction(OpCode InName, std::uint16_t InParam1, std::uint16_t InParam2)
+        : Name(InName)
+        , Param1(InParam1)
+        , Param2(InParam2)
+    {
+    }
+};
+
+
+struct SynthProgram
+{
+    int VariableCount = 0;
+    std::vector<SynthInstruction> Program;
+    std::vector<double> Phases;
+    std::vector<double> Intermediaries;
+
+    void Commit(std::vector<double>& Variables);
+
+    std::uint16_t PushVar(double Value);
+    std::uint16_t PushSin(std::uint16_t Param1);
+    std::uint16_t PushMul(std::uint16_t Param1, std::uint16_t Param2);
+    std::uint16_t PushAdd(std::uint16_t Param1, std::uint16_t Param2);
+
+    double Eval(const double SampleInterval);
+};
+
+
+void SynthProgram::Commit(std::vector<double>& Variables)
+{
+    Variables.clear();
+    Variables.resize(VariableCount, 0.0);
+    for (int Index = 0; Index < VariableCount; ++Index)
+    {
+        Variables[Index] = Intermediaries[Index];
+    }
+
+    int ProgramCounter = 0;
+    for (const SynthInstruction& Instruction : Program)
+    {
+        if (Instruction.Name == OpCode::Sin)
+        {
+            if (!(Instruction.Param1 < Intermediaries.size()))
+            {
+                std::print("{}: Oscillator Hz param is out of bounds!!!\n", ProgramCounter);
+            }
+            if (!(Instruction.Param2 < Phases.size()))
+            {
+                std::print("{}: Oscillator phase index is out of bounds!!!\n", ProgramCounter);
+            }
+        }
+        else if (Instruction.Name == OpCode::Mul)
+        {
+            if (!(Instruction.Param1 < Intermediaries.size()))
+            {
+                std::print("{}: Mul LHS param is out of bounds!!!\n", ProgramCounter);
+            }
+            if (!(Instruction.Param2 < Intermediaries.size()))
+            {
+                std::print("{}: Mul RHS param is out of bounds!!!\n", ProgramCounter);
+            }
+        }
+        else if (Instruction.Name == OpCode::Add)
+        {
+            if (!(Instruction.Param1 < Intermediaries.size()))
+            {
+                std::print("{}: Add LHS param is out of bounds!!!\n", ProgramCounter);
+            }
+            if (!(Instruction.Param2 < Intermediaries.size()))
+            {
+                std::print("{}: Add RHS param is out of bounds!!!\n", ProgramCounter);
+            }
+        }
+        ++ProgramCounter;
+    }
+}
+
+
+std::uint16_t SynthProgram::PushVar(double Value)
+{
+    ++VariableCount;
+    std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.emplace_back(OpCode::Var);
+    Intermediaries.push_back(Value);
+    return Handle;
+}
+
+
+std::uint16_t SynthProgram::PushSin(std::uint16_t Param1)
+{
+    std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.emplace_back(OpCode::Sin, Param1, (std::uint16_t)Phases.size());
+    Phases.push_back(0.0);
+    Intermediaries.push_back(0.0);
+    return Handle;
+}
+
+
+std::uint16_t SynthProgram::PushMul(std::uint16_t Param1, std::uint16_t Param2)
+{
+    std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.emplace_back(OpCode::Mul, Param1, Param2);
+    Intermediaries.push_back(0.0);
+    return Handle;
+}
+
+
+std::uint16_t SynthProgram::PushAdd(std::uint16_t Param1, std::uint16_t Param2)
+{
+    std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.emplace_back(OpCode::Add, Param1, Param2);
+    Intermediaries.push_back(0.0);
+    return Handle;
+}
+
+
+double SynthProgram::Eval(const double SampleInterval)
+{
+    for (int ProgramCounter = VariableCount; ProgramCounter < Program.size(); ++ProgramCounter)
+    {
+        const SynthInstruction& Instruction = Program[ProgramCounter];
+        if (Instruction.Name == OpCode::Sin)
+        {
+            const double Hz = Intermediaries[Instruction.Param1];
+            double Phase = Phases[Instruction.Param2];
+
+            Phase += Tau * Hz * SampleInterval;
+            if (Phase > Tau)
+            {
+                Phase -= Tau;
+            }
+
+            Phases[Instruction.Param2] = Phase;
+            Intermediaries[ProgramCounter] = sin(Phase);
+        }
+        else if (Instruction.Name == OpCode::Mul)
+        {
+            const double LHS = Intermediaries[Instruction.Param1];
+            const double RHS = Intermediaries[Instruction.Param2];
+            Intermediaries[ProgramCounter] = LHS * RHS;
+        }
+        else if (Instruction.Name == OpCode::Add)
+        {
+            const double LHS = Intermediaries[Instruction.Param1];
+            const double RHS = Intermediaries[Instruction.Param2];
+            Intermediaries[ProgramCounter] = LHS + RHS;
+        }
+    }
+
+    return Intermediaries.back();
+}
+
+
 struct ThreadShared
 {
     std::mutex Mutex;
-    double CarrierHz = 440.0;
-    double ModulatorHz = 440.0;
-    double Feedback = 0.0;
+    std::vector<double> Variables;
+    SynthProgram* PendingProgram = nullptr;
 };
 
 
@@ -35,13 +216,7 @@ private:
     pw_stream* Stream = nullptr;
     double SampleInterval = 0.0;
 
-    double CarrierHz = 440.0;
-    double ModulatorHz = 440.0;
-    double Feedback = 0.0;
-
-    double CarrierPhase = 0.0;
-    double ModulatorPhase = 0.0;
-    double LastSample = 0.0;
+    SynthProgram* Program = nullptr;
 
     void OnProcessInner();
 };
@@ -51,11 +226,6 @@ void StreamRealTimeThread::SetupPorts(ThreadShared* InBufferState, pw_stream* In
 {
     BufferState = InBufferState;
     Stream = InStream;
-
-    CarrierHz = BufferState->CarrierHz;
-    ModulatorHz = BufferState->ModulatorHz;
-    Feedback = BufferState->Feedback;
-
     SampleInterval = 1.0 / double(SampleRate);
 }
 
@@ -89,32 +259,36 @@ void StreamRealTimeThread::OnProcessInner()
 
     {
         std::lock_guard<std::mutex> Lock(BufferState->Mutex);
-
-        CarrierHz = BufferState->CarrierHz;
-        ModulatorHz = BufferState->ModulatorHz;
-        Feedback = BufferState->Feedback;
+        if (BufferState->PendingProgram)
+        {
+            if (Program)
+            {
+                delete Program;
+            }
+            Program = BufferState->PendingProgram;
+            Program->Commit(BufferState->Variables);
+            BufferState->PendingProgram = nullptr;
+        }
+        else
+        {
+            size_t Bytes = sizeof(double) * BufferState->Variables.size();
+            memcpy(Program->Intermediaries.data(), BufferState->Variables.data(), Bytes);
+        }
     }
 
-    double Modulation = 0.0;
-
-    for (int Frame = 0; Frame < FrameCount; ++Frame)
+    if (Program)
     {
-        Modulation = LastSample * Feedback;
-        ModulatorPhase += Tau * (ModulatorHz + ModulatorHz * Modulation) * SampleInterval;
-        if (ModulatorPhase > Tau)
+        for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
-            ModulatorPhase -= Tau;
+            WritePtr[Frame] = float(Program->Eval(SampleInterval));
         }
-
-        Modulation = sin(ModulatorPhase) * 0.5;
-        CarrierPhase += Tau * (CarrierHz + CarrierHz * Modulation) * SampleInterval;
-        if (CarrierPhase > Tau)
+    }
+    else
+    {
+        for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
-            CarrierPhase -= Tau;
+            WritePtr[Frame] = 0.0f;
         }
-
-        LastSample = sin(CarrierPhase);
-        WritePtr[Frame] = float(LastSample * 0.5);
     }
 
     StreamMetaData.chunk->offset = 0;
@@ -130,13 +304,11 @@ struct PipeWireStream
     struct pw_thread_loop* Loop = nullptr;
     struct pw_stream* Stream = nullptr;
 
-    PipeWireStream(int SampleRate, double CarrierHz, double ModulatorHz);
-
-    void Tune(int Index, double Frequency);
-
-    void SetFeedback(double Amount);
+    PipeWireStream(int SampleRate);
 
     void Run();
+
+    void ProgramChange(SynthProgram* PendingProgram);
 
     void Reset();
 
@@ -148,8 +320,17 @@ private:
 };
 
 
-PipeWireStream::PipeWireStream(int SampleRate, double CarrierHz, double ModulatorHz)
+PipeWireStream::PipeWireStream(int SampleRate)
 {
+    {
+        BufferState.PendingProgram = new SynthProgram();
+        SynthProgram& Program = *BufferState.PendingProgram;
+        std::uint16_t FrequencyHz = Program.PushVar(440.0);
+        std::uint16_t Volume = Program.PushVar(0.0);
+        std::uint16_t Oscillator = Program.PushSin(FrequencyHz);
+        std::uint16_t Output = Program.PushMul(Oscillator, Volume);
+    }
+
     std::vector<const spa_pod*> Params;
 
     uint8_t BuilderBuffer[1024];
@@ -175,8 +356,6 @@ PipeWireStream::PipeWireStream(int SampleRate, double CarrierHz, double Modulato
         &StreamEvents,
         &RealTimeThread);
 
-    Tune(0, CarrierHz);
-    Tune(1, ModulatorHz);
     RealTimeThread.SetupPorts(&BufferState, Stream, SampleRate);
 
     {
@@ -205,27 +384,14 @@ PipeWireStream::PipeWireStream(int SampleRate, double CarrierHz, double Modulato
 }
 
 
-void PipeWireStream::Tune(int Index, double Frequency)
+void PipeWireStream::ProgramChange(SynthProgram* PendingProgram)
 {
     std::lock_guard<std::mutex> Lock(BufferState.Mutex);
-    switch (Index)
+    if (BufferState.PendingProgram)
     {
-    case 0:
-        BufferState.CarrierHz = Frequency;
-        break;
-    case 1:
-        BufferState.ModulatorHz = Frequency;
-        break;
-    default:
-        break;
+        delete BufferState.PendingProgram;
     }
-}
-
-
-void PipeWireStream::SetFeedback(double Amount)
-{
-    std::lock_guard<std::mutex> Lock(BufferState.Mutex);
-    BufferState.Feedback = Amount;
+    BufferState.PendingProgram = PendingProgram;
 }
 
 
@@ -268,7 +434,7 @@ PipeWireStream::~PipeWireStream()
 
 
 extern "C"
-void init(double CarrierHz, double ModulatorHz)
+void init()
 {
     if (!PipeWireInitialized)
     {
@@ -280,28 +446,96 @@ void init(double CarrierHz, double ModulatorHz)
 
     if (PipeWireSession == nullptr)
     {
-        PipeWireSession = new PipeWireStream(44100, CarrierHz, ModulatorHz);
+        PipeWireSession = new PipeWireStream(44100);
         PipeWireSession->Run();
     }
 }
 
 
+static SynthProgram* IncompleteProgram = nullptr;
+
+
 extern "C"
-void tune(int Index, double Frequency)
+void clear()
 {
     if (PipeWireSession != nullptr)
     {
-        PipeWireSession->Tune(Index, Frequency);
+        if (IncompleteProgram != nullptr)
+        {
+            delete IncompleteProgram;
+        }
+        IncompleteProgram = new SynthProgram();
+    }
+    else
+    {
+        std::print("invalid use of clear\n");
     }
 }
 
 
 extern "C"
-void set_feedback(double Amount)
+int push_var(double InitValue)
 {
-    if (PipeWireSession != nullptr)
+    if (IncompleteProgram != nullptr)
     {
-        PipeWireSession->SetFeedback(Amount);
+        //std::print("push_var({})\n", InitValue);
+        return IncompleteProgram->PushVar(InitValue);
+    }
+    std::print("invalid use of push_var\n");
+    return -1;
+}
+
+
+extern "C"
+int push_sin(std::uint16_t Frequency)
+{
+    if (IncompleteProgram != nullptr)
+    {
+        //std::print("push_sin({})\n", Frequency);
+        return IncompleteProgram->PushSin(Frequency);
+    }
+    std::print("invalid use of push_sin\n");
+    return -1;
+}
+
+
+extern "C"
+int push_mul(std::uint16_t LHS, std::uint16_t RHS)
+{
+    if (IncompleteProgram != nullptr)
+    {
+        //std::print("push_mul({}, {})\n", LHS, RHS);
+        return IncompleteProgram->PushMul(LHS, RHS);
+    }
+    std::print("invalid use of push_mul\n");
+    return -1;
+}
+
+
+extern "C"
+int push_add(std::uint16_t LHS, std::uint16_t RHS)
+{
+    if (IncompleteProgram != nullptr)
+    {
+        //std::print("push_add({}, {})\n", LHS, RHS);
+        return IncompleteProgram->PushAdd(LHS, RHS);
+    }
+    std::print("invalid use of push_add\n");
+    return -1;
+}
+
+
+extern "C"
+void commit_program()
+{
+    if (PipeWireSession != nullptr && IncompleteProgram != nullptr)
+    {
+        PipeWireSession->ProgramChange(IncompleteProgram);
+        IncompleteProgram = nullptr;
+    }
+    else
+    {
+        std::print("invalid use of commit_program\n");
     }
 }
 
