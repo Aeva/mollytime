@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <print>
-#include <atomic>
+#include <mutex>
 
 
 constinit double Tau = M_PI * 2.0;
@@ -17,9 +17,10 @@ struct PipeWireStream* PipeWireSession = nullptr;
 
 struct ThreadShared
 {
-    std::atomic<double> CarrierHz = 440.0;
-    std::atomic<double> ModulatorHz = 440.0;
-    std::atomic<double> Feedback = 0.0;
+    std::mutex Mutex;
+    double CarrierHz = 440.0;
+    double ModulatorHz = 440.0;
+    double Feedback = 0.0;
 };
 
 
@@ -34,6 +35,10 @@ private:
     pw_stream* Stream = nullptr;
     double SampleInterval = 0.0;
 
+    double CarrierHz = 440.0;
+    double ModulatorHz = 440.0;
+    double Feedback = 0.0;
+
     double CarrierPhase = 0.0;
     double ModulatorPhase = 0.0;
     double LastSample = 0.0;
@@ -46,6 +51,10 @@ void StreamRealTimeThread::SetupPorts(ThreadShared* InBufferState, pw_stream* In
 {
     BufferState = InBufferState;
     Stream = InStream;
+
+    CarrierHz = BufferState->CarrierHz;
+    ModulatorHz = BufferState->ModulatorHz;
+    Feedback = BufferState->Feedback;
 
     SampleInterval = 1.0 / double(SampleRate);
 }
@@ -77,9 +86,15 @@ void StreamRealTimeThread::OnProcessInner()
     }
 
     float* WritePtr = (float*)StreamMetaData.data;
-    double CarrierHz = BufferState->CarrierHz.load();
-    double ModulatorHz = BufferState->ModulatorHz.load();
-    double Feedback = BufferState->Feedback.load();
+
+    {
+        std::lock_guard<std::mutex> Lock(BufferState->Mutex);
+
+        CarrierHz = BufferState->CarrierHz;
+        ModulatorHz = BufferState->ModulatorHz;
+        Feedback = BufferState->Feedback;
+    }
+
     double Modulation = 0.0;
 
     for (int Frame = 0; Frame < FrameCount; ++Frame)
@@ -192,13 +207,14 @@ PipeWireStream::PipeWireStream(int SampleRate, double CarrierHz, double Modulato
 
 void PipeWireStream::Tune(int Index, double Frequency)
 {
+    std::lock_guard<std::mutex> Lock(BufferState.Mutex);
     switch (Index)
     {
     case 0:
-        BufferState.CarrierHz.store(Frequency);
+        BufferState.CarrierHz = Frequency;
         break;
     case 1:
-        BufferState.ModulatorHz.store(Frequency);
+        BufferState.ModulatorHz = Frequency;
         break;
     default:
         break;
@@ -208,7 +224,8 @@ void PipeWireStream::Tune(int Index, double Frequency)
 
 void PipeWireStream::SetFeedback(double Amount)
 {
-    BufferState.Feedback.store(Amount);
+    std::lock_guard<std::mutex> Lock(BufferState.Mutex);
+    BufferState.Feedback = Amount;
 }
 
 

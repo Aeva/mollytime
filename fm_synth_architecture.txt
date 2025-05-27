@@ -1,0 +1,180 @@
+fm synth architecture
+
+SineOscillator:
+ - hz (atomic double)
+ - phase (double % tau)
+ - modulate amount (double)
+ - modulate by (index)
+
+
+Vector of oscillators, probably set up front.  This could be
+a command list instead, in which case running an oscillator is
+one of the commands.
+
+Other commands could be things like:
+
+Scale:
+ - source (index)
+ - amount (double)
+
+Add:
+ - source 1 (index)
+ - source 2 (index)
+ 
+Envelope:
+ - etc
+ 
+
+Every operator has an implicit output sample which can be
+referenced by index from the other operators.  These can just
+be stored in a vector separately from the program buffer.
+All values default to zero, and they persist between frames
+allowing for feedback.
+
+I'd like this to be flexible for arbitrary modulation, though,
+so maybe I want something like this instead:
+
+Variable:
+ - value (atomic double)
+
+SineOscillator:
+ - hz (index)
+ - phase (double % tau) # private persistent state
+  
+Scale:
+ - source (index)
+ - amount (index)
+ 
+Add:
+ - source 1 (index)
+ - source 2 (index)
+ 
+Envelope:
+ - etc
+ 
+ 
+A basic FM synth would then look like this:
+
+# carrier hz
+Command 0:
+ - type = Variable
+ - value = 440
+ 
+# modulator hz
+Command 1:
+ - type = Variable
+ - value = 10
+ 
+# modulator amount
+Command 2:
+ - type = Variable
+ - value = 0.5
+ 
+# output volume scale
+Command 3:
+ - type = Variable
+ - value = 0.5
+ 
+# oscillate modulator
+Command 4:
+ - type = Sine Oscillator
+ - hz = sample[1] # modulation hz
+ 
+# modulation factor
+Command 5:
+ - type = Scale
+ - source = sample[4] # modulator oscillator output
+ - amount = sample[2] # modulator amount
+
+# adjusted carrier hz
+Command 6:
+ - type = Add
+ - source 1 = sample[0] # carrier hz
+ - source 2 = sample[5] # carrier hz * modulation
+ 
+# oscillate carrier
+Command 7:
+ - type = Sine Oscillator
+ - hz = sample[6] # adjusted carrier hz
+ 
+# output volume
+Command 8:
+ - type = Scale
+ - source = sample[7] # carrier output
+ 
+
+I think I wouldn't want to use this architecture for a GPU based synth.
+Allowing frames to read the values from previous frames also would be
+problematic for that anyway, though it's probably possible to solve that
+by a sequential pass on the CPU that "primes" the initial state for
+the entire batch interval so that the samples can be calculated
+independently.  This would have to be re-primed when dependent variables
+are changed by the application.
+
+That's not really the problem I'm trying to solve right now, though.
+
+Question is whether the interpreter approach is even reasonable for the CPU
+in terms of ergonomics and performance.
+
+I figure for the above example, the python side would probably look
+something like this:
+
+```
+synth.clear()
+carrier_hz = synth.push_variable(440)
+modulator_hz = synth.push_variable(10)
+mod_amount = synth.push_variable(.5)
+volume = synth.push_variable(.5)
+
+modulator_phase = synth.push_sine(modulator_hz)
+modulated_carrier_hz = synth.push_add(
+    carrier_hz,
+    synth.push_scale(
+        carrier_hz,
+        synth.push_scale(
+            modulator_phase,
+            mod_amount)))
+     
+carrier_phase = synth.push_sine(modulated_carrier_hz)
+output = synth.push_scale(carrier_phase, volume)
+```
+
+I could live with that!  The tower of callstack power could be
+cleaned up with a bit of python boilerplate to look more like this:
+
+```
+synth.clear()
+carrier_hz = synth.push_variable(440)
+modulator_hz = synth.push_variable(10)
+mod_amount = synth.push_variable(.5)
+volume = synth.push_variable(.5)
+
+modulator_phase = synth.push_sine(modulator_hz)
+carrier_hz += carrier_hz * modulator_phase * mod_amount
+
+carrier_phase = synth.push_sine(carrier_hz)
+output = synth.push_scale(carrier_phase, volume)
+```
+
+
+Feedback could work something like this contrived example:
+
+```
+synth.clear()
+carrier_hz = synth.push_variable(440)
+adjusted_hz = synth.push_add(carrier_hz, carrier_hz)
+oscillator = synth.push_sine(adjusted_hz)
+synth.set_add_rhs(adjusted_hz, oscillator)
+```
+
+This would be the same idiom which the application would set other
+parameters.
+
+
+
+I think the verdict is "worth trying".  Next question is updating
+variables.
+
+I guess try switching from atomics to a lock and see if that's workable?
+ok yeah, that's fine.
+
