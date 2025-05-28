@@ -12,18 +12,25 @@ import midi
 
 CHROMA_KEY = (0, 0, 0)
 THUMB = None
+BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
 
 
 class synth_op:
-    def __init__(self, backend, handle):
-        self.backend = backend
+    def __init__(self, handle):
         self.handle = handle
 
+    def __mul__(self, other):
+        assert(issubclass(type(other), synth_op))
+        return synth_op(BACKEND.push_mul(ctypes.c_uint16(self.handle), ctypes.c_uint16(other.handle)))
 
-class synth_var:
-    def __init__(self, backend, value):
-        self.backend = backend
-        self.handle = self.backend.push_var(ctypes.c_double(value));
+    def __add__(self, other):
+        assert(issubclass(type(other), synth_op))
+        return synth_op(BACKEND.push_add(ctypes.c_uint16(self.handle), ctypes.c_uint16(other.handle)))
+
+
+class synth_var(synth_op):
+    def __init__(self, value):
+        super().__init__(BACKEND.push_var(ctypes.c_double(value)))
         self.value = value
 
     def get(self):
@@ -31,68 +38,38 @@ class synth_var:
 
     def set(self, value):
         self.value = value
-        self.backend.set_var(ctypes.c_uint16(self.handle), ctypes.c_double(value));
+        BACKEND.set_var(ctypes.c_uint16(self.handle), ctypes.c_double(value));
 
 
-class backend:
+class synth_sin(synth_op):
+    def __init__(self, frequency):
+        super().__init__(BACKEND.push_sin(ctypes.c_uint16(frequency.handle)))
+
+
+class fm_synth():
     def __init__(self):
-        self.backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
-        self.backend.init()
+        BACKEND.init()
 
-    def clear(self):
-        return self.backend.clear();
+        BACKEND.clear()
 
-    def push_var(self, value):
-        return synth_var(self.backend, value)
+        self.carrier_hz = synth_var(440)
+        self.modulator_ratio = synth_var(5/3)
+        self.mod_amount = synth_var(0.5)
+        self.volume = synth_var(0.25)
 
-    def push_sin(self, frequency):
-        handle = self.backend.push_sin(ctypes.c_uint16(frequency.handle));
-        return synth_op(self, handle)
+        modulator_hz = self.carrier_hz * self.modulator_ratio
 
-    def push_mul(self, lhs, rhs):
-        handle = self.backend.push_mul(ctypes.c_uint16(lhs.handle), ctypes.c_uint16(rhs.handle));
-        return synth_op(self, handle)
+        modulator_phase = synth_sin(modulator_hz)
 
-    def push_add(self, lhs, rhs):
-        handle = self.backend.push_add(ctypes.c_uint16(lhs.handle), ctypes.c_uint16(rhs.handle));
-        return synth_op(self, handle)
+        carrier_phase = synth_sin(
+            self.carrier_hz + self.carrier_hz * modulator_phase * self.mod_amount)
 
-    def commit(self):
-        self.backend.commit_program();
+        output_sample = self.volume * carrier_phase
+
+        BACKEND.commit_program()
 
     def halt(self):
-        self.backend.halt()
-
-
-class fm_synth(backend):
-    def __init__(self):
-        super().__init__()
-
-        self.clear()
-
-        self.carrier_hz = self.push_var(440)
-        self.modulator_ratio = self.push_var(5/3)
-        self.mod_amount = self.push_var(0.5)
-        self.volume = self.push_var(0.25)
-
-        modulator_hz = self.push_mul(self.carrier_hz, self.modulator_ratio)
-
-        modulator_phase = self.push_sin(modulator_hz)
-
-        modulated_carrier_frequency = \
-            self.push_add(
-                self.carrier_hz,
-                self.push_mul(
-                    self.carrier_hz,
-                    self.push_mul(
-                        modulator_phase,
-                        self.mod_amount)))
-
-        carrier_phase = self.push_sin(modulated_carrier_frequency)
-
-        output_sample = self.push_mul(self.volume, carrier_phase)
-
-        self.commit()
+        BACKEND.halt()
 
 
 class dial:
@@ -192,9 +169,10 @@ def main():
     ring_r = THUMB * 3
 
     widgets = [
-        dial(int(w * (1/4)), h // 2, ring_r, (0, 255, 255)),
-        dial(int(w * (2/4)), h // 2, ring_r, (255, 0, 255)),
-        dial(int(w * (3/4)), h // 2, ring_r, (255, 255, 0))]
+        dial(int(w * (1/4)), h / 2, ring_r, (0, 255, 255)),
+        dial(int(w * (2/4)), h * (1/3), ring_r, (255, 0, 255)),
+        dial(int(w * (2/4)), h * (2/3), ring_r, (255, 0, 255)),
+        dial(int(w * (3/4)), h / 2, ring_r, (255, 255, 0))]
 
     mouse_grab = -1
     mouse_pos = None
@@ -259,7 +237,7 @@ def main():
         ratio = (5 + ratio) / 3
         synth.modulator_ratio.set(ratio)
 
-        synth.mod_amount.set(widgets[2].angle / (math.pi * 2))
+        synth.mod_amount.set(widgets[3].angle / (math.pi * 2))
 
         for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)
