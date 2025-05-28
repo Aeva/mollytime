@@ -54,16 +54,23 @@ class fm_synth():
         BACKEND.clear()
 
         self.carrier_hz = synth_var(440)
-        self.modulator_ratio = synth_var(5/3)
-        self.mod_amount = synth_var(0.5)
+        self.modulator_ratio1 = synth_var(5/3)
+        self.modulator_ratio2 = synth_var(1)
+        self.mod_amount1 = synth_var(0.0)
+        self.mod_amount2 = synth_var(0.0)
         self.volume = synth_var(0.25)
 
-        modulator_hz = self.carrier_hz * self.modulator_ratio
+        modulator_hz1 = self.carrier_hz * self.modulator_ratio1
+        modulator_hz2 = modulator_hz1 * self.modulator_ratio2
 
-        modulator_phase = synth_sin(modulator_hz)
+        modulator_phase2 = synth_sin(modulator_hz2)
+
+        mod_amount_mod = (self.mod_amount1 + self.mod_amount1 * modulator_phase2 * self.mod_amount2)
+
+        modulator_phase1 = synth_sin(modulator_hz1)
 
         carrier_phase = synth_sin(
-            self.carrier_hz + self.carrier_hz * modulator_phase * self.mod_amount)
+            self.carrier_hz + self.carrier_hz * modulator_phase1 * mod_amount_mod)
 
         output_sample = self.volume * carrier_phase
 
@@ -172,8 +179,9 @@ def main():
     widgets = [
         dial(int(w * (1/4)), h / 2, ring_r, (0, 255, 255)),
         dial(int(w * (2/4)), h * (1/3), ring_r, (255, 0, 255)),
+        dial(int(w * (3/4)), h * (1/3), ring_r, (255, 255, 0)),
         dial(int(w * (2/4)), h * (2/3), ring_r, (255, 0, 255)),
-        dial(int(w * (3/4)), h / 2, ring_r, (255, 255, 0))]
+        dial(int(w * (3/4)), h * (2/3), ring_r, (255, 255, 0))]
 
     mouse_grab = -1
     mouse_pos = None
@@ -236,9 +244,18 @@ def main():
 
         ratio = widgets[1].angle / (math.pi * 2)
         ratio = (5 + ratio) / 3
-        synth.modulator_ratio.set(ratio)
+        synth.modulator_ratio1.set(ratio)
 
-        synth.mod_amount.set(widgets[3].angle / (math.pi * 2))
+        ratio = widgets[3].angle / (math.pi * 2)
+        ratio = 1 / (abs(ratio) + 1)
+        synth.modulator_ratio2.set(ratio)
+
+        synth.mod_amount1.set(widgets[2].angle / (math.pi * 2))
+        synth.mod_amount2.set(widgets[4].angle / (math.pi * 2))
+
+        #ratio = widgets[1].angle / (math.pi * 2)
+        #ratio = (5 + ratio) / 3
+        #synth.modulator_ratio1.set(ratio)
 
         for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)
