@@ -43,6 +43,7 @@ class synth_var(synth_op):
 
 class synth_sin(synth_op):
     def __init__(self, frequency):
+        assert(issubclass(type(frequency), synth_op))
         super().__init__(BACKEND.push_sin(ctypes.c_uint16(frequency.handle)))
 
 
