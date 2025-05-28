@@ -14,6 +14,26 @@ CHROMA_KEY = (0, 0, 0)
 THUMB = None
 
 
+class synth_op:
+    def __init__(self, backend, handle):
+        self.backend = backend
+        self.handle = handle
+
+
+class synth_var:
+    def __init__(self, backend, value):
+        self.backend = backend
+        self.handle = self.backend.push_var(ctypes.c_double(value));
+        self.value = value
+
+    def get(self):
+        return self.value
+
+    def set(self, value):
+        self.value = value
+        self.backend.set_var(ctypes.c_uint16(self.handle), ctypes.c_double(value));
+
+
 class backend:
     def __init__(self):
         self.backend = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
@@ -23,19 +43,19 @@ class backend:
         return self.backend.clear();
 
     def push_var(self, value):
-        return self.backend.push_var(ctypes.c_double(value));
-
-    def set_var(self, handle, value):
-        return self.backend.set_var(ctypes.c_uint16(handle), ctypes.c_double(value));
+        return synth_var(self.backend, value)
 
     def push_sin(self, frequency):
-        return self.backend.push_sin(ctypes.c_uint16(frequency));
+        handle = self.backend.push_sin(ctypes.c_uint16(frequency.handle));
+        return synth_op(self, handle)
 
     def push_mul(self, lhs, rhs):
-        return self.backend.push_mul(ctypes.c_uint16(lhs), ctypes.c_uint16(rhs));
+        handle = self.backend.push_mul(ctypes.c_uint16(lhs.handle), ctypes.c_uint16(rhs.handle));
+        return synth_op(self, handle)
 
     def push_add(self, lhs, rhs):
-        return self.backend.push_add(ctypes.c_uint16(lhs), ctypes.c_uint16(rhs));
+        handle = self.backend.push_add(ctypes.c_uint16(lhs.handle), ctypes.c_uint16(rhs.handle));
+        return synth_op(self, handle)
 
     def commit(self):
         self.backend.commit_program();
@@ -44,64 +64,35 @@ class backend:
         self.backend.halt()
 
 
-class accessor:
-    def __init__(self, backend, value):
-        self.value = value
-        self.backend = backend
-        self.handle = backend.push_var(value)
-
-    def set(self, value):
-        self.value = value
-        self.backend.set_var(self.handle, value)
-
-
 class fm_synth(backend):
     def __init__(self):
         super().__init__()
 
         self.clear()
 
-        self.__carrier_hz = accessor(self, 440)
-        self.__modulator_hz = accessor(self, 440 * 0.75)
-        self.__mod_amount = accessor(self, 0.5)
-        self.__volume = self.push_var(0.25)
+        self.carrier_hz = self.push_var(440)
+        self.modulator_ratio = self.push_var(5/3)
+        self.mod_amount = self.push_var(0.5)
+        self.volume = self.push_var(0.25)
 
-        self.push_mul(
-            self.__volume,
-            self.push_sin(
-                self.push_add(
-                    self.__carrier_hz.handle,
+        modulator_hz = self.push_mul(self.carrier_hz, self.modulator_ratio)
+
+        modulator_phase = self.push_sin(modulator_hz)
+
+        modulated_carrier_frequency = \
+            self.push_add(
+                self.carrier_hz,
+                self.push_mul(
+                    self.carrier_hz,
                     self.push_mul(
-                        self.__carrier_hz.handle,
-                        self.push_mul(
-                            self.push_sin(self.__modulator_hz.handle),
-                            self.__mod_amount.handle)))))
+                        modulator_phase,
+                        self.mod_amount)))
+
+        carrier_phase = self.push_sin(modulated_carrier_frequency)
+
+        output_sample = self.push_mul(self.volume, carrier_phase)
 
         self.commit()
-
-    @property
-    def carrier_hz(self):
-        return self.__carrier_hz.value
-
-    @carrier_hz.setter
-    def carrier_hz(self, value):
-        self.__carrier_hz.set(value)
-
-    @property
-    def modulator_hz(self):
-        return self.__modulator_hz.value
-
-    @modulator_hz.setter
-    def modulator_hz(self, value):
-        self.__modulator_hz.set(value)
-
-    @property
-    def mod_amount(self):
-        return self.__mod_amount.value
-
-    @mod_amount.setter
-    def mod_amount(self, value):
-        self.__mod_amount.set(value)
 
 
 class dial:
@@ -212,8 +203,7 @@ def main():
 
     synth = fm_synth()
 
-    carrier_hz = synth.carrier_hz
-    modulator_hz = synth.modulator_hz
+    carrier_hz = synth.carrier_hz.get()
 
     live = True
     while live:
@@ -263,14 +253,16 @@ def main():
                     grab_rel = test_rel
 
         screen.fill("black")
-        synth.carrier_hz = carrier_hz * math.pow(2, widgets[0].angle / 12)
-        synth.modulator_hz = modulator_hz * math.pow(2, widgets[1].angle / 12)
-        synth.mod_amount = widgets[2].angle / (math.pi * 2)
+        synth.carrier_hz.set(carrier_hz * math.pow(2, widgets[0].angle / 12))
+
+        ratio = widgets[1].angle / (math.pi * 2)
+        ratio = (5 + ratio) / 3
+        synth.modulator_ratio.set(ratio)
+
+        synth.mod_amount.set(widgets[2].angle / (math.pi * 2))
 
         for i, widget in enumerate(widgets):
             widget.draw(screen, mouse_grab == i)
-
-
 
         pygame.display.flip()
 
