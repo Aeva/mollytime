@@ -16,48 +16,20 @@ bool PipeWireInitialized = false;
 struct PipeWireStream* PipeWireSession = nullptr;
 
 
-enum class OpCode : std::uint8_t
+enum class OpCode : std::uint16_t
 {
-    Var,
+    Var = 0,
     Sin,
     Mul,
-    Add
-};
-
-
-struct SynthInstruction
-{
-    OpCode Name;
-    std::uint16_t Param1;
-    std::uint16_t Param2;
-
-    SynthInstruction(OpCode InName)
-        : Name(InName)
-        , Param1(0)
-        , Param2(0)
-    {
-    }
-
-    SynthInstruction(OpCode InName, std::uint16_t InParam1)
-        : Name(InName)
-        , Param1(InParam1)
-        , Param2(0)
-    {
-    }
-
-    SynthInstruction(OpCode InName, std::uint16_t InParam1, std::uint16_t InParam2)
-        : Name(InName)
-        , Param1(InParam1)
-        , Param2(InParam2)
-    {
-    }
+    Add,
 };
 
 
 struct SynthProgram
 {
     int VariableCount = 0;
-    std::vector<SynthInstruction> Program;
+    std::vector<OpCode> Program;
+    std::vector<std::uint16_t> Params;
     std::vector<double> Phases;
     std::vector<double> Intermediaries;
 
@@ -81,43 +53,55 @@ void SynthProgram::Commit(std::vector<double>& Variables)
         Variables[Index] = Intermediaries[Index];
     }
 
-    int ProgramCounter = 0;
-    for (const SynthInstruction& Instruction : Program)
+    size_t ParamCounter = 0;
+    for (int ProgramCounter = VariableCount; ProgramCounter < Program.size(); ++ProgramCounter)
     {
-        if (Instruction.Name == OpCode::Sin)
+        const OpCode Instruction = (OpCode)Program[ProgramCounter];
+
+        if (Instruction == OpCode::Sin)
         {
-            if (!(Instruction.Param1 < Intermediaries.size()))
+            std::uint16_t Param1 = Params[ParamCounter++];
+            std::uint16_t Param2 = Params[ParamCounter++];
+            if (Param1 >= Intermediaries.size())
             {
                 std::print("{}: Oscillator Hz param is out of bounds!!!\n", ProgramCounter);
             }
-            if (!(Instruction.Param2 < Phases.size()))
+            if (Param2 >= Phases.size())
             {
                 std::print("{}: Oscillator phase index is out of bounds!!!\n", ProgramCounter);
             }
+
         }
-        else if (Instruction.Name == OpCode::Mul)
+        else if (Instruction == OpCode::Mul)
         {
-            if (!(Instruction.Param1 < Intermediaries.size()))
+            std::uint16_t Param1 = Params[ParamCounter++];
+            std::uint16_t Param2 = Params[ParamCounter++];
+            if (Param1 >= Intermediaries.size())
             {
                 std::print("{}: Mul LHS param is out of bounds!!!\n", ProgramCounter);
             }
-            if (!(Instruction.Param2 < Intermediaries.size()))
+            if (Param2 >= Intermediaries.size())
             {
                 std::print("{}: Mul RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
-        else if (Instruction.Name == OpCode::Add)
+        else if (Instruction == OpCode::Add)
         {
-            if (!(Instruction.Param1 < Intermediaries.size()))
+            std::uint16_t Param1 = Params[ParamCounter++];
+            std::uint16_t Param2 = Params[ParamCounter++];
+            if (Param1 >= Intermediaries.size())
             {
                 std::print("{}: Add LHS param is out of bounds!!!\n", ProgramCounter);
             }
-            if (!(Instruction.Param2 < Intermediaries.size()))
+            if (Param2 >= Intermediaries.size())
             {
                 std::print("{}: Add RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
-        ++ProgramCounter;
+        else
+        {
+            std::print("{}: Unknown OpCode {}!\n", ProgramCounter, (std::uint16_t)Instruction);
+        }
     }
 }
 
@@ -125,8 +109,8 @@ void SynthProgram::Commit(std::vector<double>& Variables)
 std::uint16_t SynthProgram::PushVar(double Value)
 {
     ++VariableCount;
-    std::uint16_t Handle = (std::uint16_t)Program.size();
-    Program.emplace_back(OpCode::Var);
+    const std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.push_back(OpCode::Var);
     Intermediaries.push_back(Value);
     return Handle;
 }
@@ -134,8 +118,10 @@ std::uint16_t SynthProgram::PushVar(double Value)
 
 std::uint16_t SynthProgram::PushSin(std::uint16_t Param1)
 {
-    std::uint16_t Handle = (std::uint16_t)Program.size();
-    Program.emplace_back(OpCode::Sin, Param1, (std::uint16_t)Phases.size());
+    const std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.push_back(OpCode::Sin);
+    Params.push_back(Param1);
+    Params.push_back((std::uint16_t)Phases.size());
     Phases.push_back(0.0);
     Intermediaries.push_back(0.0);
     return Handle;
@@ -144,8 +130,10 @@ std::uint16_t SynthProgram::PushSin(std::uint16_t Param1)
 
 std::uint16_t SynthProgram::PushMul(std::uint16_t Param1, std::uint16_t Param2)
 {
-    std::uint16_t Handle = (std::uint16_t)Program.size();
-    Program.emplace_back(OpCode::Mul, Param1, Param2);
+    const std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.push_back(OpCode::Mul);
+    Params.push_back(Param1);
+    Params.push_back(Param2);
     Intermediaries.push_back(0.0);
     return Handle;
 }
@@ -153,8 +141,10 @@ std::uint16_t SynthProgram::PushMul(std::uint16_t Param1, std::uint16_t Param2)
 
 std::uint16_t SynthProgram::PushAdd(std::uint16_t Param1, std::uint16_t Param2)
 {
-    std::uint16_t Handle = (std::uint16_t)Program.size();
-    Program.emplace_back(OpCode::Add, Param1, Param2);
+    const std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.push_back(OpCode::Add);
+    Params.push_back(Param1);
+    Params.push_back(Param2);
     Intermediaries.push_back(0.0);
     return Handle;
 }
@@ -162,13 +152,17 @@ std::uint16_t SynthProgram::PushAdd(std::uint16_t Param1, std::uint16_t Param2)
 
 double SynthProgram::Eval(const double SampleInterval)
 {
+    int ParamCounter = 0;
     for (int ProgramCounter = VariableCount; ProgramCounter < Program.size(); ++ProgramCounter)
     {
-        const SynthInstruction& Instruction = Program[ProgramCounter];
-        if (Instruction.Name == OpCode::Sin)
+        const OpCode Instruction = (OpCode)Program[ProgramCounter];
+
+        if (Instruction == OpCode::Sin)
         {
-            const double Hz = Intermediaries[Instruction.Param1];
-            double Phase = Phases[Instruction.Param2];
+            const std::uint16_t Param1 = Params[ParamCounter++];
+            const std::uint16_t Param2 = Params[ParamCounter++];
+            const double Hz = Intermediaries[Param1];
+            double Phase = Phases[Param2];
 
             Phase += Tau * Hz * SampleInterval;
             if (Phase > Tau)
@@ -176,19 +170,23 @@ double SynthProgram::Eval(const double SampleInterval)
                 Phase -= Tau;
             }
 
-            Phases[Instruction.Param2] = Phase;
+            Phases[Param2] = Phase;
             Intermediaries[ProgramCounter] = sin(Phase);
         }
-        else if (Instruction.Name == OpCode::Mul)
+        else if (Instruction == OpCode::Mul)
         {
-            const double LHS = Intermediaries[Instruction.Param1];
-            const double RHS = Intermediaries[Instruction.Param2];
+            const std::uint16_t Param1 = Params[ParamCounter++];
+            const std::uint16_t Param2 = Params[ParamCounter++];
+            const double LHS = Intermediaries[Param1];
+            const double RHS = Intermediaries[Param2];
             Intermediaries[ProgramCounter] = LHS * RHS;
         }
-        else if (Instruction.Name == OpCode::Add)
+        else if (Instruction == OpCode::Add)
         {
-            const double LHS = Intermediaries[Instruction.Param1];
-            const double RHS = Intermediaries[Instruction.Param2];
+            const std::uint16_t Param1 = Params[ParamCounter++];
+            const std::uint16_t Param2 = Params[ParamCounter++];
+            const double LHS = Intermediaries[Param1];
+            const double RHS = Intermediaries[Param2];
             Intermediaries[ProgramCounter] = LHS + RHS;
         }
     }
