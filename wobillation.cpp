@@ -22,6 +22,8 @@ enum class OpCode : std::uint16_t
     Sin,
     Mul,
     Add,
+    Min,
+    Max,
 };
 
 
@@ -39,6 +41,8 @@ struct SynthProgram
     std::uint16_t PushSin(std::uint16_t Param1);
     std::uint16_t PushMul(std::uint16_t Param1, std::uint16_t Param2);
     std::uint16_t PushAdd(std::uint16_t Param1, std::uint16_t Param2);
+    std::uint16_t PushMin(std::uint16_t Param1, std::uint16_t Param2);
+    std::uint16_t PushMax(std::uint16_t Param1, std::uint16_t Param2);
 
     double Eval(const double SampleInterval);
 };
@@ -98,6 +102,32 @@ void SynthProgram::Commit(std::vector<double>& Variables)
                 std::print("{}: Add RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
+        else if (Instruction == OpCode::Min)
+        {
+            std::uint16_t Param1 = Params[ParamCounter++];
+            std::uint16_t Param2 = Params[ParamCounter++];
+            if (Param1 >= Intermediaries.size())
+            {
+                std::print("{}: Min LHS param is out of bounds!!!\n", ProgramCounter);
+            }
+            if (Param2 >= Intermediaries.size())
+            {
+                std::print("{}: Min RHS param is out of bounds!!!\n", ProgramCounter);
+            }
+        }
+        else if (Instruction == OpCode::Max)
+        {
+            std::uint16_t Param1 = Params[ParamCounter++];
+            std::uint16_t Param2 = Params[ParamCounter++];
+            if (Param1 >= Intermediaries.size())
+            {
+                std::print("{}: Max LHS param is out of bounds!!!\n", ProgramCounter);
+            }
+            if (Param2 >= Intermediaries.size())
+            {
+                std::print("{}: Max RHS param is out of bounds!!!\n", ProgramCounter);
+            }
+        }
         else
         {
             std::print("{}: Unknown OpCode {}!\n", ProgramCounter, (std::uint16_t)Instruction);
@@ -150,6 +180,28 @@ std::uint16_t SynthProgram::PushAdd(std::uint16_t Param1, std::uint16_t Param2)
 }
 
 
+std::uint16_t SynthProgram::PushMin(std::uint16_t Param1, std::uint16_t Param2)
+{
+    const std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.push_back(OpCode::Min);
+    Params.push_back(Param1);
+    Params.push_back(Param2);
+    Intermediaries.push_back(0.0);
+    return Handle;
+}
+
+
+std::uint16_t SynthProgram::PushMax(std::uint16_t Param1, std::uint16_t Param2)
+{
+    const std::uint16_t Handle = (std::uint16_t)Program.size();
+    Program.push_back(OpCode::Max);
+    Params.push_back(Param1);
+    Params.push_back(Param2);
+    Intermediaries.push_back(0.0);
+    return Handle;
+}
+
+
 double SynthProgram::Eval(const double SampleInterval)
 {
     int ParamCounter = 0;
@@ -188,6 +240,22 @@ double SynthProgram::Eval(const double SampleInterval)
             const double LHS = Intermediaries[Param1];
             const double RHS = Intermediaries[Param2];
             Intermediaries[ProgramCounter] = LHS + RHS;
+        }
+        else if (Instruction == OpCode::Min)
+        {
+            const std::uint16_t Param1 = Params[ParamCounter++];
+            const std::uint16_t Param2 = Params[ParamCounter++];
+            const double LHS = Intermediaries[Param1];
+            const double RHS = Intermediaries[Param2];
+            Intermediaries[ProgramCounter] = std::min(LHS, RHS);
+        }
+        else if (Instruction == OpCode::Max)
+        {
+            const std::uint16_t Param1 = Params[ParamCounter++];
+            const std::uint16_t Param2 = Params[ParamCounter++];
+            const double LHS = Intermediaries[Param1];
+            const double RHS = Intermediaries[Param2];
+            Intermediaries[ProgramCounter] = std::max(LHS, RHS);
         }
     }
 
@@ -541,6 +609,32 @@ int push_add(std::uint16_t LHS, std::uint16_t RHS)
         return IncompleteProgram->PushAdd(LHS, RHS);
     }
     std::print("invalid use of push_add\n");
+    return -1;
+}
+
+
+extern "C"
+int push_min(std::uint16_t LHS, std::uint16_t RHS)
+{
+    if (IncompleteProgram != nullptr)
+    {
+        //std::print("push_min({}, {})\n", LHS, RHS);
+        return IncompleteProgram->PushMin(LHS, RHS);
+    }
+    std::print("invalid use of push_min\n");
+    return -1;
+}
+
+
+extern "C"
+int push_max(std::uint16_t LHS, std::uint16_t RHS)
+{
+    if (IncompleteProgram != nullptr)
+    {
+        //std::print("push_max({}, {})\n", LHS, RHS);
+        return IncompleteProgram->PushMax(LHS, RHS);
+    }
+    std::print("invalid use of push_max\n");
     return -1;
 }
 

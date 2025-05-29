@@ -47,6 +47,20 @@ class synth_sin(synth_op):
         super().__init__(BACKEND.push_sin(ctypes.c_uint16(frequency.handle)))
 
 
+class synth_min(synth_op):
+    def __init__(self, lhs, rhs):
+        assert(issubclass(type(lhs), synth_op))
+        assert(issubclass(type(rhs), synth_op))
+        super().__init__(BACKEND.push_min(ctypes.c_uint16(lhs.handle), ctypes.c_uint16(rhs.handle)))
+
+
+class synth_max(synth_op):
+    def __init__(self, lhs, rhs):
+        assert(issubclass(type(lhs), synth_op))
+        assert(issubclass(type(rhs), synth_op))
+        super().__init__(BACKEND.push_max(ctypes.c_uint16(lhs.handle), ctypes.c_uint16(rhs.handle)))
+
+
 class fm_synth():
     def __init__(self):
         BACKEND.init()
