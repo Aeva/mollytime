@@ -55,7 +55,7 @@ class fm_synth():
 
         self.carrier_hz = synth_var(440)
         self.modulator_ratio1 = synth_var(5/3)
-        self.modulator_ratio2 = synth_var(1)
+        self.modulator_ratio2 = synth_var(5/3)
         self.mod_amount1 = synth_var(0.0)
         self.mod_amount2 = synth_var(0.0)
         self.volume = synth_var(0.25)
@@ -247,7 +247,7 @@ def main():
         synth.modulator_ratio1.set(ratio)
 
         ratio = widgets[3].angle / (math.pi * 2)
-        ratio = 1 / (abs(ratio) + 1)
+        ratio = (5 + ratio) / 3
         synth.modulator_ratio2.set(ratio)
 
         synth.mod_amount1.set(widgets[2].angle / (math.pi * 2))
