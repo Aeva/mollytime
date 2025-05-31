@@ -271,38 +271,44 @@ def main():
     carrier_hz = synth.carrier_hz.get()
 
     class frequency_dial(dial):
-        def __init__(self, x, y, name):
-            label = name + " ( {value:.2f} hz )"
+        def __init__(self, x, y):
+            label = "{value:.2f} hz"
             super().__init__(x, y, ring_r, (0, 255, 255), label)
 
         def update(self):
-            self.value = carrier_hz * math.pow(2, self.angle / 12)
+            turns = self.angle / (math.pi * 2)
+            self.value = carrier_hz * math.pow(2, turns)
+            note = math.log2(self.value / 440) * 12 + 69
+            self.label = f"{self.value:.2f} hz ({note:.2f})"
+
 
     class ratio_dial(dial):
-        def __init__(self, x, y, name):
-            label = name + " ( {value:.2f} x )"
+        def __init__(self, x, y):
+            label = "{value:.2f} x"
             super().__init__(x, y, ring_r, (255, 0, 255), label)
 
         def update(self):
-            ratio = self.angle / (math.pi * 2)
-            ratio = (5 + ratio) / 3
-            self.value = ratio
+            turns = self.angle / (math.pi * 2)
+            if turns >= 0:
+                self.value = turns + 1
+            else:
+                self.value = 1 / (abs(turns) + 1)
 
     class scalar_dial(dial):
-        def __init__(self, x, y, name):
-            label = name + " ( {value:.2f} )"
+        def __init__(self, x, y):
+            label = "{value:.2f}"
             super().__init__(x, y, ring_r, (255, 0, 255), label)
 
         def update(self):
             self.value = self.angle / (math.pi * 2)
 
-    carrier_dial = frequency_dial(w * (1/4), h / 2, "carrier")
+    carrier_dial = frequency_dial(w * (1/4), h / 2)
 
-    mod1_ratio_dial = ratio_dial(w * (2/4), h * (1/3), "mod 1")
-    mod2_ratio_dial = ratio_dial(w * (2/4), h * (2/3), "mod 2")
+    mod1_ratio_dial = ratio_dial(w * (2/4), h * (1/3))
+    mod2_ratio_dial = ratio_dial(w * (2/4), h * (2/3))
 
-    mod1_amount_dial = scalar_dial(w * (3/4), h * (1/3), "mod 1")
-    mod2_amount_dial = scalar_dial(w * (3/4), h * (2/3), "mod 1")
+    mod1_amount_dial = scalar_dial(w * (3/4), h * (1/3))
+    mod2_amount_dial = scalar_dial(w * (3/4), h * (2/3))
 
     widgets = [
         carrier_dial,
