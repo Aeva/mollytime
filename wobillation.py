@@ -73,6 +73,10 @@ class fm_synth():
         self.mod_amount1 = synth_var(0.0)
         self.mod_amount2 = synth_var(0.0)
         self.volume = synth_var(0.25)
+        loud = synth_var(100.0)
+        one = synth_var(1)
+        minus_one = synth_var(-1)
+
 
         modulator_hz1 = self.carrier_hz * self.modulator_ratio1
         modulator_hz2 = modulator_hz1 * self.modulator_ratio2
@@ -85,6 +89,8 @@ class fm_synth():
 
         carrier_phase = synth_sin(
             self.carrier_hz + self.carrier_hz * modulator_phase1 * mod_amount_mod)
+
+        carrier_phase = synth_min(synth_max(carrier_phase * loud, minus_one), one)
 
         output_sample = self.volume * carrier_phase
 
@@ -104,6 +110,7 @@ class dial:
         self.r3 = (r + 16)
         self.r2 = (r + 8)
         self.r1 = r
+        self.claimed = False
 
         self.angle = 0
 
@@ -175,6 +182,37 @@ class dial:
         screen.blits(((self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)))
 
 
+class input_tracker:
+    def __init__(self):
+        self.pos = None
+        self.rel = None
+        self.widget = None
+        self.update = False
+
+    def move(self, pos):
+        self.pos = pos
+        self.update = self.widget is not None
+
+    def press(self, pos, widgets):
+        self.pos = pos
+        self.widget = None
+        self.update = False
+        for widget in widgets:
+            if not widget.claimed:
+                self.rel = widget.overlap(self.pos)
+                if self.rel is not None:
+                    widget.claimed = True
+                    self.widget = widget
+                    self.update = True
+                    break
+
+    def release(self):
+        if self.widget:
+            self.widget.claimed = False
+        self.widget = None
+        self.update = False
+
+
 def main():
     global THUMB
 
@@ -197,10 +235,19 @@ def main():
         dial(int(w * (2/4)), h * (2/3), ring_r, (255, 0, 255)),
         dial(int(w * (3/4)), h * (2/3), ring_r, (255, 255, 0))]
 
-    mouse_grab = -1
-    mouse_pos = None
-    grab_rel = None
-    update_ctrl = -1
+    touch = {}
+    touch['mouse'] = input_tracker()
+
+    def get_tracker(event):
+        key = (event.touch_id, event.finger_id)
+        if key not in touch:
+            touch[key] = input_tracker()
+        return touch[key]
+
+    # mouse_grab = -1
+    # mouse_pos = None
+    # grab_rel = None
+    # update_ctrl = -1
 
     synth = fm_synth()
 
@@ -212,46 +259,50 @@ def main():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 live = False
 
-            elif event.type == pygame.MOUSEMOTION and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-                mouse_pos = event.pos
-                update_ctrl = mouse_grab
+            elif event.type == pygame.FINGERMOTION:
+                pos = (int(event.x * w), int(event.y * h))
+                get_tracker(event).move(pos)
 
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
-                mouse_pos = event.pos
-                mouse_grab = -1
-                update_ctrl = -1
-                for i in range(len(widgets)):
-                    grab_rel = widgets[i].overlap(mouse_pos)
-                    if grab_rel is not None:
-                        mouse_grab = i
-                        update_ctrl = i
-                        break
+            elif event.type == pygame.FINGERDOWN:
+                pos = (int(event.x * w), int(event.y * h))
+                get_tracker(event).press(pos, widgets)
 
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
-                mouse_grab = -1
-                update_ctrl = -1
+            elif event.type == pygame.FINGERUP:
+                get_tracker(event).release()
 
-        if update_ctrl > -1:
-            update_ctrl = False
-            test_rel = widgets[mouse_grab].toward(mouse_pos)
+            elif event.type == pygame.MOUSEMOTION and not event.touch and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
+                touch['mouse'].move(event.pos)
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and not event.touch and event.button == pygame.BUTTON_LEFT:
+                touch['mouse'].press(event.pos, widgets)
+
+            elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
+                touch['mouse'].release()
+
+        for name, digit in touch.items():
+            if not digit.update:
+                continue
+
+            digit.update = False
+            test_rel = digit.widget.toward(digit.pos)
             if test_rel is not None:
-                dot = (grab_rel[0] * test_rel[0] + grab_rel[1] * test_rel[1])
+                dot = (digit.rel[0] * test_rel[0] + digit.rel[1] * test_rel[1])
                 dot = min(abs(dot), 1.0)
                 if dot > 0:
                     offset = math.acos(dot)
-                    rel_rel = (test_rel[0] - grab_rel[0], test_rel[1] - grab_rel[1])
+                    rel_rel = (test_rel[0] - digit.rel[0], test_rel[1] - digit.rel[1])
 
-                    if grab_rel[0] >= 0.0 and test_rel[0] >= 0.0 and rel_rel[1] < 0:
+                    if digit.rel[0] >= 0.0 and test_rel[0] >= 0.0 and rel_rel[1] < 0:
                         offset = -offset
-                    elif grab_rel[0] <= 0.0 and test_rel[0] <= 0.0 and rel_rel[1] > 0:
+                    elif digit.rel[0] <= 0.0 and test_rel[0] <= 0.0 and rel_rel[1] > 0:
                         offset = -offset
-                    elif grab_rel[1] >= 0.0 and test_rel[1] >= 0.0 and rel_rel[0] > 0:
+                    elif digit.rel[1] >= 0.0 and test_rel[1] >= 0.0 and rel_rel[0] > 0:
                         offset = -offset
-                    elif grab_rel[1] <= 0.0 and test_rel[1] <= 0.0 and rel_rel[0] < 0:
+                    elif digit.rel[1] <= 0.0 and test_rel[1] <= 0.0 and rel_rel[0] < 0:
                         offset = -offset
 
-                    widgets[mouse_grab].angle += offset
-                    grab_rel = test_rel
+                    digit.widget.angle += offset
+                    digit.rel = test_rel
 
         screen.fill("black")
         synth.carrier_hz.set(carrier_hz * math.pow(2, widgets[0].angle / 12))
@@ -271,8 +322,8 @@ def main():
         #ratio = (5 + ratio) / 3
         #synth.modulator_ratio1.set(ratio)
 
-        for i, widget in enumerate(widgets):
-            widget.draw(screen, mouse_grab == i)
+        for widget in widgets:
+            widget.draw(screen, widget.claimed)
 
         pygame.display.flip()
 
