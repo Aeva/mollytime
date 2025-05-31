@@ -11,6 +11,7 @@ import midi
 
 
 CHROMA_KEY = (0, 0, 0)
+NATIONAL_PARK_LIGHT = "media/national_park/NationalPark-Light.ttf"
 THUMB = None
 BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("wobillation.so"))
 
@@ -100,8 +101,25 @@ class fm_synth():
         BACKEND.halt()
 
 
+TEXT_SURFACE_CACHE = {}
+def render_text(font_path, size, color, text):
+    if font_path:
+        font_path = os.path.abspath(font_path)
+        assert(os.path.isfile(font_path))
+    key = (font_path, size, color, text)
+    found = TEXT_SURFACE_CACHE.get(key)
+    if found:
+        return found
+
+    font = pygame.font.Font(font_path, size)
+    surface = font.render(text, False, color, CHROMA_KEY)
+    surface.set_colorkey(CHROMA_KEY)
+    TEXT_SURFACE_CACHE[key] = surface
+    return surface
+
+
 class dial:
-    def __init__(self, x, y, r, highlight):
+    def __init__(self, x, y, r, highlight, label=None):
         self.highlight = highlight
         x = int(x)
         y = int(y)
@@ -111,6 +129,7 @@ class dial:
         self.r2 = (r + 8)
         self.r1 = r
         self.claimed = False
+        self.label = label
 
         self.angle = 0
 
@@ -130,6 +149,12 @@ class dial:
         self.surf3.set_colorkey(CHROMA_KEY)
         self.surf2.set_colorkey(CHROMA_KEY)
         self.surf1.set_colorkey(CHROMA_KEY)
+
+        self.update()
+
+
+    def update(self):
+        self.value = self.angle
 
 
     def overlap(self, pos):
@@ -179,7 +204,21 @@ class dial:
             pygame.draw.circle(self.surf1, CHROMA_KEY, point_b, THUMB * .5)
             pygame.draw.line(self.surf1, line_color, point_a, point_b, 1)
 
-        screen.blits(((self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)))
+        layers = [(self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)]
+
+        if self.label:
+            text = None
+            if type(self.label) is str:
+                text = self.label.format_map(self.__dict__)
+            else:
+                text = str(self.label)
+            surf = render_text(NATIONAL_PARK_LIGHT, 32, (255, 255, 255), text)
+            dest = surf.get_rect().copy()
+            dest.top = self.pivot[1] + self.r3 + 16
+            dest.centerx = self.pivot[0]
+            layers.insert(0, (surf, dest))
+
+        screen.blits(layers)
 
 
 class input_tracker:
@@ -228,12 +267,49 @@ def main():
 
     ring_r = THUMB * 3
 
+    synth = fm_synth()
+    carrier_hz = synth.carrier_hz.get()
+
+    class frequency_dial(dial):
+        def __init__(self, x, y, name):
+            label = name + " ( {value:.2f} hz )"
+            super().__init__(x, y, ring_r, (0, 255, 255), label)
+
+        def update(self):
+            self.value = carrier_hz * math.pow(2, self.angle / 12)
+
+    class ratio_dial(dial):
+        def __init__(self, x, y, name):
+            label = name + " ( {value:.2f} x )"
+            super().__init__(x, y, ring_r, (255, 0, 255), label)
+
+        def update(self):
+            ratio = self.angle / (math.pi * 2)
+            ratio = (5 + ratio) / 3
+            self.value = ratio
+
+    class scalar_dial(dial):
+        def __init__(self, x, y, name):
+            label = name + " ( {value:.2f} )"
+            super().__init__(x, y, ring_r, (255, 0, 255), label)
+
+        def update(self):
+            self.value = self.angle / (math.pi * 2)
+
+    carrier_dial = frequency_dial(w * (1/4), h / 2, "carrier")
+
+    mod1_ratio_dial = ratio_dial(w * (2/4), h * (1/3), "mod 1")
+    mod2_ratio_dial = ratio_dial(w * (2/4), h * (2/3), "mod 2")
+
+    mod1_amount_dial = scalar_dial(w * (3/4), h * (1/3), "mod 1")
+    mod2_amount_dial = scalar_dial(w * (3/4), h * (2/3), "mod 1")
+
     widgets = [
-        dial(int(w * (1/4)), h / 2, ring_r, (0, 255, 255)),
-        dial(int(w * (2/4)), h * (1/3), ring_r, (255, 0, 255)),
-        dial(int(w * (3/4)), h * (1/3), ring_r, (255, 255, 0)),
-        dial(int(w * (2/4)), h * (2/3), ring_r, (255, 0, 255)),
-        dial(int(w * (3/4)), h * (2/3), ring_r, (255, 255, 0))]
+        carrier_dial,
+        mod1_ratio_dial,
+        mod1_amount_dial,
+        mod2_ratio_dial,
+        mod2_amount_dial]
 
     touch = {}
     touch['mouse'] = input_tracker()
@@ -243,15 +319,6 @@ def main():
         if key not in touch:
             touch[key] = input_tracker()
         return touch[key]
-
-    # mouse_grab = -1
-    # mouse_pos = None
-    # grab_rel = None
-    # update_ctrl = -1
-
-    synth = fm_synth()
-
-    carrier_hz = synth.carrier_hz.get()
 
     live = True
     while live:
@@ -303,24 +370,15 @@ def main():
 
                     digit.widget.angle += offset
                     digit.rel = test_rel
+                    digit.widget.update()
 
         screen.fill("black")
-        synth.carrier_hz.set(carrier_hz * math.pow(2, widgets[0].angle / 12))
 
-        ratio = widgets[1].angle / (math.pi * 2)
-        ratio = (5 + ratio) / 3
-        synth.modulator_ratio1.set(ratio)
-
-        ratio = widgets[3].angle / (math.pi * 2)
-        ratio = (5 + ratio) / 3
-        synth.modulator_ratio2.set(ratio)
-
-        synth.mod_amount1.set(widgets[2].angle / (math.pi * 2))
-        synth.mod_amount2.set(widgets[4].angle / (math.pi * 2))
-
-        #ratio = widgets[1].angle / (math.pi * 2)
-        #ratio = (5 + ratio) / 3
-        #synth.modulator_ratio1.set(ratio)
+        synth.carrier_hz.set(carrier_dial.value)
+        synth.modulator_ratio1.set(mod1_ratio_dial.value)
+        synth.modulator_ratio2.set(mod2_ratio_dial.value)
+        synth.mod_amount1.set(mod1_amount_dial.value)
+        synth.mod_amount2.set(mod2_amount_dial.value)
 
         for widget in widgets:
             widget.draw(screen, widget.claimed)
