@@ -91,7 +91,7 @@ class fm_synth():
         carrier_phase = synth_sin(
             self.carrier_hz + self.carrier_hz * modulator_phase1 * mod_amount_mod)
 
-        carrier_phase = synth_min(synth_max(carrier_phase * loud, minus_one), one)
+        #carrier_phase = synth_min(synth_max(carrier_phase * loud, minus_one), one)
 
         output_sample = self.volume * carrier_phase
 
@@ -199,10 +199,16 @@ class dial:
             v = (math.cos(a), math.sin(a))
             point_a = (pivot[0] + v[0] * self.line_r1, pivot[1] + v[1] * self.line_r1)
             point_b = (pivot[0] + v[0] * self.line_r2, pivot[1] + v[1] * self.line_r2)
-            point_c = ((point_a[0] + point_b[0]) * 0.5, (point_a[1] + point_b[1]) * 0.5)
 
             pygame.draw.circle(self.surf1, CHROMA_KEY, point_b, THUMB * .5)
             pygame.draw.line(self.surf1, line_color, point_a, point_b, 1)
+
+            if i == 0:
+                r = 4
+                line_r3 = self.r1 - r
+                point_c = (pivot[0] + v[0] * line_r3, pivot[1] + v[1] * line_r3)
+                pygame.draw.circle(self.surf1, line_color, point_c, r)
+
 
         layers = [(self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)]
 
@@ -295,9 +301,11 @@ def main():
                 self.value = 1 / (abs(turns) + 1)
 
     class scalar_dial(dial):
-        def __init__(self, x, y):
+        def __init__(self, x, y, turns = 0):
             label = "{value:.2f}"
             super().__init__(x, y, ring_r, (255, 0, 255), label)
+            self.angle = math.pi * 2 * turns
+            self.update()
 
         def update(self):
             self.value = self.angle / (math.pi * 2)
