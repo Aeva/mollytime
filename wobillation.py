@@ -119,7 +119,7 @@ def render_text(font_path, size, color, text):
 
 
 class dial:
-    def __init__(self, x, y, r, highlight, label=None):
+    def __init__(self, x, y, r, highlight, label=None, guides=0):
         self.highlight = highlight
         x = int(x)
         y = int(y)
@@ -141,6 +141,29 @@ class dial:
         self.pos1 = (x - self.r1, y - self.r1)
 
         self.rect = pygame.Rect(x - self.r3, y - self.r3, x + self.r3, y + self.r3)
+
+        if guides > 0:
+            r4 = r + 4
+            r5 = r + 4 * 5
+            self.pos4 = (x - r5, y - r5)
+            self.guides = pygame.Surface((r5 * 2, r5 * 2))
+            self.guides.set_colorkey((0xFF, 0xFF, 0xFF))
+            self.guides.fill((0xFF, 0xFF, 0xFF))
+
+            pivot = self.guides.get_rect().center
+            line_color = (128, 128, 128)
+
+            for i in range(guides):
+                a = self.angle + math.pi * .5 + math.pi * 2 * (i / guides)
+                v = (math.cos(a), math.sin(a))
+                point_a = (pivot[0] + v[0] * r4, pivot[1] + v[1] * r4)
+                point_b = (pivot[0] + v[0] * r5, pivot[1] + v[1] * r5)
+
+                pygame.draw.line(self.guides, CHROMA_KEY, pivot, point_b, 8)
+                pygame.draw.line(self.guides, line_color, point_a, point_b, 1)
+
+        else:
+            self.guides = None
 
         self.surf3 = pygame.Surface(((r + 16) * 2, (r + 16) * 2))
         self.surf2 = pygame.Surface(((r + 8) * 2, (r + 8) * 2))
@@ -212,6 +235,9 @@ class dial:
 
         layers = [(self.surf3, self.pos3), (self.surf2, self.pos2), (self.surf1, self.pos1)]
 
+        if self.guides:
+            layers.insert(2, (self.guides, self.pos4))
+
         if self.label:
             text = None
             if type(self.label) is str:
@@ -279,7 +305,7 @@ def main():
     class frequency_dial(dial):
         def __init__(self, x, y):
             label = "{value:.2f} hz"
-            super().__init__(x, y, ring_r, (0, 255, 255), label)
+            super().__init__(x, y, ring_r, (0, 255, 255), label, 12)
 
         def update(self):
             turns = self.angle / (math.pi * 2)
@@ -287,11 +313,10 @@ def main():
             note = math.log2(self.value / 440) * 12 + 69
             self.label = f"{self.value:.2f} hz ({note:.2f})"
 
-
     class ratio_dial(dial):
         def __init__(self, x, y):
             label = "{value:.2f} x"
-            super().__init__(x, y, ring_r, (255, 0, 255), label)
+            super().__init__(x, y, ring_r, (255, 0, 255), label, 8)
 
         def update(self):
             turns = self.angle / (math.pi * 2)
@@ -303,7 +328,7 @@ def main():
     class scalar_dial(dial):
         def __init__(self, x, y, turns = 0):
             label = "{value:.2f}"
-            super().__init__(x, y, ring_r, (255, 0, 255), label)
+            super().__init__(x, y, ring_r, (255, 0, 255), label, 10)
             self.angle = math.pi * 2 * turns
             self.update()
 
