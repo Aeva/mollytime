@@ -112,8 +112,25 @@ def loop(screen, clock):
                     tile_y * grid + y_offset,
                     grid * 2, grid * 2)
 
-                pygame.draw.rect(screen, rgbhex("#e6e7eb"), rect)
-                pygame.draw.rect(screen, rgbhex("#0f1012"), rect, 1)
+                #dee5e8  <---->  oklch(0.917868 0.008959 225.245987)
+                #d8dfe2  <---->  oklch(0.899336 0.008959 225.245987)
+                #bec5c8  <---->  oklch(0.819868 0.008959 225.245987)
+                #83898c  <---->  oklch(0.626190 0.008959 225.245987)
+
+                depth = 6
+
+                pygame.draw.rect(screen, rgbhex("#dee5e8"), rect)
+                pygame.draw.rect(screen, rgbhex("#bec5c8"), rect, depth)
+
+                for i in range(0, depth):
+                    a = (rect.topleft[0] + i, rect.topleft[1] + i)
+                    b = (rect.topright[0] - i - 1, rect.topright[1] + i)
+                    pygame.draw.line(screen, rgbhex("#d8dfe2"), a, b, 1)
+
+                    a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
+                    b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
+                    pygame.draw.line(screen, rgbhex("#83898c"), a, b, 1)
+
 
         #pygame.draw.rect(screen, (0x1c, 0x1d, 0x21), pygame.Rect(0, 0, 100, 100))
         #pygame.draw.rect(screen, (0x2e, 0x2f, 0x32), pygame.Rect(100, 0, 100, 100))
