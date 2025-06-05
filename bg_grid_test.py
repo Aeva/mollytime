@@ -43,19 +43,16 @@ def loop(screen, clock):
 
         w = screen.get_rect().width
         h = screen.get_rect().height
-        tile_size = h // 8
-        x_count = math.ceil(w / tile_size)
-        y_count = math.ceil(h / tile_size)
-        x_offset = (w - x_count * tile_size) // 2
-        y_offset = (h - y_count * tile_size) // 2
 
-        #mini_tile = tile_size * 3 // 4
-        mini_tile = tile_size // 2
-        mini_offset = (tile_size - mini_tile) // 2
+        grid = int(h / 8 / 3)
+        x_count = math.ceil(w / grid)
+        y_count = math.ceil(h / grid)
+        x_offset = (w - x_count * grid) // 2
+        y_offset = (h - y_count * grid) // 2
 
-        gradient_center = (w // 2, h)
-        rel = (gradient_center[0], gradient_center[1] * (2/3))
-        max_magsqr = rel[0] * rel[0] + rel[1] * rel[1]
+        light = (w / 2, h)
+
+        span = math.sqrt(sum([i * i for i in light]))
 
         # bg_ramp_x = (rgbhex("#3c5297"), rgbhex("#6b4287"))
         # bg_ramp_y = (rgbhex("#6b4287"), rgbhex("#3c5297"))
@@ -65,44 +62,58 @@ def loop(screen, clock):
         bg_ramp_y = (rgbhex("#37352c"), rgbhex("#160300"))
         #bg_ramp_y = (bg_ramp_x[1], bg_ramp_x[0])
 
-
         bg_ramp_x = (rgbhex("#25221a"), rgbhex("#473100"))
         bg_ramp_y = (rgbhex("#37352c"), rgbhex("#160300"))
 
 
-
+        bg_ramp_x = (rgbhex("#a6a8ad"), rgbhex("#b1b3b8"))
+        bg_ramp_y = (rgbhex("#b1b3b8"), rgbhex("#a3a9bb"))
 
 
         random.seed(0)
         for tile_y in range(y_count):
             for tile_x in range(x_count):
                 rect = pygame.Rect(
-                    tile_x * tile_size + x_offset,
-                    tile_y * tile_size + y_offset,
-                    tile_size, tile_size)
+                    tile_x * grid + x_offset,
+                    tile_y * grid + y_offset,
+                    grid, grid)
 
-                inv_a = rect.centerx / w
-                inv_a = abs(inv_a * 2 - 1)
-                alpha = 1.0 - inv_a
+                weird = (rect.centery / h)
+                weird = weird / 3 + (1.0 - weird)
+
+                pos = (rect.centerx, rect.centery)
+                rel = [LHS - RHS for LHS, RHS in zip(pos, light)]
+                rel[0] *= weird
+                mag = math.sqrt(sum([i * i for i in rel]))
+
+                alpha = min(max(mag / span, 0), 1)
+                alpha *= alpha
+                inv_a = 1.0 - alpha
+
                 color_x = [int(inv_a * bg_ramp_x[0][i] + alpha * bg_ramp_x[1][i]) for i in range(3)]
-
-                inv_a = rect.centery / h
-                #inv_a = abs(inv_a * 2 - 1)
-                alpha = 1.0 - inv_a
                 color_y = [int(inv_a * bg_ramp_y[0][i] + alpha * bg_ramp_y[1][i]) for i in range(3)]
 
-                i = ((tile_x % 2) + (tile_y % 2)) % 2
-                color = (color_x, color_y)[i]
+                checker = ((tile_x % 2) + (tile_y % 2)) % 2
+                color = (color_x, color_y)[checker]
 
                 pygame.draw.rect(screen, color, rect)
 
-                if random.randint(1, 4) < 4:
+        for tile_y in range(y_count):
+            for tile_x in range(x_count):
+
+                if tile_x % 3 != 1 or tile_y % 3 != 1:
                     continue
 
-                rect = pygame.Rect(rect.x + mini_offset, rect.y + mini_offset, mini_tile, mini_tile)
+                if random.randint(1, 4) < 3:
+                    continue
 
-                pygame.draw.rect(screen, rgbhex("#bfedff"), rect)
-                pygame.draw.rect(screen, rgbhex("#8cbaff"), rect, 4)
+                rect = pygame.Rect(
+                    tile_x * grid + x_offset,
+                    tile_y * grid + y_offset,
+                    grid * 2, grid * 2)
+
+                pygame.draw.rect(screen, rgbhex("#e6e7eb"), rect)
+                pygame.draw.rect(screen, rgbhex("#0f1012"), rect, 1)
 
         #pygame.draw.rect(screen, (0x1c, 0x1d, 0x21), pygame.Rect(0, 0, 100, 100))
         #pygame.draw.rect(screen, (0x2e, 0x2f, 0x32), pygame.Rect(100, 0, 100, 100))
