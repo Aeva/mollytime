@@ -13,11 +13,13 @@ COLORS_BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("colors/colors.so"))
 
 c_vec3 = ctypes.c_float * 3
 
+
 def convert_color(color, incoding, excoding):
     in_color = c_vec3(*color)
     out_color = c_vec3(0, 0, 0)
     COLORS_BACKEND.convert_color(in_color, ctypes.c_uint8(incoding), out_color, ctypes.c_uint8(excoding))
     return [int(min(max(c, 0), 1) * 255) for c in out_color]
+
 
 def parse_color(color_str):
     out_color = c_vec3(0, 0, 0)
@@ -27,17 +29,13 @@ def parse_color(color_str):
     else:
         return [int(min(max(c, 0), 1) * 255) for c in out_color]
 
+
 def oklab(l, A, B):
     return convert_color((l, A, B), 2, 0)
 
+
 def oklch(l, c, h):
     return convert_color((l, c, h), 3, 0)
-
-# print(convert_color((.5, 0, .5), 0, 3))
-# print(tuple(map(hex, parse_color("tangerine"))))
-# print(tuple(map(hex, oklch(0.129814, 0.227111, 55.378811))))
-# print(tuple(map(hex, parse_color("oklch(0.129814 0.227111 55.378811)"))))
-
 
 
 def loop(screen, clock):
@@ -94,6 +92,25 @@ def loop(screen, clock):
 
         random.seed(0)
 
+        def bg_color(tile_x, tile_y, rect):
+            weird = (rect.centery / h)
+            weird = weird / 3 + (1.0 - weird)
+
+            pos = (rect.centerx, rect.centery)
+            rel = [LHS - RHS for LHS, RHS in zip(pos, light)]
+            rel[0] *= weird
+            mag = math.sqrt(sum([i * i for i in rel]))
+
+            alpha = min(max(mag / span, 0), 1)
+            alpha *= alpha
+            inv_a = 1.0 - alpha
+
+            color_x = [int(inv_a * bg_ramp_x[0][i] + alpha * bg_ramp_x[1][i]) for i in range(3)]
+            color_y = [int(inv_a * bg_ramp_y[0][i] + alpha * bg_ramp_y[1][i]) for i in range(3)]
+
+            checker = ((tile_x % 2) + (tile_y % 2)) % 2
+            return (color_x, color_y)[checker]
+
         # fine grid
         for tile_y in range(y_count):
             for tile_x in range(x_count):
@@ -102,87 +119,58 @@ def loop(screen, clock):
                     tile_y * grid + y_offset,
                     grid, grid)
 
-                weird = (rect.centery / h)
-                weird = weird / 3 + (1.0 - weird)
-
-                pos = (rect.centerx, rect.centery)
-                rel = [LHS - RHS for LHS, RHS in zip(pos, light)]
-                rel[0] *= weird
-                mag = math.sqrt(sum([i * i for i in rel]))
-
-                alpha = min(max(mag / span, 0), 1)
-                alpha *= alpha
-                inv_a = 1.0 - alpha
-
-                color_x = [int(inv_a * bg_ramp_x[0][i] + alpha * bg_ramp_x[1][i]) for i in range(3)]
-                color_y = [int(inv_a * bg_ramp_y[0][i] + alpha * bg_ramp_y[1][i]) for i in range(3)]
-
-                checker = ((tile_x % 2) + (tile_y % 2)) % 2
-                color = (color_x, color_y)[checker]
-
+                color = bg_color(tile_x, tile_y, rect)
                 pygame.draw.rect(screen, color, rect)
 
         # coarse grid
-        for tile_y in range(y_count):
-            for tile_x in range(x_count):
-
-                if tile_x % 3 != 1 or tile_y % 3 != 1:
-                    continue
-
+        for tile_y in range(1, y_count, 3):
+            for tile_x in range(1, x_count, 3):
                 rect = pygame.Rect(
                     tile_x * grid + x_offset,
                     tile_y * grid + y_offset,
                     grid * 2, grid * 2)
 
-                weird = (rect.centery / h)
-                weird = weird / 3 + (1.0 - weird)
-
-                pos = (rect.centerx, rect.centery)
-                rel = [LHS - RHS for LHS, RHS in zip(pos, light)]
-                rel[0] *= weird
-                mag = math.sqrt(sum([i * i for i in rel]))
-
-                alpha = min(max(mag / span, 0), 1)
-                alpha *= alpha
-                inv_a = 1.0 - alpha
-
-                color_x = [int(inv_a * bg_ramp_x[0][i] + alpha * bg_ramp_x[1][i]) for i in range(3)]
-                color_y = [int(inv_a * bg_ramp_y[0][i] + alpha * bg_ramp_y[1][i]) for i in range(3)]
-
-                checker = ((tile_x % 2) + (tile_y % 2)) % 2
-
-                color = (color_x, color_y)[checker]
-
+                color = bg_color(tile_x, tile_y, rect)
                 pygame.draw.rect(screen, color, rect)
 
-        # buttons in play
-        for tile_y in range(y_count):
-            for tile_x in range(x_count):
 
-                if tile_x % 3 != 1 or tile_y % 3 != 1:
-                    continue
-
+        # create some fake buttons
+        tile_count_x = play_w // (grid * 3)
+        tile_count_y = play_h // (grid * 3)
+        tiles = {}
+        for tile_y in range(tile_count_y):
+            for tile_x in range(tile_count_x):
                 if not random.randint(1, 4) < 3:
                     continue
-
                 rect = pygame.Rect(
-                    tile_x * grid + x_offset,
-                    tile_y * grid + y_offset,
+                    tile_x * grid * 3 + x_offset + grid,
+                    tile_y * grid * 3 + y_offset + grid,
                     grid * 2, grid * 2)
+                tiles[(tile_x, tile_y)] = rect
 
-                depth = 6
+        def draw_button(rect):
+            depth = 6
 
-                pygame.draw.rect(screen, parse_color("#dee5e8"), rect)
-                pygame.draw.rect(screen, parse_color("#bec5c8"), rect, depth)
+            pygame.draw.rect(screen, parse_color("#dee5e8"), rect)
+            pygame.draw.rect(screen, parse_color("#bec5c8"), rect, depth)
 
-                for i in range(0, depth):
-                    a = (rect.topleft[0] + i, rect.topleft[1] + i)
-                    b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-                    pygame.draw.line(screen, parse_color("#d8dfe2"), a, b, 1)
+            for i in range(0, depth):
+                a = (rect.topleft[0] + i, rect.topleft[1] + i)
+                b = (rect.topright[0] - i - 1, rect.topright[1] + i)
+                pygame.draw.line(screen, parse_color("#d8dfe2"), a, b, 1)
 
-                    a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
-                    b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-                    pygame.draw.line(screen, parse_color("#83898c"), a, b, 1)
+                a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
+                b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
+                pygame.draw.line(screen, parse_color("#83898c"), a, b, 1)
+
+        # draw button tiles
+        for (tile_x, tile_y), rect in tiles.items():
+            rect = pygame.Rect(
+                tile_x * grid * 3 + x_offset + grid,
+                tile_y * grid * 3 + y_offset + grid,
+                grid * 2, grid * 2)
+            draw_button(rect)
+
 
         ramp_a = (0.4, 0.04, 0)
         ramp_b = (0.4, 0.04, 360)
@@ -204,35 +192,15 @@ def loop(screen, clock):
             pygame.draw.rect(screen, color, rect)
 
         # sidebar buttons
-        count = 5
-        for tile_y in range(y_count):
-            if tile_y % 3 != 0:
-                continue
-
-            if count <= 0:
-                break
-            else:
-                count -= 1
+        for tile_index in range(9):
+            tile_y = tile_index * 3
 
             rect = pygame.Rect(
                 side_bar_rect.left + grid,
                 tile_y * grid,
-                #tile_y * grid + y_offset,
                 grid * 2, grid * 2)
 
-            depth = 6
-
-            pygame.draw.rect(screen, parse_color("#dee5e8"), rect)
-            pygame.draw.rect(screen, parse_color("#bec5c8"), rect, depth)
-
-            for i in range(0, depth):
-                a = (rect.topleft[0] + i, rect.topleft[1] + i)
-                b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-                pygame.draw.line(screen, parse_color("#d8dfe2"), a, b, 1)
-
-                a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
-                b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-                pygame.draw.line(screen, parse_color("#83898c"), a, b, 1)
+            draw_button(rect)
 
 
         pygame.display.flip()
