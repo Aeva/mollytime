@@ -9,8 +9,35 @@ import pygame_setup
 import pygame
 
 
-def rgbhex(string):
-    return (int(string[1:3], 16), int(string[3:5], 16), int(string[5:7], 16))
+COLORS_BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("colors/colors.so"))
+
+c_vec3 = ctypes.c_float * 3
+
+def convert_color(color, incoding, excoding):
+    in_color = c_vec3(*color)
+    out_color = c_vec3(0, 0, 0)
+    COLORS_BACKEND.convert_color(in_color, ctypes.c_uint8(incoding), out_color, ctypes.c_uint8(excoding))
+    return [int(min(max(c, 0), 1) * 255) for c in out_color]
+
+def parse_color(color_str):
+    out_color = c_vec3(0, 0, 0)
+    error = COLORS_BACKEND.parse_color(ctypes.c_char_p(color_str.encode("utf-8")), out_color)
+    if error:
+        raise ValueError(f"Invalid color string: {color_str}")
+    else:
+        return [int(min(max(c, 0), 1) * 255) for c in out_color]
+
+def oklab(l, A, B):
+    return convert_color((l, A, B), 2, 0)
+
+def oklch(l, c, h):
+    return convert_color((l, c, h), 3, 0)
+
+# print(convert_color((.5, 0, .5), 0, 3))
+# print(tuple(map(hex, parse_color("tangerine"))))
+# print(tuple(map(hex, oklch(0.129814, 0.227111, 55.378811))))
+# print(tuple(map(hex, parse_color("oklch(0.129814 0.227111 55.378811)"))))
+
 
 
 def loop(screen, clock):
@@ -54,20 +81,20 @@ def loop(screen, clock):
 
         span = math.sqrt(sum([i * i for i in light]))
 
-        # bg_ramp_x = (rgbhex("#3c5297"), rgbhex("#6b4287"))
-        # bg_ramp_y = (rgbhex("#6b4287"), rgbhex("#3c5297"))
+        # bg_ramp_x = (parse_color("#3c5297"), parse_color("#6b4287"))
+        # bg_ramp_y = (parse_color("#6b4287"), parse_color("#3c5297"))
 
-        #bg_ramp_x = (rgbhex("#160300"), rgbhex("#2a1500"))
-        bg_ramp_x = (rgbhex("#160300"), rgbhex("#473100"))
-        bg_ramp_y = (rgbhex("#37352c"), rgbhex("#160300"))
+        #bg_ramp_x = (parse_color("#160300"), parse_color("#2a1500"))
+        bg_ramp_x = (parse_color("#160300"), parse_color("#473100"))
+        bg_ramp_y = (parse_color("#37352c"), parse_color("#160300"))
         #bg_ramp_y = (bg_ramp_x[1], bg_ramp_x[0])
 
-        bg_ramp_x = (rgbhex("#25221a"), rgbhex("#473100"))
-        bg_ramp_y = (rgbhex("#37352c"), rgbhex("#160300"))
+        bg_ramp_x = (parse_color("#25221a"), parse_color("#473100"))
+        bg_ramp_y = (parse_color("#37352c"), parse_color("#160300"))
 
 
-        bg_ramp_x = (rgbhex("#a6a8ad"), rgbhex("#b1b3b8"))
-        bg_ramp_y = (rgbhex("#b1b3b8"), rgbhex("#a3a9bb"))
+        bg_ramp_x = (parse_color("#a6a8ad"), parse_color("#b1b3b8"))
+        bg_ramp_y = (parse_color("#b1b3b8"), parse_color("#a3a9bb"))
 
 
         random.seed(0)
@@ -119,17 +146,17 @@ def loop(screen, clock):
 
                 depth = 6
 
-                pygame.draw.rect(screen, rgbhex("#dee5e8"), rect)
-                pygame.draw.rect(screen, rgbhex("#bec5c8"), rect, depth)
+                pygame.draw.rect(screen, parse_color("#dee5e8"), rect)
+                pygame.draw.rect(screen, parse_color("#bec5c8"), rect, depth)
 
                 for i in range(0, depth):
                     a = (rect.topleft[0] + i, rect.topleft[1] + i)
                     b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-                    pygame.draw.line(screen, rgbhex("#d8dfe2"), a, b, 1)
+                    pygame.draw.line(screen, parse_color("#d8dfe2"), a, b, 1)
 
                     a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
                     b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-                    pygame.draw.line(screen, rgbhex("#83898c"), a, b, 1)
+                    pygame.draw.line(screen, parse_color("#83898c"), a, b, 1)
 
 
         #pygame.draw.rect(screen, (0x1c, 0x1d, 0x21), pygame.Rect(0, 0, 100, 100))
