@@ -38,8 +38,175 @@ def oklch(l, c, h):
     return convert_color((l, c, h), 3, 0)
 
 
+class tile_viewport:
+    def __init__(self, viewport, grid):
+        self.grid = -1
+        self.viewport = pygame.Rect(0, 0, 0, 0)
+        self.resize(viewport, grid)
+
+    def resize(self, viewport, grid):
+        if viewport == self.viewport and grid == self.grid:
+            return
+        self.grid = grid
+        self.viewport = viewport
+        self.surface = pygame.Surface(viewport.size)
+        self.redraw()
+
+    def redraw(self):
+        pass
+
+
+class tile_grid_bg(tile_viewport):
+
+    def resize(self, viewport, grid):
+        # gradient stuff
+        self.light = (viewport.width / 2, viewport.height)
+        self.light_span = math.sqrt(sum([i * i for i in self.light]))
+        self.bg_ramp_x = (parse_color("#a6a8ad"), parse_color("#b1b3b8"))
+        self.bg_ramp_y = (parse_color("#b1b3b8"), parse_color("#a3a9bb"))
+        super().resize(viewport, grid)
+
+    def bg_color(self, tile_x, tile_y, rect):
+        weird = (rect.centery / self.viewport.h)
+        weird = weird / 3 + (1.0 - weird)
+
+        pos = (rect.centerx, rect.centery)
+        rel = [LHS - RHS for LHS, RHS in zip(pos, self.light)]
+        rel[0] *= weird
+        mag = math.sqrt(sum([i * i for i in rel]))
+
+        alpha = min(max(mag / self.light_span, 0), 1)
+        alpha *= alpha
+        inv_a = 1.0 - alpha
+
+        color_x = [int(inv_a * self.bg_ramp_x[0][i] + alpha * self.bg_ramp_x[1][i]) for i in range(3)]
+        color_y = [int(inv_a * self.bg_ramp_y[0][i] + alpha * self.bg_ramp_y[1][i]) for i in range(3)]
+
+        checker = ((tile_x % 2) + (tile_y % 2)) % 2
+        return (color_x, color_y)[checker]
+
+    def redraw(self):
+        x_count = math.ceil(self.viewport.w / self.grid)
+        y_count = math.ceil(self.viewport.h / self.grid)
+        x_offset = (self.viewport.w - x_count * self.grid) // 2
+        y_offset = (self.viewport.h - y_count * self.grid) // 2
+
+        # fine grid
+        for tile_y in range(y_count):
+            for tile_x in range(x_count):
+                rect = pygame.Rect(
+                    tile_x * self.grid + x_offset,
+                    tile_y * self.grid + y_offset,
+                    self.grid, self.grid)
+
+                color = self.bg_color(tile_x, tile_y, rect)
+                pygame.draw.rect(self.surface, color, rect)
+
+        # coarse grid
+        for tile_y in range(1, y_count, 3):
+            for tile_x in range(1, x_count, 3):
+                rect = pygame.Rect(
+                    tile_x * self.grid + x_offset,
+                    tile_y * self.grid + y_offset,
+                    self.grid * 2, self.grid * 2)
+
+                color = self.bg_color(tile_x, tile_y, rect)
+                pygame.draw.rect(self.surface, color, rect)
+
+
+class side_bar_bg(tile_viewport):
+    def resize(self, viewport, grid):
+        super().resize(viewport, grid)
+
+    def redraw(self):
+        ramp_a = (0.4, 0.04, 0)
+        ramp_b = (0.4, 0.04, 360)
+
+        # sidebar color ramp
+        steps = self.viewport.w // 8
+        for i in range(steps):
+            alpha = i / (steps - 1)
+            inv_a = 1.0 - alpha
+            params = [LHS * alpha + RHS * inv_a for LHS, RHS in zip(ramp_a, ramp_b)]
+            color = oklch(*params)
+
+            alpha = i / steps
+            inv_a = 1.0 - alpha
+
+            rect = pygame.Rect(0, 0, self.viewport.w * inv_a, self.viewport.h)
+            pygame.draw.rect(self.surface, color, rect)
+
+
+class plate_bg:
+    def __init__(self, grid):
+        self.grid = -1
+        self.resize(grid)
+
+    def resize(self, grid):
+        if grid == self.grid:
+            return
+        self.grid = grid
+        self.size = grid * 2
+        self.surface = pygame.Surface((self.size, self.size))
+        self.redraw()
+
+    def redraw(self):
+        rect = pygame.Rect(0, 0, self.size, self.size)
+        depth = 6
+
+        pygame.draw.rect(self.surface, parse_color("#dee5e8"), rect)
+        pygame.draw.rect(self.surface, parse_color("#bec5c8"), rect, depth)
+
+        for i in range(0, depth):
+            a = (rect.topleft[0] + i, rect.topleft[1] + i)
+            b = (rect.topright[0] - i - 1, rect.topright[1] + i)
+            pygame.draw.line(self.surface, parse_color("#d8dfe2"), a, b, 1)
+
+            a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
+            b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
+            pygame.draw.line(self.surface, parse_color("#83898c"), a, b, 1)
+
+
 def loop(screen, clock):
     live = True
+
+    screen_w = screen.get_rect().width
+    screen_h = screen.get_rect().height
+
+    grid_size = int(screen_h / 8 / 3)
+
+    side_bar_w = grid_size * 3
+    side_bar_h = screen_h
+    side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
+
+    play_rect = pygame.Rect(0, 0, screen_w - side_bar_w, screen_h)
+    play_area = tile_grid_bg(play_rect, grid_size)
+
+    side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
+    side_bar = side_bar_bg(side_bar_rect, grid_size)
+
+    tile_bg = plate_bg(grid_size)
+
+
+    # create some fake buttons
+    x_count = math.ceil(play_rect.w / grid_size)
+    y_count = math.ceil(play_rect.h / grid_size)
+    x_offset = (play_rect.w - x_count * grid_size) // 2
+    y_offset = (play_rect.h - y_count * grid_size) // 2
+
+    tile_count_x = play_rect.w // (grid_size * 3)
+    tile_count_y = play_rect.h // (grid_size * 3)
+    tiles = {}
+    for tile_y in range(tile_count_y):
+        for tile_x in range(tile_count_x):
+            if not random.randint(1, 4) < 3:
+                continue
+            rect = pygame.Rect(
+                tile_x * grid_size * 3 + x_offset + grid_size,
+                tile_y * grid_size * 3 + y_offset + grid_size,
+                grid_size * 2, grid_size * 2)
+            tiles[(tile_x, tile_y)] = rect
+
 
     while live:
         for event in pygame.event.get():
@@ -66,141 +233,29 @@ def loop(screen, clock):
             # elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
             #     touch['mouse'].release()
 
-        w = screen.get_rect().width
-        h = screen.get_rect().height
 
-        grid = int(h / 8 / 3)
-
-        side_bar_w = grid * 3
-        side_bar_h = h
-        side_bar_rect = pygame.Rect(w - side_bar_w, 0, side_bar_w, side_bar_h)
-
-        play_w = w - side_bar_w
-        play_h = h
-
-        x_count = math.ceil(play_w / grid)
-        y_count = math.ceil(play_h / grid)
-        x_offset = (play_w - x_count * grid) // 2
-        y_offset = (play_h - y_count * grid) // 2
-
-        light = (w / 2, h)
-
-        span = math.sqrt(sum([i * i for i in light]))
-
-        bg_ramp_x = (parse_color("#a6a8ad"), parse_color("#b1b3b8"))
-        bg_ramp_y = (parse_color("#b1b3b8"), parse_color("#a3a9bb"))
-
-        random.seed(0)
-
-        def bg_color(tile_x, tile_y, rect):
-            weird = (rect.centery / h)
-            weird = weird / 3 + (1.0 - weird)
-
-            pos = (rect.centerx, rect.centery)
-            rel = [LHS - RHS for LHS, RHS in zip(pos, light)]
-            rel[0] *= weird
-            mag = math.sqrt(sum([i * i for i in rel]))
-
-            alpha = min(max(mag / span, 0), 1)
-            alpha *= alpha
-            inv_a = 1.0 - alpha
-
-            color_x = [int(inv_a * bg_ramp_x[0][i] + alpha * bg_ramp_x[1][i]) for i in range(3)]
-            color_y = [int(inv_a * bg_ramp_y[0][i] + alpha * bg_ramp_y[1][i]) for i in range(3)]
-
-            checker = ((tile_x % 2) + (tile_y % 2)) % 2
-            return (color_x, color_y)[checker]
-
-        # fine grid
-        for tile_y in range(y_count):
-            for tile_x in range(x_count):
-                rect = pygame.Rect(
-                    tile_x * grid + x_offset,
-                    tile_y * grid + y_offset,
-                    grid, grid)
-
-                color = bg_color(tile_x, tile_y, rect)
-                pygame.draw.rect(screen, color, rect)
-
-        # coarse grid
-        for tile_y in range(1, y_count, 3):
-            for tile_x in range(1, x_count, 3):
-                rect = pygame.Rect(
-                    tile_x * grid + x_offset,
-                    tile_y * grid + y_offset,
-                    grid * 2, grid * 2)
-
-                color = bg_color(tile_x, tile_y, rect)
-                pygame.draw.rect(screen, color, rect)
-
-
-        # create some fake buttons
-        tile_count_x = play_w // (grid * 3)
-        tile_count_y = play_h // (grid * 3)
-        tiles = {}
-        for tile_y in range(tile_count_y):
-            for tile_x in range(tile_count_x):
-                if not random.randint(1, 4) < 3:
-                    continue
-                rect = pygame.Rect(
-                    tile_x * grid * 3 + x_offset + grid,
-                    tile_y * grid * 3 + y_offset + grid,
-                    grid * 2, grid * 2)
-                tiles[(tile_x, tile_y)] = rect
-
-        def draw_button(rect):
-            depth = 6
-
-            pygame.draw.rect(screen, parse_color("#dee5e8"), rect)
-            pygame.draw.rect(screen, parse_color("#bec5c8"), rect, depth)
-
-            for i in range(0, depth):
-                a = (rect.topleft[0] + i, rect.topleft[1] + i)
-                b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-                pygame.draw.line(screen, parse_color("#d8dfe2"), a, b, 1)
-
-                a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
-                b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-                pygame.draw.line(screen, parse_color("#83898c"), a, b, 1)
-
-        # draw button tiles
+        # draw play area
+        screen.blit(play_area.surface, play_area.viewport)
         for (tile_x, tile_y), rect in tiles.items():
             rect = pygame.Rect(
-                tile_x * grid * 3 + x_offset + grid,
-                tile_y * grid * 3 + y_offset + grid,
-                grid * 2, grid * 2)
-            draw_button(rect)
+                tile_x * grid_size * 3 + x_offset + grid_size,
+                tile_y * grid_size * 3 + y_offset + grid_size,
+                grid_size * 2, grid_size * 2)
+
+            screen.blit(tile_bg.surface, rect)
 
 
-        ramp_a = (0.4, 0.04, 0)
-        ramp_b = (0.4, 0.04, 360)
-
-        # sidebar color ramp
-        steps = side_bar_w // 8
-        for i in range(steps):
-            alpha = i / (steps - 1)
-            inv_a = 1.0 - alpha
-            params = [LHS * alpha + RHS * inv_a for LHS, RHS in zip(ramp_a, ramp_b)]
-            color = oklch(*params)
-
-            alpha = i / steps
-            inv_a = 1.0 - alpha
-
-            rect = side_bar_rect.copy()
-            rect.w *= inv_a
-
-            pygame.draw.rect(screen, color, rect)
-
-        # sidebar buttons
+        # draw sidebar
+        screen.blit(side_bar.surface, side_bar.viewport)
         for tile_index in range(9):
             tile_y = tile_index * 3
 
             rect = pygame.Rect(
-                side_bar_rect.left + grid,
-                tile_y * grid,
-                grid * 2, grid * 2)
+                side_bar_rect.left + grid_size,
+                tile_y * grid_size,
+                grid_size * 2, grid_size * 2)
 
-            draw_button(rect)
+            screen.blit(tile_bg.surface, rect)
 
 
         pygame.display.flip()
