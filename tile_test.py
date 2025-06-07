@@ -87,35 +87,42 @@ class tile_grid_bg(tile_viewport):
         color_x = [int(inv_a * self.bg_ramp_x[0][i] + alpha * self.bg_ramp_x[1][i]) for i in range(3)]
         color_y = [int(inv_a * self.bg_ramp_y[0][i] + alpha * self.bg_ramp_y[1][i]) for i in range(3)]
 
-        checker = ((tile_x % 2) + (tile_y % 2)) % 2
+        checker = ((int(tile_x) % 2) + (int(tile_y) % 2)) % 2
         return (color_x, color_y)[checker]
 
     def redraw(self):
-        x_count = math.ceil(self.viewport.w / self.grid)
-        y_count = math.ceil(self.viewport.h / self.grid)
+        x_count = math.ceil(self.viewport.w / self.grid) + 1
+        y_count = math.ceil(self.viewport.h / self.grid) + 1
 
-        x_offset = (self.viewport.centerx - self.viewport.centerx // self.grid * self.grid)
-        y_offset = (self.viewport.centery - self.viewport.centery // self.grid * self.grid)
+        half_w = self.viewport.w / 2
+        half_h = self.viewport.h / 2
+        crop_min_x = -half_w + self.focus_x
+        crop_min_y = -half_h + self.focus_y
+
+        x_offset = math.floor(crop_min_x / self.grid) * self.grid - crop_min_x
+        y_offset = math.floor(crop_min_y / self.grid) * self.grid - crop_min_y
 
         # fine grid
-        for tile_y in range(y_count):
-            for tile_x in range(x_count):
-                rect = pygame.Rect(
-                    tile_x * self.grid + x_offset,
-                    tile_y * self.grid + y_offset,
-                    self.grid, self.grid)
-
+        for view_tile_y in range(y_count):
+            for view_tile_x in range(x_count):
+                tile_x = crop_min_x // self.grid + view_tile_x
+                tile_y = crop_min_y // self.grid + view_tile_y
+                view_x = view_tile_x * self.grid + x_offset
+                view_y = view_tile_y * self.grid + y_offset
+                rect = pygame.Rect(view_x, view_y, self.grid, self.grid)
                 color = self.bg_color(tile_x, tile_y, rect)
                 pygame.draw.rect(self.surface, color, rect)
 
         # coarse grid
-        for tile_y in range(2, y_count, 3):
-            for tile_x in range(0, x_count, 3):
-                rect = pygame.Rect(
-                    tile_x * self.grid + x_offset,
-                    tile_y * self.grid + y_offset,
-                    self.grid * 2, self.grid * 2)
-
+        for view_tile_y in range(y_count):
+            for view_tile_x in range(x_count):
+                tile_x = crop_min_x // self.grid + view_tile_x
+                tile_y = crop_min_y // self.grid + view_tile_y
+                if (tile_x % 3) != 2 or (tile_y % 3) != 2:
+                    continue
+                view_x = view_tile_x * self.grid + x_offset
+                view_y = view_tile_y * self.grid + y_offset
+                rect = pygame.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
                 color = self.bg_color(tile_x, tile_y, rect)
                 pygame.draw.rect(self.surface, color, rect)
 
@@ -213,6 +220,8 @@ def loop(screen, clock):
     focus_x = 0
     focus_y = 0
 
+    i = 0
+
     while live:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -237,6 +246,14 @@ def loop(screen, clock):
             #
             # elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
             #     touch['mouse'].release()
+
+        i += 1/(60 * 10)
+        focus_x = math.sin(i * math.pi * 2) * 500
+        focus_y = math.cos(i * math.pi * 2) * 500
+
+        play_area.focus_x = focus_x
+        play_area.focus_y = focus_y
+        play_area.redraw()
 
 
         # draw play area
