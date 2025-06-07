@@ -4,6 +4,7 @@ import math
 import os
 import ctypes
 import random
+import enum
 
 import pygame_setup
 import pygame
@@ -14,11 +15,23 @@ COLORS_BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("colors/colors.so"))
 c_vec3 = ctypes.c_float * 3
 
 
+class ColorSpace(enum.IntEnum):
+	sRGB = 0
+	LinearRGB = enum.auto()
+	OkLAB = enum.auto()
+	OkLCH = enum.auto()
+	HSL = enum.auto()
+
+
 def convert_color(color, incoding, excoding):
     in_color = c_vec3(*color)
     out_color = c_vec3(0, 0, 0)
     COLORS_BACKEND.convert_color(in_color, ctypes.c_uint8(incoding), out_color, ctypes.c_uint8(excoding))
-    return [int(min(max(c, 0), 1) * 255) for c in out_color]
+    return [c for c in out_color]
+
+
+def float_color(r, g, b):
+    return [int(min(max(c, 0), 1) * 255) for c in (r, g, b)]
 
 
 def parse_color(color_str):
@@ -27,15 +40,15 @@ def parse_color(color_str):
     if error:
         raise ValueError(f"Invalid color string: {color_str}")
     else:
-        return [int(min(max(c, 0), 1) * 255) for c in out_color]
+        return float_color(*out_color)
 
 
 def oklab(l, A, B):
-    return convert_color((l, A, B), 2, 0)
+    return float_color(*convert_color((l, A, B), ColorSpace.OkLAB, ColorSpace.sRGB))
 
 
 def oklch(l, c, h):
-    return convert_color((l, c, h), 3, 0)
+    return float_color(*convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB))
 
 
 class tile_viewport:
@@ -151,7 +164,13 @@ class side_bar_bg(tile_viewport):
 
 
 class plate_bg:
-    def __init__(self, grid):
+    def __init__(self, grid, color):
+        L, C, H = convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
+        self.color_base = color
+        self.color_top    = oklch(L - 0.0183, C, H)
+        self.color_sides  = oklch(L - 0.0986, C, H)
+        self.color_bottom = oklch(L - 0.2914, C, H + 3.8415)
+
         self.grid = -1
         self.resize(grid)
 
@@ -167,17 +186,17 @@ class plate_bg:
         rect = pygame.Rect(0, 0, self.size, self.size)
         depth = 6
 
-        pygame.draw.rect(self.surface, parse_color("#dee5e8"), rect)
-        pygame.draw.rect(self.surface, parse_color("#bec5c8"), rect, depth)
+        pygame.draw.rect(self.surface, self.color_base, rect)
+        pygame.draw.rect(self.surface, self.color_sides, rect, depth)
 
         for i in range(0, depth):
             a = (rect.topleft[0] + i, rect.topleft[1] + i)
             b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-            pygame.draw.line(self.surface, parse_color("#d8dfe2"), a, b, 1)
+            pygame.draw.line(self.surface, self.color_top, a, b, 1)
 
             a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
             b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-            pygame.draw.line(self.surface, parse_color("#83898c"), a, b, 1)
+            pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
 
 
 def loop(screen, clock):
@@ -198,7 +217,10 @@ def loop(screen, clock):
     side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
     side_bar = side_bar_bg(side_bar_rect, grid_size)
 
-    tile_bg = plate_bg(grid_size)
+    tile_bg = plate_bg(grid_size, parse_color("#dee5e8"))
+
+
+    tool_tiles = [plate_bg(grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
 
 
     # # create some fake buttons
@@ -222,9 +244,13 @@ def loop(screen, clock):
 
     i = 0
 
+    update_play_area = True
+    update_sidebar = True
+
     start_time = time.time()
     while live:
         seconds = time.time() - start_time
+        update_anything = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -254,38 +280,49 @@ def loop(screen, clock):
         phase = seconds * hz * math.pi * 2
         focus_x = math.sin(phase) * 500
         focus_y = math.cos(phase) * 500
+        update_play_area = True
 
-        play_area.focus_x = focus_x
-        play_area.focus_y = focus_y
-        play_area.redraw()
+        if update_play_area:
+            update_play_area = False
+            update_anything = True
+            play_area.focus_x = focus_x
+            play_area.focus_y = focus_y
+            play_area.redraw()
 
+            frame = play_area.surface.copy()
+            for (tile_x, tile_y) in tiles:
+                rect = pygame.Rect(
+                    play_rect.centerx - focus_x - grid_size + tile_x * grid_size * 3,
+                    play_rect.centery - focus_y - grid_size + tile_y * grid_size * 3,
+                    grid_size * 2, grid_size * 2)
 
-        # draw play area
-        screen.blit(play_area.surface, play_area.viewport)
-        for (tile_x, tile_y) in tiles:
-            rect = pygame.Rect(
-                play_rect.centerx - focus_x - grid_size + tile_x * grid_size * 3,
-                play_rect.centery - focus_y - grid_size + tile_y * grid_size * 3,
-                grid_size * 2, grid_size * 2)
+                frame.blit(tile_bg.surface, rect)
 
-            screen.blit(tile_bg.surface, rect)
-
+            screen.blit(frame, play_area.viewport)
 
         # draw sidebar
-        screen.blit(side_bar.surface, side_bar.viewport)
-        for tile_index in range(9):
-            tile_y = tile_index * 3
+        if update_sidebar:
+            update_sidebar = False
+            update_anything = True
 
-            rect = pygame.Rect(
-                side_bar_rect.left + grid_size,
-                tile_y * grid_size,
-                grid_size * 2, grid_size * 2)
+            frame = side_bar.surface.copy()
+            for tile_index in range(9):
+                tile_y = tile_index * 3
 
-            screen.blit(tile_bg.surface, rect)
+                rect = pygame.Rect(
+                    grid_size,
+                    tile_y * grid_size,
+                    grid_size * 2, grid_size * 2)
 
+                tool = tool_tiles[tile_index % len(tool_tiles)]
+                frame.blit(tool.surface, rect)
 
-        pygame.display.flip()
-        #clock.tick(60)
+            screen.blit(frame, side_bar.viewport)
+
+        if update_anything:
+            pygame.display.flip()
+        else:
+            clock.tick(60)
 
 
 def init():
