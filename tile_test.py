@@ -222,7 +222,10 @@ def loop(screen, clock):
 
     i = 0
 
+    start_time = time.time()
     while live:
+        seconds = time.time() - start_time
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 live = False
@@ -247,9 +250,10 @@ def loop(screen, clock):
             # elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
             #     touch['mouse'].release()
 
-        i += 1/(60 * 10)
-        focus_x = math.sin(i * math.pi * 2) * 500
-        focus_y = math.cos(i * math.pi * 2) * 500
+        hz = 1 / 10
+        phase = seconds * hz * math.pi * 2
+        focus_x = math.sin(phase) * 500
+        focus_y = math.cos(phase) * 500
 
         play_area.focus_x = focus_x
         play_area.focus_y = focus_y
@@ -281,7 +285,7 @@ def loop(screen, clock):
 
 
         pygame.display.flip()
-        clock.tick(60)
+        #clock.tick(60)
 
 
 def init():
