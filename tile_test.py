@@ -214,9 +214,6 @@ class main_view:
         self.touch = {}
         self.touch['mouse'] = {}
 
-
-        self.live = True
-
         screen_w = self.screen.get_rect().width
         screen_h = self.screen.get_rect().height
 
@@ -232,27 +229,11 @@ class main_view:
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
 
         self.tile_bg = plate_bg(self.grid_size, parse_color("#dee5e8"))
-
-
         self.tool_tiles = [plate_bg(self.grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
 
-
-        # # create some fake buttons
-        # x_count = math.ceil(play_rect.w / grid_size)
-        # y_count = math.ceil(play_rect.h / grid_size)
-        # x_offset = (play_rect.w - x_count * grid_size) // 2
-        # y_offset = (play_rect.h - y_count * grid_size) // 2
-        #
-        # tile_count_x = play_rect.w // (grid_size * 3)
-        # tile_count_y = play_rect.h // (grid_size * 3)
-        # tiles = {}
-        # for tile_y in range(tile_count_y):
-        #     for tile_x in range(tile_count_x):
-        #         if not random.randint(1, 4) < 3:
-        #             continue
-        #         tiles[(tile_x, tile_y)] = {}
         self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
+        self.live = True
         self.start_time = time.time()
         while self.live:
             self.loop()
