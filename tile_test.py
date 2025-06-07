@@ -58,6 +58,11 @@ class tile_viewport:
 
 class tile_grid_bg(tile_viewport):
 
+    def __init__(self, *args, **kargs):
+        self.focus_x = 0
+        self.focus_y = 0
+        super().__init__(*args, **kargs)
+
     def resize(self, viewport, grid):
         # gradient stuff
         self.light = (viewport.width / 2, viewport.height)
@@ -88,8 +93,9 @@ class tile_grid_bg(tile_viewport):
     def redraw(self):
         x_count = math.ceil(self.viewport.w / self.grid)
         y_count = math.ceil(self.viewport.h / self.grid)
-        x_offset = (self.viewport.w - x_count * self.grid) // 2
-        y_offset = (self.viewport.h - y_count * self.grid) // 2
+
+        x_offset = (self.viewport.centerx - self.viewport.centerx // self.grid * self.grid)
+        y_offset = (self.viewport.centery - self.viewport.centery // self.grid * self.grid)
 
         # fine grid
         for tile_y in range(y_count):
@@ -103,8 +109,8 @@ class tile_grid_bg(tile_viewport):
                 pygame.draw.rect(self.surface, color, rect)
 
         # coarse grid
-        for tile_y in range(1, y_count, 3):
-            for tile_x in range(1, x_count, 3):
+        for tile_y in range(2, y_count, 3):
+            for tile_x in range(0, x_count, 3):
                 rect = pygame.Rect(
                     tile_x * self.grid + x_offset,
                     tile_y * self.grid + y_offset,
@@ -188,25 +194,24 @@ def loop(screen, clock):
     tile_bg = plate_bg(grid_size)
 
 
-    # create some fake buttons
-    x_count = math.ceil(play_rect.w / grid_size)
-    y_count = math.ceil(play_rect.h / grid_size)
-    x_offset = (play_rect.w - x_count * grid_size) // 2
-    y_offset = (play_rect.h - y_count * grid_size) // 2
+    # # create some fake buttons
+    # x_count = math.ceil(play_rect.w / grid_size)
+    # y_count = math.ceil(play_rect.h / grid_size)
+    # x_offset = (play_rect.w - x_count * grid_size) // 2
+    # y_offset = (play_rect.h - y_count * grid_size) // 2
+    #
+    # tile_count_x = play_rect.w // (grid_size * 3)
+    # tile_count_y = play_rect.h // (grid_size * 3)
+    # tiles = {}
+    # for tile_y in range(tile_count_y):
+    #     for tile_x in range(tile_count_x):
+    #         if not random.randint(1, 4) < 3:
+    #             continue
+    #         tiles[(tile_x, tile_y)] = {}
+    tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-    tile_count_x = play_rect.w // (grid_size * 3)
-    tile_count_y = play_rect.h // (grid_size * 3)
-    tiles = {}
-    for tile_y in range(tile_count_y):
-        for tile_x in range(tile_count_x):
-            if not random.randint(1, 4) < 3:
-                continue
-            rect = pygame.Rect(
-                tile_x * grid_size * 3 + x_offset + grid_size,
-                tile_y * grid_size * 3 + y_offset + grid_size,
-                grid_size * 2, grid_size * 2)
-            tiles[(tile_x, tile_y)] = rect
-
+    focus_x = 0
+    focus_y = 0
 
     while live:
         for event in pygame.event.get():
@@ -236,10 +241,10 @@ def loop(screen, clock):
 
         # draw play area
         screen.blit(play_area.surface, play_area.viewport)
-        for (tile_x, tile_y), rect in tiles.items():
+        for (tile_x, tile_y) in tiles:
             rect = pygame.Rect(
-                tile_x * grid_size * 3 + x_offset + grid_size,
-                tile_y * grid_size * 3 + y_offset + grid_size,
+                play_rect.centerx - focus_x - grid_size + tile_x * grid_size * 3,
+                play_rect.centery - focus_y - grid_size + tile_y * grid_size * 3,
                 grid_size * 2, grid_size * 2)
 
             screen.blit(tile_bg.surface, rect)
