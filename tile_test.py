@@ -198,173 +198,163 @@ class plate_bg:
             b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
             pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
 
-press_start = None
-update_play_area = True
-update_sidebar = True
-focus_x = 0
-focus_y = 0
 
-def loop(screen, clock):
-    global press_start
-    global update_play_area
-    global update_sidebar
-    global focus_x
-    global focus_y
+class main_view:
 
-    live = True
+    def __init__(self, screen):
+        self.screen = screen
+        self.clock = pygame.time.Clock()
 
-    screen_w = screen.get_rect().width
-    screen_h = screen.get_rect().height
+        self.press_start = None
+        self.update_play_area = True
+        self.update_sidebar = True
+        self.focus_x = 0
+        self.focus_y = 0
 
-    grid_size = int(screen_h / 8 / 3)
-
-    side_bar_w = grid_size * 3
-    side_bar_h = screen_h
-    side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
-
-    play_rect = pygame.Rect(0, 0, screen_w - side_bar_w, screen_h)
-    play_area = tile_grid_bg(play_rect, grid_size)
-
-    side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
-    side_bar = side_bar_bg(side_bar_rect, grid_size)
-
-    tile_bg = plate_bg(grid_size, parse_color("#dee5e8"))
+        self.touch = {}
+        self.touch['mouse'] = {}
 
 
-    tool_tiles = [plate_bg(grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
+        self.live = True
+
+        screen_w = self.screen.get_rect().width
+        screen_h = self.screen.get_rect().height
+
+        self.grid_size = int(screen_h / 8 / 3)
+
+        side_bar_w = self.grid_size * 3
+        side_bar_h = screen_h
+
+        self.play_rect = pygame.Rect(0, 0, screen_w - side_bar_w, screen_h)
+        self.play_area = tile_grid_bg(self.play_rect, self.grid_size)
+
+        self.side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
+        self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
+
+        self.tile_bg = plate_bg(self.grid_size, parse_color("#dee5e8"))
 
 
-    # # create some fake buttons
-    # x_count = math.ceil(play_rect.w / grid_size)
-    # y_count = math.ceil(play_rect.h / grid_size)
-    # x_offset = (play_rect.w - x_count * grid_size) // 2
-    # y_offset = (play_rect.h - y_count * grid_size) // 2
-    #
-    # tile_count_x = play_rect.w // (grid_size * 3)
-    # tile_count_y = play_rect.h // (grid_size * 3)
-    # tiles = {}
-    # for tile_y in range(tile_count_y):
-    #     for tile_x in range(tile_count_x):
-    #         if not random.randint(1, 4) < 3:
-    #             continue
-    #         tiles[(tile_x, tile_y)] = {}
-    tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        self.tool_tiles = [plate_bg(self.grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
 
 
-    touch = {}
-    touch['mouse'] = {}
+        # # create some fake buttons
+        # x_count = math.ceil(play_rect.w / grid_size)
+        # y_count = math.ceil(play_rect.h / grid_size)
+        # x_offset = (play_rect.w - x_count * grid_size) // 2
+        # y_offset = (play_rect.h - y_count * grid_size) // 2
+        #
+        # tile_count_x = play_rect.w // (grid_size * 3)
+        # tile_count_y = play_rect.h // (grid_size * 3)
+        # tiles = {}
+        # for tile_y in range(tile_count_y):
+        #     for tile_x in range(tile_count_x):
+        #         if not random.randint(1, 4) < 3:
+        #             continue
+        #         tiles[(tile_x, tile_y)] = {}
+        self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        self.start_time = time.time()
+        while self.live:
+            self.loop()
 
     def get_tracker(event):
         key = (event.touch_id, event.finger_id)
-        if key not in touch:
-            touch[key] = {}
+        if key not in self.touch:
+            self.touch[key] = {}
         return key
 
-    def on_move(touch_id, pos):
-        global press_start
-        global update_play_area
-        global focus_x
-        global focus_y
-        if not press_start:
+    def on_move(self, touch_id, pos):
+        if not self.press_start:
             return
 
-        move_x = pos[0] - press_start[0]
-        move_y = pos[1] - press_start[1]
+        move_x = pos[0] - self.press_start[0]
+        move_y = pos[1] - self.press_start[1]
 
         if move_x != 0 or move_y != 0:
-            focus_x -= move_x
-            focus_y -= move_y
-            update_play_area = True
+            self.focus_x -= move_x
+            self.focus_y -= move_y
+            self.update_play_area = True
 
-        press_start = pos
+        self.press_start = pos
 
-    def on_press(touch_id, pos):
-        global press_start
-        press_start = pos
+    def on_press(self, touch_id, pos):
+        self.press_start = pos
 
-    def on_release(touch_id):
-        global press_start
-        press_start = None
-        touch[touch_id] = {}
+    def on_release(self, touch_id):
+        self.press_start = None
+        self.touch[touch_id] = {}
 
-    start_time = time.time()
-    while live:
-        seconds = time.time() - start_time
+    def loop(self):
+        seconds = time.time() - self.start_time
         update_anything = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                live = False
+                self.live = False
 
             elif event.type == pygame.FINGERMOTION:
                 pos = (int(event.x * w), int(event.y * h))
-                on_move(get_tracker(event), pos)
+                self.on_move(get_tracker(event), pos)
 
             elif event.type == pygame.FINGERDOWN:
                 pos = (int(event.x * w), int(event.y * h))
-                on_press(get_tracker(event), pos)
+                self.on_press(get_tracker(event), pos)
 
             elif event.type == pygame.FINGERUP:
-                on_release(get_tracker(event))
+                self.on_release(get_tracker(event))
 
             elif event.type == pygame.MOUSEMOTION and not event.touch and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-                on_move('mouse', event.pos)
+                self.on_move('mouse', event.pos)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and not event.touch and event.button == pygame.BUTTON_LEFT:
-                on_press('mouse', event.pos)
+                self.on_press('mouse', event.pos)
 
             elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
-                on_release('mouse')
+                self.on_release('mouse')
 
-        # hz = 1 / 10
-        # phase = seconds * hz * math.pi * 2
-        # focus_x = math.sin(phase) * 500
-        # focus_y = math.cos(phase) * 500
-        # update_play_area = True
-
-        if update_play_area:
-            #update_play_area = False
+        # draw the play area
+        if self.update_play_area:
+            self.update_play_area = False
             update_anything = True
-            #print(f"got: {focus_x}, {focus_y}")
 
-            play_area.focus_x = focus_x
-            play_area.focus_y = focus_y
-            play_area.redraw()
+            self.play_area.focus_x = self.focus_x
+            self.play_area.focus_y = self.focus_y
+            self.play_area.redraw()
 
-            frame = play_area.surface.copy()
-            for (tile_x, tile_y) in tiles:
+            frame = self.play_area.surface.copy()
+            for (tile_x, tile_y) in self.tiles:
                 rect = pygame.Rect(
-                    play_rect.centerx - focus_x - grid_size + tile_x * grid_size * 3,
-                    play_rect.centery - focus_y - grid_size + tile_y * grid_size * 3,
-                    grid_size * 2, grid_size * 2)
+                    self.play_rect.centerx - self.focus_x - self.grid_size + tile_x * self.grid_size * 3,
+                    self.play_rect.centery - self.focus_y - self.grid_size + tile_y * self.grid_size * 3,
+                    self.grid_size * 2, self.grid_size * 2)
 
-                frame.blit(tile_bg.surface, rect)
+                frame.blit(self.tile_bg.surface, rect)
 
-            screen.blit(frame, play_area.viewport)
+            self.screen.blit(frame, self.play_area.viewport)
 
         # draw sidebar
-        if update_sidebar:
-            update_sidebar = False
+        if self.update_sidebar:
+            self.update_sidebar = False
             update_anything = True
 
-            frame = side_bar.surface.copy()
+            frame = self.side_bar.surface.copy()
             for tile_index in range(9):
                 tile_y = tile_index * 3
 
                 rect = pygame.Rect(
-                    grid_size,
-                    tile_y * grid_size,
-                    grid_size * 2, grid_size * 2)
+                    self.grid_size,
+                    tile_y * self.grid_size,
+                    self.grid_size * 2, self.grid_size * 2)
 
-                tool = tool_tiles[tile_index % len(tool_tiles)]
+                tool = self.tool_tiles[tile_index % len(self.tool_tiles)]
                 frame.blit(tool.surface, rect)
 
-            screen.blit(frame, side_bar.viewport)
+            self.screen.blit(frame, self.side_bar.viewport)
 
         if update_anything:
             pygame.display.flip()
         else:
-            clock.tick(60)
+            self.clock.tick(60)
 
 
 def init():
@@ -374,9 +364,7 @@ def init():
     display_index = len(sizes) - 1
     display_size = sizes[display_index]
     screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
-    clock = pygame.time.Clock()
-
-    loop(screen, clock)
+    ui = main_view(screen)
 
 
 if __name__ == "__main__":
