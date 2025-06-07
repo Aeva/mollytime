@@ -198,8 +198,19 @@ class plate_bg:
             b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
             pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
 
+press_start = None
+update_play_area = True
+update_sidebar = True
+focus_x = 0
+focus_y = 0
 
 def loop(screen, clock):
+    global press_start
+    global update_play_area
+    global update_sidebar
+    global focus_x
+    global focus_y
+
     live = True
 
     screen_w = screen.get_rect().width
@@ -239,13 +250,42 @@ def loop(screen, clock):
     #         tiles[(tile_x, tile_y)] = {}
     tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-    focus_x = 0
-    focus_y = 0
 
-    i = 0
+    touch = {}
+    touch['mouse'] = {}
 
-    update_play_area = True
-    update_sidebar = True
+    def get_tracker(event):
+        key = (event.touch_id, event.finger_id)
+        if key not in touch:
+            touch[key] = {}
+        return key
+
+    def on_move(touch_id, pos):
+        global press_start
+        global update_play_area
+        global focus_x
+        global focus_y
+        if not press_start:
+            return
+
+        move_x = pos[0] - press_start[0]
+        move_y = pos[1] - press_start[1]
+
+        if move_x != 0 or move_y != 0:
+            focus_x -= move_x
+            focus_y -= move_y
+            update_play_area = True
+
+        press_start = pos
+
+    def on_press(touch_id, pos):
+        global press_start
+        press_start = pos
+
+    def on_release(touch_id):
+        global press_start
+        press_start = None
+        touch[touch_id] = {}
 
     start_time = time.time()
     while live:
@@ -256,35 +296,37 @@ def loop(screen, clock):
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 live = False
 
-            # elif event.type == pygame.FINGERMOTION:
-            #     pos = (int(event.x * w), int(event.y * h))
-            #     get_tracker(event).move(pos)
-            #
-            # elif event.type == pygame.FINGERDOWN:
-            #     pos = (int(event.x * w), int(event.y * h))
-            #     get_tracker(event).press(pos, widgets)
-            #
-            # elif event.type == pygame.FINGERUP:
-            #     get_tracker(event).release()
-            #
-            # elif event.type == pygame.MOUSEMOTION and not event.touch and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-            #     touch['mouse'].move(event.pos)
-            #
-            # elif event.type == pygame.MOUSEBUTTONDOWN and not event.touch and event.button == pygame.BUTTON_LEFT:
-            #     touch['mouse'].press(event.pos, widgets)
-            #
-            # elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
-            #     touch['mouse'].release()
+            elif event.type == pygame.FINGERMOTION:
+                pos = (int(event.x * w), int(event.y * h))
+                on_move(get_tracker(event), pos)
 
-        hz = 1 / 10
-        phase = seconds * hz * math.pi * 2
-        focus_x = math.sin(phase) * 500
-        focus_y = math.cos(phase) * 500
-        update_play_area = True
+            elif event.type == pygame.FINGERDOWN:
+                pos = (int(event.x * w), int(event.y * h))
+                on_press(get_tracker(event), pos)
+
+            elif event.type == pygame.FINGERUP:
+                on_release(get_tracker(event))
+
+            elif event.type == pygame.MOUSEMOTION and not event.touch and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
+                on_move('mouse', event.pos)
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and not event.touch and event.button == pygame.BUTTON_LEFT:
+                on_press('mouse', event.pos)
+
+            elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
+                on_release('mouse')
+
+        # hz = 1 / 10
+        # phase = seconds * hz * math.pi * 2
+        # focus_x = math.sin(phase) * 500
+        # focus_y = math.cos(phase) * 500
+        # update_play_area = True
 
         if update_play_area:
-            update_play_area = False
+            #update_play_area = False
             update_anything = True
+            #print(f"got: {focus_x}, {focus_y}")
+
             play_area.focus_x = focus_x
             play_area.focus_y = focus_y
             play_area.redraw()
