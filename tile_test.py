@@ -127,8 +127,8 @@ class tile_grid_bg(tile_viewport):
                 pygame.draw.rect(self.surface, color, rect)
 
         # coarse grid
-        for view_tile_y in range(y_count):
-            for view_tile_x in range(x_count):
+        for view_tile_y in range(-1, y_count):
+            for view_tile_x in range(-1, x_count):
                 tile_x = crop_min_x // self.grid + view_tile_x
                 tile_y = crop_min_y // self.grid + view_tile_y
                 if (tile_x % 3) != 2 or (tile_y % 3) != 2:
