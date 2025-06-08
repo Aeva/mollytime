@@ -199,20 +199,39 @@ class plate_bg:
             pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
 
 
+class StateMachine(enum.Enum):
+    IDLE = enum.auto()
+    PAN_FOCUS = enum.auto()
+
+
+class ActiveTool(enum.Enum):
+    PAN = enum.auto()
+    SELECT = enum.auto()
+
+
+class button_widget:
+    def __init__(self, grid, color):
+        L, C, H = convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
+        self.hover = plate_bg(grid, oklch(L + .3, C / 2, H))
+        self.active = plate_bg(grid, oklch(L + .2, C / 2, H))
+        self.inactive = plate_bg(grid, color)
+        self.is_active = False
+
+    def draw_hover(self, frame, rect):
+        frame.blit(self.hover.surface, rect)
+
+    def draw(self, frame, rect):
+        if self.is_active:
+            frame.blit(self.active.surface, rect)
+        else:
+            frame.blit(self.inactive.surface, rect)
+
+
 class main_view:
 
     def __init__(self, screen):
         self.screen = screen
         self.clock = pygame.time.Clock()
-
-        self.press_start = None
-        self.update_play_area = True
-        self.update_sidebar = True
-        self.focus_x = 0
-        self.focus_y = 0
-
-        self.touch = {}
-        self.touch['mouse'] = {}
 
         screen_w = self.screen.get_rect().width
         screen_h = self.screen.get_rect().height
@@ -229,9 +248,21 @@ class main_view:
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
 
         self.tile_bg = plate_bg(self.grid_size, parse_color("#dee5e8"))
-        self.tool_tiles = [plate_bg(self.grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
+        self.tool_tiles = [button_widget(self.grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
 
         self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        self.cursor_pos = None
+
+        self.active_event = StateMachine.IDLE
+        self.press_start = None
+        self.update_play_area = True
+        self.update_sidebar = True
+        self.focus_x = 0
+        self.focus_y = 0
+
+        self.touch = {}
+        self.touch['mouse'] = {}
 
         self.live = True
         self.start_time = time.time()
@@ -245,6 +276,8 @@ class main_view:
         return key
 
     def on_move(self, touch_id, pos):
+        self.cursor_pos = pos
+
         if not self.press_start:
             return
 
@@ -259,11 +292,21 @@ class main_view:
         self.press_start = pos
 
     def on_press(self, touch_id, pos):
-        self.press_start = pos
+        if self.active_event == StateMachine.IDLE:
+            if self.play_rect.collidepoint(pos):
+                # begin play are view panning
+                self.active_event = StateMachine.PAN_FOCUS
+                self.press_start = pos
+
+            elif self.side_bar_rect.collidepoint(pos):
+                # begin
+                pass
 
     def on_release(self, touch_id):
-        self.press_start = None
-        self.touch[touch_id] = {}
+        if self.active_event == StateMachine.PAN_FOCUS:
+            self.active_event = StateMachine.IDLE
+            self.press_start = None
+            self.touch[touch_id] = {}
 
     def loop(self):
         seconds = time.time() - self.start_time
@@ -314,21 +357,28 @@ class main_view:
             self.screen.blit(frame, self.play_area.viewport)
 
         # draw sidebar
-        if self.update_sidebar:
+        rel_cursor = None
+        if self.cursor_pos and self.side_bar.viewport.collidepoint(self.cursor_pos):
+            rel_cursor = (self.cursor_pos[0] - self.side_bar.viewport.x, self.cursor_pos[1] - self.side_bar.viewport.y)
+            print(rel_cursor)
+
+        if self.update_sidebar or rel_cursor:
             self.update_sidebar = False
             update_anything = True
 
             frame = self.side_bar.surface.copy()
-            for tile_index in range(9):
-                tile_y = tile_index * 3
+            for index, widget in enumerate(self.tool_tiles):
+                tile_y = index * 3
 
                 rect = pygame.Rect(
                     self.grid_size,
                     tile_y * self.grid_size,
                     self.grid_size * 2, self.grid_size * 2)
 
-                tool = self.tool_tiles[tile_index % len(self.tool_tiles)]
-                frame.blit(tool.surface, rect)
+                if rel_cursor and rect.collidepoint(rel_cursor):
+                    widget.draw_hover(frame, rect)
+                else:
+                    widget.draw(frame, rect)
 
             self.screen.blit(frame, self.side_bar.viewport)
 
