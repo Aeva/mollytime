@@ -5,6 +5,8 @@ import os
 import ctypes
 import random
 import enum
+import re
+import subprocess
 
 import pygame_setup
 import pygame
@@ -229,14 +231,14 @@ class button_widget:
 
 class main_view:
 
-    def __init__(self, screen):
+    def __init__(self, screen, dpi):
         self.screen = screen
         self.clock = pygame.time.Clock()
 
         screen_w = self.screen.get_rect().width
         screen_h = self.screen.get_rect().height
 
-        self.grid_size = int(screen_h / 8 / 3)
+        self.grid_size = dpi // 3
 
         side_bar_w = self.grid_size * 3
         side_bar_h = screen_h
@@ -360,7 +362,6 @@ class main_view:
         rel_cursor = None
         if self.cursor_pos and self.side_bar.viewport.collidepoint(self.cursor_pos):
             rel_cursor = (self.cursor_pos[0] - self.side_bar.viewport.x, self.cursor_pos[1] - self.side_bar.viewport.y)
-            print(rel_cursor)
 
         if self.update_sidebar or rel_cursor:
             self.update_sidebar = False
@@ -395,7 +396,37 @@ def init():
     display_index = len(sizes) - 1
     display_size = sizes[display_index]
     screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
-    ui = main_view(screen)
+
+    dpi = None
+
+    xrandr = subprocess.run("xrandr", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if xrandr.returncode == 0:
+        try:
+            report = xrandr.stdout.decode()
+            regex = r"Screen (\d+):.+current (\d+) x (\d+).+\n.+ (\d+)mm x (\d+)mm"
+            found = [list(map(int, r)) for r in re.findall(regex, report)]
+            assert(len(found) == len(sizes))
+            for index, (reported_index, res_x, res_y, mm_x, mm_y) in enumerate(found):
+                index = reported_index
+                assert(sizes[index][0] == res_x)
+                assert(sizes[index][1] == res_y)
+            reported_index, res_x, res_y, mm_x, mm_y = list(map(int, found[display_index]))
+            in_x = mm_x / 25.4
+            in_y = mm_y / 25.4
+            dpi_x = res_x / in_x
+            dpi_y = res_y / in_y
+            dpi = round((dpi_x + dpi_y) / 2)
+        except AssertionError:
+            print("Cannot determine DPI: information reported by xrandr contradicts pygame.")
+            dpi = None
+
+    if dpi is None:
+        in_y = 7.5
+        res_y = min(display_size)
+        dpi = round(res_y / in_y)
+        print(f"DPI assuming smallest physical screen dimension is 7.5 inches: {dpi} dpi")
+
+    ui = main_view(screen, dpi)
 
 
 if __name__ == "__main__":
