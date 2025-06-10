@@ -201,16 +201,6 @@ class plate_bg:
             pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
 
 
-class StateMachine(enum.Enum):
-    IDLE = enum.auto()
-    PAN_FOCUS = enum.auto()
-
-
-class ActiveTool(enum.Enum):
-    PAN = enum.auto()
-    SELECT = enum.auto()
-
-
 class button_widget:
     def __init__(self, grid, color):
         L, C, H = convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
@@ -256,7 +246,6 @@ class main_view:
 
         self.cursor_pos = None
 
-        self.active_event = StateMachine.IDLE
         self.press_start = None
         self.update_play_area = True
         self.update_sidebar = True
@@ -294,21 +283,17 @@ class main_view:
         self.press_start = pos
 
     def on_press(self, touch_id, pos):
-        if self.active_event == StateMachine.IDLE:
-            if self.play_rect.collidepoint(pos):
-                # begin play are view panning
-                self.active_event = StateMachine.PAN_FOCUS
-                self.press_start = pos
+        if self.play_rect.collidepoint(pos):
+            # begin play are view panning
+            self.press_start = pos
 
-            elif self.side_bar_rect.collidepoint(pos):
-                # begin
-                pass
+        elif self.side_bar_rect.collidepoint(pos):
+            # begin
+            pass
 
     def on_release(self, touch_id):
-        if self.active_event == StateMachine.PAN_FOCUS:
-            self.active_event = StateMachine.IDLE
-            self.press_start = None
-            self.touch[touch_id] = {}
+        self.press_start = None
+        self.touch[touch_id] = {}
 
     def loop(self):
         seconds = time.time() - self.start_time
