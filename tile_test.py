@@ -219,14 +219,20 @@ class button_widget:
             frame.blit(self.inactive.surface, rect)
 
 
-class main_view:
-
+class node_graph_card:
     def __init__(self, screen, dpi):
-        self.screen = screen
+        self.focus_x = 0
+        self.focus_y = 0
+        self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         self.clock = pygame.time.Clock()
+        self.resize(screen, dpi)
 
-        screen_w = self.screen.get_rect().width
-        screen_h = self.screen.get_rect().height
+    def resize(self, screen, dpi):
+        self.screen = screen
+        self.dpi = dpi
+
+        screen_w = screen.get_rect().width
+        screen_h = screen.get_rect().height
 
         self.grid_size = dpi // 3
 
@@ -242,31 +248,42 @@ class main_view:
         self.tile_bg = plate_bg(self.grid_size, parse_color("#dee5e8"))
         self.tool_tiles = [button_widget(self.grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
 
-        self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-        self.cursor_pos = None
-
-        self.press_start = None
+class editor_screen:
+    def __init__(self, editor):
         self.update_play_area = True
         self.update_sidebar = True
-        self.focus_x = 0
-        self.focus_y = 0
-
-        self.touch = {}
-        self.touch['mouse'] = {}
+        self.reset_tracker()
 
         self.live = True
         self.start_time = time.time()
-        while self.live:
-            self.loop()
 
-    def get_tracker(event):
+    def reset_tracker(self):
+        self.touch = {}
+        self.touch['mouse'] = {}
+
+    def get_tracker(self, event):
         key = (event.touch_id, event.finger_id)
         if key not in self.touch:
             self.touch[key] = {}
         return key
 
-    def on_move(self, touch_id, pos):
+    def process_common_events(self, event):
+        if event.type == pygame.QUIT:
+            exit(0)
+
+
+class inspect_screen(editor_screen):
+    def __init__(self, editor):
+        super().__init__(editor)
+
+        self.cursor_pos = None
+        self.press_start = None
+
+        while self.live:
+            self.loop(editor)
+
+    def on_move(self, editor, touch_id, pos):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -276,102 +293,105 @@ class main_view:
         move_y = pos[1] - self.press_start[1]
 
         if move_x != 0 or move_y != 0:
-            self.focus_x -= move_x
-            self.focus_y -= move_y
+            editor.focus_x -= move_x
+            editor.focus_y -= move_y
             self.update_play_area = True
 
         self.press_start = pos
 
-    def on_press(self, touch_id, pos):
-        if self.play_rect.collidepoint(pos):
+    def on_press(self, editor, touch_id, pos):
+        if editor.play_rect.collidepoint(pos):
             # begin play are view panning
             self.press_start = pos
 
-        elif self.side_bar_rect.collidepoint(pos):
+        elif editor.side_bar_rect.collidepoint(pos):
             # begin
             pass
 
-    def on_release(self, touch_id):
+    def on_release(self, editor, touch_id):
         self.press_start = None
         self.touch[touch_id] = {}
 
-    def loop(self):
+    def loop(self, editor):
         seconds = time.time() - self.start_time
         update_anything = False
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 self.live = False
 
             elif event.type == pygame.FINGERMOTION:
                 pos = (int(event.x * w), int(event.y * h))
-                self.on_move(get_tracker(event), pos)
+                self.on_move(editor, get_tracker(event), pos)
 
             elif event.type == pygame.FINGERDOWN:
                 pos = (int(event.x * w), int(event.y * h))
-                self.on_press(get_tracker(event), pos)
+                self.on_press(editor, get_tracker(event), pos)
 
             elif event.type == pygame.FINGERUP:
-                self.on_release(get_tracker(event))
+                self.on_release(editor, get_tracker(event))
 
             elif event.type == pygame.MOUSEMOTION and not event.touch and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-                self.on_move('mouse', event.pos)
+                self.on_move(editor, 'mouse', event.pos)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and not event.touch and event.button == pygame.BUTTON_LEFT:
-                self.on_press('mouse', event.pos)
+                self.on_press(editor, 'mouse', event.pos)
 
             elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
-                self.on_release('mouse')
+                self.on_release(editor, 'mouse')
+
+            else:
+                self.process_common_events(event)
 
         # draw the play area
         if self.update_play_area:
             self.update_play_area = False
             update_anything = True
 
-            self.play_area.focus_x = self.focus_x
-            self.play_area.focus_y = self.focus_y
-            self.play_area.redraw()
+            editor.play_area.focus_x = editor.focus_x
+            editor.play_area.focus_y = editor.focus_y
+            editor.play_area.redraw()
 
-            frame = self.play_area.surface.copy()
-            for (tile_x, tile_y) in self.tiles:
+            frame = editor.play_area.surface.copy()
+            for (tile_x, tile_y) in editor.tiles:
                 rect = pygame.Rect(
-                    self.play_rect.centerx - self.focus_x - self.grid_size + tile_x * self.grid_size * 3,
-                    self.play_rect.centery - self.focus_y - self.grid_size + tile_y * self.grid_size * 3,
-                    self.grid_size * 2, self.grid_size * 2)
+                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                    editor.grid_size * 2, editor.grid_size * 2)
 
-                frame.blit(self.tile_bg.surface, rect)
+                frame.blit(editor.tile_bg.surface, rect)
 
-            self.screen.blit(frame, self.play_area.viewport)
+            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         rel_cursor = None
-        if self.cursor_pos and self.side_bar.viewport.collidepoint(self.cursor_pos):
-            rel_cursor = (self.cursor_pos[0] - self.side_bar.viewport.x, self.cursor_pos[1] - self.side_bar.viewport.y)
+        if self.cursor_pos and editor.side_bar.viewport.collidepoint(self.cursor_pos):
+            rel_cursor = (self.cursor_pos[0] - editor.side_bar.viewport.x, self.cursor_pos[1] - editor.side_bar.viewport.y)
 
         if self.update_sidebar or rel_cursor:
             self.update_sidebar = False
             update_anything = True
 
-            frame = self.side_bar.surface.copy()
-            for index, widget in enumerate(self.tool_tiles):
+            frame = editor.side_bar.surface.copy()
+            for index, widget in enumerate(editor.tool_tiles):
                 tile_y = index * 3
 
                 rect = pygame.Rect(
-                    self.grid_size,
-                    tile_y * self.grid_size,
-                    self.grid_size * 2, self.grid_size * 2)
+                    editor.grid_size,
+                    tile_y * editor.grid_size,
+                    editor.grid_size * 2, editor.grid_size * 2)
 
                 if rel_cursor and rect.collidepoint(rel_cursor):
                     widget.draw_hover(frame, rect)
                 else:
                     widget.draw(frame, rect)
 
-            self.screen.blit(frame, self.side_bar.viewport)
+            editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
             pygame.display.flip()
         else:
-            self.clock.tick(60)
+            editor.clock.tick(60)
 
 
 def init():
@@ -411,7 +431,8 @@ def init():
         dpi = round(res_y / in_y)
         print(f"DPI assuming smallest physical screen dimension is 7.5 inches: {dpi} dpi")
 
-    ui = main_view(screen, dpi)
+    editor = node_graph_card(screen, dpi)
+    ui = inspect_screen(editor)
 
 
 if __name__ == "__main__":
