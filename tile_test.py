@@ -201,24 +201,6 @@ class plate_bg:
             pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
 
 
-class button_widget:
-    def __init__(self, grid, color):
-        L, C, H = convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
-        self.hover = plate_bg(grid, oklch(L + .3, C / 2, H))
-        self.active = plate_bg(grid, oklch(L + .2, C / 2, H))
-        self.inactive = plate_bg(grid, color)
-        self.is_active = False
-
-    def draw_hover(self, frame, rect):
-        frame.blit(self.hover.surface, rect)
-
-    def draw(self, frame, rect):
-        if self.is_active:
-            frame.blit(self.active.surface, rect)
-        else:
-            frame.blit(self.inactive.surface, rect)
-
-
 class node_graph_card:
     def __init__(self, screen, dpi):
         self.focus_x = 0
@@ -246,7 +228,6 @@ class node_graph_card:
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
 
         self.tile_bg = plate_bg(self.grid_size, parse_color("#dee5e8"))
-        self.tool_tiles = [button_widget(self.grid_size, color) for color in [oklch(0.7, 0.2, 360 * (i / 5)) for i in range(5)]]
 
 
 class editor_screen:
@@ -319,100 +300,26 @@ class select_screen(editor_screen):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
 
-    def on_move(self, editor, touch_id, pos):
-        self.cursor_pos = pos
+        goto_inspect_rect = pygame.Rect(
+            editor.grid_size,
+            0 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
 
-        if not self.press_start:
-            return
+        goto_inspect_surface = plate_bg(editor.grid_size, oklch(0.92, 0.1, -134.91))
 
-        move_x = pos[0] - self.press_start[0]
-        move_y = pos[1] - self.press_start[1]
+        active_icon_rect = pygame.Rect(
+            editor.grid_size,
+            3 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
 
-        if move_x != 0 or move_y != 0:
-            editor.focus_x -= move_x
-            editor.focus_y -= move_y
-            self.update_play_area = True
+        active_icon_surface = plate_bg(editor.grid_size, oklch(0.92, 0.01, -134.91))
 
-        self.press_start = pos
+        self.side_bar_targets = [
+            (goto_inspect_rect, goto_inspect_surface, self.goto_inspect_screen),
+            (active_icon_rect, active_icon_surface, None)]
 
-    def on_press(self, editor, touch_id, pos):
-        if editor.play_rect.collidepoint(pos):
-            # begin play are view panning
-            self.press_start = pos
-
-        elif editor.side_bar_rect.collidepoint(pos):
-            # begin
-            pass
-
-    def on_release(self, editor, touch_id):
-        self.press_start = None
-        self.touch[touch_id] = {}
-
-    def draw(self, editor):
-        update_anything = False
-
-        # draw the play area
-        if self.update_play_area:
-            self.update_play_area = False
-            update_anything = True
-
-            editor.play_area.focus_x = editor.focus_x
-            editor.play_area.focus_y = editor.focus_y
-            editor.play_area.redraw()
-
-            frame = editor.play_area.surface.copy()
-            for (tile_x, tile_y) in editor.tiles:
-                rect = pygame.Rect(
-                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
-                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
-                    editor.grid_size * 2, editor.grid_size * 2)
-
-                frame.blit(editor.tile_bg.surface, rect)
-
-            editor.screen.blit(frame, editor.play_area.viewport)
-
-        # draw sidebar
-        rel_cursor = None
-        if self.cursor_pos and editor.side_bar.viewport.collidepoint(self.cursor_pos):
-            rel_cursor = (self.cursor_pos[0] - editor.side_bar.viewport.x, self.cursor_pos[1] - editor.side_bar.viewport.y)
-
-        if self.update_sidebar or rel_cursor:
-            self.update_sidebar = False
-            update_anything = True
-
-            frame = editor.side_bar.surface.copy()
-            for index, widget in enumerate(editor.tool_tiles):
-                tile_y = index * 3
-
-                rect = pygame.Rect(
-                    editor.grid_size,
-                    tile_y * editor.grid_size,
-                    editor.grid_size * 2, editor.grid_size * 2)
-
-                if rel_cursor and rect.collidepoint(rel_cursor):
-                    widget.draw_hover(frame, rect)
-                else:
-                    widget.draw(frame, rect)
-                break
-
-            editor.screen.blit(frame, editor.side_bar.viewport)
-
-        if update_anything:
-            pygame.display.flip()
-        else:
-            editor.clock.tick(60)
-
-
-class inspect_screen(editor_screen):
-    def setup(self, editor):
-        print("starting inspect mode")
-        self.cursor_pos = pygame.mouse.get_pos()
-        self.press_start = None
-
-    def goto_select_screen(self, editor):
-        overlay = select_screen(editor)
-        self.reset_tracker()
-        self.purge_events()
+    def goto_inspect_screen(self, editor):
+        self.live = False
         print("returning to inspect mode")
 
     def on_move(self, editor, touch_id, pos):
@@ -438,16 +345,10 @@ class inspect_screen(editor_screen):
 
         elif editor.side_bar_rect.collidepoint(pos):
             # test side bar targets
-            for index, widget in enumerate(editor.tool_tiles):
-                tile_y = index * 3
-
-                rect = pygame.Rect(
-                    editor.side_bar.viewport.x + editor.grid_size,
-                    editor.side_bar.viewport.y + tile_y * editor.grid_size,
-                    editor.grid_size * 2, editor.grid_size * 2)
-
-                if rect.collidepoint(pos):
-                    self.goto_select_screen(editor)
+            rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
+            for rect, surface, action in self.side_bar_targets:
+                if action is not None and rect.collidepoint(rel_pos):
+                    action(editor)
                     return
 
     def on_release(self, editor, touch_id):
@@ -478,27 +379,118 @@ class inspect_screen(editor_screen):
             editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
-        rel_cursor = None
-        if self.cursor_pos and editor.side_bar.viewport.collidepoint(self.cursor_pos):
-            rel_cursor = (self.cursor_pos[0] - editor.side_bar.viewport.x, self.cursor_pos[1] - editor.side_bar.viewport.y)
-
-        if self.update_sidebar or rel_cursor:
+        if self.update_sidebar:
             self.update_sidebar = False
             update_anything = True
 
             frame = editor.side_bar.surface.copy()
-            for index, widget in enumerate(editor.tool_tiles):
-                tile_y = index * 3
+            for rect, plate, action in self.side_bar_targets:
+                frame.blit(plate.surface, rect)
 
+            editor.screen.blit(frame, editor.side_bar.viewport)
+
+        if update_anything:
+            pygame.display.flip()
+        else:
+            editor.clock.tick(60)
+
+
+class inspect_screen(editor_screen):
+    def setup(self, editor):
+        print("starting inspect mode")
+        self.cursor_pos = pygame.mouse.get_pos()
+        self.press_start = None
+
+        active_icon_rect = pygame.Rect(
+            editor.grid_size,
+            0 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        active_icon_surface = plate_bg(editor.grid_size, oklch(0.92, 0.01, -134.91))
+
+        goto_select_rect = pygame.Rect(
+            editor.grid_size,
+            3 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_select_surface = plate_bg(editor.grid_size, oklch(0.92, 0.1, -134.91))
+
+        self.side_bar_targets = [
+            (active_icon_rect, active_icon_surface, None),
+            (goto_select_rect, goto_select_surface, self.goto_select_screen)]
+
+    def goto_select_screen(self, editor):
+        overlay = select_screen(editor)
+        self.reset_tracker()
+        self.purge_events()
+        self.update_play_area = True
+        self.update_sidebar = True
+        print("returning to inspect mode")
+
+    def on_move(self, editor, touch_id, pos):
+        self.cursor_pos = pos
+
+        if not self.press_start:
+            return
+
+        move_x = pos[0] - self.press_start[0]
+        move_y = pos[1] - self.press_start[1]
+
+        if move_x != 0 or move_y != 0:
+            editor.focus_x -= move_x
+            editor.focus_y -= move_y
+            self.update_play_area = True
+
+        self.press_start = pos
+
+    def on_press(self, editor, touch_id, pos):
+        if editor.play_rect.collidepoint(pos):
+            # begin play are view panning
+            self.press_start = pos
+
+        elif editor.side_bar_rect.collidepoint(pos):
+            # test side bar targets
+            rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
+            for rect, surface, action in self.side_bar_targets:
+                if action is not None and rect.collidepoint(rel_pos):
+                    action(editor)
+                    return
+
+    def on_release(self, editor, touch_id):
+        self.press_start = None
+        self.touch[touch_id] = {}
+
+    def draw(self, editor):
+        update_anything = False
+
+        # draw the play area
+        if self.update_play_area:
+            self.update_play_area = False
+            update_anything = True
+
+            editor.play_area.focus_x = editor.focus_x
+            editor.play_area.focus_y = editor.focus_y
+            editor.play_area.redraw()
+
+            frame = editor.play_area.surface.copy()
+            for (tile_x, tile_y) in editor.tiles:
                 rect = pygame.Rect(
-                    editor.grid_size,
-                    tile_y * editor.grid_size,
+                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
 
-                if rel_cursor and rect.collidepoint(rel_cursor):
-                    widget.draw_hover(frame, rect)
-                else:
-                    widget.draw(frame, rect)
+                frame.blit(editor.tile_bg.surface, rect)
+
+            editor.screen.blit(frame, editor.play_area.viewport)
+
+        # draw sidebar
+        if self.update_sidebar:
+            self.update_sidebar = False
+            update_anything = True
+
+            frame = editor.side_bar.surface.copy()
+            for rect, plate, action in self.side_bar_targets:
+                frame.blit(plate.surface, rect)
 
             editor.screen.blit(frame, editor.side_bar.viewport)
 
