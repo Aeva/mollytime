@@ -314,9 +314,17 @@ class select_screen(editor_screen):
 
         active_icon_surface = plate_bg(editor.grid_size, oklch(0.92, 0.01, -134.91))
 
+        fnord_icon_rect = pygame.Rect(
+            editor.grid_size,
+            6 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        fnord_icon_surface = plate_bg(editor.grid_size, oklch(0.5, 0.4, 0))
+
         self.side_bar_targets = [
             (goto_inspect_rect, goto_inspect_surface, self.goto_inspect_screen),
-            (active_icon_rect, active_icon_surface, None)]
+            (active_icon_rect, active_icon_surface, None),
+            (fnord_icon_rect, fnord_icon_surface, None)]
 
     def goto_inspect_screen(self, editor):
         self.live = False
