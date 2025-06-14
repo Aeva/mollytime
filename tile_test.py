@@ -6,14 +6,17 @@ import ctypes
 import random
 import enum
 import re
+import string
 import subprocess
 
 import pygame_setup
 import pygame
 
+AFACAD_REGULAR = "media/afacad/static/Afacad-Regular.ttf"
+NATIONAL_PARK_LIGHT = "media/national_park/NationalPark-Light.ttf"
+
 
 COLORS_BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("colors/colors.so"))
-
 c_vec3 = ctypes.c_float * 3
 
 
@@ -63,6 +66,43 @@ def lch_swizzle(LC_part, H_Part, swizzle):
     LCH2 = lch_prism(H_Part)
     LCH = [(1 - a) * lhs + a * rhs for a, lhs, rhs in zip(swizzle, LCH1, LCH2)]
     return oklch(*LCH)
+
+
+FONT_CACHE = {}
+def get_font(font_path, size):
+    size = int(size)
+    if font_path:
+        font_path = os.path.abspath(font_path)
+        assert(os.path.isfile(font_path))
+    key = (font_path, size)
+    found = FONT_CACHE.get(key)
+    if found:
+        return found
+    font = pygame.font.Font(font_path, size)
+    FONT_CACHE[key] = font
+    return font
+
+
+TEXT_SURFACE_CACHE = {}
+def render_text(font_path, size, color, text):
+    size = int(size)
+    color = tuple(color)
+    key = (font_path, size, color, text)
+    found = TEXT_SURFACE_CACHE.get(key)
+    if found:
+        return found
+    surface = get_font(font_path, size).render(text, True, color)
+    TEXT_SURFACE_CACHE[key] = surface
+    return surface
+
+
+def estimate_font_center(font_path, size):
+    font = get_font(font_path, int(size))
+    min_x, max_x, min_y, max_y, advance = font.metrics("x")[0]
+    x_height = abs(max_y - min_y)
+    min_x, max_x, min_y, max_y, advance = font.metrics("M")[0]
+    m_height = abs(max_y - min_y)
+    return int(font.get_ascent() - (m_height * .5) + (m_height - x_height)) # dist from top to lowercase center
 
 
 class tile_viewport:
@@ -219,6 +259,7 @@ class node_graph_card:
         self.focus_y = 0
         self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         self.selected = []
+
         self.clock = pygame.time.Clock()
         self.resize(screen, dpi)
 
@@ -281,6 +322,17 @@ class editor_screen:
             self.process_events(editor)
             self.draw(editor)
 
+    def set_screen_label(self, editor, text):
+        inner_h = (editor.play_area.viewport.height // editor.grid_size) * editor.grid_size
+        margin_y = (editor.play_area.viewport.height - inner_h) // 2
+
+        font, size = AFACAD_REGULAR, editor.grid_size
+        self.screen_label_surface = render_text(font, size, parse_color("#888"), text)
+        self.screen_label_surface.set_alpha(int(.5 * 255))
+        self.screen_label_rect = self.screen_label_surface.get_rect().copy()
+        self.screen_label_rect.left = editor.grid_size * .75
+        self.screen_label_rect.centery = margin_y + editor.grid_size * -.5 + estimate_font_center(font, size)
+
     def purge_events(self):
         for event in pygame.event.get():
             if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -313,6 +365,7 @@ class select_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
+        self.set_screen_label(editor, "inspect > select")
         self.repopulate_sidebar(editor)
 
     def repopulate_sidebar(self, editor):
@@ -416,6 +469,7 @@ class select_screen(editor_screen):
                 sprite = editor.selected_tile_bg if editor.is_selected((tile_x, tile_y)) else editor.tile_bg
                 frame.blit(sprite.surface, rect)
 
+            frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
@@ -439,6 +493,7 @@ class inspect_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
+        self.set_screen_label(editor, "inspect")
 
         active_icon_rect = pygame.Rect(
             editor.grid_size,
@@ -518,6 +573,7 @@ class inspect_screen(editor_screen):
 
                 frame.blit(editor.tile_bg.surface, rect)
 
+            frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
