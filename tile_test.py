@@ -96,13 +96,61 @@ def render_text(font_path, size, color, text):
     return surface
 
 
-def estimate_font_center(font_path, size):
+def estimate_font_x_height(font_path, size):
     font = get_font(font_path, int(size))
     min_x, max_x, min_y, max_y, advance = font.metrics("x")[0]
-    x_height = abs(max_y - min_y)
-    min_x, max_x, min_y, max_y, advance = font.metrics("M")[0]
-    m_height = abs(max_y - min_y)
-    return int(font.get_ascent() - (m_height * .5) + (m_height - x_height)) # dist from top to lowercase center
+    return abs(max_y - min_y)
+
+
+def estimate_font_x_center(font_path, size):
+    font = get_font(font_path, size)
+    x_height = estimate_font_x_height(font_path, size)
+    return int(font.get_ascent() - (x_height * .5))
+
+
+def estimate_font_mean_line(font_path, size):
+    font = get_font(font_path, int(size))
+    x_height = estimate_font_x_height(font_path, size)
+    return font.get_ascent() - x_height
+
+
+def get_font_baseline(font_path, size):
+    font = get_font(font_path, int(size))
+    return font.get_ascent()
+
+
+def font_debug_surface(screen, font_path = AFACAD_REGULAR, size = 100):
+    fg_color = parse_color("#FFF")
+    bg_color = parse_color("#000")
+    asc_color = parse_color("#00F")
+    dsc_color = parse_color("#F00")
+    x_color = parse_color("#F0F")
+    font = get_font(font_path, size)
+    font_surf = render_text(font_path, size, fg_color, "Mollytime Font Debug")
+    font_rect = font_surf.get_rect()
+    pygame.draw.rect(screen, bg_color, font_rect)
+
+    asc_rect = font_rect.copy()
+    asc_rect.top = 0
+    asc_rect.height = font.get_ascent()
+    pygame.draw.rect(screen, asc_color, asc_rect)
+
+    dsc_rect = font_rect.copy()
+    dsc_rect.height = abs(font.get_descent())
+    dsc_rect.top = font_rect.height - dsc_rect.height
+    pygame.draw.rect(screen, dsc_color, dsc_rect)
+
+    x_rect = font_rect.copy()
+    x_rect.height = estimate_font_x_height(font_path, size)
+    x_rect.width -= x_rect.height
+    x_rect.left = x_rect.height
+    x_rect.top = asc_rect.height - x_rect.height
+    pygame.draw.rect(screen, x_color, x_rect)
+
+    screen.blit(font_surf, font_rect)
+
+    x_center = estimate_font_x_center(font_path, size)
+    pygame.draw.line(screen, parse_color("#0F0"), (x_rect.x, x_center), (x_rect.x + x_rect.w, x_center))
 
 
 class tile_viewport:
@@ -323,15 +371,18 @@ class editor_screen:
             self.draw(editor)
 
     def set_screen_label(self, editor, text):
-        inner_h = (editor.play_area.viewport.height // editor.grid_size) * editor.grid_size
-        margin_y = (editor.play_area.viewport.height - inner_h) // 2
+        inner_w = (editor.play_area.viewport.w // editor.grid_size) * editor.grid_size
+        inner_h = (editor.play_area.viewport.h // editor.grid_size) * editor.grid_size
+        margin_x = (editor.play_area.viewport.w - inner_w) // 2
+        margin_y = (editor.play_area.viewport.h - inner_h) // 2
 
-        font, size = AFACAD_REGULAR, editor.grid_size
-        self.screen_label_surface = render_text(font, size, parse_color("#888"), text)
-        self.screen_label_surface.set_alpha(int(.5 * 255))
+        font_path, size = AFACAD_REGULAR, editor.grid_size
+        self.screen_label_surface = render_text(font_path, size, parse_color("#000"), text)
+        self.screen_label_surface.set_alpha(int(.4 * 255))
         self.screen_label_rect = self.screen_label_surface.get_rect().copy()
-        self.screen_label_rect.left = editor.grid_size * .75
-        self.screen_label_rect.centery = margin_y + editor.grid_size * -.5 + estimate_font_center(font, size)
+        self.screen_label_rect.left = margin_x
+        #self.screen_label_rect.top = margin_y + editor.grid_size // 2 - estimate_font_x_center(font, size)
+        self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)
 
     def purge_events(self):
         for event in pygame.event.get():
@@ -588,6 +639,7 @@ class inspect_screen(editor_screen):
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
+            #font_debug_surface(editor.screen)
             pygame.display.flip()
         else:
             editor.clock.tick(60)
