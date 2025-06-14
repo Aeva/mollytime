@@ -235,7 +235,6 @@ class editor_screen:
         self.setup(editor)
         self.update_play_area = True
         self.update_sidebar = True
-        self.reset_tracker()
 
         self.live = True
         self.purge_events()
@@ -244,16 +243,6 @@ class editor_screen:
         while self.live:
             self.process_events(editor)
             self.draw(editor)
-
-    def reset_tracker(self):
-        self.touch = {}
-        self.touch['mouse'] = {}
-
-    def get_tracker(self, event):
-        key = (event.touch_id, event.finger_id)
-        if key not in self.touch:
-            self.touch[key] = {}
-        return key
 
     def purge_events(self):
         for event in pygame.event.get():
@@ -267,25 +256,14 @@ class editor_screen:
             if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 self.live = False
 
-            elif event.type == pygame.FINGERMOTION:
-                pos = (int(event.x * w), int(event.y * h))
-                self.on_move(editor, get_tracker(event), pos)
+            elif event.type == pygame.MOUSEMOTION and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
+                self.on_move(editor, event.pos)
 
-            elif event.type == pygame.FINGERDOWN:
-                pos = (int(event.x * w), int(event.y * h))
-                self.on_press(editor, get_tracker(event), pos)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
+                self.on_press(editor, event.pos)
 
-            elif event.type == pygame.FINGERUP:
-                self.on_release(editor, get_tracker(event))
-
-            elif event.type == pygame.MOUSEMOTION and not event.touch and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-                self.on_move(editor, 'mouse', event.pos)
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and not event.touch and event.button == pygame.BUTTON_LEFT:
-                self.on_press(editor, 'mouse', event.pos)
-
-            elif event.type == pygame.MOUSEBUTTONUP and not event.touch and event.button == pygame.BUTTON_LEFT:
-                self.on_release(editor, 'mouse')
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
+                self.on_release(editor)
 
             elif event.type == pygame.QUIT:
                 exit(0)
@@ -330,7 +308,7 @@ class select_screen(editor_screen):
         self.live = False
         print("returning to inspect mode")
 
-    def on_move(self, editor, touch_id, pos):
+    def on_move(self, editor, pos):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -346,7 +324,7 @@ class select_screen(editor_screen):
 
         self.press_start = pos
 
-    def on_press(self, editor, touch_id, pos):
+    def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
             # begin play are view panning
             self.press_start = pos
@@ -359,9 +337,8 @@ class select_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, touch_id):
+    def on_release(self, editor):
         self.press_start = None
-        self.touch[touch_id] = {}
 
     def draw(self, editor):
         update_anything = False
@@ -429,13 +406,12 @@ class inspect_screen(editor_screen):
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
-        self.reset_tracker()
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True
         print("returning to inspect mode")
 
-    def on_move(self, editor, touch_id, pos):
+    def on_move(self, editor, pos):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -451,7 +427,7 @@ class inspect_screen(editor_screen):
 
         self.press_start = pos
 
-    def on_press(self, editor, touch_id, pos):
+    def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
             # begin play are view panning
             self.press_start = pos
@@ -464,9 +440,8 @@ class inspect_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, touch_id):
+    def on_release(self, editor):
         self.press_start = None
-        self.touch[touch_id] = {}
 
     def draw(self, editor):
         update_anything = False
