@@ -53,6 +53,18 @@ def oklch(l, c, h):
     return float_color(*convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB))
 
 
+def lch_prism(color):
+    return convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
+
+
+def lch_swizzle(LC_part, H_Part, swizzle):
+    assert(len(swizzle) == 3)
+    LCH1 = lch_prism(LC_part)
+    LCH2 = lch_prism(H_Part)
+    LCH = [(1 - a) * lhs + a * rhs for a, lhs, rhs in zip(swizzle, LCH1, LCH2)]
+    return oklch(*LCH)
+
+
 class tile_viewport:
     def __init__(self, viewport, grid):
         self.grid = -1
@@ -167,7 +179,7 @@ class side_bar_bg(tile_viewport):
 
 class plate_bg:
     def __init__(self, grid, color):
-        L, C, H = convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
+        L, C, H = lch_prism(color)
         self.color_base = color
         self.color_top    = oklch(L - 0.0183, C, H)
         self.color_sides  = oklch(L - 0.0986, C, H)
@@ -206,8 +218,29 @@ class node_graph_card:
         self.focus_x = 0
         self.focus_y = 0
         self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        self.selected = []
         self.clock = pygame.time.Clock()
         self.resize(screen, dpi)
+
+    def toggle_selection(self, tile):
+        assert(tile in self.tiles)
+        if tile in self.selected:
+            self.selected = [select for select in self.selected if select != tile]
+        else:
+            if len(self.selected) < 2:
+                self.selected.append(tile)
+            else:
+                assert(len(self.selected) == 2)
+                self.selected = [self.selected[1], tile]
+
+    def clear_selection(self):
+        self.selected = []
+
+    def is_selected(self, tile):
+        return tile in self.selected
+
+    def any_selected(self):
+        return len(self.selected) != 0
 
     def resize(self, screen, dpi):
         self.screen = screen
@@ -227,7 +260,11 @@ class node_graph_card:
         self.side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
 
-        self.tile_bg = plate_bg(self.grid_size, parse_color("#dee5e8"))
+        tile_color = parse_color("#dee5e8")
+        self.tile_bg = plate_bg(self.grid_size, tile_color)
+
+        select_color = lch_swizzle(tile_color, parse_color("#880000"), (.5, .75, 0))
+        self.selected_tile_bg = plate_bg(self.grid_size, select_color)
 
 
 class editor_screen:
@@ -274,39 +311,43 @@ class editor_screen:
 
 class select_screen(editor_screen):
     def setup(self, editor):
-        print("starting select mode")
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
+        self.repopulate_sidebar(editor)
+
+    def repopulate_sidebar(self, editor):
+        self.update_sidebar = True
 
         goto_inspect_rect = pygame.Rect(
             editor.grid_size,
             0 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_inspect_surface = plate_bg(editor.grid_size, oklch(0.92, 0.1, -134.91))
+        goto_inspect_surface = editor.tile_bg
 
         active_icon_rect = pygame.Rect(
             editor.grid_size,
             3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        active_icon_surface = plate_bg(editor.grid_size, oklch(0.92, 0.01, -134.91))
+        active_icon_surface = editor.selected_tile_bg
 
         fnord_icon_rect = pygame.Rect(
             editor.grid_size,
             6 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        fnord_icon_surface = plate_bg(editor.grid_size, oklch(0.5, 0.4, 0))
+        fnord_icon_surface = editor.tile_bg
 
         self.side_bar_targets = [
             (goto_inspect_rect, goto_inspect_surface, self.goto_inspect_screen),
-            (active_icon_rect, active_icon_surface, None),
-            (fnord_icon_rect, fnord_icon_surface, None)]
+            (active_icon_rect, active_icon_surface, None)]
+
+        if editor.any_selected():
+            self.side_bar_targets.append((fnord_icon_rect, fnord_icon_surface, None))
 
     def goto_inspect_screen(self, editor):
         self.live = False
-        print("returning to inspect mode")
 
     def on_move(self, editor, pos):
         self.cursor_pos = pos
@@ -326,8 +367,21 @@ class select_screen(editor_screen):
 
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
-            # begin play are view panning
-            self.press_start = pos
+            something_happened = False
+            for (tile_x, tile_y) in editor.tiles:
+                rect = pygame.Rect(
+                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                    editor.grid_size * 2, editor.grid_size * 2)
+                if rect.collidepoint(pos):
+                    something_happened = True
+                    self.update_play_area = True
+                    state = editor.toggle_selection((tile_x, tile_y))
+                    self.repopulate_sidebar(editor)
+                    break
+
+            if not something_happened:
+                self.press_start = pos
 
         elif editor.side_bar_rect.collidepoint(pos):
             # test side bar targets
@@ -359,7 +413,8 @@ class select_screen(editor_screen):
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
 
-                frame.blit(editor.tile_bg.surface, rect)
+                sprite = editor.selected_tile_bg if editor.is_selected((tile_x, tile_y)) else editor.tile_bg
+                frame.blit(sprite.surface, rect)
 
             editor.screen.blit(frame, editor.play_area.viewport)
 
@@ -382,7 +437,6 @@ class select_screen(editor_screen):
 
 class inspect_screen(editor_screen):
     def setup(self, editor):
-        print("starting inspect mode")
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
 
@@ -391,14 +445,14 @@ class inspect_screen(editor_screen):
             0 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        active_icon_surface = plate_bg(editor.grid_size, oklch(0.92, 0.01, -134.91))
+        active_icon_surface = editor.selected_tile_bg
 
         goto_select_rect = pygame.Rect(
             editor.grid_size,
             3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_select_surface = plate_bg(editor.grid_size, oklch(0.92, 0.1, -134.91))
+        goto_select_surface = editor.tile_bg
 
         self.side_bar_targets = [
             (active_icon_rect, active_icon_surface, None),
@@ -409,7 +463,7 @@ class inspect_screen(editor_screen):
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True
-        print("returning to inspect mode")
+        editor.clear_selection()
 
     def on_move(self, editor, pos):
         self.cursor_pos = pos
