@@ -14,6 +14,7 @@ import pygame
 
 AFACAD_REGULAR = "media/afacad/static/Afacad-Regular.ttf"
 NATIONAL_PARK_LIGHT = "media/national_park/NationalPark-Light.ttf"
+NATIONAL_PARK_REGULAR = "media/national_park/NationalPark-Regular.ttf"
 
 
 COLORS_BACKEND = ctypes.cdll.LoadLibrary(os.path.abspath("colors/colors.so"))
@@ -266,12 +267,14 @@ class side_bar_bg(tile_viewport):
 
 
 class plate_bg:
-    def __init__(self, grid, color):
+    def __init__(self, grid, color, label = None):
         L, C, H = lch_prism(color)
         self.color_base = color
         self.color_top    = oklch(L - 0.0183, C, H)
         self.color_sides  = oklch(L - 0.0986, C, H)
         self.color_bottom = oklch(L - 0.2914, C, H + 3.8415)
+        self.text = label
+        self.text_color = oklch(1 - L, 0, 0)
 
         self.grid = -1
         self.resize(grid)
@@ -299,6 +302,13 @@ class plate_bg:
             a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
             b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
             pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
+
+        font_path, size = NATIONAL_PARK_REGULAR, max(10, self.size * .24)
+        text_surface = render_text(font_path, size, self.text_color, self.text)
+        text_rect = text_surface.get_rect().copy()
+        text_rect.centerx = rect.centerx
+        text_rect.top = rect.centery - estimate_font_x_center(font_path, size)
+        self.surface.blit(text_surface, text_rect)
 
 
 class node_graph_card:
@@ -355,6 +365,14 @@ class node_graph_card:
         select_color = lch_swizzle(tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, select_color)
 
+        self.inspect_target = plate_bg(self.grid_size, tile_color, "inspect")
+        self.inspect_active = plate_bg(self.grid_size, select_color, "inspect")
+
+        self.select_target = plate_bg(self.grid_size, tile_color, "select")
+        self.select_active = plate_bg(self.grid_size, select_color, "select")
+
+        self.placeholder_target = plate_bg(self.grid_size, tile_color, "magic")
+
 
 class editor_screen:
     def __init__(self, editor):
@@ -381,7 +399,6 @@ class editor_screen:
         self.screen_label_surface.set_alpha(int(.4 * 255))
         self.screen_label_rect = self.screen_label_surface.get_rect().copy()
         self.screen_label_rect.left = margin_x
-        #self.screen_label_rect.top = margin_y + editor.grid_size // 2 - estimate_font_x_center(font, size)
         self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)
 
     def purge_events(self):
@@ -427,28 +444,28 @@ class select_screen(editor_screen):
             0 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_inspect_surface = editor.tile_bg
+        goto_inspect_icon = editor.inspect_target
 
-        active_icon_rect = pygame.Rect(
+        active_rect = pygame.Rect(
             editor.grid_size,
             3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        active_icon_surface = editor.selected_tile_bg
+        active_icon = editor.select_active
 
-        fnord_icon_rect = pygame.Rect(
+        placeholder_rect = pygame.Rect(
             editor.grid_size,
             6 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        fnord_icon_surface = editor.tile_bg
+        placeholder_icon = editor.placeholder_target
 
         self.side_bar_targets = [
-            (goto_inspect_rect, goto_inspect_surface, self.goto_inspect_screen),
-            (active_icon_rect, active_icon_surface, None)]
+            (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
+            (active_rect, active_icon, None)]
 
         if editor.any_selected():
-            self.side_bar_targets.append((fnord_icon_rect, fnord_icon_surface, None))
+            self.side_bar_targets.append((placeholder_rect, placeholder_icon, None))
 
     def goto_inspect_screen(self, editor):
         self.live = False
@@ -546,23 +563,23 @@ class inspect_screen(editor_screen):
         self.press_start = None
         self.set_screen_label(editor, "inspect")
 
-        active_icon_rect = pygame.Rect(
+        active_rect = pygame.Rect(
             editor.grid_size,
             0 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        active_icon_surface = editor.selected_tile_bg
+        active_icon = editor.inspect_active
 
         goto_select_rect = pygame.Rect(
             editor.grid_size,
             3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_select_surface = editor.tile_bg
+        goto_select_icon = editor.select_target
 
         self.side_bar_targets = [
-            (active_icon_rect, active_icon_surface, None),
-            (goto_select_rect, goto_select_surface, self.goto_select_screen)]
+            (active_rect, active_icon, None),
+            (goto_select_rect, goto_select_icon, self.goto_select_screen)]
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
