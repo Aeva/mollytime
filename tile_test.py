@@ -667,8 +667,9 @@ def init():
 
     sizes = pygame.display.get_desktop_sizes()
     display_index = len(sizes) - 1
-    display_size = sizes[display_index]
-    screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
+    scaled_display_size = sizes[display_index]
+    unscaled_display_size = pygame.display.list_modes(display=display_index)[0]
+    screen = pygame.display.set_mode(size=unscaled_display_size, display=display_index, flags=pygame.FULLSCREEN)
 
     dpi = None
 
@@ -695,9 +696,11 @@ def init():
 
     if dpi is None:
         in_y = 7.5
-        res_y = min(display_size)
+        res_y = min(scaled_display_size)
         dpi = round(res_y / in_y)
         print(f"DPI assuming smallest physical screen dimension is 7.5 inches: {dpi} dpi")
+
+    dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
     editor = node_graph_card(screen, dpi)
     ui = inspect_screen(editor)
