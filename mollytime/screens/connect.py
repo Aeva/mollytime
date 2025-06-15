@@ -34,7 +34,7 @@ class connect_screen(editor_screen):
         editor.play_area.redraw()
 
         node_graph = editor.play_area.surface.copy()
-        for (tile_x, tile_y) in editor.tiles:
+        for (tile_x, tile_y) in editor.tile_positions.values():
             rect = pygame.Rect(
                 editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                 editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,

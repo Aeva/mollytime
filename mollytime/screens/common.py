@@ -2,6 +2,7 @@
 import pygame_setup
 import pygame
 
+from tiles import *
 from fonts import *
 from colors import *
 from patterns import *
@@ -11,14 +12,54 @@ class node_graph_card:
     def __init__(self, screen, dpi):
         self.focus_x = 0
         self.focus_y = 0
-        self.tiles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        self.tiles = {}
+        self.tile_positions = {}
+
+        # connections
+        self.wires = set()
+        self.by_input = {}
+        self.by_output = {}
+
+        #   2    *
+        #  440  sin   +
+        #       sin  out
+        two = self.add_tile((-1, -1), const_tile(2))
+        a4_hz = self.add_tile((-1, 0), const_tile(440))
+        a5_hz = self.add_tile((0, -1), mul_tile())
+        a5_amp = self.add_tile((0, 0), sin_tile())
+        a4_amp = self.add_tile((0, 1), sin_tile())
+        summed = self.add_tile((1, 0), add_tile())
+        out = self.add_tile((1, 1), out_tile())
+
         self.selected = []
 
         self.clock = pygame.time.Clock()
         self.resize(screen, dpi)
 
+    def add_tile(self, position, tile):
+        self.tiles[tile.id] = tile
+        self.tile_positions[tile.id] = position
+        for name in tile.inputs.keys():
+            self.by_input[(tile.id, name)] = set()
+        for name in tile.outputs:
+            self.by_output[(tile.id, name)] = set()
+        return tile.id
+
+    def connect_tiles(self, out_key, in_key):
+        assert(out_key in self.by_output)
+        assert(in_key in self.by_input)
+
+        receiver = self.tiles[in_key[0]]
+        if self.by_input[in_key] and not receiver.commutative:
+            return
+
+        wires.add((out_key, in_key))
+        self.by_output[out_key].add(in_key)
+        self.by_input[in_key].add(out_key)
+
     def toggle_selection(self, tile):
-        assert(tile in self.tiles)
+        assert(tile in self.tile_positions.values())
         if tile in self.selected:
             self.selected = [select for select in self.selected if select != tile]
         else:
