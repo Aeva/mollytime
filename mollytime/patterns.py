@@ -1,11 +1,10 @@
 
-import math
-
 import pygame_setup
 import pygame
 
 from fonts import *
 from colors import *
+from more_math import *
 
 
 class tile_viewport:
@@ -163,3 +162,14 @@ class plate_bg:
         text_rect.centerx = rect.centerx
         text_rect.top = rect.centery - estimate_font_x_center(font_path, size)
         self.surface.blit(text_surface, text_rect)
+
+
+def draw_line(target, color, start, end, radius):
+    offset = vec_scale(normalize(vec_sub(end, start)), radius)
+    points = [
+        vec_add(start, widdershins_by_90(offset)),
+        vec_add(end, widdershins_by_90(offset)),
+        vec_add(end, sunwise_by_90(offset)),
+        vec_add(start, sunwise_by_90(offset))]
+    pygame.draw.polygon(target, color, points)
+    #pygame.draw.aalines(target, color, True, points)

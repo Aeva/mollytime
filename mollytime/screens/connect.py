@@ -168,10 +168,11 @@ class connect_screen(editor_screen):
 
             line_color = (0, 255, 0)
             line_width = editor.grid_size // 4
+            radius = line_width // 2
             for start, stop in self.connections:
                 start_pos = self.node_rects[start].center
                 stop_pos = self.node_rects[stop].center
-                pygame.draw.line(frame, line_color, start_pos, stop_pos, line_width)
+                draw_line(frame, line_color, start_pos, stop_pos, radius)
 
             for tile in self.nodes:
                 rect = self.node_rects[tile]
@@ -183,7 +184,7 @@ class connect_screen(editor_screen):
                 radius = line_width // 2
                 pygame.draw.circle(frame, line_color, self.press_start, radius)
                 pygame.draw.circle(frame, line_color, self.press_stop, radius)
-                pygame.draw.line(frame, line_color, self.press_start, self.press_stop, line_width)
+                draw_line(frame, line_color, self.press_start, self.press_stop, radius)
 
             editor.screen.blit(frame, editor.play_area.viewport)
 
