@@ -369,17 +369,21 @@ class node_graph_card:
         tile_color = parse_color("#dee5e8")
         self.tile_bg = plate_bg(self.grid_size, tile_color)
 
-        select_color = lch_swizzle(tile_color, parse_color("#880000"), (.5, .75, 0))
-        self.selected_tile_bg = plate_bg(self.grid_size, select_color)
+        self.select_color = lch_swizzle(tile_color, parse_color("#880000"), (.5, .75, 0))
+        self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
 
         self.inspect_target = plate_bg(self.grid_size, tile_color, "inspect")
-        self.inspect_active = plate_bg(self.grid_size, select_color, "inspect")
+        self.inspect_active = plate_bg(self.grid_size, self.select_color, "inspect")
 
         self.select_target = plate_bg(self.grid_size, tile_color, "select")
-        self.select_active = plate_bg(self.grid_size, select_color, "select")
+        self.select_active = plate_bg(self.grid_size, self.select_color, "select")
 
         self.connect_target = plate_bg(self.grid_size, tile_color, "connect")
-        self.connect_active = plate_bg(self.grid_size, select_color, "connect")
+        self.connect_active = plate_bg(self.grid_size, self.select_color, "connect")
+
+        self.apply_target = plate_bg(self.grid_size, tile_color, "apply")
+
+        self.cancel_target = plate_bg(self.grid_size, tile_color, "cancel")
 
         self.placeholder_target = plate_bg(self.grid_size, tile_color, "magic")
 
@@ -441,72 +445,160 @@ class editor_screen:
 
 class connect_screen(editor_screen):
     def setup(self, editor):
-        self.set_screen_label(editor, "inspect > select > connect", (255, 255, 255), 1)
+        self.lhs_tile = editor.lhs_selection()
+        self.rhs_tile = editor.rhs_selection()
 
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
+        self.set_screen_label(editor, f"connect {self.lhs_tile} ↔ {self.rhs_tile}", (255, 255, 255), 1)
 
-        fake_sidebar = editor.side_bar.surface.copy()
-        last_screen = editor.screen.copy()
-        last_screen.blit(fake_sidebar, editor.side_bar.viewport)
-        last_screen.set_alpha(int(0.125 * 255))
+        goto_apply_rect = pygame.Rect(
+            editor.grid_size,
+            3 * 3 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
 
-        self.bg = pygame.Surface((last_screen.get_width(), last_screen.get_height()))
-        self.bg.fill((100, 100, 128))
-        self.bg.blit(last_screen, (0, 0))
+        goto_cancel_rect = pygame.Rect(
+            editor.grid_size,
+            4 * 3 * editor.grid_size,
+            editor.grid_size * 2, editor.grid_size * 2)
 
-        screen_rect = editor.screen.get_rect()
+        self.side_bar_targets = [
+            (goto_apply_rect, editor.apply_target, self.goto_cancel),
+            (goto_cancel_rect, editor.cancel_target, self.goto_cancel)]
 
+        self.update_sidebar = True
+        self.update_play_area = True
+
+        editor.play_area.focus_x = editor.focus_x
+        editor.play_area.focus_y = editor.focus_y
+        editor.play_area.redraw()
+
+        node_graph = editor.play_area.surface.copy()
+        for (tile_x, tile_y) in editor.tiles:
+            rect = pygame.Rect(
+                editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                editor.grid_size * 2, editor.grid_size * 2)
+
+            sprite = editor.selected_tile_bg if editor.is_selected((tile_x, tile_y)) else editor.tile_bg
+            node_graph.blit(sprite.surface, rect)
+
+        node_graph.set_alpha(int(0.25 * 255))
+
+        matte_color = editor.select_color # parse_color("#b1b3b8") #editor.select_color
+
+        self.bg = pygame.Surface((node_graph.get_width(), node_graph.get_height()))
+        self.bg.fill((0, 0, 0))
+        self.bg.blit(node_graph, (0, 0))
+
+        viewport = editor.play_area.viewport
         matte = self.bg.copy()
-        points = [
-            (0, 0), (screen_rect.centerx, 0),
-            (screen_rect.centerx - editor.grid_size * 2, screen_rect.h), (0, screen_rect.h)]
-        pygame.draw.polygon(matte, (255, 100, 128), points)
-        pygame.draw.aalines(matte, (255, 100, 128), True, points)
 
-        points = [
-            (screen_rect.centerx + editor.grid_size * 2, 0), (screen_rect.w, 0),
-            (screen_rect.w, screen_rect.h), (screen_rect.centerx, screen_rect.h)]
-        pygame.draw.polygon(matte, (128, 100, 255), points)
-        pygame.draw.aalines(matte, (128, 100, 255), True, points)
+        start = (viewport.centerx, 0)
+        stop = (viewport.centerx - editor.grid_size * 2, viewport.h)
+        points = [(0, 0), start, stop, (0, viewport.h)]
+        pygame.draw.polygon(matte, matte_color, points)
+        pygame.draw.aaline(matte, matte_color, start, stop)
 
+        start = (viewport.centerx + editor.grid_size * 2, 0)
+        stop = (viewport.centerx, viewport.h)
+        points = [
+            (viewport.w, viewport.h), stop,
+            start, (viewport.w, 0)]
+        pygame.draw.polygon(matte, matte_color, points)
+        start = (start[0] - 1, start[1])
+        stop = (stop[0] - 1, stop[1])
+        pygame.draw.aaline(matte, matte_color, start, stop)
 
         matte.set_alpha(int(0.8 * 255))
         self.bg.blit(matte, (0, 0))
 
-
-
         self.bg.blit(self.screen_label_surface, self.screen_label_rect)
 
-        self.lhs_tile = editor.lhs_selection()
-        self.rhs_tile = editor.rhs_selection()
-
-        screen_rect = editor.screen.get_rect()
-        radius = (screen_rect.h - editor.grid_size) // 3
+        radius = (viewport.h - editor.grid_size) // 3
 
         self.lhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-        self.lhs_rect.left = screen_rect.centerx - radius
-        self.lhs_rect.centery = screen_rect.centery
+        self.lhs_rect.left = viewport.centerx - radius
+        self.lhs_rect.centery = viewport.centery
 
         self.rhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-        self.rhs_rect.right = screen_rect.centerx + radius
-        self.rhs_rect.centery = screen_rect.centery
+        self.rhs_rect.right = viewport.centerx + radius
+        self.rhs_rect.centery = viewport.centery
 
+    def goto_cancel(self, editor):
+        self.live = False
 
     def on_move(self, editor, pos):
-        pass
+        self.cursor_pos = pos
+
+        if not self.press_start:
+            return
+
+        move_x = pos[0] - self.press_start[0]
+        move_y = pos[1] - self.press_start[1]
+
+        # if move_x != 0 or move_y != 0:
+        #     editor.focus_x -= move_x
+        #     editor.focus_y -= move_y
+        #     self.update_play_area = True
+
+        self.press_start = pos
 
     def on_press(self, editor, pos):
-        pass
+        if editor.play_rect.collidepoint(pos):
+            pass
+
+        elif editor.side_bar_rect.collidepoint(pos):
+            # test side bar targets
+            rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
+            for rect, surface, action in self.side_bar_targets:
+                if action is not None and rect.collidepoint(rel_pos):
+                    action(editor)
+                    return
 
     def on_release(self, editor):
-        pass
+        self.press_start = None
 
     def draw(self, editor):
-        update_anything = True
-        editor.screen.blit(self.bg, (0, 0))
-        editor.screen.blit(editor.tile_bg.surface, self.lhs_rect)
-        editor.screen.blit(editor.tile_bg.surface, self.rhs_rect)
+        update_anything = False
+
+        # draw the play area
+        if self.update_play_area:
+            self.update_play_area = False
+            update_anything = True
+
+            # editor.play_area.focus_x = editor.focus_x
+            # editor.play_area.focus_y = editor.focus_y
+            # editor.play_area.redraw()
+            #
+            # frame = editor.play_area.surface.copy()
+            # for (tile_x, tile_y) in editor.tiles:
+            #     rect = pygame.Rect(
+            #         editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+            #         editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+            #         editor.grid_size * 2, editor.grid_size * 2)
+            #
+            #     sprite = editor.selected_tile_bg if editor.is_selected((tile_x, tile_y)) else editor.tile_bg
+            #     frame.blit(sprite.surface, rect)
+            #
+            # frame.blit(self.screen_label_surface, self.screen_label_rect)
+
+            frame = self.bg.copy()
+            frame.blit(editor.tile_bg.surface, self.lhs_rect)
+            frame.blit(editor.tile_bg.surface, self.rhs_rect)
+
+            editor.screen.blit(frame, editor.play_area.viewport)
+
+        # draw sidebar
+        if self.update_sidebar:
+            self.update_sidebar = False
+            update_anything = True
+
+            frame = editor.side_bar.surface.copy()
+            for rect, plate, action in self.side_bar_targets:
+                frame.blit(plate.surface, rect)
+
+            editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
             pygame.display.flip()
