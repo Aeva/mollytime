@@ -341,6 +341,13 @@ class node_graph_card:
     def any_selected(self):
         return len(self.selected) != 0
 
+    def lhs_selection(self):
+        return (self.selected + [None])[0]
+
+    def rhs_selection(self):
+        fill = self.lhs_selection()
+        return (self.selected + [fill, fill])[1]
+
     def resize(self, screen, dpi):
         self.screen = screen
         self.dpi = dpi
@@ -391,15 +398,15 @@ class editor_screen:
             self.process_events(editor)
             self.draw(editor)
 
-    def set_screen_label(self, editor, text):
+    def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):
         inner_w = (editor.play_area.viewport.w // editor.grid_size) * editor.grid_size
         inner_h = (editor.play_area.viewport.h // editor.grid_size) * editor.grid_size
         margin_x = (editor.play_area.viewport.w - inner_w) // 2
         margin_y = (editor.play_area.viewport.h - inner_h) // 2
 
         font_path, size = AFACAD_REGULAR, editor.grid_size
-        self.screen_label_surface = render_text(font_path, size, parse_color("#000"), text)
-        self.screen_label_surface.set_alpha(int(.4 * 255))
+        self.screen_label_surface = render_text(font_path, size, color, text)
+        self.screen_label_surface.set_alpha(int(alpha * 255))
         self.screen_label_rect = self.screen_label_surface.get_rect().copy()
         self.screen_label_rect.left = margin_x
         self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)
@@ -434,17 +441,57 @@ class editor_screen:
 
 class connect_screen(editor_screen):
     def setup(self, editor):
+        self.set_screen_label(editor, "inspect > select > connect", (255, 255, 255), 1)
+
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
 
         fake_sidebar = editor.side_bar.surface.copy()
         last_screen = editor.screen.copy()
         last_screen.blit(fake_sidebar, editor.side_bar.viewport)
-        last_screen.set_alpha(int(0.25 * 255))
+        last_screen.set_alpha(int(0.125 * 255))
 
         self.bg = pygame.Surface((last_screen.get_width(), last_screen.get_height()))
         self.bg.fill((100, 100, 128))
         self.bg.blit(last_screen, (0, 0))
+
+        screen_rect = editor.screen.get_rect()
+
+        matte = self.bg.copy()
+        points = [
+            (0, 0), (screen_rect.centerx, 0),
+            (screen_rect.centerx - editor.grid_size * 2, screen_rect.h), (0, screen_rect.h)]
+        pygame.draw.polygon(matte, (255, 100, 128), points)
+        pygame.draw.aalines(matte, (255, 100, 128), True, points)
+
+        points = [
+            (screen_rect.centerx + editor.grid_size * 2, 0), (screen_rect.w, 0),
+            (screen_rect.w, screen_rect.h), (screen_rect.centerx, screen_rect.h)]
+        pygame.draw.polygon(matte, (128, 100, 255), points)
+        pygame.draw.aalines(matte, (128, 100, 255), True, points)
+
+
+        matte.set_alpha(int(0.8 * 255))
+        self.bg.blit(matte, (0, 0))
+
+
+
+        self.bg.blit(self.screen_label_surface, self.screen_label_rect)
+
+        self.lhs_tile = editor.lhs_selection()
+        self.rhs_tile = editor.rhs_selection()
+
+        screen_rect = editor.screen.get_rect()
+        radius = (screen_rect.h - editor.grid_size) // 3
+
+        self.lhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+        self.lhs_rect.left = screen_rect.centerx - radius
+        self.lhs_rect.centery = screen_rect.centery
+
+        self.rhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+        self.rhs_rect.right = screen_rect.centerx + radius
+        self.rhs_rect.centery = screen_rect.centery
+
 
     def on_move(self, editor, pos):
         pass
@@ -458,6 +505,8 @@ class connect_screen(editor_screen):
     def draw(self, editor):
         update_anything = True
         editor.screen.blit(self.bg, (0, 0))
+        editor.screen.blit(editor.tile_bg.surface, self.lhs_rect)
+        editor.screen.blit(editor.tile_bg.surface, self.rhs_rect)
 
         if update_anything:
             pygame.display.flip()
