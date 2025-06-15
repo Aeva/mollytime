@@ -693,6 +693,7 @@ class select_screen(editor_screen):
             self.update_play_area = True
             self.update_sidebar = True
             editor.clear_selection()
+            self.repopulate_sidebar(editor)
 
     def on_move(self, editor, pos):
         self.cursor_pos = pos
