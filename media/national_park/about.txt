@@ -1,0 +1,15 @@
+The files for the National Park font included in this project were found here:
+
+    https://nationalparktypeface.com/
+
+At this time of writing (May 31st, 2025) the download page on that website
+states "National Park is an open source typeface published for free use under
+the SIL Open Font License."
+
+The license text was not provided with the download, nor does the webpage
+state which version of the SIL open font license applies.
+
+The latest version of the SIL open font license at this time of writing is 1.1,
+and the text thereof can be found here:
+
+    https://openfontlicense.org/open-font-license-official-text/
