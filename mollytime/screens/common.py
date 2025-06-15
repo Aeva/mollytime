@@ -27,10 +27,18 @@ class node_graph_card:
         two = self.add_tile((-1, -1), const_tile(2))
         a4_hz = self.add_tile((-1, 0), const_tile(440))
         a5_hz = self.add_tile((0, -1), mul_tile())
-        a5_amp = self.add_tile((0, 0), sin_tile())
-        a4_amp = self.add_tile((0, 1), sin_tile())
+        a5_osc = self.add_tile((0, 0), sin_tile())
+        a4_osc = self.add_tile((0, 1), sin_tile())
         summed = self.add_tile((1, 0), add_tile())
         out = self.add_tile((1, 1), out_tile())
+
+        self.connect_tiles((two, '#'), (a5_hz, '*'))
+        self.connect_tiles((a4_hz, '#'), (a5_hz, '*'))
+        self.connect_tiles((a5_hz, '='), (a5_osc, 'hz'))
+        self.connect_tiles((a4_hz, '#'), (a4_osc, 'hz'))
+        self.connect_tiles((a4_osc, 'amp'), (summed, '+'))
+        self.connect_tiles((a5_osc, 'amp'), (summed, '+'))
+        self.connect_tiles((summed, '='), (out, 'out'))
 
         self.selected = []
 
@@ -54,7 +62,7 @@ class node_graph_card:
         if self.by_input[in_key] and not receiver.commutative:
             return
 
-        wires.add((out_key, in_key))
+        self.wires.add((out_key, in_key))
         self.by_output[out_key].add(in_key)
         self.by_input[in_key].add(out_key)
 

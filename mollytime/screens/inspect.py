@@ -79,10 +79,24 @@ class inspect_screen(editor_screen):
             editor.play_area.redraw()
 
             frame = editor.play_area.surface.copy()
+
+            def frame_x(tile_x):
+                return editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3
+
+            def frame_y(tile_y):
+                return editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3
+
+            def frame_xy(wire_xy):
+                return (frame_x(wire_xy[0]) + editor.grid_size, frame_y(wire_xy[1]) + editor.grid_size)
+
+            for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
+                lhs_pos = editor.tile_positions[lhs_id]
+                rhs_pos = editor.tile_positions[rhs_id]
+                draw_line(frame, (0, 0, 0), frame_xy(lhs_pos), frame_xy(rhs_pos), max(4, editor.grid_size // 8))
+
             for (tile_x, tile_y) in editor.tile_positions.values():
                 rect = pygame.Rect(
-                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
-                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                    frame_x(tile_x), frame_y(tile_y),
                     editor.grid_size * 2, editor.grid_size * 2)
 
                 frame.blit(editor.tile_bg.surface, rect)

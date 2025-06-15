@@ -26,6 +26,9 @@ class blank_tile:
         # `name` is a human readable name that can be overriden by the player.
         self.name = name
 
+    def __repr__(self):
+        return f"<tile {self.id}: \'{self.name}\'>"
+
 
 class const_tile(blank_tile):
     outputs = ( "#" )
@@ -33,6 +36,9 @@ class const_tile(blank_tile):
     def __init__(self, value=0, name="#"):
         super().__init__(name)
         self.value = value
+
+    def __repr__(self):
+        return f"<tile {self.id}: const {self.value}>"
 
 
 class out_tile(blank_tile):
@@ -44,7 +50,7 @@ class out_tile(blank_tile):
 
 class sin_tile(blank_tile):
     inputs = { "hz" : 440 }
-    outputs = ( "amplitude", )
+    outputs = ( "amp", )
 
     def __init__(self, name="sin"):
         super().__init__(name)
