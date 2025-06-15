@@ -371,6 +371,9 @@ class node_graph_card:
         self.select_target = plate_bg(self.grid_size, tile_color, "select")
         self.select_active = plate_bg(self.grid_size, select_color, "select")
 
+        self.connect_target = plate_bg(self.grid_size, tile_color, "connect")
+        self.connect_active = plate_bg(self.grid_size, select_color, "connect")
+
         self.placeholder_target = plate_bg(self.grid_size, tile_color, "magic")
 
 
@@ -429,6 +432,39 @@ class editor_screen:
         pass
 
 
+class connect_screen(editor_screen):
+    def setup(self, editor):
+        self.cursor_pos = pygame.mouse.get_pos()
+        self.press_start = None
+
+        fake_sidebar = editor.side_bar.surface.copy()
+        last_screen = editor.screen.copy()
+        last_screen.blit(fake_sidebar, editor.side_bar.viewport)
+        last_screen.set_alpha(int(0.25 * 255))
+
+        self.bg = pygame.Surface((last_screen.get_width(), last_screen.get_height()))
+        self.bg.fill((100, 100, 128))
+        self.bg.blit(last_screen, (0, 0))
+
+    def on_move(self, editor, pos):
+        pass
+
+    def on_press(self, editor, pos):
+        pass
+
+    def on_release(self, editor):
+        pass
+
+    def draw(self, editor):
+        update_anything = True
+        editor.screen.blit(self.bg, (0, 0))
+
+        if update_anything:
+            pygame.display.flip()
+        else:
+            editor.clock.tick(60)
+
+
 class select_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = pygame.mouse.get_pos()
@@ -453,22 +489,30 @@ class select_screen(editor_screen):
 
         active_icon = editor.select_active
 
-        placeholder_rect = pygame.Rect(
-            editor.grid_size,
-            6 * editor.grid_size,
-            editor.grid_size * 2, editor.grid_size * 2)
-
-        placeholder_icon = editor.placeholder_target
-
         self.side_bar_targets = [
             (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
             (active_rect, active_icon, None)]
 
         if editor.any_selected():
-            self.side_bar_targets.append((placeholder_rect, placeholder_icon, None))
+            connect_rect = pygame.Rect(
+                editor.grid_size,
+                6 * editor.grid_size,
+                editor.grid_size * 2, editor.grid_size * 2)
+
+            connect_icon = editor.connect_target
+
+            self.side_bar_targets.append((connect_rect, connect_icon, self.goto_connect_screen))
 
     def goto_inspect_screen(self, editor):
         self.live = False
+
+    def goto_connect_screen(self, editor):
+        if editor.any_selected():
+            overlay = connect_screen(editor)
+            self.purge_events()
+            self.update_play_area = True
+            self.update_sidebar = True
+            editor.clear_selection()
 
     def on_move(self, editor, pos):
         self.cursor_pos = pos
