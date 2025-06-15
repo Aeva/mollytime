@@ -450,6 +450,7 @@ class connect_screen(editor_screen):
 
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
+        self.press_stop = None
         self.set_screen_label(editor, f"connect {self.lhs_tile} ↔ {self.rhs_tile}", (255, 255, 255), 1)
 
         goto_apply_rect = pygame.Rect(
@@ -525,31 +526,35 @@ class connect_screen(editor_screen):
         self.rhs_rect.right = viewport.centerx + radius
         self.rhs_rect.centery = viewport.centery
 
+        self.lhs_nodes = [self.lhs_tile]
+        self.rhs_nodes = [self.rhs_tile]
+
+        self.nodes = self.lhs_nodes + self.rhs_nodes
+        self.node_rects = {}
+        self.node_rects[self.lhs_tile] = self.lhs_rect
+        self.node_rects[self.rhs_tile] = self.rhs_rect
+        self.connections = set()
+
     def goto_cancel(self, editor):
         self.live = False
 
     def on_move(self, editor, pos):
         self.cursor_pos = pos
 
-        if not self.press_start:
-            return
-
-        move_x = pos[0] - self.press_start[0]
-        move_y = pos[1] - self.press_start[1]
-
-        # if move_x != 0 or move_y != 0:
-        #     editor.focus_x -= move_x
-        #     editor.focus_y -= move_y
-        #     self.update_play_area = True
-
-        self.press_start = pos
+        if self.press_start:
+            self.press_stop = pos
+            self.update_play_area = True
 
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
-            pass
+            for tile in self.nodes:
+                if self.node_rects[tile].collidepoint(pos):
+                    self.press_start = pos
+                    self.press_stop = pos
+                    self.update_play_area = True
+                    return
 
         elif editor.side_bar_rect.collidepoint(pos):
-            # test side bar targets
             rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
             for rect, surface, action in self.side_bar_targets:
                 if action is not None and rect.collidepoint(rel_pos):
@@ -557,7 +562,40 @@ class connect_screen(editor_screen):
                     return
 
     def on_release(self, editor):
-        self.press_start = None
+        if self.press_start:
+            start_key = None
+            stop_key = None
+
+            for tile in self.lhs_nodes:
+                rect = self.node_rects[tile]
+                if rect.collidepoint(self.press_start):
+                    start_key = tile
+                    for tile in self.rhs_nodes:
+                        rect = self.node_rects[tile]
+                        if rect.collidepoint(self.press_stop):
+                            stop_key = tile
+                            break
+                    break
+
+            if start_key is None:
+                for tile in self.rhs_nodes:
+                    rect = self.node_rects[tile]
+                    if rect.collidepoint(self.press_start):
+                        start_key = tile
+                        for tile in self.lhs_nodes:
+                            rect = self.node_rects[tile]
+                            if rect.collidepoint(self.press_stop):
+                                stop_key = tile
+                                break
+                        break
+
+            if start_key and stop_key:
+                key = (start_key, stop_key)
+                self.connections.add(key)
+
+            self.press_start = None
+            self.press_stop = None
+            self.update_play_area = True
 
     def draw(self, editor):
         update_anything = False
@@ -567,25 +605,26 @@ class connect_screen(editor_screen):
             self.update_play_area = False
             update_anything = True
 
-            # editor.play_area.focus_x = editor.focus_x
-            # editor.play_area.focus_y = editor.focus_y
-            # editor.play_area.redraw()
-            #
-            # frame = editor.play_area.surface.copy()
-            # for (tile_x, tile_y) in editor.tiles:
-            #     rect = pygame.Rect(
-            #         editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
-            #         editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
-            #         editor.grid_size * 2, editor.grid_size * 2)
-            #
-            #     sprite = editor.selected_tile_bg if editor.is_selected((tile_x, tile_y)) else editor.tile_bg
-            #     frame.blit(sprite.surface, rect)
-            #
-            # frame.blit(self.screen_label_surface, self.screen_label_rect)
-
             frame = self.bg.copy()
-            frame.blit(editor.tile_bg.surface, self.lhs_rect)
-            frame.blit(editor.tile_bg.surface, self.rhs_rect)
+
+            line_color = (0, 255, 0)
+            line_width = editor.grid_size // 4
+            for start, stop in self.connections:
+                start_pos = self.node_rects[start].center
+                stop_pos = self.node_rects[stop].center
+                pygame.draw.line(frame, line_color, start_pos, stop_pos, line_width)
+
+            for tile in self.nodes:
+                rect = self.node_rects[tile]
+                frame.blit(editor.tile_bg.surface, rect)
+
+            if self.press_start and self.press_stop:
+                line_color = (int(.75 * 255), 0, 0)
+                line_width = editor.grid_size // 2
+                radius = line_width // 2
+                pygame.draw.circle(frame, line_color, self.press_start, radius)
+                pygame.draw.circle(frame, line_color, self.press_stop, radius)
+                pygame.draw.line(frame, line_color, self.press_start, self.press_stop, line_width)
 
             editor.screen.blit(frame, editor.play_area.viewport)
 
