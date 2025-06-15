@@ -10,7 +10,8 @@ import pygame
 from fonts import *
 from colors import *
 from patterns import *
-from screens import *
+from screens.common import node_graph_card
+from screens.inspect import inspect_screen
 
 
 pygame.init()
