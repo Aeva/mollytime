@@ -163,6 +163,17 @@ class plate_bg:
         text_rect.top = rect.centery - estimate_font_x_center(font_path, size)
         self.surface.blit(text_surface, text_rect)
 
+    def draw(self, target, rect, label=None):
+        target.blit(self.surface, rect)
+
+        if label:
+            font_path, size = NATIONAL_PARK_REGULAR, max(10, self.size * .24)
+            text_surface = render_text(font_path, size, self.text_color, label)
+            text_rect = text_surface.get_rect().copy()
+            text_rect.centerx = rect.centerx
+            text_rect.top = rect.centery - estimate_font_x_center(font_path, size)
+            target.blit(text_surface, text_rect)
+
 
 def draw_line(target, color, start, end, radius):
     offset = vec_scale(normalize(vec_sub(end, start)), radius)

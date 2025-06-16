@@ -29,6 +29,9 @@ class blank_tile:
     def __repr__(self):
         return f"<tile {self.id}: \'{self.name}\'>"
 
+    def __str__(self):
+        return self.name
+
 
 class const_tile(blank_tile):
     outputs = ( "#" )
@@ -39,6 +42,9 @@ class const_tile(blank_tile):
 
     def __repr__(self):
         return f"<tile {self.id}: const {self.value}>"
+
+    def __str__(self):
+        return str(self.value)
 
 
 class out_tile(blank_tile):
