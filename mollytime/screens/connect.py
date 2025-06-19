@@ -5,7 +5,7 @@ from .common import *
 class connect_screen(editor_screen):
     def setup(self, editor):
         self.lhs_tile = editor.lhs_selection()
-        self.rhs_tile = editor.rhs_selection()
+        self.rhs_tile = editor.rhs_selection() or self.lhs_tile
 
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
