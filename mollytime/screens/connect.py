@@ -10,7 +10,7 @@ class connect_screen(editor_screen):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
         self.press_stop = None
-        self.set_screen_label(editor, f"connect {self.lhs_tile} ↔ {self.rhs_tile}", (255, 255, 255), 1)
+        self.set_screen_label(editor, f"connect {str(self.lhs_tile)} ↔ {str(self.rhs_tile)}", (255, 255, 255), 1)
 
         goto_apply_rect = pygame.Rect(
             editor.grid_size,
@@ -52,7 +52,7 @@ class connect_screen(editor_screen):
                 frame_xy(tile_xy),
                 (editor.grid_size * 2, editor.grid_size * 2))
 
-            pattern = editor.selected_tile_bg if editor.is_selected(tile_xy) else editor.tile_bg
+            pattern = editor.selected_tile_bg if editor.is_selected(tile_id) else editor.tile_bg
             pattern.draw(node_graph, rect, str(tile))
 
         node_graph.set_alpha(int(0.25 * 255))

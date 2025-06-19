@@ -10,7 +10,7 @@ import pygame
 from fonts import *
 from colors import *
 from patterns import *
-from screens.common import node_graph_card
+from screens.common import program_card
 from screens.inspect import inspect_screen
 
 
@@ -55,5 +55,5 @@ if dpi is None:
 
 dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
-editor = node_graph_card(screen, dpi)
+editor = program_card(screen, dpi)
 ui = inspect_screen(editor)

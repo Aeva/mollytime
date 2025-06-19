@@ -8,7 +8,7 @@ from colors import *
 from patterns import *
 
 
-class node_graph_card:
+class program_card:
     def __init__(self, screen, dpi):
         self.focus_x = 0
         self.focus_y = 0
@@ -66,16 +66,16 @@ class node_graph_card:
         self.by_output[out_key].add(in_key)
         self.by_input[in_key].add(out_key)
 
-    def toggle_selection(self, tile):
-        assert(tile in self.tile_positions.values())
-        if tile in self.selected:
-            self.selected = [select for select in self.selected if select != tile]
+    def toggle_selection(self, tile_id):
+        assert(tile_id in self.tiles)
+        if tile_id in self.selected:
+            self.selected = [select for select in self.selected if select != tile_id]
         else:
             if len(self.selected) < 2:
-                self.selected.append(tile)
+                self.selected.append(tile_id)
             else:
                 assert(len(self.selected) == 2)
-                self.selected = [self.selected[1], tile]
+                self.selected = [self.selected[1], tile_id]
 
     def clear_selection(self):
         self.selected = []
@@ -87,11 +87,16 @@ class node_graph_card:
         return len(self.selected) != 0
 
     def lhs_selection(self):
-        return (self.selected + [None])[0]
+        if len(self.selected) >= 1:
+            return self.tiles[self.selected[0]]
+        else:
+            return None
 
     def rhs_selection(self):
-        fill = self.lhs_selection()
-        return (self.selected + [fill, fill])[1]
+        if len(self.selected) >= 2:
+            return self.tiles[self.selected[1]]
+        else:
+            return self.lhs_selection()
 
     def resize(self, screen, dpi):
         self.screen = screen

@@ -72,7 +72,7 @@ class select_screen(editor_screen):
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
             something_happened = False
-            for (tile_x, tile_y) in editor.tile_positions.values():
+            for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
                 rect = pygame.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
@@ -80,7 +80,7 @@ class select_screen(editor_screen):
                 if rect.collidepoint(pos):
                     something_happened = True
                     self.update_play_area = True
-                    state = editor.toggle_selection((tile_x, tile_y))
+                    state = editor.toggle_selection(tile_id)
                     self.repopulate_sidebar(editor)
                     break
 
@@ -129,7 +129,7 @@ class select_screen(editor_screen):
                     frame_xy(tile_xy),
                     (editor.grid_size * 2, editor.grid_size * 2))
 
-                pattern = editor.selected_tile_bg if editor.is_selected(tile_xy) else editor.tile_bg
+                pattern = editor.selected_tile_bg if editor.is_selected(tile_id) else editor.tile_bg
                 pattern.draw(frame, rect, str(tile))
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
