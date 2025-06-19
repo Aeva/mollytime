@@ -69,8 +69,17 @@ class program_card:
     def toggle_selection(self, tile_id):
         assert(tile_id in self.tiles)
         if tile_id in self.selected:
+            # deselect the tile
             self.selected = [select for select in self.selected if select != tile_id]
         else:
+            # deselect incompatible selected tiles
+            tile = self.tiles[tile_id]
+            def can_connect(other_id):
+                other = self.tiles[other_id]
+                return bool((tile.inputs and other.outputs) or (other.inputs and tile.outputs))
+            self.selected = list(filter(can_connect, self.selected))
+
+            # select the new tile
             if len(self.selected) < 2:
                 self.selected.append(tile_id)
             else:
@@ -86,6 +95,15 @@ class program_card:
     def any_selected(self):
         return len(self.selected) != 0
 
+    def connectable_selection(self):
+        inputs = 0
+        outputs = 0
+        for tile_id in self.selected:
+            tile = self.tiles[tile_id]
+            inputs += len(tile.inputs)
+            outputs += len(tile.outputs)
+        return inputs > 0 and outputs > 0
+
     def lhs_selection(self):
         if len(self.selected) >= 1:
             return self.tiles[self.selected[0]]
@@ -96,7 +114,7 @@ class program_card:
         if len(self.selected) >= 2:
             return self.tiles[self.selected[1]]
         else:
-            return self.lhs_selection()
+            return None
 
     def resize(self, screen, dpi):
         self.screen = screen

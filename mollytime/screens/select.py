@@ -31,7 +31,7 @@ class select_screen(editor_screen):
             (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
             (active_rect, active_icon, None)]
 
-        if editor.any_selected():
+        if editor.connectable_selection():
             connect_rect = pygame.Rect(
                 editor.grid_size,
                 6 * editor.grid_size,
@@ -45,7 +45,7 @@ class select_screen(editor_screen):
         self.live = False
 
     def goto_connect_screen(self, editor):
-        if editor.any_selected():
+        if editor.connectable_selection():
             overlay = connect_screen(editor)
             self.purge_events()
             self.update_play_area = True
