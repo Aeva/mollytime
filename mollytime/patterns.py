@@ -168,11 +168,16 @@ class plate_bg:
 
         if label:
             font_path, size = NATIONAL_PARK_REGULAR, max(10, self.size * .24)
-            text_surface = render_text(font_path, size, self.text_color, label)
-            text_rect = text_surface.get_rect().copy()
-            text_rect.centerx = rect.centerx
-            text_rect.top = rect.centery - estimate_font_x_center(font_path, size)
-            target.blit(text_surface, text_rect)
+            lines = [i for i in map(str.strip, label.split("\n")) if i]
+            surfaces = [render_text(font_path, size, self.text_color, i) for i in lines]
+            spacing = int(size)
+            y_offset = len(surfaces) // 2 * -spacing * .5
+            for text_surface in surfaces:
+                text_rect = text_surface.get_rect().copy()
+                text_rect.centerx = rect.centerx
+                text_rect.top = rect.centery - estimate_font_x_center(font_path, size) + y_offset
+                target.blit(text_surface, text_rect)
+                y_offset += spacing
 
 
 def draw_line(target, color, start, end, radius):
@@ -183,4 +188,3 @@ def draw_line(target, color, start, end, radius):
         vec_add(end, sunwise_by_90(offset)),
         vec_add(start, sunwise_by_90(offset))]
     pygame.draw.polygon(target, color, points)
-    #pygame.draw.aalines(target, color, True, points)

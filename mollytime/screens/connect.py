@@ -10,7 +10,9 @@ class connect_screen(editor_screen):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
         self.press_stop = None
-        self.set_screen_label(editor, f"connect {str(self.lhs_tile)} ↔ {str(self.rhs_tile)}", (255, 255, 255), 1)
+
+        screen_label_color = (255, 255, 255)
+        self.set_screen_label(editor, "connect", screen_label_color, 1)
 
         goto_apply_rect = pygame.Rect(
             editor.grid_size,
@@ -85,12 +87,20 @@ class connect_screen(editor_screen):
         matte.set_alpha(int(0.8 * 255))
         self.bg.blit(matte, (0, 0))
 
-        self.bg.blit(self.screen_label_surface, self.screen_label_rect)
-
         radius = (viewport.h - editor.grid_size) // 3
 
-        # lhs_count = len(self.lhs_tile.inputs) + len(self.lhs_tile.outputs)
-        # rhs_count = len(self.rhs_tile.inputs) + len(self.rhs_tile.outputs)
+        self.bg.blit(self.screen_label_surface, self.screen_label_rect)
+        font_path, size = AFACAD_REGULAR, editor.grid_size
+        surface = render_text(font_path, size, screen_label_color, str(self.lhs_tile))
+        rect = surface.get_rect().copy()
+        rect.top = self.screen_label_rect.top
+        rect.left = viewport.centerx - radius
+        self.bg.blit(surface, rect)
+        surface = render_text(font_path, size, screen_label_color, str(self.rhs_tile))
+        rect = surface.get_rect().copy()
+        rect.top = self.screen_label_rect.top
+        rect.left = viewport.centerx + radius
+        self.bg.blit(surface, rect)
 
         self.lhs_nodes = []
         self.rhs_nodes = []
@@ -105,6 +115,7 @@ class connect_screen(editor_screen):
 
         for index, symbol in enumerate(symbols):
             key = (self.lhs_tile.id, symbol)
+            assert(key in editor.by_input or key in editor.by_output)
             alpha = (index + 1) / (count + 1)
             pos = vec_lerp(start, stop, alpha)
             self.lhs_nodes.append(key)
@@ -117,36 +128,12 @@ class connect_screen(editor_screen):
 
         for index, symbol in enumerate(symbols):
             key = (self.rhs_tile.id, symbol)
+            assert(key in editor.by_input or key in editor.by_output)
             alpha = (index + 1) / (count + 1)
             pos = vec_lerp(start, stop, alpha)
             self.rhs_nodes.append(key)
             self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
-
-        # for index in range(count):
-        #     alpha = (index + 1) / (count + 2)
-        #     pos = vec_lerp(start, stop, alpha)
-        #     if index < output_count:
-        #         key = (self.lhs_tile.id, self.lhs_tile.outputs[index])
-        #     else:
-        #         index -= output_count
-        #         key = (self.lhs_tile.id, self.lhs_tile.inputs.keys()[index])
-
-
-        # self.lhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-        # self.lhs_rect.left = viewport.centerx - radius
-        # self.lhs_rect.centery = viewport.centery
-        #
-        # self.rhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-        # self.rhs_rect.right = viewport.centerx + radius
-        # self.rhs_rect.centery = viewport.centery
-        #
-        # self.lhs_nodes = [self.lhs_tile]
-        # self.rhs_nodes = [self.rhs_tile]
-        #
-        #
-        # self.node_rects[self.lhs_tile] = self.lhs_rect
-        # self.node_rects[self.rhs_tile] = self.rhs_rect
         self.connections = set()
 
     def goto_cancel(self, editor):
@@ -229,17 +216,16 @@ class connect_screen(editor_screen):
                 stop_pos = self.node_rects[stop].center
                 draw_line(frame, line_color, start_pos, stop_pos, radius)
 
-            for key in self.lhs_nodes:
+            for key in self.lhs_nodes + self.rhs_nodes:
                 rect = self.node_rects[key]
-                editor.tile_bg.draw(frame, rect, str(key))
-
-            for key in self.rhs_nodes:
-                rect = self.node_rects[key]
-                editor.tile_bg.draw(frame, rect, str(key))
-
-            # for tile in self.nodes:
-            #     rect = self.node_rects[tile]
-            #     frame.blit(editor.tile_bg.surface, rect)
+                tile_id, param_name = key
+                tile = editor.tiles[tile_id]
+                tile_name = str(tile)
+                #label = f"{tile_name}\n{param_name}"
+                label = param_name
+                if type(tile) is out_tile:
+                    label = "line\nout"
+                editor.tile_bg.draw(frame, rect, label)
 
             if self.press_start and self.press_stop:
                 line_color = (int(.75 * 255), 0, 0)
