@@ -89,21 +89,64 @@ class connect_screen(editor_screen):
 
         radius = (viewport.h - editor.grid_size) // 3
 
-        self.lhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-        self.lhs_rect.left = viewport.centerx - radius
-        self.lhs_rect.centery = viewport.centery
+        # lhs_count = len(self.lhs_tile.inputs) + len(self.lhs_tile.outputs)
+        # rhs_count = len(self.rhs_tile.inputs) + len(self.rhs_tile.outputs)
 
-        self.rhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-        self.rhs_rect.right = viewport.centerx + radius
-        self.rhs_rect.centery = viewport.centery
-
-        self.lhs_nodes = [self.lhs_tile]
-        self.rhs_nodes = [self.rhs_tile]
-
-        self.nodes = self.lhs_nodes + self.rhs_nodes
+        self.lhs_nodes = []
+        self.rhs_nodes = []
         self.node_rects = {}
-        self.node_rects[self.lhs_tile] = self.lhs_rect
-        self.node_rects[self.rhs_tile] = self.rhs_rect
+
+        tile_size = editor.grid_size * 2
+
+        start = (viewport.centerx - radius, 0)
+        stop = (viewport.centerx - radius - tile_size, viewport.bottom - tile_size)
+        symbols = list(self.lhs_tile.outputs) + list(self.lhs_tile.inputs.keys())
+        count = len(symbols)
+
+        for index, symbol in enumerate(symbols):
+            key = (self.lhs_tile.id, symbol)
+            alpha = (index + 1) / (count + 1)
+            pos = vec_lerp(start, stop, alpha)
+            self.lhs_nodes.append(key)
+            self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+
+        start = (viewport.centerx + radius, 0)
+        stop = (viewport.centerx + radius - tile_size, viewport.bottom - tile_size)
+        symbols = list(reversed(list(self.rhs_tile.outputs) + list(self.rhs_tile.inputs.keys())))
+        count = len(symbols)
+
+        for index, symbol in enumerate(symbols):
+            key = (self.rhs_tile.id, symbol)
+            alpha = (index + 1) / (count + 1)
+            pos = vec_lerp(start, stop, alpha)
+            self.rhs_nodes.append(key)
+            self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+
+
+        # for index in range(count):
+        #     alpha = (index + 1) / (count + 2)
+        #     pos = vec_lerp(start, stop, alpha)
+        #     if index < output_count:
+        #         key = (self.lhs_tile.id, self.lhs_tile.outputs[index])
+        #     else:
+        #         index -= output_count
+        #         key = (self.lhs_tile.id, self.lhs_tile.inputs.keys()[index])
+
+
+        # self.lhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+        # self.lhs_rect.left = viewport.centerx - radius
+        # self.lhs_rect.centery = viewport.centery
+        #
+        # self.rhs_rect = pygame.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+        # self.rhs_rect.right = viewport.centerx + radius
+        # self.rhs_rect.centery = viewport.centery
+        #
+        # self.lhs_nodes = [self.lhs_tile]
+        # self.rhs_nodes = [self.rhs_tile]
+        #
+        #
+        # self.node_rects[self.lhs_tile] = self.lhs_rect
+        # self.node_rects[self.rhs_tile] = self.rhs_rect
         self.connections = set()
 
     def goto_cancel(self, editor):
@@ -186,9 +229,17 @@ class connect_screen(editor_screen):
                 stop_pos = self.node_rects[stop].center
                 draw_line(frame, line_color, start_pos, stop_pos, radius)
 
-            for tile in self.nodes:
-                rect = self.node_rects[tile]
-                frame.blit(editor.tile_bg.surface, rect)
+            for key in self.lhs_nodes:
+                rect = self.node_rects[key]
+                editor.tile_bg.draw(frame, rect, str(key))
+
+            for key in self.rhs_nodes:
+                rect = self.node_rects[key]
+                editor.tile_bg.draw(frame, rect, str(key))
+
+            # for tile in self.nodes:
+            #     rect = self.node_rects[tile]
+            #     frame.blit(editor.tile_bg.surface, rect)
 
             if self.press_start and self.press_stop:
                 line_color = (int(.75 * 255), 0, 0)

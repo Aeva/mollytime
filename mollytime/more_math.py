@@ -51,6 +51,14 @@ def vec_scale(vec, scale):
     return tuple(i * scale for i in vec)
 
 
+def vec_lerp(lhs, rhs, alpha):
+    """
+    Interpolate two vectors of arbitrary size by a scalar value.
+    """
+    inv_a = 1.0 - alpha
+    return vec_add(vec_scale(lhs, inv_a), vec_scale(rhs, alpha))
+
+
 def dot(lhs, rhs):
     """
     Dot product of two vectors of arbitrary size.
