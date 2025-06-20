@@ -55,6 +55,8 @@ class program_card:
         return tile.id
 
     def connect_tiles(self, out_key, in_key):
+        if out_key in self.by_input and in_key in self.by_output:
+            return self.connect_tiles(in_key, out_key)
         assert(out_key in self.by_output)
         assert(in_key in self.by_input)
 

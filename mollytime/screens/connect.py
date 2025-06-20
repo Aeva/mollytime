@@ -25,7 +25,7 @@ class connect_screen(editor_screen):
             editor.grid_size * 2, editor.grid_size * 2)
 
         self.side_bar_targets = [
-            (goto_apply_rect, editor.apply_target, self.goto_cancel),
+            (goto_apply_rect, editor.apply_target, self.goto_apply),
             (goto_cancel_rect, editor.cancel_target, self.goto_cancel)]
 
         self.update_sidebar = True
@@ -138,6 +138,11 @@ class connect_screen(editor_screen):
         for out_key, in_key in editor.wires:
             if out_key in self.node_rects and in_key in self.node_rects:
                 self.connections.add((out_key, in_key))
+
+    def goto_apply(self, editor):
+        self.live = False
+        for wire in self.connections:
+            editor.connect_tiles(*wire)
 
     def goto_cancel(self, editor):
         self.live = False
