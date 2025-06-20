@@ -134,7 +134,10 @@ class connect_screen(editor_screen):
             self.rhs_nodes.append(key)
             self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
-        self.connections = set()
+        self.connections = []
+        for out_key, in_key in editor.wires:
+            if out_key in self.node_rects and in_key in self.node_rects:
+                self.connections.append((out_key, in_key))
 
     def goto_cancel(self, editor):
         self.live = False
@@ -208,12 +211,13 @@ class connect_screen(editor_screen):
 
             frame = self.bg.copy()
 
-            line_color = (0, 255, 0)
+            line_color = (128, 255, 255)
             line_width = editor.grid_size // 4
             radius = line_width // 2
-            for start, stop in self.connections:
-                start_pos = self.node_rects[start].center
-                stop_pos = self.node_rects[stop].center
+
+            for lhs_key, rhs_key in self.connections:
+                start_pos = self.node_rects[lhs_key].center
+                stop_pos = self.node_rects[rhs_key].center
                 draw_line(frame, line_color, start_pos, stop_pos, radius)
 
             for key in self.lhs_nodes + self.rhs_nodes:
@@ -221,7 +225,6 @@ class connect_screen(editor_screen):
                 tile_id, param_name = key
                 tile = editor.tiles[tile_id]
                 tile_name = str(tile)
-                #label = f"{tile_name}\n{param_name}"
                 label = param_name
                 if type(tile) is out_tile:
                     label = "line\nout"
