@@ -134,10 +134,10 @@ class connect_screen(editor_screen):
             self.rhs_nodes.append(key)
             self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
-        self.connections = []
+        self.connections = set()
         for out_key, in_key in editor.wires:
             if out_key in self.node_rects and in_key in self.node_rects:
-                self.connections.append((out_key, in_key))
+                self.connections.add((out_key, in_key))
 
     def goto_cancel(self, editor):
         self.live = False
@@ -151,8 +151,8 @@ class connect_screen(editor_screen):
 
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
-            for tile in self.nodes:
-                if self.node_rects[tile].collidepoint(pos):
+            for key, rect in self.node_rects.items():
+                if rect.collidepoint(pos):
                     self.press_start = pos
                     self.press_stop = pos
                     self.update_play_area = True
@@ -170,26 +170,26 @@ class connect_screen(editor_screen):
             start_key = None
             stop_key = None
 
-            for tile in self.lhs_nodes:
-                rect = self.node_rects[tile]
+            for key in self.lhs_nodes:
+                rect = self.node_rects[key]
                 if rect.collidepoint(self.press_start):
-                    start_key = tile
-                    for tile in self.rhs_nodes:
-                        rect = self.node_rects[tile]
+                    start_key = key
+                    for key in self.rhs_nodes:
+                        rect = self.node_rects[key]
                         if rect.collidepoint(self.press_stop):
-                            stop_key = tile
+                            stop_key = key
                             break
                     break
 
             if start_key is None:
-                for tile in self.rhs_nodes:
-                    rect = self.node_rects[tile]
+                for key in self.rhs_nodes:
+                    rect = self.node_rects[key]
                     if rect.collidepoint(self.press_start):
-                        start_key = tile
-                        for tile in self.lhs_nodes:
-                            rect = self.node_rects[tile]
+                        start_key = key
+                        for key in self.lhs_nodes:
+                            rect = self.node_rects[key]
                             if rect.collidepoint(self.press_stop):
-                                stop_key = tile
+                                stop_key = key
                                 break
                         break
 
