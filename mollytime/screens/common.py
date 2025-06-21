@@ -153,8 +153,8 @@ class program_card:
         self.select_target = plate_bg(self.grid_size, tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
 
-        self.connect_target = plate_bg(self.grid_size, tile_color, "connect")
-        self.connect_active = plate_bg(self.grid_size, self.select_color, "connect")
+        self.connect_target = plate_bg(self.grid_size, tile_color, "fancy\nconnect")
+        self.connect_active = plate_bg(self.grid_size, self.select_color, "fancy\nconnect")
 
         self.apply_target = plate_bg(self.grid_size, tile_color, "apply")
 
