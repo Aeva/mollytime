@@ -12,16 +12,11 @@ class blank_tile:
     # `outputs` is a tuple of unique names which may be empty.
     outputs = tuple()
 
-    def __init__(self, name, commutative=False):
+    def __init__(self, name):
         # `id` is a monotonically incleasing unique identifier used for
         # routing connections between nodes independent of board position.
         self.id = blank_tile.__next_id
         blank_tile.__next_id += 1
-
-        # `commutative` indicates that the tile is an order-independent
-        # binary operator, and thus its inputs meaningfully accept multiple
-        # connections.
-        self.commutative = commutative
 
         # `name` is a human readable name that can be overriden by the player.
         self.name = name
@@ -67,25 +62,25 @@ class add_tile(blank_tile):
     outputs = ( "=", )
 
     def __init__(self, name="add"):
-        super().__init__(name, commutative=True)
+        super().__init__(name)
 
 
 class mul_tile(blank_tile):
     inputs = { "*" : None }
     outputs = ( "=", )
     def __init__(self, name="mul"):
-        super().__init__(name, commutative=True)
+        super().__init__(name)
 
 
 class min_tile(blank_tile):
     inputs = { "min" : None }
     outputs = ( "=", )
     def __init__(self, name="min"):
-        super().__init__(name, commutative=True)
+        super().__init__(name)
 
 
 class max_tile(blank_tile):
     inputs = { "max" : None }
     outputs = ( "=", )
     def __init__(self, name="max"):
-        super().__init__(name, commutative=True)
+        super().__init__(name)

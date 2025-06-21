@@ -60,10 +60,6 @@ class program_card:
         assert(out_key in self.by_output)
         assert(in_key in self.by_input)
 
-        receiver = self.tiles[in_key[0]]
-        if self.by_input[in_key] and not receiver.commutative:
-            return
-
         self.wires.add((out_key, in_key))
         self.by_output[out_key].add(in_key)
         self.by_input[in_key].add(out_key)
