@@ -1,4 +1,6 @@
 
+import operator
+
 
 class blank_tile:
     __next_id = 1
@@ -12,11 +14,14 @@ class blank_tile:
     # `outputs` is a tuple of unique names which may be empty.
     outputs = tuple()
 
-    def __init__(self, name):
+    def __init__(self, name, combiner=operator.add):
         # `id` is a monotonically incleasing unique identifier used for
         # routing connections between nodes independent of board position.
         self.id = blank_tile.__next_id
         blank_tile.__next_id += 1
+
+        # 'combiner' is the combining operator to use when inputs are over-subscribed.
+        self.combiner = combiner
 
         # `name` is a human readable name that can be overriden by the player.
         self.name = name
@@ -68,19 +73,19 @@ class add_tile(blank_tile):
 class mul_tile(blank_tile):
     inputs = { "*" : None }
     outputs = ( "=", )
-    def __init__(self, name="mul"):
+    def __init__(self, name="mul", combiner=operator.mul):
         super().__init__(name)
 
 
 class min_tile(blank_tile):
     inputs = { "min" : None }
     outputs = ( "=", )
-    def __init__(self, name="min"):
+    def __init__(self, name="min", combiner=min):
         super().__init__(name)
 
 
 class max_tile(blank_tile):
     inputs = { "max" : None }
     outputs = ( "=", )
-    def __init__(self, name="max"):
+    def __init__(self, name="max", combiner=max):
         super().__init__(name)
