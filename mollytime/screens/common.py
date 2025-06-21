@@ -68,6 +68,11 @@ class program_card:
         self.by_output[out_key].add(in_key)
         self.by_input[in_key].add(out_key)
 
+    def disconnect_tiles(self, out_key, in_key):
+        self.wires.remove((out_key, in_key))
+        self.by_output[out_key].remove(in_key)
+        self.by_input[in_key].remove(out_key)
+
     def toggle_selection(self, tile_id):
         assert(tile_id in self.tiles)
         if tile_id in self.selected:

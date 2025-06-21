@@ -10,6 +10,8 @@ class connect_screen(editor_screen):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
         self.press_stop = None
+        self.cut_start = None
+        self.cut_stop = None
 
         screen_label_color = (255, 255, 255)
         self.set_screen_label(editor, "connect", screen_label_color, 1)
@@ -143,6 +145,13 @@ class connect_screen(editor_screen):
         self.live = False
         for wire in self.connections:
             editor.connect_tiles(*wire)
+        disconnects = set()
+        for wire in editor.wires:
+            wire_is_relevant = wire[0] in self.node_rects and wire[1] in self.node_rects
+            if wire_is_relevant and wire not in self.connections:
+                disconnects.add(wire)
+        for out_key, in_key in disconnects:
+            editor.disconnect_tiles(out_key, in_key)
 
     def goto_cancel(self, editor):
         self.live = False
@@ -153,6 +162,9 @@ class connect_screen(editor_screen):
         if self.press_start:
             self.press_stop = pos
             self.update_play_area = True
+        elif self.cut_start:
+            self.cut_stop = pos
+            self.update_play_area = True
 
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
@@ -162,6 +174,10 @@ class connect_screen(editor_screen):
                     self.press_stop = pos
                     self.update_play_area = True
                     return
+            if not self.press_start:
+                self.cut_start = pos
+                self.cut_stop = pos
+                self.update_play_area = True
 
         elif editor.side_bar_rect.collidepoint(pos):
             rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
@@ -206,6 +222,38 @@ class connect_screen(editor_screen):
             self.press_stop = None
             self.update_play_area = True
 
+        elif self.cut_start:
+            def intersection(wire_start, wire_stop):
+                a = vec_sub(wire_stop, wire_start)
+                b = vec_sub(self.cut_stop, self.cut_start)
+                a_mag = length(a)
+                b_mag = length(b)
+                a = vec_scale(a, 1/a_mag)
+                b = vec_scale(b, 1/b_mag)
+                c = vec_sub(self.cut_start, wire_start)
+                ax, ay = a
+                bx, by = b
+                cx, cy = c
+                det = ax * by - ay * bx
+                if det == 0:
+                    # rays are parallel
+                    return False
+
+                u = (cx * by - cy * bx) / det
+                v = (cx * ay - cy * ax) / det
+
+                return (u >= 0 and v >= 0 and u <= a_mag and v <= b_mag)
+
+            for wire in self.connections:
+                endpoints = [self.node_rects[key].center for key in wire]
+                if intersection(*endpoints):
+                    self.connections.remove(wire)
+                    break
+
+            self.cut_start = None
+            self.cut_stop = None
+            self.update_play_area = True
+
     def draw(self, editor):
         update_anything = False
 
@@ -236,12 +284,16 @@ class connect_screen(editor_screen):
                 editor.tile_bg.draw(frame, rect, label)
 
             if self.press_start and self.press_stop:
-                line_color = (int(.75 * 255), 0, 0)
-                line_width = editor.grid_size // 2
-                radius = line_width // 2
+                line_color = (0, 255, 0)
+                radius = max(editor.grid_size // 4, 4)
                 pygame.draw.circle(frame, line_color, self.press_start, radius)
                 pygame.draw.circle(frame, line_color, self.press_stop, radius)
                 draw_line(frame, line_color, self.press_start, self.press_stop, radius)
+
+            elif self.cut_start and self.cut_stop:
+                line_color = (255, 0, 0)
+                radius = 1
+                draw_line(frame, line_color, self.cut_start, self.cut_stop, radius)
 
             editor.screen.blit(frame, editor.play_area.viewport)
 
