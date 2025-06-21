@@ -15,14 +15,14 @@ class select_screen(editor_screen):
 
         goto_inspect_rect = pygame.Rect(
             editor.grid_size,
-            0 * editor.grid_size,
+            0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
         active_rect = pygame.Rect(
             editor.grid_size,
-            3 * editor.grid_size,
+            1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         active_icon = editor.select_active
@@ -34,12 +34,24 @@ class select_screen(editor_screen):
         if editor.connectable_selection():
             connect_rect = pygame.Rect(
                 editor.grid_size,
-                6 * editor.grid_size,
+                2 * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
 
             connect_icon = editor.connect_target
 
             self.side_bar_targets.append((connect_rect, connect_icon, self.goto_connect_screen))
+
+            if implicit_wire := editor.implicit_wire_from_selection():
+                rect = pygame.Rect(
+                    editor.grid_size,
+                    3 * editor.grid_size * 3,
+                    editor.grid_size * 2, editor.grid_size * 2)
+                icon = None
+                if implicit_wire not in editor.wires:
+                    icon = editor.auto_connect
+                else:
+                    icon = editor.auto_disconnect
+                self.side_bar_targets.append((rect, icon, self.toggle_implicit_connection))
 
     def goto_inspect_screen(self, editor):
         self.live = False
@@ -51,6 +63,13 @@ class select_screen(editor_screen):
             self.update_play_area = True
             self.update_sidebar = True
             editor.clear_selection()
+            self.repopulate_sidebar(editor)
+
+    def toggle_implicit_connection(self, editor):
+        if wire := editor.implicit_wire_from_selection():
+            editor.toggle_connection(*wire)
+            editor.clear_selection()
+            self.update_play_area = True
             self.repopulate_sidebar(editor)
 
     def on_move(self, editor, pos):

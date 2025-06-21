@@ -32,13 +32,13 @@ class program_card:
         summed = self.add_tile((1, 0), add_tile())
         out = self.add_tile((1, 1), out_tile())
 
-        self.connect_tiles((two, '#'), (a5_hz, '*'))
-        self.connect_tiles((a4_hz, '#'), (a5_hz, '*'))
-        self.connect_tiles((a5_hz, '='), (a5_osc, 'hz'))
-        self.connect_tiles((a4_hz, '#'), (a4_osc, 'hz'))
-        self.connect_tiles((a4_osc, 'amp'), (summed, '+'))
-        self.connect_tiles((a5_osc, 'amp'), (summed, '+'))
-        self.connect_tiles((summed, '='), (out, 'out'))
+        # self.connect_tiles((two, '#'), (a5_hz, '*'))
+        # self.connect_tiles((a4_hz, '#'), (a5_hz, '*'))
+        # self.connect_tiles((a5_hz, '='), (a5_osc, 'hz'))
+        # self.connect_tiles((a4_hz, '#'), (a4_osc, 'hz'))
+        # self.connect_tiles((a4_osc, 'amp'), (summed, '+'))
+        # self.connect_tiles((a5_osc, 'amp'), (summed, '+'))
+        # self.connect_tiles((summed, '='), (out, 'out'))
 
         self.selected = []
 
@@ -73,6 +73,13 @@ class program_card:
         self.by_output[out_key].remove(in_key)
         self.by_input[in_key].remove(out_key)
 
+    def toggle_connection(self, out_key, in_key):
+        wire = (out_key, in_key)
+        if wire in self.wires:
+            self.disconnect_tiles(out_key, in_key)
+        else:
+            self.connect_tiles(out_key, in_key)
+
     def toggle_selection(self, tile_id):
         assert(tile_id in self.tiles)
         if tile_id in self.selected:
@@ -101,6 +108,20 @@ class program_card:
 
     def any_selected(self):
         return len(self.selected) != 0
+
+    def implicit_wire_from_selection(self):
+        """
+        If the selection has one obvious possible connection assuming the first
+        chronological selection is the output and the second is the input, then
+        this function returns the implied wire tuple.
+        """
+        if len(self.selected) == 2:
+            out_tile, in_tile = [self.tiles[tile_id] for tile_id in self.selected]
+            if len(out_tile.outputs) == 1 and len(in_tile.inputs) == 1:
+                out_key = (out_tile.id, out_tile.outputs[0])
+                in_key = (in_tile.id, list(in_tile.inputs.keys())[0])
+                return (out_key, in_key)
+        return None
 
     def connectable_selection(self):
         inputs = 0
@@ -153,8 +174,11 @@ class program_card:
         self.select_target = plate_bg(self.grid_size, tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
 
-        self.connect_target = plate_bg(self.grid_size, tile_color, "fancy\nconnect")
-        self.connect_active = plate_bg(self.grid_size, self.select_color, "fancy\nconnect")
+        self.connect_target = plate_bg(self.grid_size, tile_color, "manual\nconnect")
+        self.connect_active = plate_bg(self.grid_size, self.select_color, "full\nconnect")
+
+        self.auto_connect = plate_bg(self.grid_size, tile_color, "connect")
+        self.auto_disconnect = plate_bg(self.grid_size, tile_color, "detach")
 
         self.apply_target = plate_bg(self.grid_size, tile_color, "apply")
 
