@@ -16,13 +16,14 @@
 #pragma once
 
 #include "glm_common.h"
+#include <array>
 #include <string>
 #include <vector>
 #include <variant>
 #include "errors.h"
 
 
-enum class ColorSpace
+enum class ColorSpace : int
 {
 	sRGB = 0,
 	LinearRGB,
@@ -119,6 +120,11 @@ struct ColorPoint
 				Saturation = 0.0f;
 			}
 		}
+	}
+
+	ColorPoint(ColorSpace InEncoding, std::array<float, 3> InChannels)
+		: ColorPoint(InEncoding, glm::vec3(InChannels[0], InChannels[1], InChannels[2]))
+	{
 	}
 
 	ColorPoint(ColorSpace InEncoding, ColorPoint Other)
