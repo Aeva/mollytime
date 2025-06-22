@@ -32,18 +32,24 @@ class program_card:
         summed = self.add_tile((1, 0), add_tile())
         out = self.add_tile((1, 1), out_tile())
 
-        # self.connect_tiles((two, '#'), (a5_hz, '*'))
-        # self.connect_tiles((a4_hz, '#'), (a5_hz, '*'))
-        # self.connect_tiles((a5_hz, '='), (a5_osc, 'hz'))
-        # self.connect_tiles((a4_hz, '#'), (a4_osc, 'hz'))
-        # self.connect_tiles((a4_osc, 'amp'), (summed, '+'))
-        # self.connect_tiles((a5_osc, 'amp'), (summed, '+'))
-        # self.connect_tiles((summed, '='), (out, 'out'))
+        self.connect_tiles((two, '#'), (a5_hz, '*'))
+        self.connect_tiles((a4_hz, '#'), (a5_hz, '*'))
+        self.connect_tiles((a5_hz, '='), (a5_osc, 'hz'))
+        self.connect_tiles((a4_hz, '#'), (a4_osc, 'hz'))
+        self.connect_tiles((a4_osc, 'amp'), (summed, '+'))
+        self.connect_tiles((a5_osc, 'amp'), (summed, '+'))
+        self.connect_tiles((summed, '='), (out, 'out'))
 
         self.selected = []
 
         self.clock = pygame.time.Clock()
         self.resize(screen, dpi)
+
+    def get_tile_rect(self, tile_id):
+        tile_xy = self.tile_positions[tile_id]
+        frame_x = self.play_rect.centerx - self.focus_x - self.grid_size + tile_xy[0] * self.grid_size * 3
+        frame_y = self.play_rect.centery - self.focus_y - self.grid_size + tile_xy[1] * self.grid_size * 3
+        return pygame.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
 
     def add_tile(self, position, tile):
         self.tiles[tile.id] = tile

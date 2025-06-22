@@ -187,3 +187,38 @@ def draw_line(target, color, start, end, radius):
         vec_add(end, sunwise_by_90(offset)),
         vec_add(start, sunwise_by_90(offset))]
     pygame.draw.polygon(target, color, points)
+
+
+def draw_arrow(target, color, start, end, radius, inset=.5):
+    start_pt = start.center if type(start) == pygame.Rect else start
+    end_pt = end.center if type(end) == pygame.Rect else end
+
+    inset = int(radius * inset)
+
+    if type(start) == pygame.Rect:
+        start = start.copy()
+        start.x += inset
+        start.y += inset
+        start.w -= inset * 2
+        start.h -= inset * 2
+        if line := start.clipline(start_pt, end_pt):
+            start_pt = line[1]
+
+    if type(end) == pygame.Rect:
+        end = end.copy()
+        end.x += inset
+        end.y += inset
+        end.w -= inset * 2
+        end.h -= inset * 2
+        if line := end.clipline(start_pt, end_pt):
+            end_pt = line[0]
+
+    draw_line(target, color, start_pt, end_pt, radius)
+    pygame.draw.circle(target, color, start_pt, radius)
+    pygame.draw.circle(target, color, end_pt, radius)
+
+    point = vec_scale(normalize(vec_sub(start_pt, end_pt)), radius * 4)
+    for angle in [-35, 35]:
+        arrow_pt = vec_add(end_pt, rotate_point(point, angle))
+        draw_line(target, color, end_pt, arrow_pt, radius)
+        pygame.draw.circle(target, color, arrow_pt, radius)

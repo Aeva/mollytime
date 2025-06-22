@@ -131,25 +131,17 @@ class select_screen(editor_screen):
 
             frame = editor.play_area.surface.copy()
 
-            def frame_xy(tile_xy):
-                return (
-                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_xy[0] * editor.grid_size * 3,
-                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_xy[1] * editor.grid_size * 3)
-
-            wire_offset = (editor.grid_size, editor.grid_size)
-            for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
-                lhs_pos = vec_add(frame_xy(editor.tile_positions[lhs_id]), wire_offset)
-                rhs_pos = vec_add(frame_xy(editor.tile_positions[rhs_id]), wire_offset)
-                draw_line(frame, (0, 0, 0), lhs_pos, rhs_pos, max(4, editor.grid_size // 8))
-
             for tile_id, tile_xy in editor.tile_positions.items():
                 tile = editor.tiles[tile_id]
-                rect = pygame.Rect(
-                    frame_xy(tile_xy),
-                    (editor.grid_size * 2, editor.grid_size * 2))
-
+                rect = editor.get_tile_rect(tile_id)
                 pattern = editor.selected_tile_bg if editor.is_selected(tile_id) else editor.tile_bg
                 pattern.draw(frame, rect, str(tile))
+
+            for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
+                lhs_rect = editor.get_tile_rect(lhs_id)
+                rhs_rect = editor.get_tile_rect(rhs_id)
+                radius = max(4, editor.grid_size // 12)
+                draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)

@@ -82,3 +82,14 @@ def normalize(vec):
         return tuple(i / mag for i in vec)
     else:
         return vec
+
+
+def rotate_point(point, degrees):
+    """
+    Rotates a point around the origin.
+    """
+    radians = math.radians(degrees)
+    s = math.sin(radians)
+    c = math.cos(radians)
+    x, y = point
+    return (x * c - y * s, x * s + y * c)

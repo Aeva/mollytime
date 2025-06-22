@@ -39,25 +39,17 @@ class connect_screen(editor_screen):
 
         node_graph = editor.play_area.surface.copy()
 
-        def frame_xy(tile_xy):
-            return (
-                editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_xy[0] * editor.grid_size * 3,
-                editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_xy[1] * editor.grid_size * 3)
-
-        wire_offset = (editor.grid_size, editor.grid_size)
-        for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
-            lhs_pos = vec_add(frame_xy(editor.tile_positions[lhs_id]), wire_offset)
-            rhs_pos = vec_add(frame_xy(editor.tile_positions[rhs_id]), wire_offset)
-            draw_line(node_graph, (0, 0, 0), lhs_pos, rhs_pos, max(4, editor.grid_size // 8))
-
         for tile_id, tile_xy in editor.tile_positions.items():
             tile = editor.tiles[tile_id]
-            rect = pygame.Rect(
-                frame_xy(tile_xy),
-                (editor.grid_size * 2, editor.grid_size * 2))
-
+            rect = editor.get_tile_rect(tile_id)
             pattern = editor.selected_tile_bg if editor.is_selected(tile_id) else editor.tile_bg
             pattern.draw(node_graph, rect, str(tile))
+
+        for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
+            lhs_rect = editor.get_tile_rect(lhs_id)
+            rhs_rect = editor.get_tile_rect(rhs_id)
+            radius = max(4, editor.grid_size // 12)
+            draw_arrow(node_graph, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
         node_graph.set_alpha(int(0.25 * 255))
 
@@ -215,8 +207,11 @@ class connect_screen(editor_screen):
                         break
 
             if start_key and stop_key:
-                key = (start_key, stop_key)
-                self.connections.add(key)
+                if stop_key in editor.by_output:
+                    start_key, stop_key = stop_key, start_key
+                if start_key in editor.by_output and stop_key in editor.by_input:
+                    key = (start_key, stop_key)
+                    self.connections.add(key)
 
             self.press_start = None
             self.press_stop = None
@@ -268,11 +263,6 @@ class connect_screen(editor_screen):
             line_width = editor.grid_size // 4
             radius = line_width // 2
 
-            for lhs_key, rhs_key in self.connections:
-                start_pos = self.node_rects[lhs_key].center
-                stop_pos = self.node_rects[rhs_key].center
-                draw_line(frame, line_color, start_pos, stop_pos, radius)
-
             for key in self.lhs_nodes + self.rhs_nodes:
                 rect = self.node_rects[key]
                 tile_id, param_name = key
@@ -283,6 +273,11 @@ class connect_screen(editor_screen):
                     label = "line\nout"
                 editor.tile_bg.draw(frame, rect, label)
 
+            for lhs_key, rhs_key in self.connections:
+                start_rect = self.node_rects[lhs_key]
+                stop_rect = self.node_rects[rhs_key]
+                draw_arrow(frame, line_color, start_rect, stop_rect, radius)
+
             if self.press_start and self.press_stop:
                 line_color = (0, 255, 0)
                 radius = max(editor.grid_size // 4, 4)
@@ -292,7 +287,7 @@ class connect_screen(editor_screen):
 
             elif self.cut_start and self.cut_stop:
                 line_color = (255, 0, 0)
-                radius = 1
+                radius = 2
                 draw_line(frame, line_color, self.cut_start, self.cut_stop, radius)
 
             editor.screen.blit(frame, editor.play_area.viewport)
