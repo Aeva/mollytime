@@ -163,7 +163,7 @@ struct ColorRamp
 
 	ColorPoint Sample(ColorSpace OutEncoding, float Alpha);
 
-	ColorPoint Sample(float Aplha)
+	ColorPoint Sample(float Alpha)
 	{
 		return Sample(Encoding, Alpha);
 	}

@@ -26,76 +26,51 @@ using ColorTuple = std::tuple<float, float, float>;
 using ColorArray = std::array<float, 3>;
 
 
-struct PyColorPoint : public ColorPoint
+static int ColorPointGetItem(ColorPoint& Color, int Index)
 {
-	PyColorPoint()
-		: ColorPoint()
+	if (Index >=0 && Index < 3)
 	{
-	}
-
-	PyColorPoint(ColorPoint Other)
-		: ColorPoint(Other.Encoding, Other.Channels)
-	{
-	}
-
-	PyColorPoint(ColorSpace InEncoding, ColorPoint Other)
-		: ColorPoint(InEncoding, Other)
-	{
-	}
-
-	int SequenceLength()
-	{
-		return 3;
-	}
-
-	int GetItem(int Index)
-	{
-		if (Index >=0 && Index < 3)
+		if (Color.Encoding != ColorSpace::sRGB)
 		{
-			if (Encoding != ColorSpace::sRGB)
-			{
-				MutateEncoding(ColorSpace::sRGB);
-			}
-			return std::min(std::max(int(Channels[Index] * 255.0f), 0), 255);
+			Color.MutateEncoding(ColorSpace::sRGB);
 		}
-
-		throw std::out_of_range(std::format("Index out of range: {}\n", Index));
+		return std::min(std::max(int(Color.Channels[Index] * 255.0f), 0), 255);
 	}
 
-	std::string Repr()
-	{
-		return std::format("<ColorPoint {}: ({}, {}, {})>", ColorSpaceName(Encoding), Channels[0], Channels[1], Channels[2]);
-	}
-
-	ColorTuple GetChannels()
-	{
-		return { Channels[0], Channels[1], Channels[2] };
-	}
-
-	ColorSpace GetEncoding()
-	{
-		return Encoding;
-	}
-};
-
-
-PyColorPoint PyConvertColor(ColorArray InColor, ColorSpace Incoding, ColorSpace Excoding)
-{
-	ColorPoint Color{Incoding, InColor};
-	return PyColorPoint(Excoding, Color);
+	throw std::out_of_range(std::format("Index out of range: {}\n", Index));
 }
 
 
-PyColorPoint PyParseColor(std::string ColorString)
+static std::string ColorPointRepr(ColorPoint& Color)
+{
+	return std::format("<ColorPoint {}: ({}, {}, {})>",
+		ColorSpaceName(Color.Encoding),
+		Color.Channels[0], Color.Channels[1], Color.Channels[2]);
+}
+
+
+static ColorTuple ColorPointGetChannels(ColorPoint& Color)
+{
+	return { Color.Channels[0], Color.Channels[1], Color.Channels[2] };
+}
+
+
+static ColorPoint ConvertColor(ColorArray InColor, ColorSpace Incoding, ColorSpace Excoding)
+{
+	ColorPoint Color{Incoding, InColor};
+	return ColorPoint(Excoding, Color);
+}
+
+
+static ColorPoint PyParseColor(std::string ColorString)
 {
 	ColorPoint Color;
 	StatusCode Result = ParseColor(ColorString, Color);
-	if (Result == StatusCode::PASS)
+	if (Result != StatusCode::PASS)
 	{
-		return PyColorPoint(Color);
+		throw std::domain_error(std::format("Invalid color string \"{}\"\n", ColorString));
 	}
-
-	throw std::domain_error(std::format("Invalid color string \"{}\"\n", ColorString));
+	return Color;
 }
 
 
@@ -109,14 +84,14 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("OkLCH", ColorSpace::OkLCH)
 		.value("HSL", ColorSpace::HSL);
 
-	py::class_<PyColorPoint>(m, "ColorPoint")
+	py::class_<ColorPoint>(m, "ColorPoint")
 		.def(py::init<>())
-		.def("__len__", &PyColorPoint::SequenceLength)
-		.def("__getitem__", &PyColorPoint::GetItem)
-		.def("__repr__", &PyColorPoint::Repr)
-		.def_property_readonly("channels", &PyColorPoint::GetChannels)
-		.def_property_readonly("encoding", &PyColorPoint::GetEncoding);
+		.def("__len__", [](const ColorPoint &Self) -> int { return 3; })
+		.def("__getitem__", &ColorPointGetItem)
+		.def("__repr__", &ColorPointRepr)
+		.def_property_readonly("channels", &ColorPointGetChannels)
+		.def_readonly("encoding", &ColorPoint::Encoding);
 
-	m.def("convert_color", &PyConvertColor, "color space converter");
+	m.def("convert_color", &ConvertColor, "color space converter");
 	m.def("parse_color", &PyParseColor, "CSS color parser");
 }
