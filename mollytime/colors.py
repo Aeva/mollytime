@@ -7,14 +7,8 @@ import mollytime
 
 ColorSpace = mollytime.ColorSpace
 parse_color = mollytime.parse_color
-
-
-def oklab(l, A, B):
-    return mollytime.convert_color((l, A, B), ColorSpace.OkLAB, ColorSpace.sRGB)
-
-
-def oklch(l, c, h):
-    return mollytime.convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB)
+oklab = mollytime.oklab
+oklch = mollytime.oklch
 
 
 def lch_prism(color):
@@ -27,3 +21,7 @@ def lch_swizzle(LC_part, H_Part, swizzle):
     LCH2 = lch_prism(H_Part)
     LCH = [(1 - a) * lhs + a * rhs for a, lhs, rhs in zip(swizzle, LCH1, LCH2)]
     return oklch(*LCH)
+
+
+def color_ramp(*color_points):
+    return mollytime.ColorRamp(color_points)

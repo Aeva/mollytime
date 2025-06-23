@@ -161,12 +161,7 @@ struct ColorRamp
 	{
 	}
 
-	ColorPoint Sample(ColorSpace OutEncoding, float Alpha);
-
-	ColorPoint Sample(float Alpha)
-	{
-		return Sample(Encoding, Alpha);
-	}
+	ColorPoint Sample(float Alpha);
 
 	glm::vec3 Eval(ColorSpace OutEncoding, float Alpha);
 };

@@ -74,6 +74,18 @@ static ColorPoint PyParseColor(std::string ColorString)
 }
 
 
+static ColorPoint MakeOkLAB(float L, float A, float B)
+{
+	return ColorPoint(ColorSpace::OkLAB, glm::vec3(L, A, B));
+}
+
+
+static ColorPoint MakeOkLCH(float L, float C, float H)
+{
+	return ColorPoint(ColorSpace::OkLCH, glm::vec3(L, C, H));
+}
+
+
 PYBIND11_MODULE(mollytime, m) {
 	m.doc() = "mollytime c++ internals";
 
@@ -92,6 +104,12 @@ PYBIND11_MODULE(mollytime, m) {
 		.def_property_readonly("channels", &ColorPointGetChannels)
 		.def_readonly("encoding", &ColorPoint::Encoding);
 
+	py::class_<ColorRamp>(m, "ColorRamp")
+		.def(py::init<std::vector<ColorPoint> &>())
+		.def("sample", &ColorRamp::Sample);
+
 	m.def("convert_color", &ConvertColor, "color space converter");
 	m.def("parse_color", &PyParseColor, "CSS color parser");
+	m.def("oklab", &MakeOkLAB, "OkLAB color constructor");
+	m.def("oklch", &MakeOkLCH, "OkLCH color constructor");
 }

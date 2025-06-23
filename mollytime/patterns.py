@@ -36,8 +36,8 @@ class tile_grid_bg(tile_viewport):
         # gradient stuff
         self.light = (viewport.width / 2, viewport.height)
         self.light_span = math.sqrt(sum([i * i for i in self.light]))
-        self.bg_ramp_x = (parse_color("#a6a8ad"), parse_color("#b1b3b8"))
-        self.bg_ramp_y = (parse_color("#b1b3b8"), parse_color("#a3a9bb"))
+        self.bg_ramp_x = color_ramp(parse_color("#a6a8ad"), parse_color("#b1b3b8"))
+        self.bg_ramp_y = color_ramp(parse_color("#b1b3b8"), parse_color("#a3a9bb"))
         super().resize(viewport, grid)
 
     def bg_color(self, tile_x, tile_y, rect):
@@ -51,10 +51,9 @@ class tile_grid_bg(tile_viewport):
 
         alpha = min(max(mag / self.light_span, 0), 1)
         alpha *= alpha
-        inv_a = 1.0 - alpha
 
-        color_x = [int(inv_a * self.bg_ramp_x[0][i] + alpha * self.bg_ramp_x[1][i]) for i in range(3)]
-        color_y = [int(inv_a * self.bg_ramp_y[0][i] + alpha * self.bg_ramp_y[1][i]) for i in range(3)]
+        color_x = self.bg_ramp_x.sample(alpha)
+        color_y = self.bg_ramp_y.sample(alpha)
 
         checker = ((int(tile_x) % 2) + (int(tile_y) % 2)) % 2
         return (color_x, color_y)[checker]

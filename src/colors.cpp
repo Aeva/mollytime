@@ -451,9 +451,9 @@ ColorRamp::ColorRamp(std::vector<ColorPoint>& InStops, ColorSpace InEncoding)
 }
 
 
-ColorPoint ColorRamp::Sample(ColorSpace OutEncoding, float Alpha)
+ColorPoint ColorRamp::Sample(float Alpha)
 {
-	return ColorPoint(OutEncoding, Eval(OutEncoding, Alpha));
+	return ColorPoint(Encoding, Eval(Encoding, Alpha));
 }
 
 
