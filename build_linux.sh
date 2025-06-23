@@ -1,3 +1,4 @@
+cd src
 clang++ \
     -std=c++2c \
     -lm \
@@ -5,4 +6,4 @@ clang++ \
     $(python -m pybind11 --includes) \
     -fPIC -shared \
     colors.cpp errors.cpp py_api.cpp \
-    -o color_spaces$(python3-config --extension-suffix)
+    -o ../mollytime/mollytime$(python3-config --extension-suffix)

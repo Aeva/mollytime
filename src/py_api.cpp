@@ -47,8 +47,8 @@ ColorTuple PyParseColor(std::string ColorString)
 }
 
 
-PYBIND11_MODULE(color_spaces, m) {
-	m.doc() = "color conversion library";
+PYBIND11_MODULE(mollytime, m) {
+	m.doc() = "mollytime c++ internals";
 
 	py::enum_<ColorSpace>(m, "ColorSpace")
 		.value("sRGB", ColorSpace::sRGB)

@@ -2,11 +2,10 @@
 import os
 import sys
 import glob
-sys.path.append(os.path.split(os.path.abspath(glob.glob("**/color_spaces*.so")[0]))[0])
-import color_spaces
+import mollytime
 
 
-ColorSpace = color_spaces.ColorSpace
+ColorSpace = mollytime.ColorSpace
 
 
 def float_color(r, g, b):
@@ -14,19 +13,19 @@ def float_color(r, g, b):
 
 
 def parse_color(color_str):
-    return float_color(*color_spaces.parse_color(color_str))
+    return float_color(*mollytime.parse_color(color_str))
 
 
 def oklab(l, A, B):
-    return float_color(*color_spaces.convert_color((l, A, B), ColorSpace.OkLAB, ColorSpace.sRGB))
+    return float_color(*mollytime.convert_color((l, A, B), ColorSpace.OkLAB, ColorSpace.sRGB))
 
 
 def oklch(l, c, h):
-    return float_color(*color_spaces.convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB))
+    return float_color(*mollytime.convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB))
 
 
 def lch_prism(color):
-    return color_spaces.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
+    return mollytime.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
 
 
 def lch_swizzle(LC_part, H_Part, swizzle):
