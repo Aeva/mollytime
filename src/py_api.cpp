@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <algorithm>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "colors.h"
@@ -25,22 +26,73 @@ using ColorTuple = std::tuple<float, float, float>;
 using ColorArray = std::array<float, 3>;
 
 
-ColorTuple PyConvertColor(ColorArray InColor, ColorSpace Incoding, ColorSpace Excoding)
+struct PyColorPoint : public ColorPoint
+{
+	PyColorPoint()
+		: ColorPoint()
+	{
+	}
+
+	PyColorPoint(ColorPoint Other)
+		: ColorPoint(Other.Encoding, Other.Channels)
+	{
+	}
+
+	PyColorPoint(ColorSpace InEncoding, ColorPoint Other)
+		: ColorPoint(InEncoding, Other)
+	{
+	}
+
+	int SequenceLength()
+	{
+		return 3;
+	}
+
+	int GetItem(int Index)
+	{
+		if (Index >=0 && Index < 3)
+		{
+			if (Encoding != ColorSpace::sRGB)
+			{
+				MutateEncoding(ColorSpace::sRGB);
+			}
+			return std::min(std::max(int(Channels[Index] * 255.0f), 0), 255);
+		}
+
+		throw std::out_of_range(std::format("Index out of range: {}\n", Index));
+	}
+
+	std::string Repr()
+	{
+		return std::format("<ColorPoint {}: ({}, {}, {})>", ColorSpaceName(Encoding), Channels[0], Channels[1], Channels[2]);
+	}
+
+	ColorTuple GetChannels()
+	{
+		return { Channels[0], Channels[1], Channels[2] };
+	}
+
+	ColorSpace GetEncoding()
+	{
+		return Encoding;
+	}
+};
+
+
+PyColorPoint PyConvertColor(ColorArray InColor, ColorSpace Incoding, ColorSpace Excoding)
 {
 	ColorPoint Color{Incoding, InColor};
-	glm::vec3 Out = Color.Eval(Excoding);
-	return { Out[0], Out[1], Out[2] };
+	return PyColorPoint(Excoding, Color);
 }
 
 
-ColorTuple PyParseColor(std::string ColorString)
+PyColorPoint PyParseColor(std::string ColorString)
 {
 	ColorPoint Color;
 	StatusCode Result = ParseColor(ColorString, Color);
 	if (Result == StatusCode::PASS)
 	{
-		Color.MutateEncoding(ColorSpace::sRGB);
-		return { Color.Channels[0], Color.Channels[1], Color.Channels[2] };
+		return PyColorPoint(Color);
 	}
 
 	throw std::domain_error(std::format("Invalid color string \"{}\"\n", ColorString));
@@ -56,6 +108,14 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("OkLAB", ColorSpace::OkLAB)
 		.value("OkLCH", ColorSpace::OkLCH)
 		.value("HSL", ColorSpace::HSL);
+
+	py::class_<PyColorPoint>(m, "ColorPoint")
+		.def(py::init<>())
+		.def("__len__", &PyColorPoint::SequenceLength)
+		.def("__getitem__", &PyColorPoint::GetItem)
+		.def("__repr__", &PyColorPoint::Repr)
+		.def_property_readonly("channels", &PyColorPoint::GetChannels)
+		.def_property_readonly("encoding", &PyColorPoint::GetEncoding);
 
 	m.def("convert_color", &PyConvertColor, "color space converter");
 	m.def("parse_color", &PyParseColor, "CSS color parser");

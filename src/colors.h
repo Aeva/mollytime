@@ -154,7 +154,19 @@ struct ColorRamp
 	ColorSpace Encoding;
 	std::vector<ColorPoint> Stops;
 
-	ColorRamp(std::vector<ColorPoint>& InStops, ColorSpace InEncoding = ColorSpace::OkLAB);
+	ColorRamp(std::vector<ColorPoint>& InStops, ColorSpace InEncoding);
+
+	ColorRamp(std::vector<ColorPoint>& InStops)
+		: ColorRamp(InStops, ColorSpace::OkLAB)
+	{
+	}
+
+	ColorPoint Sample(ColorSpace OutEncoding, float Alpha);
+
+	ColorPoint Sample(float Aplha)
+	{
+		return Sample(Encoding, Alpha);
+	}
 
 	glm::vec3 Eval(ColorSpace OutEncoding, float Alpha);
 };

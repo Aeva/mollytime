@@ -6,26 +6,19 @@ import mollytime
 
 
 ColorSpace = mollytime.ColorSpace
-
-
-def float_color(r, g, b):
-    return [int(min(max(c, 0), 1) * 255) for c in (r, g, b)]
-
-
-def parse_color(color_str):
-    return float_color(*mollytime.parse_color(color_str))
+parse_color = mollytime.parse_color
 
 
 def oklab(l, A, B):
-    return float_color(*mollytime.convert_color((l, A, B), ColorSpace.OkLAB, ColorSpace.sRGB))
+    return mollytime.convert_color((l, A, B), ColorSpace.OkLAB, ColorSpace.sRGB)
 
 
 def oklch(l, c, h):
-    return float_color(*mollytime.convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB))
+    return mollytime.convert_color((l, c, h), ColorSpace.OkLCH, ColorSpace.sRGB)
 
 
 def lch_prism(color):
-    return mollytime.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH)
+    return mollytime.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH).channels
 
 
 def lch_swizzle(LC_part, H_Part, swizzle):

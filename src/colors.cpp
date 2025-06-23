@@ -451,6 +451,12 @@ ColorRamp::ColorRamp(std::vector<ColorPoint>& InStops, ColorSpace InEncoding)
 }
 
 
+ColorPoint ColorRamp::Sample(ColorSpace OutEncoding, float Alpha)
+{
+	return ColorPoint(OutEncoding, Eval(OutEncoding, Alpha));
+}
+
+
 glm::vec3 ColorRamp::Eval(ColorSpace OutEncoding, float Alpha)
 {
 	if (Stops.size() == 1)
