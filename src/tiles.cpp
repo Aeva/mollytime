@@ -18,33 +18,36 @@
 #include "tiles.h"
 
 
-struct EdgeMap
+struct TileInfo
 {
+	std::vector<OpCode> Combiners;
 	std::vector<std::vector<std::string>> InputEdges;
 	std::vector<std::vector<std::string>> OutputEdges;
 
-	EdgeMap()
+	TileInfo()
 	{
+		Combiners.resize((int)OpCode::Count);
 		InputEdges.resize((int)OpCode::Count);
 		OutputEdges.resize((int)OpCode::Count);
 
-		Set(OpCode::CONST, {}, {"#"});
-		Set(OpCode::OUT, {"out"}, {});
-		Set(OpCode::SIN, {"hz"}, {"amp"});
-		Set(OpCode::ADD, {"+"}, {"="});
-		Set(OpCode::MUL, {"*"}, {"="});
-		Set(OpCode::MIN, {"min"}, {"="});
-		Set(OpCode::MAX, {"max"}, {"="});
+		Set(OpCode::CONST, OpCode::ADD, {}, {"#"});
+		Set(OpCode::OUT, OpCode::ADD, {"out"}, {});
+		Set(OpCode::SIN, OpCode::ADD, {"hz"}, {"amp"});
+		Set(OpCode::ADD, OpCode::ADD, {"+"}, {"="});
+		Set(OpCode::MUL, OpCode::MUL, {"*"}, {"="});
+		Set(OpCode::MIN, OpCode::MIN, {"min"}, {"="});
+		Set(OpCode::MAX, OpCode::MAX, {"max"}, {"="});
 	}
 
-	void Set(OpCode Key, std::vector<std::string> Inputs, std::vector<std::string> Outputs)
+	void Set(OpCode Key, OpCode Combiner, std::vector<std::string> Inputs, std::vector<std::string> Outputs)
 	{
+		Combiners[(int)Key] = Combiner;
 		InputEdges[(int)Key] = Inputs;
 		OutputEdges[(int)Key] = Outputs;
 	}
 };
 
-const EdgeMap TileEdgeMap;
+const TileInfo TileInfoMap;
 
 
 static uint32_t AssignTileId()
@@ -54,24 +57,29 @@ static uint32_t AssignTileId()
 }
 
 
-MagicTile::MagicTile(OpCode InSymbol, OpCode InCombiner, std::string InName)
+MagicTile::MagicTile(OpCode InSymbol, std::string InName)
 	: Id(AssignTileId())
 	, Symbol(InSymbol)
-	, Combiner(InCombiner)
 	, Name(InName)
 {
 }
 
 
+OpCode MagicTile::Combiner()
+{
+	return TileInfoMap.Combiners[(int)Symbol];
+}
+
+
 const std::vector<std::string>& MagicTile::Inputs()
 {
-	return TileEdgeMap.InputEdges[(int)Symbol];
+	return TileInfoMap.InputEdges[(int)Symbol];
 }
 
 
 const std::vector<std::string>& MagicTile::Outputs()
 {
-	return TileEdgeMap.OutputEdges[(int)Symbol];
+	return TileInfoMap.OutputEdges[(int)Symbol];
 }
 
 
@@ -88,7 +96,7 @@ std::string MagicTile::Label()
 
 
 ConstTile::ConstTile(float InValue)
-	: MagicTile(OpCode::CONST, OpCode::ADD, "#")
+	: MagicTile(OpCode::CONST, "#")
 	, Value(InValue)
 {
 }
@@ -107,36 +115,36 @@ std::string ConstTile::Label()
 
 
 OutTile::OutTile()
-	: MagicTile(OpCode::OUT, OpCode::ADD, "out")
+	: MagicTile(OpCode::OUT, "out")
 {
 }
 
 
 SinTile::SinTile()
-	: MagicTile(OpCode::SIN, OpCode::ADD, "sin")
+	: MagicTile(OpCode::SIN, "sin")
 {
 }
 
 
 AddTile::AddTile()
-	: MagicTile(OpCode::ADD, OpCode::ADD, "add")
+	: MagicTile(OpCode::ADD, "add")
 {
 }
 
 
 MulTile::MulTile()
-	: MagicTile(OpCode::MUL, OpCode::MUL, "mul")
+	: MagicTile(OpCode::MUL, "mul")
 {
 }
 
 
 MinTile::MinTile()
-	: MagicTile(OpCode::MIN, OpCode::MIN, "min")
+	: MagicTile(OpCode::MIN, "min")
 {
 }
 
 
 MaxTile::MaxTile()
-	: MagicTile(OpCode::MAX, OpCode::MAX, "max")
+	: MagicTile(OpCode::MAX, "max")
 {
 }

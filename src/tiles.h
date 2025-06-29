@@ -18,7 +18,7 @@
 #include <vector>
 
 
-enum class OpCode
+enum class OpCode : uint32_t
 {
 	CONST = 0,
 	OUT,
@@ -33,14 +33,14 @@ enum class OpCode
 
 struct MagicTile
 {
-	MagicTile(OpCode InSymbol, OpCode InCombiner, std::string InName);
+	MagicTile(OpCode InSymbol, std::string InName);
 
 	const uint32_t Id;
 	const OpCode Symbol;
-	const OpCode Combiner;
 
 	std::string Name;
 
+	OpCode Combiner();
 	const std::vector<std::string>& Inputs();
 	const std::vector<std::string>& Outputs();
 	virtual std::string Hint();

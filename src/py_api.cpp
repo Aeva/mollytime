@@ -119,6 +119,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("__str__", &MagicTile::Label)
 		.def_readwrite("name",&MagicTile::Name)
 		.def_readonly("id", &MagicTile::Id)
+		.def_property_readonly("combiner", &MagicTile::Combiner)
 		.def_property_readonly("inputs", &MagicTile::Inputs)
 		.def_property_readonly("outputs", &MagicTile::Outputs);
 
