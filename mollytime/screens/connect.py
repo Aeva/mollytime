@@ -128,9 +128,9 @@ class connect_screen(editor_screen):
         self.rhs_input_rects = {}
         start = (viewport.centerx + radius, 0)
         stop = (viewport.centerx + radius - tile_size, viewport.bottom - tile_size)
-        rhs_inputs = reversed(editor.patch.get_tile_input_ports(self.rhs_tile))
-        rhs_outputs = reversed(editor.patch.get_tile_output_ports(self.rhs_tile))
-        count = len(lhs_outputs) + len(lhs_inputs)
+        rhs_inputs = list(reversed(editor.patch.get_tile_input_ports(self.rhs_tile)))
+        rhs_outputs = list(reversed(editor.patch.get_tile_output_ports(self.rhs_tile)))
+        count = len(rhs_outputs) + len(rhs_inputs)
         index = 0
         for port in rhs_inputs:
             alpha = (index + 1) / (count + 1)
