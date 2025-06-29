@@ -19,7 +19,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "colors.h"
-#include "tiles.h"
+#include "patch.h"
 
 namespace py = pybind11;
 
@@ -114,6 +114,48 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("oklab", &MakeOkLAB, "OkLAB color constructor");
 	m.def("oklch", &MakeOkLCH, "OkLCH color constructor");
 
+	py::enum_<OpCode>(m, "OpCode")
+		.value("CONST", OpCode::CONST)
+		.value("OUT", OpCode::OUT)
+		.value("SIN", OpCode::SIN)
+		.value("ADD", OpCode::ADD)
+		.value("MUL", OpCode::MUL)
+		.value("MIN", OpCode::MIN)
+		.value("MAX", OpCode::MAX);
+
+	m.def("decode_port_tile", &PortHandleTilePart);
+	m.def("decode_port_index", &PortHandlePortIndexPart);
+
+	py::class_<Patch>(m, "Patch")
+		.def(py::init<>())
+		.def_readonly("wires", &Patch::Wires)
+		.def("make_tile", [](Patch& Self, OpCode Symbol) -> TileHandle
+		{
+			return Self.MakeTile(Symbol);
+		})
+		.def("make_constant", [](Patch& Self, float Value) -> TileHandle
+		{
+			return Self.MakeTile(Value);
+		})
+		.def("erase_tile", &Patch::EraseTile)
+		.def("get_tile_symbol", &Patch::GetTileSymbol)
+		.def("get_tile_name", &Patch::GetTileName)
+		.def("set_tile_name", &Patch::SetTileName)
+		.def("get_constant", &Patch::GetConstant)
+		.def("set_constant", &Patch::GetConstant)
+		.def("get_tile_label", &Patch::GetTileLabel)
+		.def("get_tile_input_ports", &Patch::GetTileInputPorts)
+		.def("get_tile_output_ports", &Patch::GetTileOutputPorts)
+		.def("get_input_port_name", &Patch::GetTileInputName)
+		.def("get_output_port_name", &Patch::GetTileOutputName)
+		.def("connect_tiles", &Patch::Connect)
+		.def("disconnect_tiles", &Patch::Disconnect)
+		.def("toggle_connection", &Patch::ToggleConnection)
+		.def("can_connect", &Patch::CanConnect)
+		.def("get_implicit_wire", &Patch::GetImplicitWire);
+
+#if 0
+
 	py::class_<MagicTile>(m, "magic_tile")
 		.def("__repr__", &MagicTile::Hint)
 		.def("__str__", &MagicTile::Label)
@@ -146,4 +188,5 @@ PYBIND11_MODULE(mollytime, m) {
 
 	py::class_<MaxTile, MagicTile>(m, "max_tile")
 		.def(py::init<>());
+#endif
 }

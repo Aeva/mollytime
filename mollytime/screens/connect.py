@@ -40,14 +40,14 @@ class connect_screen(editor_screen):
         node_graph = editor.play_area.surface.copy()
 
         for tile_id, tile_xy in editor.tile_positions.items():
-            tile = editor.tiles[tile_id]
             rect = editor.get_tile_rect(tile_id)
+            label = editor.patch.get_tile_label(tile_id)
             pattern = editor.selected_tile_bg if editor.is_selected(tile_id) else editor.tile_bg
-            pattern.draw(node_graph, rect, str(tile))
+            pattern.draw(node_graph, rect, label)
 
-        for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
-            lhs_rect = editor.get_tile_rect(lhs_id)
-            rhs_rect = editor.get_tile_rect(rhs_id)
+        for (out_port, in_port) in editor.patch.wires:
+            lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
+            rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
             radius = max(4, editor.grid_size // 12)
             draw_arrow(node_graph, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
@@ -96,54 +96,77 @@ class connect_screen(editor_screen):
         rect.left = viewport.centerx + radius
         self.bg.blit(surface, rect)
 
-        self.lhs_nodes = []
-        self.rhs_nodes = []
-        self.node_rects = {}
-
         tile_size = editor.grid_size * 2
 
+        self.lhs_output_ports = []
+        self.lhs_output_rects = {}
+        self.lhs_input_ports = []
+        self.lhs_input_rects = {}
         start = (viewport.centerx - radius, 0)
         stop = (viewport.centerx - radius - tile_size, viewport.bottom - tile_size)
-        symbols = list(self.lhs_tile.outputs) + list(self.lhs_tile.inputs)
-        count = len(symbols)
 
-        for index, symbol in enumerate(symbols):
-            key = (self.lhs_tile.id, symbol)
-            assert(key in editor.by_input or key in editor.by_output)
+        lhs_outputs = editor.patch.get_tile_output_ports(self.lhs_tile)
+        lhs_inputs = editor.patch.get_tile_input_ports(self.lhs_tile)
+        count = len(lhs_outputs) + len(lhs_inputs)
+        index = 0
+        for port in lhs_outputs:
             alpha = (index + 1) / (count + 1)
+            index += 1
             pos = vec_lerp(start, stop, alpha)
-            self.lhs_nodes.append(key)
-            self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+            self.lhs_output_ports.append(port)
+            self.lhs_output_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+        for port in lhs_inputs:
+            alpha = (index + 1) / (count + 1)
+            index += 1
+            pos = vec_lerp(start, stop, alpha)
+            self.lhs_input_ports.append(port)
+            self.lhs_input_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
+        self.rhs_output_ports = []
+        self.rhs_output_rects = {}
+        self.rhs_input_ports = []
+        self.rhs_input_rects = {}
         start = (viewport.centerx + radius, 0)
         stop = (viewport.centerx + radius - tile_size, viewport.bottom - tile_size)
-        symbols = list(reversed(list(self.rhs_tile.outputs) + list(self.rhs_tile.inputs)))
-        count = len(symbols)
-
-        for index, symbol in enumerate(symbols):
-            key = (self.rhs_tile.id, symbol)
-            assert(key in editor.by_input or key in editor.by_output)
+        rhs_inputs = reversed(editor.patch.get_tile_input_ports(self.rhs_tile))
+        rhs_outputs = reversed(editor.patch.get_tile_output_ports(self.rhs_tile))
+        count = len(lhs_outputs) + len(lhs_inputs)
+        index = 0
+        for port in rhs_inputs:
             alpha = (index + 1) / (count + 1)
+            index += 1
             pos = vec_lerp(start, stop, alpha)
-            self.rhs_nodes.append(key)
-            self.node_rects[key] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+            self.rhs_input_ports.append(port)
+            self.rhs_input_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+        for port in rhs_outputs:
+            alpha = (index + 1) / (count + 1)
+            index += 1
+            pos = vec_lerp(start, stop, alpha)
+            self.rhs_output_ports.append(port)
+            self.rhs_output_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
         self.connections = set()
-        for out_key, in_key in editor.wires:
-            if out_key in self.node_rects and in_key in self.node_rects:
-                self.connections.add((out_key, in_key))
+        for out_port, in_port in editor.patch.wires:
+            out_tile = decode_port_tile(out_port)
+            in_tile = decode_port_tile(in_port)
+            if out_tile in editor.selected and in_tile in editor.selected:
+                self.connections.add((out_port, in_port))
 
     def goto_apply(self, editor):
         self.live = False
         for wire in self.connections:
-            editor.connect_tiles(*wire)
+            editor.patch.connect_tiles(*wire)
         disconnects = set()
-        for wire in editor.wires:
-            wire_is_relevant = wire[0] in self.node_rects and wire[1] in self.node_rects
-            if wire_is_relevant and wire not in self.connections:
+        for wire in editor.patch.wires:
+            out_port, in_port = wire
+            out_tile = decode_port_tile(out_port)
+            in_tile = decode_port_tile(in_port)
+            has_output = out_tile in (self.lhs_tile, self.rhs_tile)
+            has_input = in_tile in (self.lhs_tile, self.rhs_tile)
+            if has_output and has_input and wire not in self.connections:
                 disconnects.add(wire)
-        for out_key, in_key in disconnects:
-            editor.disconnect_tiles(out_key, in_key)
+        for wire in disconnects:
+            editor.patch.disconnect_tiles(*wire)
 
     def goto_cancel(self, editor):
         self.live = False
@@ -160,7 +183,11 @@ class connect_screen(editor_screen):
 
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
-            for key, rect in self.node_rects.items():
+            all_rects = list(self.lhs_output_rects.values()) \
+                + list(self.rhs_output_rects.values()) \
+                + list(self.lhs_input_rects.values()) \
+                + list(self.rhs_input_rects.values())
+            for rect in all_rects:
                 if rect.collidepoint(pos):
                     self.press_start = pos
                     self.press_stop = pos
@@ -240,7 +267,14 @@ class connect_screen(editor_screen):
                 return (u >= 0 and v >= 0 and u <= a_mag and v <= b_mag)
 
             for wire in self.connections:
-                endpoints = [self.node_rects[key].center for key in wire]
+                out_port, in_port = wire
+                out_rect = self.lhs_output_rects.get(out_port)
+                in_rect = self.rhs_input_rects.get(in_port)
+                if not (out_rect and in_rect):
+                    out_rect = self.rhs_output_rects.get(out_port)
+                    in_rect = self.lhs_input_rects.get(in_port)
+                assert (out_rect and in_rect)
+                endpoints = [out_rect.center, in_rect.center]
                 if intersection(*endpoints):
                     self.connections.remove(wire)
                     break
@@ -263,19 +297,22 @@ class connect_screen(editor_screen):
             line_width = editor.grid_size // 4
             radius = line_width // 2
 
-            for key in self.lhs_nodes + self.rhs_nodes:
-                rect = self.node_rects[key]
-                tile_id, param_name = key
-                tile = editor.tiles[tile_id]
-                tile_name = str(tile)
-                label = param_name
-                if type(tile) is out_tile:
+            for port, rect in list(self.lhs_output_rects.items()) + list(self.rhs_output_rects.items()):
+                tile_id = decode_port_tile(port)
+                label = editor.patch.get_output_port_name(port)
+                assert(editor.patch.get_tile_symbol(tile_id) != OpCode.OUT)
+                editor.tile_bg.draw(frame, rect, label)
+
+            for port, rect in list(self.lhs_input_rects.items()) + list(self.rhs_input_rects.items()):
+                tile_id = decode_port_tile(port)
+                label = editor.patch.get_input_port_name(port)
+                if editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
                     label = "line\nout"
                 editor.tile_bg.draw(frame, rect, label)
 
-            for lhs_key, rhs_key in self.connections:
-                start_rect = self.node_rects[lhs_key]
-                stop_rect = self.node_rects[rhs_key]
+            for out_port, in_port in self.connections:
+                start_rect = self.lhs_output_rects.get(out_port) or self.rhs_output_rects.get(out_port)
+                stop_rect = self.lhs_input_rects.get(in_port) or self.rhs_input_rects.get(in_port)
                 draw_arrow(frame, line_color, start_rect, stop_rect, radius)
 
             if self.press_start and self.press_stop:

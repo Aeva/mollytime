@@ -2,10 +2,11 @@
 import pygame_setup
 import pygame
 
-from tiles import *
 from fonts import *
 from colors import *
 from patterns import *
+
+from mollytime import Patch, OpCode, decode_port_tile, decode_port_index
 
 
 class program_card:
@@ -13,37 +14,47 @@ class program_card:
         self.focus_x = 0
         self.focus_y = 0
 
-        self.tiles = {}
+        self.patch = Patch()
         self.tile_positions = {}
-
-        # connections
-        self.wires = set()
-        self.by_input = {}
-        self.by_output = {}
 
         #   2    *
         #  440  sin   +
         #       sin  out
-        two = self.add_tile((-1, -1), const_tile(2))
-        a4_hz = self.add_tile((-1, 0), const_tile(440))
-        a5_hz = self.add_tile((0, -1), mul_tile())
-        a5_osc = self.add_tile((0, 0), sin_tile())
-        a4_osc = self.add_tile((0, 1), sin_tile())
-        summed = self.add_tile((1, 0), add_tile())
-        out = self.add_tile((1, 1), out_tile())
+        two = self.make_constant((-1, -1), 2)
+        a4_hz = self.make_constant((-1, 0), 440)
+        a5_hz = self.make_tile((0, -1), OpCode.MUL)
+        a5_osc = self.make_tile((0, 0), OpCode.SIN)
+        a4_osc = self.make_tile((0, 1), OpCode.SIN)
+        summed = self.make_tile((1, 0), OpCode.ADD)
+        out = self.make_tile((1, 1), OpCode.OUT)
 
-        self.connect_tiles((two, '#'), (a5_hz, '*'))
-        self.connect_tiles((a4_hz, '#'), (a5_hz, '*'))
-        self.connect_tiles((a5_hz, '='), (a5_osc, 'hz'))
-        self.connect_tiles((a4_hz, '#'), (a4_osc, 'hz'))
-        self.connect_tiles((a4_osc, 'amp'), (summed, '+'))
-        self.connect_tiles((a5_osc, 'amp'), (summed, '+'))
-        self.connect_tiles((summed, '='), (out, 'out'))
+        def quick_connect(lhs, rhs):
+            wire = self.patch.get_implicit_wire(lhs, rhs)
+            assert(wire)
+            self.patch.connect_tiles(*wire)
+
+        quick_connect(two, a5_hz)
+        quick_connect(a4_hz, a5_hz)
+        quick_connect(a5_hz, a5_osc)
+        quick_connect(a4_hz, a4_osc)
+        quick_connect(a4_osc, summed)
+        quick_connect(a5_osc, summed)
+        quick_connect(summed, out)
 
         self.selected = []
 
         self.clock = pygame.time.Clock()
         self.resize(screen, dpi)
+
+    def make_tile(self, position, symbol):
+        tile_id = self.patch.make_tile(symbol);
+        self.tile_positions[tile_id] = position
+        return tile_id
+
+    def make_constant(self, position, value):
+        tile_id = self.patch.make_constant(value);
+        self.tile_positions[tile_id] = position
+        return tile_id
 
     def get_tile_rect(self, tile_id):
         tile_xy = self.tile_positions[tile_id]
@@ -51,48 +62,18 @@ class program_card:
         frame_y = self.play_rect.centery - self.focus_y - self.grid_size + tile_xy[1] * self.grid_size * 3
         return pygame.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
 
-    def add_tile(self, position, tile):
-        self.tiles[tile.id] = tile
-        self.tile_positions[tile.id] = position
-        for name in tile.inputs:
-            self.by_input[(tile.id, name)] = set()
-        for name in tile.outputs:
-            self.by_output[(tile.id, name)] = set()
-        return tile.id
-
-    def connect_tiles(self, out_key, in_key):
-        if out_key in self.by_input and in_key in self.by_output:
-            return self.connect_tiles(in_key, out_key)
-        assert(out_key in self.by_output)
-        assert(in_key in self.by_input)
-
-        self.wires.add((out_key, in_key))
-        self.by_output[out_key].add(in_key)
-        self.by_input[in_key].add(out_key)
-
-    def disconnect_tiles(self, out_key, in_key):
-        self.wires.remove((out_key, in_key))
-        self.by_output[out_key].remove(in_key)
-        self.by_input[in_key].remove(out_key)
-
     def toggle_connection(self, out_key, in_key):
-        wire = (out_key, in_key)
-        if wire in self.wires:
-            self.disconnect_tiles(out_key, in_key)
-        else:
-            self.connect_tiles(out_key, in_key)
+        before = self.patch.wires
+        self.patch.toggle_connection(out_key, in_key)
 
     def toggle_selection(self, tile_id):
-        assert(tile_id in self.tiles)
         if tile_id in self.selected:
             # deselect the tile
             self.selected = [select for select in self.selected if select != tile_id]
         else:
             # deselect incompatible selected tiles
-            tile = self.tiles[tile_id]
             def can_connect(other_id):
-                other = self.tiles[other_id]
-                return bool((tile.inputs and other.outputs) or (other.inputs and tile.outputs))
+                return self.patch.can_connect(tile_id, other_id) or self.patch.can_connect(other_id, tile_id)
             self.selected = list(filter(can_connect, self.selected))
 
             # select the new tile
@@ -118,31 +99,26 @@ class program_card:
         this function returns the implied wire tuple.
         """
         if len(self.selected) == 2:
-            out_tile, in_tile = [self.tiles[tile_id] for tile_id in self.selected]
-            if len(out_tile.outputs) == 1 and len(in_tile.inputs) == 1:
-                out_key = (out_tile.id, out_tile.outputs[0])
-                in_key = (in_tile.id, in_tile.inputs[0])
-                return (out_key, in_key)
+            return self.patch.get_implicit_wire(*self.selected)
         return None
 
     def connectable_selection(self):
         inputs = 0
         outputs = 0
         for tile_id in self.selected:
-            tile = self.tiles[tile_id]
-            inputs += len(tile.inputs)
-            outputs += len(tile.outputs)
+            inputs += len(self.patch.get_tile_input_ports(tile_id))
+            outputs += len(self.patch.get_tile_output_ports(tile_id))
         return inputs > 0 and outputs > 0
 
     def lhs_selection(self):
         if len(self.selected) >= 1:
-            return self.tiles[self.selected[0]]
+            return self.selected[0]
         else:
             return None
 
     def rhs_selection(self):
         if len(self.selected) >= 2:
-            return self.tiles[self.selected[1]]
+            return self.selected[1]
         else:
             return None
 

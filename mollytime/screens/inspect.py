@@ -81,13 +81,13 @@ class inspect_screen(editor_screen):
             frame = editor.play_area.surface.copy()
 
             for tile_id, tile_xy in editor.tile_positions.items():
-                tile = editor.tiles[tile_id]
                 rect = editor.get_tile_rect(tile_id)
-                editor.tile_bg.draw(frame, rect, str(tile))
+                label = editor.patch.get_tile_label(tile_id)
+                editor.tile_bg.draw(frame, rect, label)
 
-            for (lhs_id, lhs_param), (rhs_id, rhs_param) in editor.wires:
-                lhs_rect = editor.get_tile_rect(lhs_id)
-                rhs_rect = editor.get_tile_rect(rhs_id)
+            for (out_port, in_port) in editor.patch.wires:
+                lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
+                rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
                 radius = max(4, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 

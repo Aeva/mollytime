@@ -13,35 +13,81 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
+#include <optional>
+#include <tuple>
 #include <unordered_map>
 #include <set>
-#include <tuple>
-#include "tiles.h"
+#include <vector>
+#include <string>
 
-/* TODO:
 
-The `Patch` class is meant to replace the part of `program_card` that describes
-the wire connections, but it should be made to be the authoritative
-representation of the graph program itself.
+// TileId
+using TileHandle = uint32_t;
 
-I've been writing with the assumption that the `MagicTile` is the basic unit of
-the graph.  That was a bad idea because that will devolve into a mess of shared
-pointers, were I to continue with that strat.
 
-What I should do instead is have `Patch` manage everything as a collection of
-metadata containers, have `program_card` subclass it, and have everything
-accessed via accessors and handles.  If done correctly, this could simplify
-serialization, and allow modifications to be sent to worker threads as copies,
-removing the need for locking.  A separate `Scratch` class would track the
-running state of the patch in a std::unordered_map.
+// TileId is the upper DWORD, Port Index lower DWORD
+using PortHandle = uint64_t;
 
- */
+
+using WireHandle = std::tuple<PortHandle, PortHandle>;
+
+
+enum class OpCode : uint32_t
+{
+    CONST = 0,
+    OUT,
+    SIN,
+    ADD,
+    MUL,
+    MIN,
+    MAX,
+    Count
+};
+
+
+TileHandle PortHandleTilePart(PortHandle Handle);
+uint32_t PortHandlePortIndexPart(PortHandle Handle);
+
 
 struct Patch
 {
-    std::unordered_map<uint32_t, OpCode> TilesById;
+    std::unordered_map<TileHandle, OpCode> TileSymbols;
+    std::unordered_map<TileHandle, float> TileConstants;
+    std::unordered_map<TileHandle, std::string> TileNames;
 
-    std::set<std::tuple<uint64_t, uint64_t>> Wires;
-    std::unordered_map<uint64_t, std::set<uint64_t>> WireByInput;
-    std::unordered_map<uint64_t, std::set<uint64_t>> WireByOutput;
+    std::set<WireHandle> Wires;
+    std::unordered_map<PortHandle, std::set<PortHandle>> ByInput;
+    std::unordered_map<PortHandle, std::set<PortHandle>> ByOutput;
+
+    Patch();
+
+    TileHandle MakeTile(OpCode Symbol);
+    TileHandle MakeTile(float Constant);
+    void EraseTile(TileHandle Tile);
+
+    OpCode GetTileSymbol(TileHandle Tile);
+
+    std::string GetTileName(TileHandle Tile);
+    void SetTileName(TileHandle Tile, std::string NewName);
+
+    float GetConstant(TileHandle Tile);
+    void SetConstant(TileHandle Tile, float NewValue);
+
+    std::string GetTileLabel(TileHandle Tile);
+
+    std::vector<PortHandle> GetTileInputPorts(TileHandle Tile);
+    std::vector<PortHandle> GetTileOutputPorts(TileHandle Tile);
+    std::string GetTileInputName(PortHandle Port);
+    std::string GetTileOutputName(PortHandle Port);
+
+    void Connect(PortHandle OutputPort, PortHandle InputPort);
+    void Disconnect(PortHandle OutputPort, PortHandle InputPort);
+    void ToggleConnection(PortHandle OutputPort, PortHandle InputPort);
+
+    bool CanConnect(TileHandle OutputTile, TileHandle InputTile);
+    std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
+
+private:
+    TileHandle LastAssignedTileHandle;
 };
