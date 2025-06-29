@@ -18,17 +18,43 @@
 #include "tiles.h"
 
 
+uint32_t WireKeyTileId(WireKey Key)
+{
+	return std::get<0>(Key);
+}
+
+
+uint32_t WireKeyPort(WireKey Key)
+{
+	return std::get<1>(Key);
+}
+
+
+uint64_t WireKeyAsNumber(WireKey Key)
+{
+	return (uint64_t(WireKeyTileId(Key)) << 32) | uint64_t(WireKeyPort(Key));
+}
+
+
+WireKey WireKeyFromNumber(uint64_t Number)
+{
+	uint32_t TileId = uint32_t(Number >> 32);
+	uint32_t Port = uint32_t(Number & 0xFFFFFFFF);
+	return WireKey(TileId, Port);
+}
+
+
 struct TileInfo
 {
 	std::vector<OpCode> Combiners;
-	std::vector<std::vector<std::string>> InputEdges;
-	std::vector<std::vector<std::string>> OutputEdges;
+	std::vector<std::vector<std::string>> InputNames;
+	std::vector<std::vector<std::string>> OutputNames;
 
 	TileInfo()
 	{
 		Combiners.resize((int)OpCode::Count);
-		InputEdges.resize((int)OpCode::Count);
-		OutputEdges.resize((int)OpCode::Count);
+		InputNames.resize((int)OpCode::Count);
+		OutputNames.resize((int)OpCode::Count);
 
 		Set(OpCode::CONST, OpCode::ADD, {}, {"#"});
 		Set(OpCode::OUT, OpCode::ADD, {"out"}, {});
@@ -42,8 +68,8 @@ struct TileInfo
 	void Set(OpCode Key, OpCode Combiner, std::vector<std::string> Inputs, std::vector<std::string> Outputs)
 	{
 		Combiners[(int)Key] = Combiner;
-		InputEdges[(int)Key] = Inputs;
-		OutputEdges[(int)Key] = Outputs;
+		InputNames[(int)Key] = Inputs;
+		OutputNames[(int)Key] = Outputs;
 	}
 };
 
@@ -71,15 +97,43 @@ OpCode MagicTile::Combiner()
 }
 
 
-const std::vector<std::string>& MagicTile::Inputs()
+const std::vector<std::string>& MagicTile::InputNames()
 {
-	return TileInfoMap.InputEdges[(int)Symbol];
+	return TileInfoMap.InputNames[(int)Symbol];
 }
 
 
-const std::vector<std::string>& MagicTile::Outputs()
+const std::vector<std::string>& MagicTile::OutputNames()
 {
-	return TileInfoMap.OutputEdges[(int)Symbol];
+	return TileInfoMap.OutputNames[(int)Symbol];
+}
+
+
+std::vector<uint64_t> MagicTile::InputKeys()
+{
+	int Count = InputNames().size();
+	std::vector<uint64_t> Keys;
+	Keys.reserve(Count);
+	uint64_t Key = WireKeyAsNumber({Id, 0});
+	for (int Port = 0; Port < Count; ++Port)
+	{
+		Keys.push_back(Key++);
+	}
+	return Keys;
+}
+
+
+std::vector<uint64_t> MagicTile::OutputKeys()
+{
+	int Count = OutputNames().size();
+	std::vector<uint64_t> Keys;
+	Keys.reserve(Count);
+	uint64_t Key = WireKeyAsNumber({Id, 0});
+	for (int Port = 0; Port < Count; ++Port)
+	{
+		Keys.push_back(Key++);
+	}
+	return Keys;
 }
 
 

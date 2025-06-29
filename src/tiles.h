@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <tuple>
 
 
 enum class OpCode : uint32_t
@@ -31,6 +32,14 @@ enum class OpCode : uint32_t
 };
 
 
+// Tile Id, port index
+using WireKey = std::tuple<uint32_t, uint32_t>;
+
+
+uint64_t WireKeyAsNumber(WireKey Key);
+WireKey WireKeyFromNumber(uint64_t Number);
+
+
 struct MagicTile
 {
 	MagicTile(OpCode InSymbol, std::string InName);
@@ -41,8 +50,10 @@ struct MagicTile
 	std::string Name;
 
 	OpCode Combiner();
-	const std::vector<std::string>& Inputs();
-	const std::vector<std::string>& Outputs();
+	const std::vector<std::string>& InputNames();
+	const std::vector<std::string>& OutputNames();
+	std::vector<uint64_t> InputKeys();
+	std::vector<uint64_t> OutputKeys();
 	virtual std::string Hint();
 	virtual std::string Label();
 	virtual ~MagicTile() = default;

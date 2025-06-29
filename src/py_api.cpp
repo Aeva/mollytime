@@ -120,8 +120,10 @@ PYBIND11_MODULE(mollytime, m) {
 		.def_readwrite("name",&MagicTile::Name)
 		.def_readonly("id", &MagicTile::Id)
 		.def_property_readonly("combiner", &MagicTile::Combiner)
-		.def_property_readonly("inputs", &MagicTile::Inputs)
-		.def_property_readonly("outputs", &MagicTile::Outputs);
+		.def_property_readonly("inputs", &MagicTile::InputNames)
+		.def_property_readonly("outputs", &MagicTile::OutputNames)
+		.def_property_readonly("input_keys", &MagicTile::InputKeys)
+		.def_property_readonly("output_keys", &MagicTile::OutputKeys);
 
 	py::class_<ConstTile, MagicTile>(m, "const_tile")
 		.def(py::init<float &>())
