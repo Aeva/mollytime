@@ -104,7 +104,7 @@ class connect_screen(editor_screen):
 
         start = (viewport.centerx - radius, 0)
         stop = (viewport.centerx - radius - tile_size, viewport.bottom - tile_size)
-        symbols = list(self.lhs_tile.outputs) + list(self.lhs_tile.inputs.keys())
+        symbols = list(self.lhs_tile.outputs) + list(self.lhs_tile.inputs)
         count = len(symbols)
 
         for index, symbol in enumerate(symbols):
@@ -117,7 +117,7 @@ class connect_screen(editor_screen):
 
         start = (viewport.centerx + radius, 0)
         stop = (viewport.centerx + radius - tile_size, viewport.bottom - tile_size)
-        symbols = list(reversed(list(self.rhs_tile.outputs) + list(self.rhs_tile.inputs.keys())))
+        symbols = list(reversed(list(self.rhs_tile.outputs) + list(self.rhs_tile.inputs)))
         count = len(symbols)
 
         for index, symbol in enumerate(symbols):

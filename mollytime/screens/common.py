@@ -54,7 +54,7 @@ class program_card:
     def add_tile(self, position, tile):
         self.tiles[tile.id] = tile
         self.tile_positions[tile.id] = position
-        for name in tile.inputs.keys():
+        for name in tile.inputs:
             self.by_input[(tile.id, name)] = set()
         for name in tile.outputs:
             self.by_output[(tile.id, name)] = set()
@@ -121,7 +121,7 @@ class program_card:
             out_tile, in_tile = [self.tiles[tile_id] for tile_id in self.selected]
             if len(out_tile.outputs) == 1 and len(in_tile.inputs) == 1:
                 out_key = (out_tile.id, out_tile.outputs[0])
-                in_key = (in_tile.id, list(in_tile.inputs.keys())[0])
+                in_key = (in_tile.id, in_tile.inputs[0])
                 return (out_key, in_key)
         return None
 

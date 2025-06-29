@@ -19,6 +19,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "colors.h"
+#include "tiles.h"
 
 namespace py = pybind11;
 
@@ -112,4 +113,34 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("parse_color", &PyParseColor, "CSS color parser");
 	m.def("oklab", &MakeOkLAB, "OkLAB color constructor");
 	m.def("oklch", &MakeOkLCH, "OkLCH color constructor");
+
+	py::class_<MagicTile>(m, "magic_tile")
+		.def("__repr__", &MagicTile::Hint)
+		.def("__str__", &MagicTile::Label)
+		.def_readwrite("name",&MagicTile::Name)
+		.def_readonly("id", &MagicTile::Id)
+		.def_property_readonly("inputs", &MagicTile::Inputs)
+		.def_property_readonly("outputs", &MagicTile::Outputs);
+
+	py::class_<ConstTile, MagicTile>(m, "const_tile")
+		.def(py::init<float &>())
+		.def_readwrite("value",&ConstTile::Value);
+
+	py::class_<OutTile, MagicTile>(m, "out_tile")
+		.def(py::init<>());
+
+	py::class_<SinTile, MagicTile>(m, "sin_tile")
+		.def(py::init<>());
+
+	py::class_<AddTile, MagicTile>(m, "add_tile")
+		.def(py::init<>());
+
+	py::class_<MulTile, MagicTile>(m, "mul_tile")
+		.def(py::init<>());
+
+	py::class_<MinTile, MagicTile>(m, "min_tile")
+		.def(py::init<>());
+
+	py::class_<MaxTile, MagicTile>(m, "max_tile")
+		.def(py::init<>());
 }
