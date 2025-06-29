@@ -207,38 +207,24 @@ class connect_screen(editor_screen):
 
     def on_release(self, editor):
         if self.press_start:
-            start_key = None
-            stop_key = None
+            def find_match(self):
+                def any_hit(self, rect):
+                    return rect.collidepoint(self.press_start) or rect.collidepoint(self.press_stop)
+                rect_groups = (
+                    (self.lhs_output_rects, self.rhs_input_rects),
+                    (self.rhs_output_rects, self.lhs_input_rects))
+                for output_rects, input_rects in rect_groups:
+                    for out_port, out_rect in output_rects.items():
+                        if any_hit(self, out_rect):
+                            for in_port, in_rect in input_rects.items():
+                                if any_hit(self, in_rect):
+                                    return out_port, in_port
+                return None, None
+            start_port, stop_port = find_match(self)
 
-            for key in self.lhs_nodes:
-                rect = self.node_rects[key]
-                if rect.collidepoint(self.press_start):
-                    start_key = key
-                    for key in self.rhs_nodes:
-                        rect = self.node_rects[key]
-                        if rect.collidepoint(self.press_stop):
-                            stop_key = key
-                            break
-                    break
-
-            if start_key is None:
-                for key in self.rhs_nodes:
-                    rect = self.node_rects[key]
-                    if rect.collidepoint(self.press_start):
-                        start_key = key
-                        for key in self.lhs_nodes:
-                            rect = self.node_rects[key]
-                            if rect.collidepoint(self.press_stop):
-                                stop_key = key
-                                break
-                        break
-
-            if start_key and stop_key:
-                if stop_key in editor.by_output:
-                    start_key, stop_key = stop_key, start_key
-                if start_key in editor.by_output and stop_key in editor.by_input:
-                    key = (start_key, stop_key)
-                    self.connections.add(key)
+            if start_port and stop_port and start_port != stop_port:
+                wire = (start_port, stop_port)
+                self.connections.add(wire)
 
             self.press_start = None
             self.press_stop = None
