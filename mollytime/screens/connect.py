@@ -252,6 +252,7 @@ class connect_screen(editor_screen):
 
                 return (u >= 0 and v >= 0 and u <= a_mag and v <= b_mag)
 
+            disconnects = []
             for wire in self.connections:
                 out_port, in_port = wire
                 out_rect = self.lhs_output_rects.get(out_port)
@@ -262,8 +263,9 @@ class connect_screen(editor_screen):
                 assert (out_rect and in_rect)
                 endpoints = [out_rect.center, in_rect.center]
                 if intersection(*endpoints):
-                    self.connections.remove(wire)
-                    break
+                    disconnects.append(wire)
+            for wire in disconnects:
+                self.connections.remove(wire)
 
             self.cut_start = None
             self.cut_stop = None
