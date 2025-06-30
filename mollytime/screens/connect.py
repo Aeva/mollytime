@@ -85,12 +85,12 @@ class connect_screen(editor_screen):
 
         self.bg.blit(self.screen_label_surface, self.screen_label_rect)
         font_path, size = AFACAD_REGULAR, editor.grid_size
-        surface = render_text(font_path, size, screen_label_color, str(self.lhs_tile))
+        surface = render_text(font_path, size, screen_label_color, editor.patch.get_tile_name(self.lhs_tile))
         rect = surface.get_rect().copy()
         rect.top = self.screen_label_rect.top
         rect.left = viewport.centerx - radius
         self.bg.blit(surface, rect)
-        surface = render_text(font_path, size, screen_label_color, str(self.rhs_tile))
+        surface = render_text(font_path, size, screen_label_color, editor.patch.get_tile_name(self.rhs_tile))
         rect = surface.get_rect().copy()
         rect.top = self.screen_label_rect.top
         rect.left = viewport.centerx + radius
