@@ -20,6 +20,7 @@
 #include <set>
 #include <vector>
 #include <string>
+#include <memory>
 
 
 // TileId
@@ -50,8 +51,48 @@ TileHandle PortHandleTilePart(PortHandle Handle);
 uint32_t PortHandlePortIndexPart(PortHandle Handle);
 
 
+struct RunningState
+{
+    RunningState(float InSample)
+        : Sample(InSample)
+    {
+    }
+    float Get()
+    {
+        return Sample;
+    }
+    void Set(float NewSample)
+    {
+        Sample = NewSample;
+    }
+
+private:
+    float Sample;
+};
+
+using RunningStateSharedPtr = std::shared_ptr<RunningState>;
+
+
+struct InstructionThunk
+{
+    virtual void Crank(float SampleInterval) = 0;
+    virtual ~InstructionThunk() {};
+};
+
+
+struct Scratch
+{
+    std::vector<std::shared_ptr<InstructionThunk>> Program;
+    RunningStateSharedPtr Output;
+
+    float Eval(float SampleInterval);
+};
+
+
 struct Patch
 {
+    Scratch CurrentProgram;
+
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, float> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
@@ -89,5 +130,11 @@ struct Patch
     std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
 
 private:
+    void ReplaceConstantOutput(TileHandle Tile, float NewValue);
+
     TileHandle LastAssignedTileHandle;
+    std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
+
+    void Recompile();
+    Scratch Compile();
 };

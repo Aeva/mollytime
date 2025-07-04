@@ -153,40 +153,4 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("toggle_connection", &Patch::ToggleConnection)
 		.def("can_connect", &Patch::CanConnect)
 		.def("get_implicit_wire", &Patch::GetImplicitWire);
-
-#if 0
-
-	py::class_<MagicTile>(m, "magic_tile")
-		.def("__repr__", &MagicTile::Hint)
-		.def("__str__", &MagicTile::Label)
-		.def_readwrite("name",&MagicTile::Name)
-		.def_readonly("id", &MagicTile::Id)
-		.def_property_readonly("combiner", &MagicTile::Combiner)
-		.def_property_readonly("inputs", &MagicTile::InputNames)
-		.def_property_readonly("outputs", &MagicTile::OutputNames)
-		.def_property_readonly("input_keys", &MagicTile::InputKeys)
-		.def_property_readonly("output_keys", &MagicTile::OutputKeys);
-
-	py::class_<ConstTile, MagicTile>(m, "const_tile")
-		.def(py::init<float &>())
-		.def_readwrite("value",&ConstTile::Value);
-
-	py::class_<OutTile, MagicTile>(m, "out_tile")
-		.def(py::init<>());
-
-	py::class_<SinTile, MagicTile>(m, "sin_tile")
-		.def(py::init<>());
-
-	py::class_<AddTile, MagicTile>(m, "add_tile")
-		.def(py::init<>());
-
-	py::class_<MulTile, MagicTile>(m, "mul_tile")
-		.def(py::init<>());
-
-	py::class_<MinTile, MagicTile>(m, "min_tile")
-		.def(py::init<>());
-
-	py::class_<MaxTile, MagicTile>(m, "max_tile")
-		.def(py::init<>());
-#endif
 }

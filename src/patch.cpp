@@ -15,12 +15,27 @@
 
 #include <stdexcept>
 #include <format>
+#include <print>
+#include <functional>
+#include <limits>
+#include <utility>
+#include <math.h>
 
 #include "patch.h"
 
 
+constinit double Tau = M_PI * 2.0;
+
+
 PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber)
 {
+    return (uint64_t(TileId) << 32) | uint64_t(PortNumber);
+}
+
+
+PortHandle MakeClosureHandle(TileHandle TileId, uint32_t PortNumber)
+{
+    PortNumber = std::numeric_limits<uint32_t>::max() - PortNumber;
     return (uint64_t(TileId) << 32) | uint64_t(PortNumber);
 }
 
@@ -72,6 +87,109 @@ struct SymbolInfo
 const SymbolInfo SymbolInfoMap;
 
 
+struct SinThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InFrequencyHz;
+    RunningStateSharedPtr ActivePhase = nullptr;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+
+    virtual void Crank(float SampleInterval) override
+    {
+        float Hz = InFrequencyHz.size() == 0 ? 440.0f : 0.0f;
+        for (const RunningStateSharedPtr& Input : InFrequencyHz)
+        {
+            Hz += Input->Get();
+        }
+        float Phase = ActivePhase->Get();
+        Phase += Tau * Hz * SampleInterval;
+        if (Phase > Tau)
+        {
+            Phase -= Tau;
+        }
+        ActivePhase->Set(Phase);
+        OutAmplitude->Set(sin(Phase));
+    }
+
+    virtual ~SinThunk() {};
+};
+
+
+struct AddThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(float SampleInterval) override
+    {
+        float Result = Inputs[0]->Get();
+        for (int Index = 1; Index < Inputs.size(); ++Index)
+        {
+            Result += Inputs[Index]->Get();
+        }
+        Output->Set(Result);
+    }
+
+    virtual ~AddThunk() {};
+};
+
+
+struct MulThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(float SampleInterval) override
+    {
+        float Result = Inputs[0]->Get();
+        for (int Index = 1; Index < Inputs.size(); ++Index)
+        {
+            Result *= Inputs[Index]->Get();
+        }
+        Output->Set(Result);
+    }
+
+    virtual ~MulThunk() {};
+};
+
+
+struct MinThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(float SampleInterval) override
+    {
+        float Result = Inputs[0]->Get();
+        for (int Index = 1; Index < Inputs.size(); ++Index)
+        {
+            Result = std::min(Result, Inputs[Index]->Get());
+        }
+        Output->Set(Result);
+    }
+
+    virtual ~MinThunk() {};
+};
+
+
+struct MaxThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(float SampleInterval) override
+    {
+        float Result = Inputs[0]->Get();
+        for (int Index = 1; Index < Inputs.size(); ++Index)
+        {
+            Result = std::max(Result, Inputs[Index]->Get());
+        }
+        Output->Set(Result);
+    }
+
+    virtual ~MaxThunk() {};
+};
+
+
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
@@ -98,6 +216,12 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     for (PortHandle Port : GetTileOutputPorts(AllocatedHandle))
     {
         ByOutput[Port] = std::set<PortHandle>();
+        ActiveOutputs[Port] = std::make_shared<RunningState>(0.0f);
+    }
+    if (Symbol == OpCode::SIN)
+    {
+        PortHandle Closure = MakeClosureHandle(AllocatedHandle, 0);
+        ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0f);
     }
     return AllocatedHandle;
 }
@@ -111,6 +235,7 @@ TileHandle Patch::MakeTile(float Constant)
     {
         throw std::runtime_error(std::format("Unusual fatal error: cannot initialize constant tile {}!\n", AllocatedHandle));
     }
+    ReplaceConstantOutput(AllocatedHandle, Constant);
     return AllocatedHandle;
 }
 
@@ -129,14 +254,23 @@ void Patch::EraseTile(TileHandle Tile)
     {
         Wires.erase(Wire);
     }
-    for (PortHandle Port : GetTileOutputPorts(Tile))
-    {
-        ByOutput.erase(Port);
-    }
     for (PortHandle Port : GetTileInputPorts(Tile))
     {
         ByInput.erase(Port);
     }
+    for (PortHandle Port : GetTileOutputPorts(Tile))
+    {
+        ByOutput.erase(Port);
+        ActiveOutputs.erase(Port);
+    }
+
+    OpCode Symbol = GetTileSymbol(Tile);
+    if (Symbol == OpCode::SIN)
+    {
+        PortHandle Closure = MakeClosureHandle(Tile, 0);
+        ActiveOutputs.erase(Closure);
+    }
+
     TileSymbols.erase(Tile);
     TileConstants.erase(Tile);
     TileNames.erase(Tile);
@@ -182,11 +316,24 @@ void Patch::SetConstant(TileHandle Tile, float NewValue)
     if (Symbol == OpCode::CONST)
     {
         TileConstants[Tile] = NewValue;
+        ReplaceConstantOutput(Tile, NewValue);
     }
     else
     {
         throw std::runtime_error(std::format("Attempted to assign a value to non-constant tile {}!\n", Tile));
     }
+}
+
+
+void Patch::ReplaceConstantOutput(TileHandle Tile, float NewValue)
+{
+    // Patch should never mutate the shared pointers stored in Patch::ActiveOutputs,
+    // as the active Scratch object will be continuously reading and mutating these
+    // values.  By instead replacing the entries stored in Patch::ActiveOutputs, the
+    // new constant values only take effect in subsequently compiled Scratch objects.
+    PortHandle Port = MakePortHandle(Tile, 0);
+    ActiveOutputs[Port] = std::make_shared<RunningState>(NewValue);
+    Recompile();
 }
 
 
@@ -261,6 +408,8 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
     ByInput[InputPort].insert(OutputPort);
     ByOutput[OutputPort].insert(InputPort);
     Wires.emplace(OutputPort, InputPort);
+
+    Recompile();
 }
 
 
@@ -269,6 +418,8 @@ void Patch::Disconnect(PortHandle OutputPort, PortHandle InputPort)
     Wires.erase({OutputPort, InputPort});
     ByInput[InputPort].erase(OutputPort);
     ByOutput[OutputPort].erase(InputPort);
+
+    Recompile();
 }
 
 
@@ -305,4 +456,201 @@ std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHand
     {
         return {};
     }
+}
+
+
+Scratch Patch::Compile()
+{
+    std::set<TileHandle> BreadCrumbs;
+    Scratch Program;
+    //return Program; // !!!!!!!!!!!!!!
+
+    std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
+    {
+        if (!BreadCrumbs.insert(Tile).second)
+        {
+            return nullptr;
+        }
+
+        const OpCode Symbol = GetTileSymbol(Tile);
+        if (Symbol == OpCode::CONST)
+        {
+            // Constant tiles return early because they terminate recursion,
+            // and because they have no thunk.
+            return nullptr;
+        }
+
+        const int InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
+        const int OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+
+        // Recurse first to populate everything sequentally.
+        for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
+        {
+            PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
+            for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
+            {
+                Step(PortHandleTilePart(ConnectedOutput));
+            }
+        }
+
+        if (Symbol == OpCode::OUT)
+        {
+            // The output tile does not have any specific behavior, but may emit
+            // an implicit add.
+
+            const PortHandle InputHandle = MakePortHandle(Tile, 0);
+            std::set<PortHandle> ConnectedOutputs = ByInput.at(InputHandle);
+
+            if (ConnectedOutputs.size() == 0)
+            {
+                return nullptr;
+            }
+            else if (ConnectedOutputs.size() == 1)
+            {
+                for (PortHandle ConnectedOutput : ConnectedOutputs)
+                {
+                    return ActiveOutputs.at(ConnectedOutput);
+                }
+            }
+            else
+            {
+                std::vector<RunningStateSharedPtr> Inputs;
+                for (PortHandle ConnectedOutput : ConnectedOutputs)
+                {
+                    Inputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                }
+
+                auto Thunk = std::make_shared<AddThunk>();
+                Thunk->Inputs = Inputs;
+                Thunk->Output = std::make_shared<RunningState>(0.0f);
+                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return Thunk->Output;
+            }
+        }
+        else
+        {
+            std::vector<RunningStateSharedPtr> Inputs;
+            for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
+            {
+                PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
+                for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
+                {
+                    Inputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                }
+            }
+
+            std::vector<RunningStateSharedPtr> Outputs;
+            for (int PortIndex = 0; PortIndex < OutputCount; ++PortIndex)
+            {
+                PortHandle OutputHandle = MakePortHandle(Tile, PortIndex);
+                Outputs.push_back(ActiveOutputs.at(OutputHandle));
+            }
+
+            if (Symbol == OpCode::SIN)
+            {
+                auto Thunk = std::make_shared<SinThunk>();
+                Thunk->InFrequencyHz = Inputs;
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->OutAmplitude = Outputs[0];
+                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::ADD)
+            {
+                auto Thunk = std::make_shared<AddThunk>();
+                Thunk->Inputs = Inputs;
+                Thunk->Output = Outputs[0];
+                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MUL)
+            {
+                auto Thunk = std::make_shared<MulThunk>();
+                Thunk->Inputs = Inputs;
+                Thunk->Output = Outputs[0];
+                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MIN)
+            {
+                auto Thunk = std::make_shared<MinThunk>();
+                Thunk->Inputs = Inputs;
+                Thunk->Output = Outputs[0];
+                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MAX)
+            {
+                auto Thunk = std::make_shared<MaxThunk>();
+                Thunk->Inputs = Inputs;
+                Thunk->Output = Outputs[0];
+                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+
+            return nullptr;
+        }
+
+        std::unreachable();
+    };
+
+    RunningStateSharedPtr FinalOutput = nullptr;
+    for (const auto& [Tile, Symbol] : TileSymbols)
+    {
+        if (Symbol == OpCode::OUT)
+        {
+            FinalOutput = Step(Tile);
+            if (FinalOutput != nullptr)
+            {
+                break;
+            }
+        }
+    }
+
+    if (FinalOutput == nullptr)
+    {
+        FinalOutput = std::make_shared<RunningState>(0.0f);
+    }
+
+    Program.Output = FinalOutput;
+    return Program;
+}
+
+
+void Patch::Recompile()
+{
+    CurrentProgram = Compile();
+    const int InstructionCount = CurrentProgram.Program.size();
+    if (InstructionCount > 0)
+    {
+        std::print("Compiled instruction count: {}\n", InstructionCount);
+        std::vector<float> Samples;
+        Samples.resize(146);
+        float Gain = 0.5;
+        for (float& Sample : Samples)
+        {
+            Sample = CurrentProgram.Eval(1.0f / 48000.0f) * Gain;
+        }
+        for (int y = 0; y < 30; ++y)
+        {
+            float Alpha = (float(y) / 29.0f) * 2.0f - 1.0f;
+            for (float& Sample : Samples)
+            {
+                if ((Alpha < 0) == (Sample < 0) && std::abs(Alpha) < std::abs(Sample))
+                {
+                    std::print("*");
+                }
+                else
+                {
+                    std::print(" ");
+                }
+            }
+            std::print("\n");
+        }
+    }
+}
+
+
+float Scratch::Eval(float SampleInterval)
+{
+    for (std::shared_ptr<InstructionThunk>& Thunk : Program)
+    {
+        Thunk->Crank(SampleInterval);
+    }
+    return Output->Get();
 }
