@@ -553,34 +553,40 @@ Scratch Patch::Compile()
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
                 Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+
+                return nullptr;
             }
-            else if (Symbol == OpCode::ADD)
+
+            if (Inputs.size() > 0)
             {
-                auto Thunk = std::make_shared<AddThunk>();
-                Thunk->Inputs = Inputs;
-                Thunk->Output = Outputs[0];
-                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-            }
-            else if (Symbol == OpCode::MUL)
-            {
-                auto Thunk = std::make_shared<MulThunk>();
-                Thunk->Inputs = Inputs;
-                Thunk->Output = Outputs[0];
-                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-            }
-            else if (Symbol == OpCode::MIN)
-            {
-                auto Thunk = std::make_shared<MinThunk>();
-                Thunk->Inputs = Inputs;
-                Thunk->Output = Outputs[0];
-                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-            }
-            else if (Symbol == OpCode::MAX)
-            {
-                auto Thunk = std::make_shared<MaxThunk>();
-                Thunk->Inputs = Inputs;
-                Thunk->Output = Outputs[0];
-                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                if (Symbol == OpCode::ADD)
+                {
+                    auto Thunk = std::make_shared<AddThunk>();
+                    Thunk->Inputs = Inputs;
+                    Thunk->Output = Outputs[0];
+                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                }
+                else if (Symbol == OpCode::MUL)
+                {
+                    auto Thunk = std::make_shared<MulThunk>();
+                    Thunk->Inputs = Inputs;
+                    Thunk->Output = Outputs[0];
+                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                }
+                else if (Symbol == OpCode::MIN)
+                {
+                    auto Thunk = std::make_shared<MinThunk>();
+                    Thunk->Inputs = Inputs;
+                    Thunk->Output = Outputs[0];
+                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                }
+                else if (Symbol == OpCode::MAX)
+                {
+                    auto Thunk = std::make_shared<MaxThunk>();
+                    Thunk->Inputs = Inputs;
+                    Thunk->Output = Outputs[0];
+                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                }
             }
 
             return nullptr;
