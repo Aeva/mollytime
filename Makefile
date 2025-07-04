@@ -9,7 +9,11 @@ OBJECT_TARGETS = $(shell find $(SRC_DIR) -name '*.cpp' | sed -e 's/$(SRC_DIR)/$(
 
 TARGET_LIB := mollytime/mollytime$(shell python3-config --extension-suffix)
 
-COMMON_ARGS := -std=c++2c -fPIC
+DEBUG_MODE_ARGS := -g -O0 -fno-omit-frame-pointer
+RELEASE_MODE_ARGS := -O2
+ENABLE_DEBUG := #uncomment me to enable debugging
+
+COMMON_ARGS := -std=c++2c -fPIC $(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(RELEASE_MODE_ARGS))
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 
