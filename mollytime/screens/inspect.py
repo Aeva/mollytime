@@ -1,6 +1,7 @@
 
 from .common import *
 from .select import select_screen
+from .calc import calculator_screen
 
 
 class inspect_screen(editor_screen):
@@ -34,6 +35,13 @@ class inspect_screen(editor_screen):
         self.update_sidebar = True
         editor.clear_selection()
 
+    def goto_calculator(self, editor):
+        overlay = calculator_screen(editor)
+        self.purge_events()
+        self.update_play_area = True
+        self.update_sidebar = True
+        editor.clear_selection()
+
     def on_move(self, editor, pos):
         self.cursor_pos = pos
 
@@ -52,8 +60,24 @@ class inspect_screen(editor_screen):
 
     def on_press(self, editor, pos):
         if editor.play_rect.collidepoint(pos):
-            # begin play are view panning
-            self.press_start = pos
+            something_happened = False
+            for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
+                rect = pygame.Rect(
+                    editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                    editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                    editor.grid_size * 2, editor.grid_size * 2)
+                if rect.collidepoint(pos):
+                    symbol = editor.patch.get_tile_symbol(tile_id)
+                    if symbol == OpCode.CONST:
+                        editor.clear_selection()
+                        editor.toggle_selection(tile_id)
+                        self.goto_calculator(editor)
+                        return
+                    break
+
+            if not something_happened:
+                # begin play are view panning
+                self.press_start = pos
 
         elif editor.side_bar_rect.collidepoint(pos):
             # test side bar targets

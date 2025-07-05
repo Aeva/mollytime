@@ -165,29 +165,32 @@ class program_card:
         self.side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
 
-        tile_color = parse_color("#dee5e8")
-        self.tile_bg = plate_bg(self.grid_size, tile_color)
+        self.tile_color = parse_color("#dee5e8")
+        self.tile_bg = plate_bg(self.grid_size, self.tile_color)
 
-        self.select_color = lch_swizzle(tile_color, parse_color("#880000"), (.5, .75, 0))
+        self.select_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
 
-        self.inspect_target = plate_bg(self.grid_size, tile_color, "inspect")
+        self.inspect_target = plate_bg(self.grid_size, self.tile_color, "inspect")
         self.inspect_active = plate_bg(self.grid_size, self.select_color, "inspect")
 
-        self.select_target = plate_bg(self.grid_size, tile_color, "select")
+        self.select_target = plate_bg(self.grid_size, self.tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
 
-        self.connect_target = plate_bg(self.grid_size, tile_color, "manual\nconnect")
+        self.calc_target = plate_bg(self.grid_size, self.tile_color, "calc")
+        self.calc_active = plate_bg(self.grid_size, self.select_color, "calc")
+
+        self.connect_target = plate_bg(self.grid_size, self.tile_color, "manual\nconnect")
         self.connect_active = plate_bg(self.grid_size, self.select_color, "full\nconnect")
 
-        self.auto_connect = plate_bg(self.grid_size, tile_color, "connect")
-        self.auto_disconnect = plate_bg(self.grid_size, tile_color, "detach")
+        self.auto_connect = plate_bg(self.grid_size, self.tile_color, "connect")
+        self.auto_disconnect = plate_bg(self.grid_size, self.tile_color, "detach")
 
-        self.apply_target = plate_bg(self.grid_size, tile_color, "apply")
+        self.apply_target = plate_bg(self.grid_size, self.tile_color, "apply")
 
-        self.cancel_target = plate_bg(self.grid_size, tile_color, "cancel")
+        self.cancel_target = plate_bg(self.grid_size, self.tile_color, "cancel")
 
-        self.placeholder_target = plate_bg(self.grid_size, tile_color, "magic")
+        self.placeholder_target = plate_bg(self.grid_size, self.tile_color, "magic")
 
 
 class editor_screen:

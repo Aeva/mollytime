@@ -1,0 +1,252 @@
+
+import operator
+from .common import *
+
+from fonts import *
+from colors import *
+from patterns import *
+
+
+class calculator_screen(editor_screen):
+    def setup(self, editor):
+        self.cursor_pos = pygame.mouse.get_pos()
+        self.press_start = None
+
+        self.editing_tile = editor.lhs_selection()
+
+        self.history = []
+        self.calculation = [str(editor.patch.get_constant(self.editing_tile))]
+
+        screen_label_color = (255, 255, 255)
+        self.set_screen_label(editor, "inspect > calculator", screen_label_color, 1)
+        self.repopulate_sidebar(editor)
+        self.render_play_area(editor)
+
+        rows = [
+            ['^', '=', None, None, None, None, '440', 'clear'],
+            ['×', '+', 1, 2, 3, 4, 5, 'back\nspace'],
+            ['÷', '-', 6, 7, 8, 9, 0, '.']]
+
+        self.operators = {
+            '^' : pow,
+            '×' : operator.mul,
+            '+' : operator.add,
+            '÷' : operator.truediv,
+            '-' : operator.sub,
+        }
+
+        per_row = max(map(len, rows))
+        x_span = editor.grid_size * 3 * per_row
+        y_span = editor.grid_size * 3 * len(rows)
+        x_start = editor.play_area.viewport.centerx - x_span / 2
+        y_start = editor.play_area.viewport.bottom - y_span
+
+        self.text_anchor_x = editor.play_area.viewport.centerx + x_span / 2 - editor.grid_size * 4
+        self.text_anchor_y = y_start - editor.grid_size * 0.5
+
+        self.buttons = []
+        for y, row in enumerate(rows):
+            y = y * editor.grid_size * 3 + y_start
+            for x, label in enumerate(row):
+                x = x * editor.grid_size * 3 + x_start
+                if label is None:
+                    continue
+                rect = pygame.Rect(x, y, editor.grid_size * 2, editor.grid_size * 2)
+                icon = plate_bg(editor.grid_size, editor.tile_color, str(label)).surface
+                self.buttons.append((rect, icon, label))
+
+    def numerate(self, text):
+        return float(text) if text.count(".") else int(text)
+
+    def advance(self):
+        if len(self.calculation) > 1:
+            assert(len(self.calculation) == 3)
+            lhs = self.numerate(self.calculation[0])
+            op = self.operators[self.calculation[1]]
+            rhs = self.numerate(self.calculation[2])
+
+            if op == operator.truediv and rhs == 0:
+                self.calculation = [self.calculation[0]]
+                return
+
+            value = op(lhs, rhs)
+            term = str(value)
+            if term.count('.') != 0:
+                whole, fractional = term.split('.')
+                if len(fractional) == fractional.count('0'):
+                    term = whole
+                elif len(fractional) > 4:
+                    term = f"{value:.4f}"
+            self.history.append(" ".join(self.calculation + ['=', term]))
+            self.calculation = [term]
+
+    def on_math(self, editor, label):
+        if label == 'clear':
+            self.calculation = ["0"]
+        elif label == '440':
+            self.calculation = ["440"]
+        elif label == 'back\nspace':
+            active = self.calculation[-1][:-1] or '0'
+            self.calculation[-1] = active
+        elif type(label) == int:
+            active = self.calculation[-1]
+            active = f"{active}{label}"
+            if len(active) >= 2 and active[0] == '0' and active[1] != '.':
+                active = active[1:]
+            self.calculation[-1] = active
+        elif label == '.':
+            active = self.calculation[-1]
+            if active.count('.') == 0:
+                active = f"{active}."
+                self.calculation[-1] = active
+        elif label in ['^', '×', '+', '÷', '-']:
+            if len(self.calculation) == 3:
+                self.advance()
+            self.calculation.append(label)
+            self.calculation.append('0')
+        elif label == '=':
+            self.advance()
+
+        # if label == '=':
+        #     pass
+        # elif label in ['^', '×', '+', '÷', '-']:
+        #     pass
+
+    def repopulate_sidebar(self, editor):
+        self.update_sidebar = True
+
+        goto_inspect_rect = pygame.Rect(
+            editor.grid_size,
+            0 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_inspect_icon = editor.inspect_target
+
+        active_rect = pygame.Rect(
+            editor.grid_size,
+            1 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        active_icon = editor.calc_active
+
+        self.side_bar_targets = [
+            (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
+            (active_rect, active_icon, None)]
+
+    def render_play_area(self, editor):
+        editor.play_area.focus_x = editor.focus_x
+        editor.play_area.focus_y = editor.focus_y
+        editor.play_area.redraw()
+
+        frame = editor.play_area.surface.copy()
+
+        for tile_id, tile_xy in editor.tile_positions.items():
+            rect = editor.get_tile_rect(tile_id)
+            label = editor.patch.get_tile_label(tile_id)
+            pattern = editor.selected_tile_bg if editor.is_selected(tile_id) else editor.tile_bg
+            pattern.draw(frame, rect, label)
+
+        for (out_port, in_port) in editor.patch.wires:
+            lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
+            rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
+            radius = max(4, editor.grid_size // 12)
+            draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
+
+        frame.set_alpha(int(0.25 * 255))
+
+        self.bg = pygame.Surface((frame.get_width(), frame.get_height()))
+        self.bg.fill((0, 0, 0))
+        self.bg.blit(frame, (0, 0))
+        #editor.screen.blit(frame, editor.play_area.viewport)
+
+    def goto_inspect_screen(self, editor):
+        self.live = False
+
+    def on_move(self, editor, pos):
+        self.cursor_pos = pos
+
+        if not self.press_start:
+            return
+
+        move_x = pos[0] - self.press_start[0]
+        move_y = pos[1] - self.press_start[1]
+
+        if move_x != 0 or move_y != 0:
+            editor.focus_x -= move_x
+            editor.focus_y -= move_y
+            self.update_play_area = True
+
+        self.press_start = pos
+
+    def on_press(self, editor, pos):
+        if editor.play_rect.collidepoint(pos):
+            for rect, _, label in self.buttons:
+                if rect.collidepoint(pos):
+                    self.on_math(editor, label)
+                    self.update_play_area = True
+                    break
+
+        elif editor.side_bar_rect.collidepoint(pos):
+            # test side bar targets
+            rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
+            for rect, surface, action in self.side_bar_targets:
+                if action is not None and rect.collidepoint(rel_pos):
+                    action(editor)
+                    return
+
+    def on_release(self, editor):
+        self.press_start = None
+
+    def draw(self, editor):
+        update_anything = False
+
+        # draw the play area
+        if self.update_play_area:
+            self.update_play_area = False
+            update_anything = True
+            frame = self.bg.copy()
+
+            for rect, icon, _ in self.buttons:
+                frame.blit(icon, rect)
+
+            font_path, size = AFACAD_REGULAR, editor.grid_size * 2
+            color = parse_color("#FFF")
+            anchor_x = self.text_anchor_x
+            anchor_y = self.text_anchor_y
+            def print_text(text, alpha=1.0):
+                nonlocal anchor_y
+                surface = render_text(font_path, size, color, text)
+                surface.set_alpha(int(alpha * 255))
+                rect = surface.get_rect().copy()
+                rect.centerx += anchor_x - rect.width
+                rect.bottom = anchor_y
+                anchor_y -= rect.height
+                frame.blit(surface, rect)
+
+            max_history = 3
+            lines = list(reversed(self.history[-max_history:]))
+
+            print_text(" ".join(self.calculation))
+
+            for index, text in enumerate(lines):
+                alpha = 1.0 - ((index + 1) / max_history) * 0.75
+                print_text(text, alpha * alpha)
+
+            frame.blit(self.screen_label_surface, self.screen_label_rect)
+            editor.screen.blit(frame, editor.play_area.viewport)
+
+        # draw sidebar
+        if self.update_sidebar:
+            self.update_sidebar = False
+            update_anything = True
+
+            frame = editor.side_bar.surface.copy()
+            for rect, plate, action in self.side_bar_targets:
+                frame.blit(plate.surface, rect)
+
+            editor.screen.blit(frame, editor.side_bar.viewport)
+
+        if update_anything:
+            pygame.display.flip()
+        else:
+            editor.clock.tick(60)
