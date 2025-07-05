@@ -19,13 +19,15 @@
 #include <functional>
 #include <limits>
 #include <utility>
-#include <math.h>
+#include <cmath>
 
 #include "patch.h"
 #include "pipewire.h"
 
 
+constinit double Pi = M_PI;
 constinit double Tau = M_PI * 2.0;
+constinit double Leftovers = M_PI / 2.0;
 
 
 PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber)
@@ -70,6 +72,8 @@ struct SymbolInfo
         Set(OpCode::CONST, OpCode::ADD, "const", {}, {"#"});
         Set(OpCode::OUT, OpCode::ADD, "out", {"out"}, {});
         Set(OpCode::SIN, OpCode::ADD, "sin", {"hz"}, {"amp"});
+        Set(OpCode::SQR, OpCode::ADD, "sqr", {"hz"}, {"amp"});
+        Set(OpCode::TRI, OpCode::ADD, "tri", {"hz"}, {"amp"});
         Set(OpCode::ADD, OpCode::ADD, "add", {"+"}, {"="});
         Set(OpCode::MUL, OpCode::MUL, "mul", {"*"}, {"="});
         Set(OpCode::MIN, OpCode::MIN, "min", {"min"}, {"="});
@@ -108,10 +112,68 @@ struct SinThunk : public InstructionThunk
             Phase -= Tau;
         }
         ActivePhase->Set(Phase);
-        OutAmplitude->Set(sin(Phase));
+        OutAmplitude->Set(std::sin(Phase));
     }
 
     virtual ~SinThunk() {};
+};
+
+
+struct SqrThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InFrequencyHz;
+    RunningStateSharedPtr ActivePhase = nullptr;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double Hz = InFrequencyHz.size() == 0 ? 440.0 : 0.0;
+        for (const RunningStateSharedPtr& Input : InFrequencyHz)
+        {
+            Hz += Input->Get();
+        }
+        double Phase = ActivePhase->Get();
+        Phase += Tau * Hz * SampleInterval;
+        while (Phase > Tau)
+        {
+            Phase -= Tau;
+        }
+        ActivePhase->Set(Phase);
+        double Sign = Phase <= Pi ? 1.0 : -1.0;
+        OutAmplitude->Set(Sign);
+    }
+
+    virtual ~SqrThunk() {};
+};
+
+
+struct TriThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InFrequencyHz;
+    RunningStateSharedPtr ActivePhase = nullptr;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double Hz = InFrequencyHz.size() == 0 ? 440.0 : 0.0;
+        for (const RunningStateSharedPtr& Input : InFrequencyHz)
+        {
+            Hz += Input->Get();
+        }
+        double Phase = ActivePhase->Get();
+        Phase += Tau * Hz * SampleInterval;
+        while (Phase > Tau)
+        {
+            Phase -= Tau;
+        }
+        ActivePhase->Set(Phase);
+        double Sign = Phase <= Pi ? 1.0 : -1.0;
+        double IntegerPart = 0.0;
+        double Alpha = std::modf(Phase / Leftovers, &IntegerPart);
+        OutAmplitude->Set(Alpha * Sign);
+    }
+
+    virtual ~TriThunk() {};
 };
 
 
@@ -219,7 +281,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         ByOutput[Port] = std::set<PortHandle>();
         ActiveOutputs[Port] = std::make_shared<RunningState>(0.0);
     }
-    if (Symbol == OpCode::SIN)
+    if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI)
     {
         PortHandle Closure = MakeClosureHandle(AllocatedHandle, 0);
         ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
@@ -266,7 +328,7 @@ void Patch::EraseTile(TileHandle Tile)
     }
 
     OpCode Symbol = GetTileSymbol(Tile);
-    if (Symbol == OpCode::SIN)
+    if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI)
     {
         PortHandle Closure = MakeClosureHandle(Tile, 0);
         ActiveOutputs.erase(Closure);
@@ -553,7 +615,24 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-
+                return nullptr;
+            }
+            else if (Symbol == OpCode::SQR)
+            {
+                auto Thunk = std::make_shared<SqrThunk>();
+                Thunk->InFrequencyHz = Inputs;
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->OutAmplitude = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return nullptr;
+            }
+            else if (Symbol == OpCode::TRI)
+            {
+                auto Thunk = std::make_shared<TriThunk>();
+                Thunk->InFrequencyHz = Inputs;
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->OutAmplitude = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
 

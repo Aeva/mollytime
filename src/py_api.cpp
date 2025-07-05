@@ -119,6 +119,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("CONST", OpCode::CONST)
 		.value("OUT", OpCode::OUT)
 		.value("SIN", OpCode::SIN)
+		.value("SQR", OpCode::SQR)
+		.value("TRI", OpCode::TRI)
 		.value("ADD", OpCode::ADD)
 		.value("MUL", OpCode::MUL)
 		.value("MIN", OpCode::MIN)

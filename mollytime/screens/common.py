@@ -30,7 +30,7 @@ class program_card:
             a4_hz = self.make_constant((-1, 0), 440)
             a5_hz = self.make_tile((0, -1), OpCode.MUL)
             a5_osc = self.make_tile((0, 0), OpCode.SIN)
-            a4_osc = self.make_tile((-1, 1), OpCode.SIN)
+            a4_osc = self.make_tile((-1, 1), OpCode.SQR)
             summed = self.make_tile((0, 1), OpCode.ADD)
             half = self.make_constant((1, -1), .5)
             gain = self.make_tile((1, 0), OpCode.MUL)

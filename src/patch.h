@@ -41,6 +41,8 @@ enum class OpCode : uint32_t
     CONST = 0,
     OUT,
     SIN,
+    SQR,
+    TRI,
     ADD,
     MUL,
     MIN,
