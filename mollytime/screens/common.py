@@ -17,33 +17,54 @@ class program_card:
         self.patch = Patch()
         self.tile_positions = {}
 
-        #   2    *
-        #  440  sin   +
-        #       sin  out
-        two = self.make_constant((-1, -1), 2)
-        a4_hz = self.make_constant((-1, 0), 440)
-        a5_hz = self.make_tile((0, -1), OpCode.MUL)
-        a5_osc = self.make_tile((0, 0), OpCode.SIN)
-        a4_osc = self.make_tile((-1, 1), OpCode.SIN)
-        summed = self.make_tile((0, 1), OpCode.ADD)
-        half = self.make_constant((1, -1), .5)
-        gain = self.make_tile((1, 0), OpCode.MUL)
-        out = self.make_tile((1, 1), OpCode.OUT)
-
         def quick_connect(lhs, rhs):
             wire = self.patch.get_implicit_wire(lhs, rhs)
             assert(wire)
             self.patch.connect_tiles(*wire)
 
-        quick_connect(two, a5_hz)
-        quick_connect(a4_hz, a5_hz)
-        quick_connect(a5_hz, a5_osc)
-        quick_connect(a4_hz, a4_osc)
-        quick_connect(a4_osc, summed)
-        quick_connect(a5_osc, summed)
-        quick_connect(half, gain)
-        quick_connect(summed, gain)
-        quick_connect(gain, out)
+        if True:
+            #   2    *
+            #  440  sin   +
+            #       sin  out
+            two = self.make_constant((-1, -1), 2)
+            a4_hz = self.make_constant((-1, 0), 440)
+            a5_hz = self.make_tile((0, -1), OpCode.MUL)
+            a5_osc = self.make_tile((0, 0), OpCode.SIN)
+            a4_osc = self.make_tile((-1, 1), OpCode.SIN)
+            summed = self.make_tile((0, 1), OpCode.ADD)
+            half = self.make_constant((1, -1), .5)
+            gain = self.make_tile((1, 0), OpCode.MUL)
+            out = self.make_tile((1, 1), OpCode.OUT)
+
+            quick_connect(two, a5_hz)
+            quick_connect(a4_hz, a5_hz)
+            quick_connect(a5_hz, a5_osc)
+            quick_connect(a4_hz, a4_osc)
+            quick_connect(a4_osc, summed)
+            quick_connect(a5_osc, summed)
+            quick_connect(half, gain)
+            quick_connect(summed, gain)
+            quick_connect(gain, out)
+
+        else:
+            quarter = self.make_constant((-3, -3), .25)
+            half = self.make_constant((-2, -3), .5)
+            two = self.make_constant((-1, -3), 2)
+            four = self.make_constant((0, -3), 4)
+            eight = self.make_constant((1, -3), 8)
+            sixteen = self.make_constant((2, -3), 16)
+            a4_hz = self.make_constant((-4, -2), 440)
+            out = self.make_tile((4, 3), OpCode.OUT)
+
+            for y in range(5):
+                self.make_tile((-3, -2 + y), OpCode.MUL)
+                self.make_tile((-2, -2 + y), OpCode.ADD)
+                self.make_tile((-1, -2 + y), OpCode.SIN)
+                self.make_tile((0, -2 + y), OpCode.ADD)
+                self.make_tile((2, -2 + y), OpCode.MUL)
+                if y > 0:
+                    n = 1 / y
+                    self.make_constant((1, -2 + y), n)
 
         self.selected = []
 
