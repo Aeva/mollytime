@@ -16,6 +16,8 @@ ENABLE_DEBUG := #uncomment me to enable debugging
 COMMON_ARGS := -std=c++2c -fPIC $(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(RELEASE_MODE_ARGS))
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
+INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)
+LIBRARIES := -lm $(shell pkg-config --libs libpipewire-0.3)
 
 all: $(OBJECT_TARGETS) $(TARGET_LIB)
 
@@ -25,7 +27,7 @@ clean:
 
 $(OBJECT_FILES): $(SOURCE_FILES)
 	mkdir -p build
-	clang++ $(COMMON_ARGS) $(INCLUDE_GLM) $(INCLUDE_PYTHON) -c $< -o $@
+	clang++ $(COMMON_ARGS) $(INCLUDE_GLM) $(INCLUDE_PYTHON) $(INCLUDE_PIPEWIRE) -c $< -o $@
 
 $(TARGET_LIB): $(OBJECT_TARGETS)
-	clang++ $(COMMON_ARGS) -lm -shared $(BUILD_DIR)/*.o -o $(TARGET_LIB)
+	clang++ $(COMMON_ARGS) $(LIBRARIES) -shared $(BUILD_DIR)/*.o -o $(TARGET_LIB)

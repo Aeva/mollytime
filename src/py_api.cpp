@@ -20,6 +20,7 @@
 #include <pybind11/stl.h>
 #include "colors.h"
 #include "patch.h"
+#include "pipewire.h"
 
 namespace py = pybind11;
 
@@ -153,4 +154,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("toggle_connection", &Patch::ToggleConnection)
 		.def("can_connect", &Patch::CanConnect)
 		.def("get_implicit_wire", &Patch::GetImplicitWire);
+
+	m.def("init_audio", &AudioStream::Init);
+	m.def("shutdown_audio", &AudioStream::Shutdown);
 }

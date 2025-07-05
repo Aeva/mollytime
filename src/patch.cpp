@@ -22,6 +22,7 @@
 #include <math.h>
 
 #include "patch.h"
+#include "pipewire.h"
 
 
 constinit double Tau = M_PI * 2.0;
@@ -459,11 +460,10 @@ std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHand
 }
 
 
-Scratch Patch::Compile()
+ScratchSharedPtr Patch::Compile()
 {
     std::set<TileHandle> BreadCrumbs;
-    Scratch Program;
-    //return Program; // !!!!!!!!!!!!!!
+    ScratchSharedPtr Program = std::make_shared<Scratch>();
 
     std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
     {
@@ -523,7 +523,7 @@ Scratch Patch::Compile()
                 auto Thunk = std::make_shared<AddThunk>();
                 Thunk->Inputs = Inputs;
                 Thunk->Output = std::make_shared<RunningState>(0.0f);
-                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return Thunk->Output;
             }
         }
@@ -552,7 +552,7 @@ Scratch Patch::Compile()
                 Thunk->InFrequencyHz = Inputs;
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
-                Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
 
                 return nullptr;
             }
@@ -564,28 +564,28 @@ Scratch Patch::Compile()
                     auto Thunk = std::make_shared<AddThunk>();
                     Thunk->Inputs = Inputs;
                     Thunk->Output = Outputs[0];
-                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 }
                 else if (Symbol == OpCode::MUL)
                 {
                     auto Thunk = std::make_shared<MulThunk>();
                     Thunk->Inputs = Inputs;
                     Thunk->Output = Outputs[0];
-                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 }
                 else if (Symbol == OpCode::MIN)
                 {
                     auto Thunk = std::make_shared<MinThunk>();
                     Thunk->Inputs = Inputs;
                     Thunk->Output = Outputs[0];
-                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 }
                 else if (Symbol == OpCode::MAX)
                 {
                     auto Thunk = std::make_shared<MaxThunk>();
                     Thunk->Inputs = Inputs;
                     Thunk->Output = Outputs[0];
-                    Program.Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 }
             }
 
@@ -613,15 +613,16 @@ Scratch Patch::Compile()
         FinalOutput = std::make_shared<RunningState>(0.0f);
     }
 
-    Program.Output = FinalOutput;
+    Program->Output = FinalOutput;
     return Program;
 }
 
 
 void Patch::Recompile()
 {
-    CurrentProgram = Compile();
-    const int InstructionCount = CurrentProgram.Program.size();
+    ScratchSharedPtr CurrentProgram = Compile();
+#if 0
+    const int InstructionCount = CurrentProgram->Program.size();
     if (InstructionCount > 0)
     {
         std::print("Compiled instruction count: {}\n", InstructionCount);
@@ -630,7 +631,7 @@ void Patch::Recompile()
         float Gain = 0.5;
         for (float& Sample : Samples)
         {
-            Sample = CurrentProgram.Eval(1.0f / 48000.0f) * Gain;
+            Sample = CurrentProgram->Eval(1.0f / 48000.0f) * Gain;
         }
         for (int y = 0; y < 30; ++y)
         {
@@ -649,6 +650,8 @@ void Patch::Recompile()
             std::print("\n");
         }
     }
+#endif
+    AudioStream::Get()->ProgramChange(CurrentProgram);
 }
 
 

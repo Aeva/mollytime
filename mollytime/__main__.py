@@ -7,13 +7,15 @@ import subprocess
 import pygame_setup
 import pygame
 
+import mollytime
+
 from fonts import *
 from colors import *
 from patterns import *
 from screens.common import program_card
 from screens.inspect import inspect_screen
 
-
+mollytime.init_audio(48000)
 pygame.init()
 
 sizes = pygame.display.get_desktop_sizes()
@@ -57,3 +59,5 @@ dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
 editor = program_card(screen, dpi)
 ui = inspect_screen(editor)
+
+mollytime.shutdown_audio()

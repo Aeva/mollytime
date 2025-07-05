@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <cstdint>
 #include <optional>
 #include <tuple>
@@ -88,11 +90,11 @@ struct Scratch
     float Eval(float SampleInterval);
 };
 
+using ScratchSharedPtr = std::shared_ptr<Scratch>;
+
 
 struct Patch
 {
-    Scratch CurrentProgram;
-
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, float> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
@@ -136,5 +138,5 @@ private:
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
 
     void Recompile();
-    Scratch Compile();
+    ScratchSharedPtr Compile();
 };

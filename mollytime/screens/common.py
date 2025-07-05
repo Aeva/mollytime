@@ -24,8 +24,10 @@ class program_card:
         a4_hz = self.make_constant((-1, 0), 440)
         a5_hz = self.make_tile((0, -1), OpCode.MUL)
         a5_osc = self.make_tile((0, 0), OpCode.SIN)
-        a4_osc = self.make_tile((0, 1), OpCode.SIN)
-        summed = self.make_tile((1, 0), OpCode.ADD)
+        a4_osc = self.make_tile((-1, 1), OpCode.SIN)
+        summed = self.make_tile((0, 1), OpCode.ADD)
+        half = self.make_constant((1, -1), .5)
+        gain = self.make_tile((1, 0), OpCode.MUL)
         out = self.make_tile((1, 1), OpCode.OUT)
 
         def quick_connect(lhs, rhs):
@@ -39,7 +41,9 @@ class program_card:
         quick_connect(a4_hz, a4_osc)
         quick_connect(a4_osc, summed)
         quick_connect(a5_osc, summed)
-        quick_connect(summed, out)
+        quick_connect(half, gain)
+        quick_connect(summed, gain)
+        quick_connect(gain, out)
 
         self.selected = []
 
