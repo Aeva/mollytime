@@ -217,12 +217,12 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     for (PortHandle Port : GetTileOutputPorts(AllocatedHandle))
     {
         ByOutput[Port] = std::set<PortHandle>();
-        ActiveOutputs[Port] = std::make_shared<RunningState>(0.0f);
+        ActiveOutputs[Port] = std::make_shared<RunningState>(0.0);
     }
     if (Symbol == OpCode::SIN)
     {
         PortHandle Closure = MakeClosureHandle(AllocatedHandle, 0);
-        ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0f);
+        ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
     }
     return AllocatedHandle;
 }
@@ -522,7 +522,7 @@ ScratchSharedPtr Patch::Compile()
 
                 auto Thunk = std::make_shared<AddThunk>();
                 Thunk->Inputs = Inputs;
-                Thunk->Output = std::make_shared<RunningState>(0.0f);
+                Thunk->Output = std::make_shared<RunningState>(0.0);
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return Thunk->Output;
             }
@@ -610,7 +610,7 @@ ScratchSharedPtr Patch::Compile()
 
     if (FinalOutput == nullptr)
     {
-        FinalOutput = std::make_shared<RunningState>(0.0f);
+        FinalOutput = std::make_shared<RunningState>(0.0);
     }
 
     Program->Output = FinalOutput;
