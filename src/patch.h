@@ -55,21 +55,21 @@ uint32_t PortHandlePortIndexPart(PortHandle Handle);
 
 struct RunningState
 {
-    RunningState(float InSample)
+    RunningState(double InSample)
         : Sample(InSample)
     {
     }
-    float Get()
+    double Get()
     {
         return Sample;
     }
-    void Set(float NewSample)
+    void Set(double NewSample)
     {
         Sample = NewSample;
     }
 
 private:
-    float Sample;
+    double Sample;
 };
 
 using RunningStateSharedPtr = std::shared_ptr<RunningState>;
@@ -77,7 +77,7 @@ using RunningStateSharedPtr = std::shared_ptr<RunningState>;
 
 struct InstructionThunk
 {
-    virtual void Crank(float SampleInterval) = 0;
+    virtual void Crank(double SampleInterval) = 0;
     virtual ~InstructionThunk() {};
 };
 
@@ -87,7 +87,7 @@ struct Scratch
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     RunningStateSharedPtr Output;
 
-    float Eval(float SampleInterval);
+    double Eval(double SampleInterval);
 };
 
 using ScratchSharedPtr = std::shared_ptr<Scratch>;
@@ -96,7 +96,7 @@ using ScratchSharedPtr = std::shared_ptr<Scratch>;
 struct Patch
 {
     std::unordered_map<TileHandle, OpCode> TileSymbols;
-    std::unordered_map<TileHandle, float> TileConstants;
+    std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
 
     std::set<WireHandle> Wires;
@@ -106,7 +106,7 @@ struct Patch
     Patch();
 
     TileHandle MakeTile(OpCode Symbol);
-    TileHandle MakeTile(float Constant);
+    TileHandle MakeTile(double Constant);
     void EraseTile(TileHandle Tile);
 
     OpCode GetTileSymbol(TileHandle Tile);
@@ -114,8 +114,8 @@ struct Patch
     std::string GetTileName(TileHandle Tile);
     void SetTileName(TileHandle Tile, std::string NewName);
 
-    float GetConstant(TileHandle Tile);
-    void SetConstant(TileHandle Tile, float NewValue);
+    double GetConstant(TileHandle Tile);
+    void SetConstant(TileHandle Tile, double NewValue);
 
     std::string GetTileLabel(TileHandle Tile);
 
@@ -132,7 +132,7 @@ struct Patch
     std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
 
 private:
-    void ReplaceConstantOutput(TileHandle Tile, float NewValue);
+    void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;

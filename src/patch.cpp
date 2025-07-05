@@ -94,14 +94,14 @@ struct SinThunk : public InstructionThunk
     RunningStateSharedPtr ActivePhase = nullptr;
     RunningStateSharedPtr OutAmplitude = nullptr;
 
-    virtual void Crank(float SampleInterval) override
+    virtual void Crank(double SampleInterval) override
     {
-        float Hz = InFrequencyHz.size() == 0 ? 440.0f : 0.0f;
+        double Hz = InFrequencyHz.size() == 0 ? 440.0 : 0.0;
         for (const RunningStateSharedPtr& Input : InFrequencyHz)
         {
             Hz += Input->Get();
         }
-        float Phase = ActivePhase->Get();
+        double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
         if (Phase > Tau)
         {
@@ -120,9 +120,9 @@ struct AddThunk : public InstructionThunk
     std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output = nullptr;
 
-    virtual void Crank(float SampleInterval) override
+    virtual void Crank(double SampleInterval) override
     {
-        float Result = Inputs[0]->Get();
+        double Result = Inputs[0]->Get();
         for (int Index = 1; Index < Inputs.size(); ++Index)
         {
             Result += Inputs[Index]->Get();
@@ -139,9 +139,9 @@ struct MulThunk : public InstructionThunk
     std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output = nullptr;
 
-    virtual void Crank(float SampleInterval) override
+    virtual void Crank(double SampleInterval) override
     {
-        float Result = Inputs[0]->Get();
+        double Result = Inputs[0]->Get();
         for (int Index = 1; Index < Inputs.size(); ++Index)
         {
             Result *= Inputs[Index]->Get();
@@ -158,9 +158,9 @@ struct MinThunk : public InstructionThunk
     std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output = nullptr;
 
-    virtual void Crank(float SampleInterval) override
+    virtual void Crank(double SampleInterval) override
     {
-        float Result = Inputs[0]->Get();
+        double Result = Inputs[0]->Get();
         for (int Index = 1; Index < Inputs.size(); ++Index)
         {
             Result = std::min(Result, Inputs[Index]->Get());
@@ -177,9 +177,9 @@ struct MaxThunk : public InstructionThunk
     std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output = nullptr;
 
-    virtual void Crank(float SampleInterval) override
+    virtual void Crank(double SampleInterval) override
     {
-        float Result = Inputs[0]->Get();
+        double Result = Inputs[0]->Get();
         for (int Index = 1; Index < Inputs.size(); ++Index)
         {
             Result = std::max(Result, Inputs[Index]->Get());
@@ -228,7 +228,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
 }
 
 
-TileHandle Patch::MakeTile(float Constant)
+TileHandle Patch::MakeTile(double Constant)
 {
     const TileHandle AllocatedHandle = MakeTile(OpCode::CONST);
     auto Result = TileConstants.try_emplace(AllocatedHandle, Constant);
@@ -305,13 +305,13 @@ void Patch::SetTileName(TileHandle Tile, std::string NewName)
 }
 
 
-float Patch::GetConstant(TileHandle Tile)
+double Patch::GetConstant(TileHandle Tile)
 {
     return TileConstants.at(Tile);
 }
 
 
-void Patch::SetConstant(TileHandle Tile, float NewValue)
+void Patch::SetConstant(TileHandle Tile, double NewValue)
 {
     OpCode Symbol = GetTileSymbol(Tile);
     if (Symbol == OpCode::CONST)
@@ -326,7 +326,7 @@ void Patch::SetConstant(TileHandle Tile, float NewValue)
 }
 
 
-void Patch::ReplaceConstantOutput(TileHandle Tile, float NewValue)
+void Patch::ReplaceConstantOutput(TileHandle Tile, double NewValue)
 {
     // Patch should never mutate the shared pointers stored in Patch::ActiveOutputs,
     // as the active Scratch object will be continuously reading and mutating these
@@ -626,17 +626,17 @@ void Patch::Recompile()
     if (InstructionCount > 0)
     {
         std::print("Compiled instruction count: {}\n", InstructionCount);
-        std::vector<float> Samples;
+        std::vector<double> Samples;
         Samples.resize(146);
-        float Gain = 0.5;
-        for (float& Sample : Samples)
+        double Gain = 0.5;
+        for (double& Sample : Samples)
         {
             Sample = CurrentProgram->Eval(1.0f / 48000.0f) * Gain;
         }
         for (int y = 0; y < 30; ++y)
         {
-            float Alpha = (float(y) / 29.0f) * 2.0f - 1.0f;
-            for (float& Sample : Samples)
+            double Alpha = (double(y) / 29.0f) * 2.0f - 1.0f;
+            for (double& Sample : Samples)
             {
                 if ((Alpha < 0) == (Sample < 0) && std::abs(Alpha) < std::abs(Sample))
                 {
@@ -655,7 +655,7 @@ void Patch::Recompile()
 }
 
 
-float Scratch::Eval(float SampleInterval)
+double Scratch::Eval(double SampleInterval)
 {
     for (std::shared_ptr<InstructionThunk>& Thunk : Program)
     {
