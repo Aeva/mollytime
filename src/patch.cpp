@@ -170,6 +170,10 @@ struct TriThunk : public InstructionThunk
         double Sign = Phase <= Pi ? 1.0 : -1.0;
         double IntegerPart = 0.0;
         double Alpha = std::modf(Phase / Leftovers, &IntegerPart);
+        if (int(IntegerPart) % 2 == 1)
+        {
+            Alpha = 1.0 - Alpha;
+        }
         OutAmplitude->Set(Alpha * Sign);
     }
 
