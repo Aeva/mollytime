@@ -102,6 +102,8 @@ class side_bar_bg(tile_viewport):
     def redraw(self):
         ramp_a = (0.4, 0.04, 0)
         ramp_b = (0.4, 0.04, 360)
+        # ramp_a = (0.5, 0.15, 0)
+        # ramp_b = (0.5, 0.15, 360)
 
         # sidebar color ramp
         steps = self.viewport.w // 8

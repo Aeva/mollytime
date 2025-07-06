@@ -121,7 +121,7 @@ class select_screen(editor_screen):
         update_anything = False
 
         # draw the play area
-        if self.update_play_area:
+        if self.update_play_area or self.force_redraw:
             self.update_play_area = False
             update_anything = True
 
@@ -147,7 +147,7 @@ class select_screen(editor_screen):
             editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
-        if self.update_sidebar:
+        if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
@@ -158,6 +158,7 @@ class select_screen(editor_screen):
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
+            self.draw_touch_points(editor)
             pygame.display.flip()
         else:
             editor.clock.tick(60)

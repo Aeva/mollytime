@@ -1,4 +1,6 @@
 
+import random
+
 import pygame_setup
 import pygame
 
@@ -199,10 +201,14 @@ class program_card:
 
 
 class editor_screen:
+    touch_points = {}
+    touch_colors = {}
+
     def __init__(self, editor):
         self.setup(editor)
         self.update_play_area = True
         self.update_sidebar = True
+        self.force_redraw = True
 
         self.live = True
         self.purge_events()
@@ -225,7 +231,35 @@ class editor_screen:
         self.screen_label_rect.left = margin_x
         self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)
 
+    def touch_start(self, key, pos):
+        self.force_redraw = True
+        editor_screen.touch_points[key] = pos
+        editor_screen.touch_colors[key] = oklch(0.5, 0.15, random.randint(0, 360))
+
+    def touch_update(self, key, pos):
+        if key in editor_screen.touch_points:
+            force_redraw = True
+            editor_screen.touch_points[key] = pos
+
+    def touch_end(self, key):
+        if key in editor_screen.touch_points:
+            self.force_redraw = True
+            del editor_screen.touch_points[key]
+            del editor_screen.touch_colors[key]
+
+    def reset_touch_tracker(self):
+        self.force_redraw = True
+        editor_screen.touch_points = {}
+        editor_screen.touch_colors = {}
+
+    def draw_touch_points(self, editor):
+        radius = editor.grid_size / 2
+        for key, pos in editor_screen.touch_points.items():
+            color = editor_screen.touch_colors[key]
+            pygame.draw.circle(editor.screen, color, pos, radius)
+
     def purge_events(self):
+        self.reset_touch_tracker()
         for event in pygame.event.get():
             if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 self.live = False
@@ -235,6 +269,7 @@ class editor_screen:
     def process_events(self, editor):
         for event in pygame.event.get():
             if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                self.purge_events()
                 self.live = False
 
             elif event.type == pygame.MOUSEMOTION and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
@@ -245,6 +280,18 @@ class editor_screen:
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
                 self.on_release(editor)
+
+            elif event.type == pygame.FINGERMOTION:
+                key = (event.touch_id, event.finger_id)
+                self.touch_update(key, (event.x * editor.screen.get_width(), event.y * editor.screen.get_height()))
+
+            elif event.type == pygame.FINGERDOWN:
+                key = (event.touch_id, event.finger_id)
+                self.touch_start(key, (event.x * editor.screen.get_width(), event.y * editor.screen.get_height()))
+
+            elif event.type == pygame.FINGERUP:
+                key = (event.touch_id, event.finger_id)
+                self.touch_end(key)
 
             elif event.type == pygame.QUIT:
                 exit(0)
