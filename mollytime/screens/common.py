@@ -88,11 +88,23 @@ class program_card:
         self.tile_positions[tile_id] = position
         return tile_id
 
-    def get_tile_rect(self, tile_id):
-        tile_xy = self.tile_positions[tile_id]
+    def get_grid_rect(self, tile_xy):
         frame_x = self.play_rect.centerx - self.focus_x - self.grid_size + tile_xy[0] * self.grid_size * 3
         frame_y = self.play_rect.centery - self.focus_y - self.grid_size + tile_xy[1] * self.grid_size * 3
         return pygame.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
+
+    def get_tile_rect(self, tile_id):
+        tile_xy = self.tile_positions[tile_id]
+        return self.get_grid_rect(tile_xy)
+
+    def cursor_to_grid(self, pos):
+        # center-relative cursor position
+        rel = vec_sub(pos, self.play_rect.center)
+        # grid-relative cursor position, in pixels
+        rel = vec_add(vec_add(rel, (self.focus_x, self.focus_y)), (self.grid_size * 1.5, self.grid_size * 1.5))
+        # grid-quantized position
+        tile_size = self.grid_size * 3
+        return (int(rel[0] // tile_size), int(rel[1] // tile_size))
 
     def toggle_connection(self, out_key, in_key):
         before = self.patch.wires
@@ -175,6 +187,10 @@ class program_card:
         self.tile_color = parse_color("#dee5e8")
         self.tile_bg = plate_bg(self.grid_size, self.tile_color)
 
+        self.initial_placement = plate_bg(self.grid_size, parse_color("#888"))
+        self.valid_placement = plate_bg(self.grid_size, parse_color("#080"))
+        self.invalid_placement = plate_bg(self.grid_size, parse_color("#800"))
+
         self.select_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
 
@@ -183,6 +199,9 @@ class program_card:
 
         self.select_target = plate_bg(self.grid_size, self.tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
+
+        self.move_target = plate_bg(self.grid_size, self.tile_color, "move")
+        self.move_active = plate_bg(self.grid_size, self.select_color, "move")
 
         self.calc_target = plate_bg(self.grid_size, self.tile_color, "calc")
         self.calc_active = plate_bg(self.grid_size, self.select_color, "calc")
