@@ -72,6 +72,10 @@ class calculator_screen(editor_screen):
                 return
 
             value = op(lhs, rhs)
+            if type(value) == complex:
+                self.calculation = [self.calculation[0]]
+                return
+
             term = str(value)
             if term.count('.') != 0:
                 whole, fractional = term.split('.')
