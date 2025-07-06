@@ -145,7 +145,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("get_tile_name", &Patch::GetTileName)
 		.def("set_tile_name", &Patch::SetTileName)
 		.def("get_constant", &Patch::GetConstant)
-		.def("set_constant", &Patch::GetConstant)
+		.def("set_constant", &Patch::SetConstant)
 		.def("get_tile_label", &Patch::GetTileLabel)
 		.def("get_tile_input_ports", &Patch::GetTileInputPorts)
 		.def("get_tile_output_ports", &Patch::GetTileOutputPorts)

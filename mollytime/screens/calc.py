@@ -128,23 +128,19 @@ class calculator_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = pygame.Rect(
+        goto_apply_rect = pygame.Rect(
             editor.grid_size,
-            0 * editor.grid_size * 3,
+            3 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_inspect_icon = editor.inspect_target
-
-        active_rect = pygame.Rect(
+        goto_cancel_rect = pygame.Rect(
             editor.grid_size,
-            1 * editor.grid_size * 3,
+            4 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
-
-        active_icon = editor.calc_active
 
         self.side_bar_targets = [
-            (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
-            (active_rect, active_icon, None)]
+            (goto_apply_rect, editor.apply_target, self.goto_apply),
+            (goto_cancel_rect, editor.cancel_target, self.goto_cancel)]
 
     def render_play_area(self, editor):
         editor.play_area.focus_x = editor.focus_x
@@ -170,9 +166,15 @@ class calculator_screen(editor_screen):
         self.bg = pygame.Surface((frame.get_width(), frame.get_height()))
         self.bg.fill((0, 0, 0))
         self.bg.blit(frame, (0, 0))
-        #editor.screen.blit(frame, editor.play_area.viewport)
 
-    def goto_inspect_screen(self, editor):
+    def goto_apply(self, editor):
+        self.advance()
+        result = self.numerate(self.calculation[0])
+        editor.patch.set_constant(self.editing_tile, result)
+        editor.clear_selection()
+        self.live = False
+
+    def goto_cancel(self, editor):
         self.live = False
 
     def on_move(self, editor, pos):
