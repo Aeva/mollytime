@@ -134,7 +134,10 @@ class calculator_screen(editor_screen):
             self.calculation[-1] = active
         elif label in ['^', '×', '+', '÷', '-']:
             if len(self.calculation) == 3:
-                if label == '×' and self.calculation[1] == '×' and self.calculation[2] == '0':
+                if label == '+' and self.calculation[1] == '+' and self.calculation[2] == '0':
+                    self.calculation[1] = '-'
+                    return
+                elif label == '×' and self.calculation[1] == '×' and self.calculation[2] == '0':
                     self.calculation[1] = '^'
                     return
                 else:
