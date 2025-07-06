@@ -36,6 +36,11 @@ class program_card:
             gain = self.make_tile((1, 0), OpCode.MUL)
             out = self.make_tile((1, 1), OpCode.OUT)
 
+            self.make_tile((-2, -1), OpCode.MUL)
+            self.make_constant((-3, 0), .5)
+            self.make_tile((-2, 0), OpCode.SIN)
+            self.make_tile((-2, 1), OpCode.TRI)
+
             quick_connect(two, a5_hz)
             quick_connect(a4_hz, a5_hz)
             quick_connect(a5_hz, a5_osc)
