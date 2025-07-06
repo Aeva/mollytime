@@ -14,8 +14,16 @@ class calculator_screen(editor_screen):
 
         self.editing_tile = editor.lhs_selection()
 
+        self.initial_value = editor.patch.get_constant(self.editing_tile)
+        term = str(self.initial_value)
+        if term.count('.') != 0:
+            whole, fractional = term.split('.')
+            if len(fractional) == fractional.count('0'):
+                term = whole
+
         self.history = []
-        self.calculation = [str(editor.patch.get_constant(self.editing_tile))]
+        self.calculation = [term]
+        self.initial_state = [term]
 
         screen_label_color = (255, 255, 255)
         self.set_screen_label(editor, "inspect > calculator", screen_label_color, 1)
@@ -41,10 +49,13 @@ class calculator_screen(editor_screen):
         x_span = editor.grid_size * 3 * per_row
         y_span = editor.grid_size * 3 * len(rows)
 
+        self.history_font = NATIONAL_PARK_REGULAR
+        self.history_font_size = editor.grid_size
+
         x_start = editor.play_area.viewport.right - x_span
         y_start = editor.play_area.viewport.bottom - y_span
         self.text_anchor_x = editor.play_area.viewport.centerx + x_span / 2 - editor.grid_size * 4
-        self.text_anchor_y = editor.play_area.viewport.bottom - editor.grid_size
+        self.text_anchor_y = editor.play_area.viewport.bottom - editor.grid_size * 2
 
         self.buttons = []
         for y, row in enumerate(rows):
@@ -60,7 +71,7 @@ class calculator_screen(editor_screen):
     def numerate(self, text):
         return float(text) if text.count(".") else int(text)
 
-    def advance(self):
+    def advance(self, editor):
         if len(self.calculation) > 1:
             assert(len(self.calculation) == 3)
             lhs = self.numerate(self.calculation[0])
@@ -86,10 +97,14 @@ class calculator_screen(editor_screen):
             self.history.append(" ".join(self.calculation + ['=', term]))
             self.calculation = [term]
 
+        new_value = self.numerate(self.calculation[0])
+        editor.patch.set_constant(self.editing_tile, new_value)
+
     def on_math(self, editor, label):
         if label == 'reset':
             self.history = []
-            self.calculation = [str(editor.patch.get_constant(self.editing_tile))]
+            editor.patch.set_constant(self.editing_tile, self.initial_value)
+            self.calculation = self.initial_state
         elif label == 'clear':
             self.calculation = ["0"]
         elif label == '440':
@@ -123,11 +138,11 @@ class calculator_screen(editor_screen):
                     self.calculation[1] = '^'
                     return
                 else:
-                    self.advance()
+                    self.advance(editor)
             self.calculation.append(label)
             self.calculation.append('0')
         elif label == '=':
-            self.advance()
+            self.advance(editor)
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -172,13 +187,13 @@ class calculator_screen(editor_screen):
         self.bg.blit(frame, (0, 0))
 
     def goto_apply(self, editor):
-        self.advance()
-        result = self.numerate(self.calculation[0])
-        editor.patch.set_constant(self.editing_tile, result)
+        self.advance(editor)
         editor.clear_selection()
         self.live = False
 
     def goto_cancel(self, editor):
+        editor.patch.set_constant(self.editing_tile, self.initial_value)
+        editor.clear_selection()
         self.live = False
 
     def on_move(self, editor, pos):
@@ -228,29 +243,35 @@ class calculator_screen(editor_screen):
             for rect, icon, _ in self.buttons:
                 frame.blit(icon, rect)
 
-            font_path, size = NATIONAL_PARK_REGULAR, editor.grid_size * 1.5
+            font_path, size = self.history_font, self.history_font_size
             color = parse_color("#FFF")
             anchor_x = self.text_anchor_x
             anchor_y = self.text_anchor_y
+            line_count = 0
             def print_text(text, alpha=1.0):
-                nonlocal anchor_y
+                nonlocal line_count
                 surface = render_text(font_path, size, color, text)
                 surface.set_alpha(int(alpha * 255))
                 rect = surface.get_rect().copy()
-                rect.centerx += anchor_x - rect.width
-                rect.bottom = anchor_y
-                anchor_y -= rect.height
+
+                rect.right = anchor_x
+                rect.centery = anchor_y - rect.height * line_count
+
+                line_count += 1
                 frame.blit(surface, rect)
 
-            max_history = 7
+            max_history = 14
             self.history = self.history[-max_history:]
             lines = list(reversed(self.history))
 
             print_text(" ".join(self.calculation))
 
             for index, text in enumerate(lines):
-                alpha = 1.0 - ((index + 1) / max_history) * 0.5
-                print_text(text, alpha * alpha)
+                alpha = index / max_history
+                alpha = 1.0 - alpha
+                alpha = alpha * alpha * alpha
+                alpha *= .75
+                print_text(text, alpha)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)
