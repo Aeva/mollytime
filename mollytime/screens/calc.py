@@ -23,26 +23,28 @@ class calculator_screen(editor_screen):
         self.render_play_area(editor)
 
         rows = [
-            ['^', '=', None, None, None, None, '440', 'clear'],
-            ['×', '+', 1, 2, 3, 4, 5, 'back\nspace'],
-            ['÷', '-', 6, 7, 8, 9, 0, '.']]
+            ['reset', '440', 'clear', 'back\nspace'],
+            [7, 8, 9, '÷'],
+            [4, 5, 6, '×'],
+            [1, 2, 3, '+'],
+            [0, '.', 'sign\nflip', '=']]
 
         self.operators = {
             '^' : pow,
-            '×' : operator.mul,
-            '+' : operator.add,
             '÷' : operator.truediv,
+            '×' : operator.mul,
             '-' : operator.sub,
+            '+' : operator.add,
         }
 
         per_row = max(map(len, rows))
         x_span = editor.grid_size * 3 * per_row
         y_span = editor.grid_size * 3 * len(rows)
-        x_start = editor.play_area.viewport.centerx - x_span / 2
-        y_start = editor.play_area.viewport.bottom - y_span
 
+        x_start = editor.play_area.viewport.right - x_span
+        y_start = editor.play_area.viewport.bottom - y_span
         self.text_anchor_x = editor.play_area.viewport.centerx + x_span / 2 - editor.grid_size * 4
-        self.text_anchor_y = y_start - editor.grid_size * 0.5
+        self.text_anchor_y = editor.play_area.viewport.bottom - editor.grid_size
 
         self.buttons = []
         for y, row in enumerate(rows):
@@ -81,7 +83,10 @@ class calculator_screen(editor_screen):
             self.calculation = [term]
 
     def on_math(self, editor, label):
-        if label == 'clear':
+        if label == 'reset':
+            self.history = []
+            self.calculation = [str(editor.patch.get_constant(self.editing_tile))]
+        elif label == 'clear':
             self.calculation = ["0"]
         elif label == '440':
             self.calculation = ["440"]
@@ -93,24 +98,32 @@ class calculator_screen(editor_screen):
             active = f"{active}{label}"
             if len(active) >= 2 and active[0] == '0' and active[1] != '.':
                 active = active[1:]
+            if len(active) >= 3 and active[:2] == "-0" and active[2] != '.':
+                active = f"-{active[2:]}"
             self.calculation[-1] = active
         elif label == '.':
             active = self.calculation[-1]
             if active.count('.') == 0:
                 active = f"{active}."
                 self.calculation[-1] = active
+        elif label == 'sign\nflip':
+            active = self.calculation[-1]
+            if active[0] == '-':
+                active = active[1:]
+            else:
+                active = f"-{active}"
+            self.calculation[-1] = active
         elif label in ['^', '×', '+', '÷', '-']:
             if len(self.calculation) == 3:
-                self.advance()
+                if label == '×' and self.calculation[1] == '×' and self.calculation[2] == '0':
+                    self.calculation[1] = '^'
+                    return
+                else:
+                    self.advance()
             self.calculation.append(label)
             self.calculation.append('0')
         elif label == '=':
             self.advance()
-
-        # if label == '=':
-        #     pass
-        # elif label in ['^', '×', '+', '÷', '-']:
-        #     pass
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -209,7 +222,7 @@ class calculator_screen(editor_screen):
             for rect, icon, _ in self.buttons:
                 frame.blit(icon, rect)
 
-            font_path, size = AFACAD_REGULAR, editor.grid_size * 2
+            font_path, size = NATIONAL_PARK_REGULAR, editor.grid_size * 1.5
             color = parse_color("#FFF")
             anchor_x = self.text_anchor_x
             anchor_y = self.text_anchor_y
@@ -223,13 +236,14 @@ class calculator_screen(editor_screen):
                 anchor_y -= rect.height
                 frame.blit(surface, rect)
 
-            max_history = 3
-            lines = list(reversed(self.history[-max_history:]))
+            max_history = 7
+            self.history = self.history[-max_history:]
+            lines = list(reversed(self.history))
 
             print_text(" ".join(self.calculation))
 
             for index, text in enumerate(lines):
-                alpha = 1.0 - ((index + 1) / max_history) * 0.75
+                alpha = 1.0 - ((index + 1) / max_history) * 0.5
                 print_text(text, alpha * alpha)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
