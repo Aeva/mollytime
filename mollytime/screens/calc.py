@@ -99,6 +99,7 @@ class calculator_screen(editor_screen):
 
         new_value = self.numerate(self.calculation[0])
         editor.patch.set_constant(self.editing_tile, new_value)
+        self.render_play_area(editor)
 
     def on_math(self, editor, label):
         if label == 'reset':
