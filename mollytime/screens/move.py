@@ -11,6 +11,7 @@ class move_screen(editor_screen):
         self.original_position = None
         self.last_valid_position = None
         self.last_hover_position = None
+        self.drop_deletes = False
 
         self.set_screen_label(editor, "inspect > move")
         self.repopulate_sidebar(editor)
@@ -54,7 +55,9 @@ class move_screen(editor_screen):
             self.press_start = pos
 
         elif self.grabbed_tile:
-            self.update_play_area = True
+            self.force_redraw = True
+            self.drop_deletes = editor.side_bar_rect.collidepoint(pos)
+
             hover_xy = editor.cursor_to_grid(pos)
             hover_rect = editor.get_grid_rect(hover_xy)
             if hover_rect.collidepoint(pos):
@@ -85,7 +88,7 @@ class move_screen(editor_screen):
                     self.last_valid_position = (tile_x, tile_y)
                     self.last_hover_position = (tile_x, tile_y)
                     something_happened = True
-                    self.update_play_area = True
+                    self.force_redraw = True
                     self.repopulate_sidebar(editor)
                     break
 
@@ -102,11 +105,15 @@ class move_screen(editor_screen):
 
     def on_release(self, editor):
         if self.grabbed_tile:
-            editor.tile_positions[self.grabbed_tile] = self.last_valid_position
-            self.update_play_area = True
+            if self.drop_deletes:
+                editor.erase_tile(self.grabbed_tile)
+            else:
+                editor.tile_positions[self.grabbed_tile] = self.last_valid_position
+            self.force_redraw = True
             self.grabbed_tile = None
             self.last_valid_position = None
             self.last_hover_position = None
+            self.drop_deletes = False
 
         self.press_start = None
 
@@ -139,18 +146,11 @@ class move_screen(editor_screen):
                 radius = max(4, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-            if self.grabbed_tile:
+            if self.grabbed_tile and not self.drop_deletes:
                 label = editor.patch.get_tile_label(self.grabbed_tile)
 
                 rect = editor.get_grid_rect(self.last_valid_position)
                 editor.valid_placement.draw(frame, rect, label)
-
-                rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-                rect.center = self.cursor_pos
-                if self.last_valid_position == self.last_hover_position:
-                    editor.tile_bg.draw(frame, rect, label)
-                else:
-                    editor.invalid_placement.draw(frame, rect, label)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)
@@ -165,6 +165,16 @@ class move_screen(editor_screen):
                 frame.blit(plate.surface, rect)
 
             editor.screen.blit(frame, editor.side_bar.viewport)
+
+        if self.grabbed_tile:
+            rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+            rect.center = self.cursor_pos
+            if self.drop_deletes:
+                editor.tile_bg.draw(editor.screen, rect, "drop to\ndelete")
+            elif self.last_valid_position == self.last_hover_position:
+                editor.tile_bg.draw(editor.screen, rect, label)
+            else:
+                editor.invalid_placement.draw(editor.screen, rect, label)
 
         if update_anything:
             self.draw_touch_points(editor)

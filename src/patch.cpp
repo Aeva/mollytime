@@ -319,15 +319,10 @@ void Patch::EraseTile(TileHandle Tile)
     }
     for (WireHandle Wire : MatchingWires)
     {
-        Wires.erase(Wire);
-    }
-    for (PortHandle Port : GetTileInputPorts(Tile))
-    {
-        ByInput.erase(Port);
+        Disconnect(std::get<0>(Wire), std::get<1>(Wire));
     }
     for (PortHandle Port : GetTileOutputPorts(Tile))
     {
-        ByOutput.erase(Port);
         ActiveOutputs.erase(Port);
     }
 
@@ -341,6 +336,7 @@ void Patch::EraseTile(TileHandle Tile)
     TileSymbols.erase(Tile);
     TileConstants.erase(Tile);
     TileNames.erase(Tile);
+    Recompile();
 }
 
 
@@ -690,7 +686,6 @@ ScratchSharedPtr Patch::Compile()
             }
         }
     }
-    std::print("compiled program has {} outputs\n", Program->Outputs.size());
 
     return Program;
 }

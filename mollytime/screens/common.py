@@ -54,6 +54,14 @@ class program_card:
             quick_connect(gain, out)
 
         else:
+            # a3_hz = self.make_constant((-1, 0), 220)
+            # a3_osc = self.make_tile((0, 0), OpCode.SIN)
+            # a4_osc = self.make_tile((0, 1), OpCode.SIN)
+            # self.make_constant((-1, -1), 2)
+            # self.make_tile((0, -1), OpCode.MUL)
+            # out1 = self.make_tile((1, 0), OpCode.OUT)
+            # out2 = self.make_tile((1, 1), OpCode.OUT)
+
             quarter = self.make_constant((-3, -3), .25)
             half = self.make_constant((-2, -3), .5)
             two = self.make_constant((-1, -3), 2)
@@ -87,6 +95,10 @@ class program_card:
         tile_id = self.patch.make_constant(value);
         self.tile_positions[tile_id] = position
         return tile_id
+
+    def erase_tile(self, tile_id):
+        self.patch.erase_tile(tile_id)
+        del self.tile_positions[tile_id]
 
     def get_grid_rect(self, tile_xy):
         frame_x = self.play_rect.centerx - self.focus_x - self.grid_size + tile_xy[0] * self.grid_size * 3
