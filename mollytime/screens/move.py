@@ -170,7 +170,11 @@ class move_screen(editor_screen):
             rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
             rect.center = self.cursor_pos
             if self.drop_deletes:
-                editor.tile_bg.draw(editor.screen, rect, "drop to\ndelete")
+                symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
+                if symbol == OpCode.CONST and editor.patch.get_constant(self.grabbed_tile) == 1337:
+                    editor.tile_bg.draw(editor.screen, rect, "DROP\n&\nRUN")
+                else:
+                    editor.tile_bg.draw(editor.screen, rect, "drop\nto\ndelete")
             elif self.last_valid_position == self.last_hover_position:
                 editor.tile_bg.draw(editor.screen, rect, label)
             else:

@@ -3,6 +3,7 @@ import os
 
 import pygame_setup
 import pygame
+from colors import *
 
 AFACAD_REGULAR = "media/afacad/static/Afacad-Regular.ttf"
 NATIONAL_PARK_LIGHT = "media/national_park/NationalPark-Light.ttf"
@@ -37,6 +38,19 @@ def render_text(font_path, size, color, text):
     return surface
 
 
+def estimate_font_M_height(font_path, size):
+    font = get_font(font_path, int(size))
+    min_x, max_x, min_y, max_y, advance = font.metrics("M")[0]
+    return abs(max_y - min_y)
+
+
+def estimate_font_M_center(font_path, size):
+    """Offset from the top of the rect to the M center line."""
+    font = get_font(font_path, size)
+    M_height = estimate_font_M_height(font_path, size)
+    return int(font.get_ascent() - (M_height * .5))
+
+
 def estimate_font_x_height(font_path, size):
     font = get_font(font_path, int(size))
     min_x, max_x, min_y, max_y, advance = font.metrics("x")[0]
@@ -44,20 +58,36 @@ def estimate_font_x_height(font_path, size):
 
 
 def estimate_font_x_center(font_path, size):
+    """Offset from the top of the rect to the x center line."""
     font = get_font(font_path, size)
     x_height = estimate_font_x_height(font_path, size)
     return int(font.get_ascent() - (x_height * .5))
 
 
+def estimate_font_cap_line(font_path, size):
+    """Distance from top of rect to cap line."""
+    font = get_font(font_path, int(size))
+    M_height = estimate_font_M_height(font_path, size)
+    return font.get_ascent() - M_height
+
+
 def estimate_font_mean_line(font_path, size):
+    """Distance from top of rect to mean line."""
     font = get_font(font_path, int(size))
     x_height = estimate_font_x_height(font_path, size)
     return font.get_ascent() - x_height
 
 
 def get_font_baseline(font_path, size):
+    """Distance from the top of the rendered text rect to the baseline."""
     font = get_font(font_path, int(size))
     return font.get_ascent()
+
+
+def get_font_descent(font_path, size):
+    """Distance from the baseline to the bottom of the rendered text rect."""
+    font = get_font(font_path, int(size))
+    return abs(font.get_descent())
 
 
 def font_debug_surface(screen, font_path = AFACAD_REGULAR, size = 100):
@@ -79,6 +109,8 @@ def font_debug_surface(screen, font_path = AFACAD_REGULAR, size = 100):
     dsc_rect = font_rect.copy()
     dsc_rect.height = abs(font.get_descent())
     dsc_rect.top = font_rect.height - dsc_rect.height
+    dsc_rect.left = 100
+    dsc_rect.width -= 100
     pygame.draw.rect(screen, dsc_color, dsc_rect)
 
     x_rect = font_rect.copy()

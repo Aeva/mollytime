@@ -165,14 +165,31 @@ class plate_bg:
         font_path, size = NATIONAL_PARK_REGULAR, max(10, self.size * .24)
         lines = [i for i in map(str.strip, label.split("\n")) if i]
         surfaces = [render_text(font_path, size, self.text_color, i) for i in lines]
+        rects = []
         spacing = int(size)
-        y_offset = len(surfaces) // 2 * -spacing * .5
+        y_offset = 0
         for text_surface in surfaces:
             text_rect = text_surface.get_rect().copy()
             text_rect.centerx = rect.centerx
-            text_rect.top = rect.centery - estimate_font_x_center(font_path, size) + y_offset
-            target.blit(text_surface, text_rect)
+            text_rect.top = y_offset
+            rects.append(text_rect)
             y_offset += spacing
+        combined_rect = pygame.rect.Rect.unionall(rects[0], rects[1:])
+
+        if len(lines) > 0 and lines[0].upper() == lines[0]:
+            top = estimate_font_cap_line(font_path, size)
+        else:
+            top = estimate_font_mean_line(font_path, size)
+
+        descent = get_font_descent(font_path, size)
+        combined_rect.top += top
+        combined_rect.height -= top
+        combined_rect.height -= descent
+
+        y_offset = rect.centery - combined_rect.centery
+        for text_surface, text_rect in zip(surfaces, rects):
+            text_rect.top += y_offset
+            target.blit(text_surface, text_rect)
 
     def draw(self, target, rect, label=None):
         target.blit(self.surface, rect)
