@@ -240,3 +240,42 @@ def draw_arrow(target, color, start, end, radius, inset=.5):
         arrow_pt = vec_add(end_pt, rotate_point(point, angle))
         draw_line(target, color, end_pt, arrow_pt, radius)
         pygame.draw.circle(target, color, arrow_pt, radius)
+
+
+class plate_outline(plate_bg):
+    def __init__(self, grid, color, cross_out = False):
+        self.cross_out = cross_out
+        super().__init__(grid, color)
+        self.text_color = color
+
+    def redraw(self):
+        self.surface = pygame.Surface((self.size, self.size), flags=pygame.SRCALPHA)
+        line_radius = 2
+        inset = line_radius * 2
+        rect = pygame.Rect(0, 0, self.size, self.size)
+        corners = [
+            vec_add(rect.topleft, (inset, inset)),
+            vec_add(rect.topright, (-inset, inset)),
+            vec_add(rect.bottomright, (-inset, -inset)),
+            vec_add(rect.bottomleft, (inset, -inset))]
+
+        fill_color = pygame.Color(self.color_base)
+        fill_color.a = int(255 * .1)
+        fill_rect = pygame.Rect(inset, inset, self.size - inset * 2, self.size - inset * 2)
+        pygame.draw.rect(self.surface, fill_color, fill_rect)
+
+        for edge in range(4):
+            a = corners[edge]
+            b = corners[(edge + 1) % 4]
+            draw_line(self.surface, self.color_base, a, b, line_radius)
+        if self.cross_out:
+            inset = max(int(self.size / 3), 8)
+            more_corners = [
+                vec_add(rect.topleft, (inset, inset)),
+                vec_add(rect.topright, (-inset, inset)),
+                vec_add(rect.bottomright, (-inset, -inset)),
+                vec_add(rect.bottomleft, (inset, -inset))]
+            for edge in range(4):
+                a = corners[edge]
+                b = more_corners[edge]
+                draw_line(self.surface, self.color_base, a, b, line_radius)

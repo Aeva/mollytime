@@ -199,9 +199,9 @@ class program_card:
         self.tile_color = parse_color("#dee5e8")
         self.tile_bg = plate_bg(self.grid_size, self.tile_color)
 
-        self.initial_placement = plate_bg(self.grid_size, parse_color("#888"))
-        self.valid_placement = plate_bg(self.grid_size, parse_color("#080"))
-        self.invalid_placement = plate_bg(self.grid_size, parse_color("#800"))
+        self.initial_placement = plate_outline(self.grid_size, parse_color("#888"))
+        self.valid_placement = plate_outline(self.grid_size, parse_color("#080"))
+        self.invalid_placement = plate_outline(self.grid_size, parse_color("#800"), True)
 
         self.select_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
