@@ -678,25 +678,20 @@ ScratchSharedPtr Patch::Compile()
         std::unreachable();
     };
 
-    RunningStateSharedPtr FinalOutput = nullptr;
+    Program->Outputs.clear();
     for (const auto& [Tile, Symbol] : TileSymbols)
     {
         if (Symbol == OpCode::OUT)
         {
-            FinalOutput = Step(Tile);
-            if (FinalOutput != nullptr)
+            RunningStateSharedPtr Output = Step(Tile);
+            if (Output != nullptr)
             {
-                break;
+                Program->Outputs.push_back(Output);
             }
         }
     }
+    std::print("compiled program has {} outputs\n", Program->Outputs.size());
 
-    if (FinalOutput == nullptr)
-    {
-        FinalOutput = std::make_shared<RunningState>(0.0);
-    }
-
-    Program->Output = FinalOutput;
     return Program;
 }
 
@@ -744,5 +739,10 @@ double Scratch::Eval(double SampleInterval)
     {
         Thunk->Crank(SampleInterval);
     }
-    return Output->Get();
+    double Out = 0.0;
+    for (RunningStateSharedPtr Output : Outputs)
+    {
+        Out += Output->Get();
+    }
+    return Out;
 }

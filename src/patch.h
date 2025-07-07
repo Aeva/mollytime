@@ -87,7 +87,7 @@ struct InstructionThunk
 struct Scratch
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
-    RunningStateSharedPtr Output;
+    std::vector<RunningStateSharedPtr> Outputs;
 
     double Eval(double SampleInterval);
 };
