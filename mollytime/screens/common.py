@@ -24,7 +24,7 @@ class program_card:
             assert(wire)
             self.patch.connect_tiles(*wire)
 
-        if True:
+        if False:
             #   2    *
             #  440  sin   +
             #       sin  out
@@ -38,11 +38,6 @@ class program_card:
             gain = self.make_tile((1, 0), OpCode.MUL)
             out = self.make_tile((1, 1), OpCode.OUT)
 
-            self.make_tile((-2, -1), OpCode.MUL)
-            self.make_constant((-3, 0), .5)
-            self.make_tile((-2, 0), OpCode.SIN)
-            self.make_tile((-2, 1), OpCode.TRI)
-
             quick_connect(two, a5_hz)
             quick_connect(a4_hz, a5_hz)
             quick_connect(a5_hz, a5_osc)
@@ -53,7 +48,7 @@ class program_card:
             quick_connect(summed, gain)
             quick_connect(gain, out)
 
-        else:
+        elif False:
             # a3_hz = self.make_constant((-1, 0), 220)
             # a3_osc = self.make_tile((0, 0), OpCode.SIN)
             # a4_osc = self.make_tile((0, 1), OpCode.SIN)
@@ -212,8 +207,8 @@ class program_card:
         self.select_target = plate_bg(self.grid_size, self.tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
 
-        self.move_target = plate_bg(self.grid_size, self.tile_color, "move")
-        self.move_active = plate_bg(self.grid_size, self.select_color, "move")
+        self.move_target = plate_bg(self.grid_size, self.tile_color, "pick\n&\nplace")
+        self.move_active = plate_bg(self.grid_size, self.select_color, "pick\n&\nplace")
 
         self.calc_target = plate_bg(self.grid_size, self.tile_color, "calc")
         self.calc_active = plate_bg(self.grid_size, self.select_color, "calc")

@@ -1,4 +1,5 @@
 
+from mollytime import OpCode
 from .common import *
 
 
@@ -7,14 +8,43 @@ class move_screen(editor_screen):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
 
+        self.prospective_tile = None
         self.grabbed_tile = None
         self.original_position = None
         self.last_valid_position = None
         self.last_hover_position = None
         self.drop_deletes = False
 
-        self.set_screen_label(editor, "inspect > move")
+        self.set_screen_label(editor, "inspect > pick & place")
         self.repopulate_sidebar(editor)
+
+        self.tile_palette = {}
+
+        shelf = [
+            [OpCode.OUT, OpCode.SIN],
+            [OpCode.TRI, OpCode.SQR],
+            [None, OpCode.CONST],
+            [OpCode.MIN, OpCode.ADD],
+            [OpCode.MAX, OpCode.MUL],
+        ]
+
+        tile_span = (editor.grid_size * 2)
+        tile_stride = (editor.grid_size * 3)
+
+        span = (len(shelf) * 3 - 1) * editor.grid_size
+        padding = (editor.play_area.viewport.height - span) // 2
+
+        self.shelf_rect = pygame.rect.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
+
+        y = 0
+        for row in shelf:
+            x = 0
+            for archetile in row:
+                if archetile:
+                    rect = pygame.rect.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
+                    self.tile_palette[archetile] = rect
+                x += 1
+            y += 1
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -54,9 +84,9 @@ class move_screen(editor_screen):
 
             self.press_start = pos
 
-        elif self.grabbed_tile:
+        elif self.grabbed_tile or self.prospective_tile:
             self.force_redraw = True
-            self.drop_deletes = editor.side_bar_rect.collidepoint(pos)
+            self.drop_deletes = editor.side_bar_rect.collidepoint(pos) or self.shelf_rect.collidepoint(pos)
 
             hover_xy = editor.cursor_to_grid(pos)
             hover_rect = editor.get_grid_rect(hover_xy)
@@ -74,7 +104,13 @@ class move_screen(editor_screen):
     def on_press(self, editor, pos):
         self.cursor_pos = pos
 
-        if editor.play_rect.collidepoint(pos):
+        if self.shelf_rect.collidepoint(pos):
+            for archetile, rect in self.tile_palette.items():
+                if rect.collidepoint(pos):
+                    assert(self.grabbed_tile == None)
+                    self.prospective_tile = archetile
+
+        elif editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
                 rect = pygame.Rect(
@@ -104,7 +140,19 @@ class move_screen(editor_screen):
                     return
 
     def on_release(self, editor):
-        if self.grabbed_tile:
+        if self.prospective_tile:
+            if self.last_valid_position and not self.drop_deletes:
+                if self.prospective_tile == OpCode.CONST:
+                    editor.make_constant(self.last_valid_position, 440)
+                else:
+                    editor.make_tile(self.last_valid_position, self.prospective_tile)
+            self.force_redraw = True
+            self.prospective_tile = None
+            self.last_valid_position = None
+            self.last_hover_position = None
+            self.drop_deletes = False
+
+        elif self.grabbed_tile:
             if self.drop_deletes:
                 editor.erase_tile(self.grabbed_tile)
             else:
@@ -140,17 +188,26 @@ class move_screen(editor_screen):
                 else:
                     editor.tile_bg.draw(frame, rect, label)
 
+            if self.grabbed_tile and not self.drop_deletes:
+                label = editor.patch.get_tile_label(self.grabbed_tile)
+                rect = editor.get_grid_rect(self.last_valid_position)
+                editor.valid_placement.draw(frame, rect, label)
+
+            elif self.prospective_tile and self.last_valid_position and not self.drop_deletes:
+                label = self.prospective_tile.name.lower()
+                rect = editor.get_grid_rect(self.last_valid_position)
+                editor.valid_placement.draw(frame, rect, label)
+
             for (out_port, in_port) in editor.patch.wires:
                 lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
                 rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
                 radius = max(4, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-            if self.grabbed_tile and not self.drop_deletes:
-                label = editor.patch.get_tile_label(self.grabbed_tile)
-
-                rect = editor.get_grid_rect(self.last_valid_position)
-                editor.valid_placement.draw(frame, rect, label)
+            pygame.draw.rect(frame, editor.select_color, self.shelf_rect)
+            for archetile, rect in self.tile_palette.items():
+                label = archetile.name.lower()
+                editor.tile_bg.draw(frame, rect, label)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)
@@ -166,15 +223,23 @@ class move_screen(editor_screen):
 
             editor.screen.blit(frame, editor.side_bar.viewport)
 
-        if self.grabbed_tile:
+        if self.grabbed_tile or (self.prospective_tile and self.last_hover_position):
             rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
             rect.center = self.cursor_pos
+            if self.prospective_tile:
+                label = self.prospective_tile.name.lower()
+            else:
+                label = editor.patch.get_tile_label(self.grabbed_tile)
+
             if self.drop_deletes:
-                symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
-                if symbol == OpCode.CONST and editor.patch.get_constant(self.grabbed_tile) == 1337:
-                    editor.tile_bg.draw(editor.screen, rect, "DROP\n&\nRUN")
+                if self.prospective_tile:
+                    editor.tile_bg.draw(editor.screen, rect, "drop\nto\ncancel")
                 else:
-                    editor.tile_bg.draw(editor.screen, rect, "drop\nto\ndelete")
+                    symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
+                    if symbol == OpCode.CONST and editor.patch.get_constant(self.grabbed_tile) == 1337:
+                        editor.tile_bg.draw(editor.screen, rect, "DROP\n&\nRUN")
+                    else:
+                        editor.tile_bg.draw(editor.screen, rect, "drop\nto\ndelete")
             elif self.last_valid_position == self.last_hover_position:
                 editor.tile_bg.draw(editor.screen, rect, label)
             else:
