@@ -114,7 +114,7 @@ class select_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor):
+    def on_release(self, editor, pos):
         self.press_start = None
 
     def draw(self, editor):

@@ -305,7 +305,7 @@ class editor_screen:
                 self.on_press(editor, event.pos)
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
-                self.on_release(editor)
+                self.on_release(editor, event.pos)
 
             elif event.type == pygame.FINGERMOTION:
                 key = (event.touch_id, event.finger_id)

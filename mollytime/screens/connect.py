@@ -205,7 +205,7 @@ class connect_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor):
+    def on_release(self, editor, pos):
         if self.press_start:
             def find_match(self):
                 def any_hit(self, rect):
