@@ -24,14 +24,14 @@ class inspect_screen(editor_screen):
 
         goto_select_rect = pygame.Rect(
             editor.grid_size,
-            1 * editor.grid_size * 3,
+            2 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_select_icon = editor.select_target
 
         goto_move_rect = pygame.Rect(
             editor.grid_size,
-            2 * editor.grid_size * 3,
+            1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_move_icon = editor.move_target
