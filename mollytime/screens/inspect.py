@@ -2,7 +2,7 @@
 from .common import *
 from .select import select_screen
 from .calc import calculator_screen
-from .move import move_screen
+from .pick_and_place import pick_and_place_screen
 
 
 class inspect_screen(editor_screen):
@@ -39,7 +39,7 @@ class inspect_screen(editor_screen):
         self.side_bar_targets = [
             (active_rect, active_icon, None),
             (goto_select_rect, goto_select_icon, self.goto_select_screen),
-            (goto_move_rect, goto_move_icon, self.goto_move_screen)]
+            (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen)]
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
@@ -48,8 +48,8 @@ class inspect_screen(editor_screen):
         self.update_sidebar = True
         editor.clear_selection()
 
-    def goto_move_screen(self, editor):
-        overlay = move_screen(editor)
+    def goto_pick_and_place_screen(self, editor):
+        overlay = pick_and_place_screen(editor)
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True

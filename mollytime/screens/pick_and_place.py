@@ -3,7 +3,7 @@ from mollytime import OpCode
 from .common import *
 
 
-class move_screen(editor_screen):
+class pick_and_place_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
