@@ -78,7 +78,7 @@ struct SymbolInfo
         Set(OpCode::MUL, OpCode::MUL, "mul", {"*"}, {"="});
         Set(OpCode::MIN, OpCode::MIN, "min", {"min"}, {"="});
         Set(OpCode::MAX, OpCode::MAX, "max", {"max"}, {"="});
-        Set(OpCode::FLP, OpCode::MAX, "flip\nflop", {"clock"}, {"even", "odd"});
+        Set(OpCode::FLP, OpCode::MAX, "flip\nflop", {"clock"}, {"even", "odd", "last"});
     }
 
     void Set(OpCode Symbol, OpCode Combiner, std::string Name, std::vector<std::string> Inputs, std::vector<std::string> Outputs)
@@ -189,12 +189,19 @@ struct AddThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Result = Inputs[0]->Get();
-        for (int Index = 1; Index < Inputs.size(); ++Index)
+        if (Inputs.size() == 0)
         {
-            Result += Inputs[Index]->Get();
+            Output->Set(0.0);
         }
-        Output->Set(Result);
+        else
+        {
+            double Result = Inputs[0]->Get();
+            for (int Index = 1; Index < Inputs.size(); ++Index)
+            {
+                Result += Inputs[Index]->Get();
+            }
+            Output->Set(Result);
+        }
     }
 
     virtual ~AddThunk() {};
@@ -208,12 +215,19 @@ struct MulThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Result = Inputs[0]->Get();
-        for (int Index = 1; Index < Inputs.size(); ++Index)
+        if (Inputs.size() == 0)
         {
-            Result *= Inputs[Index]->Get();
+            Output->Set(0.0);
         }
-        Output->Set(Result);
+        else
+        {
+            double Result = Inputs[0]->Get();
+            for (int Index = 1; Index < Inputs.size(); ++Index)
+            {
+                Result *= Inputs[Index]->Get();
+            }
+            Output->Set(Result);
+        }
     }
 
     virtual ~MulThunk() {};
@@ -227,12 +241,19 @@ struct MinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Result = Inputs[0]->Get();
-        for (int Index = 1; Index < Inputs.size(); ++Index)
+        if (Inputs.size() == 0)
         {
-            Result = std::min(Result, Inputs[Index]->Get());
+            Output->Set(0.0);
         }
-        Output->Set(Result);
+        else
+        {
+            double Result = Inputs[0]->Get();
+            for (int Index = 1; Index < Inputs.size(); ++Index)
+            {
+                Result = std::min(Result, Inputs[Index]->Get());
+            }
+            Output->Set(Result);
+        }
     }
 
     virtual ~MinThunk() {};
@@ -246,12 +267,19 @@ struct MaxThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Result = Inputs[0]->Get();
-        for (int Index = 1; Index < Inputs.size(); ++Index)
+        if (Inputs.size() == 0)
         {
-            Result = std::max(Result, Inputs[Index]->Get());
+            Output->Set(0.0);
         }
-        Output->Set(Result);
+        else
+        {
+            double Result = Inputs[0]->Get();
+            for (int Index = 1; Index < Inputs.size(); ++Index)
+            {
+                Result = std::max(Result, Inputs[Index]->Get());
+            }
+            Output->Set(Result);
+        }
     }
 
     virtual ~MaxThunk() {};
@@ -263,26 +291,40 @@ struct FlipFlopThunk : public InstructionThunk
     std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr EvenOutput = nullptr;
     RunningStateSharedPtr OddOutput = nullptr;
+    RunningStateSharedPtr LastInput = nullptr;
 
     virtual void Crank(double SampleInterval) override
     {
-        double Result = Inputs[0]->Get();
-        for (int Index = 1; Index < Inputs.size(); ++Index)
+        double LastEven = EvenOutput->Get();
+        double LastOdd = OddOutput->Get();
+        if (LastEven == LastOdd)
         {
-            Result = std::max(Result, Inputs[Index]->Get());
+            EvenOutput->Set(1.0);
+            OddOutput->Set(0.0);
         }
 
-        if (Result > 0.0)
+        if (Inputs.size() > 0)
         {
-            if (EvenOutput->Get() > 0.0)
+            double Result = Inputs[0]->Get();
+            for (int Index = 1; Index < Inputs.size(); ++Index)
             {
-                EvenOutput->Set(0.0);
-                OddOutput->Set(1.0);
+                Result = std::max(Result, Inputs[Index]->Get());
             }
-            else
+
+            double Previous = LastInput->Get();
+            LastInput->Set(Result);
+            if (Previous <= 0.0 && Result >= 1.0)
             {
-                EvenOutput->Set(1.0);
-                OddOutput->Set(0.0);
+                if (LastEven > 0.0)
+                {
+                    EvenOutput->Set(0.0);
+                    OddOutput->Set(1.0);
+                }
+                else
+                {
+                    EvenOutput->Set(1.0);
+                    OddOutput->Set(0.0);
+                }
             }
         }
     }
@@ -625,13 +667,14 @@ ScratchSharedPtr Patch::Compile()
         }
         else
         {
-            std::vector<RunningStateSharedPtr> Inputs;
+            std::vector<std::vector<RunningStateSharedPtr>> Inputs;
             for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
             {
+                std::vector<RunningStateSharedPtr>& PortInputs = Inputs.emplace_back();
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
                 for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
                 {
-                    Inputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                    PortInputs.push_back(ActiveOutputs.at(ConnectedOutput));
                 }
             }
 
@@ -645,7 +688,7 @@ ScratchSharedPtr Patch::Compile()
             if (Symbol == OpCode::SIN)
             {
                 auto Thunk = std::make_shared<SinThunk>();
-                Thunk->InFrequencyHz = Inputs;
+                Thunk->InFrequencyHz = Inputs[0];
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
@@ -654,7 +697,7 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::SQR)
             {
                 auto Thunk = std::make_shared<SqrThunk>();
-                Thunk->InFrequencyHz = Inputs;
+                Thunk->InFrequencyHz = Inputs[0];
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
@@ -663,51 +706,48 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::TRI)
             {
                 auto Thunk = std::make_shared<TriThunk>();
-                Thunk->InFrequencyHz = Inputs;
+                Thunk->InFrequencyHz = Inputs[0];
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
-
-            if (Inputs.size() > 0)
+            else if (Symbol == OpCode::ADD)
             {
-                if (Symbol == OpCode::ADD)
-                {
-                    auto Thunk = std::make_shared<AddThunk>();
-                    Thunk->Inputs = Inputs;
-                    Thunk->Output = Outputs[0];
-                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                }
-                else if (Symbol == OpCode::MUL)
-                {
-                    auto Thunk = std::make_shared<MulThunk>();
-                    Thunk->Inputs = Inputs;
-                    Thunk->Output = Outputs[0];
-                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                }
-                else if (Symbol == OpCode::MIN)
-                {
-                    auto Thunk = std::make_shared<MinThunk>();
-                    Thunk->Inputs = Inputs;
-                    Thunk->Output = Outputs[0];
-                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                }
-                else if (Symbol == OpCode::MAX)
-                {
-                    auto Thunk = std::make_shared<MaxThunk>();
-                    Thunk->Inputs = Inputs;
-                    Thunk->Output = Outputs[0];
-                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                }
-                else if (Symbol == OpCode::FLP)
-                {
-                    auto Thunk = std::make_shared<FlipFlopThunk>();
-                    Thunk->Inputs = Inputs;
-                    Thunk->EvenOutput = Outputs[0];
-                    Thunk->OddOutput = Outputs[1];
-                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                }
+                auto Thunk = std::make_shared<AddThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MUL)
+            {
+                auto Thunk = std::make_shared<MulThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MIN)
+            {
+                auto Thunk = std::make_shared<MinThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MAX)
+            {
+                auto Thunk = std::make_shared<MaxThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::FLP)
+            {
+                auto Thunk = std::make_shared<FlipFlopThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->EvenOutput = Outputs[0];
+                Thunk->OddOutput = Outputs[1];
+                Thunk->LastInput = Outputs[2];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
 
             return nullptr;
