@@ -19,35 +19,53 @@ class pick_and_place_screen(editor_screen):
         self.set_screen_label(editor, "inspect > pick & place")
         self.repopulate_sidebar(editor)
 
-        self.tile_palette = {}
+        self.current_palette = 0
+        self.all_palettes = []
+        self.palette_names = []
 
-        shelf = [
-            [OpCode.OUT, OpCode.SIN],
-            [OpCode.TRI, OpCode.SQR],
-            [None, OpCode.CONST],
-            [OpCode.MIN, OpCode.ADD],
-            [OpCode.MAX, OpCode.MUL],
+        pages = [
+            (":D", [
+                [OpCode.OUT, OpCode.SIN],
+                [OpCode.TRI, OpCode.SQR],
+                ["next", OpCode.CONST],
+                [OpCode.MIN, OpCode.ADD],
+                [OpCode.MAX, OpCode.MUL],
+            ]),
+            ("8)", [
+                [OpCode.MIX, OpCode.FLP],
+                [None, OpCode.RNG],
+                ["next", None],
+                [None, None],
+                [None, None],
+            ]),
         ]
+        for name, shelf in pages:
+            self.quick_consts = [440, 1, 0.5, 0.25, 0, -1, -.5, 2]
 
-        self.quick_consts = [440, 1, 0.5, 0.25, 0, -1, -.5, 2]
+            tile_span = (editor.grid_size * 2)
+            tile_stride = (editor.grid_size * 3)
 
-        tile_span = (editor.grid_size * 2)
-        tile_stride = (editor.grid_size * 3)
+            span = (len(shelf) * 3 - 1) * editor.grid_size
+            padding = (editor.play_area.viewport.height - span) // 2
 
-        span = (len(shelf) * 3 - 1) * editor.grid_size
-        padding = (editor.play_area.viewport.height - span) // 2
+            self.shelf_rect = pygame.rect.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
 
-        self.shelf_rect = pygame.rect.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
+            palette = {}
 
-        y = 0
-        for row in shelf:
-            x = 0
-            for archetile in row:
-                if archetile:
-                    rect = pygame.rect.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
-                    self.tile_palette[archetile] = rect
-                x += 1
-            y += 1
+            y = 0
+            for row in shelf:
+                x = 0
+                for archetile in row:
+                    if archetile:
+                        rect = pygame.rect.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
+                        palette[archetile] = rect
+                    x += 1
+                y += 1
+            self.all_palettes.append(palette)
+            self.palette_names.append(name)
+
+        self.tile_palette = self.all_palettes[self.current_palette]
+        self.palette_name = self.palette_names[self.current_palette]
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -114,9 +132,15 @@ class pick_and_place_screen(editor_screen):
                 if rect.collidepoint(pos):
                     assert(self.prospective_tile == None)
                     assert(self.grabbed_tile == None)
-                    self.prospective_tile = archetile
-                    if archetile == OpCode.CONST:
-                        self.rotate_quick_const = True
+                    if archetile == "next":
+                        self.current_palette = (self.current_palette + 1) % len(self.all_palettes)
+                        self.tile_palette = self.all_palettes[self.current_palette]
+                        self.palette_name = self.palette_names[self.current_palette]
+                        self.update_play_area = True
+                    else:
+                        self.prospective_tile = archetile
+                        if archetile == OpCode.CONST:
+                            self.rotate_quick_const = True
 
         elif editor.play_rect.collidepoint(pos):
             something_happened = False
@@ -210,6 +234,8 @@ class pick_and_place_screen(editor_screen):
             elif self.prospective_tile and self.last_valid_position and not self.drop_deletes:
                 if self.prospective_tile == OpCode.CONST:
                     label = str(self.quick_consts[0])
+                elif self.prospective_tile == OpCode.FLP:
+                    label = "flip\nflop"
                 else:
                     label = self.prospective_tile.name.lower()
                 rect = editor.get_grid_rect(self.last_valid_position)
@@ -223,8 +249,12 @@ class pick_and_place_screen(editor_screen):
 
             pygame.draw.rect(frame, editor.select_color, self.shelf_rect)
             for archetile, rect in self.tile_palette.items():
-                if archetile == OpCode.CONST:
+                if archetile == "next":
+                    label = self.palette_name
+                elif archetile == OpCode.CONST:
                     label = str(self.quick_consts[0])
+                elif archetile == OpCode.FLP:
+                    label = "flip\nflop"
                 else:
                     label = archetile.name.lower()
                 editor.tile_bg.draw(frame, rect, label)
@@ -249,6 +279,8 @@ class pick_and_place_screen(editor_screen):
             if self.prospective_tile:
                 if self.prospective_tile == OpCode.CONST:
                     label = str(self.quick_consts[0])
+                elif self.prospective_tile == OpCode.FLP:
+                    label = "flip\nflop"
                 else:
                     label = self.prospective_tile.name.lower()
             else:
