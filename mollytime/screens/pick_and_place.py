@@ -33,7 +33,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             ("8)", [
                 [OpCode.MIX, OpCode.FLP],
-                [None, None],
+                [None, OpCode.RNG],
                 ["next", None],
                 [None, None],
                 [None, None],

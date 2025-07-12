@@ -49,6 +49,7 @@ enum class OpCode : uint32_t
     MAX,
     MIX,
     FLP,
+    RNG,
     Count
 };
 

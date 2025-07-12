@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #include <stdexcept>
+#include <random>
 #include <format>
 #include <print>
 #include <functional>
@@ -28,6 +29,17 @@
 constinit double Pi = M_PI;
 constinit double Tau = M_PI * 2.0;
 constinit double Leftovers = M_PI / 2.0;
+
+
+static std::random_device RandomDevice;
+static std::mt19937 RandomGenerator{ RandomDevice() };
+const double RngScale = 1.0 / double(RandomGenerator.max());
+
+double Roll()
+{
+    // Returns between 0.0 and 1.0, inclusive.
+    return double(RandomGenerator()) * RngScale;
+}
 
 
 PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber)
@@ -80,6 +92,7 @@ struct SymbolInfo
         Set(OpCode::MAX, "max", {"max"}, {"="});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
+        Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -308,6 +321,31 @@ struct FlipFlopThunk : public InstructionThunk
     }
 
     virtual ~FlipFlopThunk() {};
+};
+
+
+struct RandomThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+    RunningStateSharedPtr LastInput = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        if (Inputs.size() > 0)
+        {
+            double Clock = Combine(CombinerAdd, Inputs, 0.0);
+
+            double Previous = LastInput->Get();
+            LastInput->Set(Clock);
+            if (Previous <= 0.0 && Clock >= 1.0)
+            {
+                Output->Set(Roll());
+            }
+        }
+    }
+
+    virtual ~RandomThunk() {};
 };
 
 
@@ -738,7 +776,14 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
-
+            else if (Symbol == OpCode::RNG)
+            {
+                auto Thunk = std::make_shared<RandomThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
             return nullptr;
         }
 
