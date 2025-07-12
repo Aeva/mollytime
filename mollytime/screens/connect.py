@@ -85,12 +85,16 @@ class connect_screen(editor_screen):
 
         self.bg.blit(self.screen_label_surface, self.screen_label_rect)
         font_path, size = AFACAD_REGULAR, editor.grid_size
-        surface = render_text(font_path, size, screen_label_color, editor.patch.get_tile_name(self.lhs_tile))
+
+        lhs_label = editor.patch.get_tile_name(self.lhs_tile).replace("\n", "/")
+        surface = render_text(font_path, size, screen_label_color, lhs_label)
         rect = surface.get_rect().copy()
         rect.top = self.screen_label_rect.top
         rect.left = viewport.centerx - radius
         self.bg.blit(surface, rect)
-        surface = render_text(font_path, size, screen_label_color, editor.patch.get_tile_name(self.rhs_tile))
+
+        rhs_label = editor.patch.get_tile_name(self.rhs_tile).replace("\n", "/")
+        surface = render_text(font_path, size, screen_label_color, rhs_label)
         rect = surface.get_rect().copy()
         rect.top = self.screen_label_rect.top
         rect.left = viewport.centerx + radius
@@ -236,6 +240,8 @@ class connect_screen(editor_screen):
                 b = vec_sub(self.cut_stop, self.cut_start)
                 a_mag = length(a)
                 b_mag = length(b)
+                if a_mag == 0 or b_mag == 0:
+                    return False
                 a = vec_scale(a, 1/a_mag)
                 b = vec_scale(b, 1/b_mag)
                 c = vec_sub(self.cut_start, wire_start)
@@ -288,6 +294,7 @@ class connect_screen(editor_screen):
             for port, rect in list(self.lhs_output_rects.items()) + list(self.rhs_output_rects.items()):
                 tile_id = decode_port_tile(port)
                 label = editor.patch.get_output_port_name(port)
+                label = f"{label}\n(output)"
                 assert(editor.patch.get_tile_symbol(tile_id) != OpCode.OUT)
                 editor.tile_bg.draw(frame, rect, label)
 
@@ -296,7 +303,8 @@ class connect_screen(editor_screen):
                 label = editor.patch.get_input_port_name(port)
                 if editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
                     label = "line\nout"
-                editor.tile_bg.draw(frame, rect, label)
+                label = f"{label}\n(input)"
+                editor.dark_tile_bg.draw(frame, rect, label)
 
             for out_port, in_port in self.connections:
                 start_rect = self.lhs_output_rects.get(out_port) or self.rhs_output_rects.get(out_port)
