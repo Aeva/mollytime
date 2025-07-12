@@ -61,6 +61,7 @@ struct SymbolInfo
     std::vector<std::string> DefaultNames;
     std::vector<std::vector<std::string>> InputNames;
     std::vector<std::vector<std::string>> OutputNames;
+    std::vector<int> Closures;
 
     SymbolInfo()
     {
@@ -68,36 +69,45 @@ struct SymbolInfo
         DefaultNames.resize((int)OpCode::Count);
         InputNames.resize((int)OpCode::Count);
         OutputNames.resize((int)OpCode::Count);
+        Closures.resize((int)OpCode::Count);
 
         Set(OpCode::CONST, OpCode::ADD, "const", {}, {"#"});
         Set(OpCode::OUT, OpCode::ADD, "out", {"out"}, {});
-        Set(OpCode::SIN, OpCode::ADD, "sin", {"hz"}, {"amp"});
-        Set(OpCode::SQR, OpCode::ADD, "sqr", {"hz"}, {"amp"});
-        Set(OpCode::TRI, OpCode::ADD, "tri", {"hz"}, {"amp"});
+        Set(OpCode::SIN, OpCode::ADD, "sin", {"hz"}, {"amp"}, 1);
+        Set(OpCode::SQR, OpCode::ADD, "sqr", {"hz"}, {"amp"}, 1);
+        Set(OpCode::TRI, OpCode::ADD, "tri", {"hz"}, {"amp"}, 1);
         Set(OpCode::ADD, OpCode::ADD, "add", {"+"}, {"="});
         Set(OpCode::MUL, OpCode::MUL, "mul", {"*"}, {"="});
         Set(OpCode::MIN, OpCode::MIN, "min", {"min"}, {"="});
         Set(OpCode::MAX, OpCode::MAX, "max", {"max"}, {"="});
-        Set(OpCode::FLP, OpCode::MAX, "flip\nflop", {"clock"}, {"even", "odd", "last"});
+        Set(OpCode::FLP, OpCode::MAX, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
     }
 
-    void Set(OpCode Symbol, OpCode Combiner, std::string Name, std::vector<std::string> Inputs, std::vector<std::string> Outputs)
+    void Set(OpCode Symbol, OpCode Combiner, std::string Name,
+             std::vector<std::string> Inputs, std::vector<std::string> Outputs,
+             int HiddenOutputs = 0)
     {
         Combiners[(int)Symbol] = Combiner;
         DefaultNames[(int)Symbol] = Name;
         InputNames[(int)Symbol] = Inputs;
         OutputNames[(int)Symbol] = Outputs;
+        Closures[(int)Symbol] = HiddenOutputs;
     }
 };
 
 const SymbolInfo SymbolInfoMap;
 
+int GetClosureCount(OpCode Symbol)
+{
+    return SymbolInfoMap.Closures[(int)Symbol];
+}
+
 
 struct SinThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr ActivePhase = nullptr;
     RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr ActivePhase = nullptr;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -123,8 +133,8 @@ struct SinThunk : public InstructionThunk
 struct SqrThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr ActivePhase = nullptr;
     RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr ActivePhase = nullptr;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -151,8 +161,8 @@ struct SqrThunk : public InstructionThunk
 struct TriThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr ActivePhase = nullptr;
     RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr ActivePhase = nullptr;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -361,9 +371,10 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         ByOutput[Port] = std::set<PortHandle>();
         ActiveOutputs[Port] = std::make_shared<RunningState>(0.0);
     }
-    if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI)
+    int Closures = GetClosureCount(Symbol);
+    for (int ClosureIndex = 0; ClosureIndex < Closures; ++ClosureIndex)
     {
-        PortHandle Closure = MakeClosureHandle(AllocatedHandle, 0);
+        PortHandle Closure = MakeClosureHandle(AllocatedHandle, ClosureIndex);
         ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
     }
     return AllocatedHandle;
@@ -403,9 +414,10 @@ void Patch::EraseTile(TileHandle Tile)
     }
 
     OpCode Symbol = GetTileSymbol(Tile);
-    if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI)
+    int Closures = GetClosureCount(Symbol);
+    for (int ClosureIndex = 0; ClosureIndex < Closures; ++ClosureIndex)
     {
-        PortHandle Closure = MakeClosureHandle(Tile, 0);
+        PortHandle Closure = MakeClosureHandle(Tile, ClosureIndex);
         ActiveOutputs.erase(Closure);
     }
 
@@ -689,8 +701,8 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<SinThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -698,8 +710,8 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<SqrThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -707,8 +719,8 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<TriThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->OutAmplitude = Outputs[0];
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -746,7 +758,7 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Inputs = Inputs[0];
                 Thunk->EvenOutput = Outputs[0];
                 Thunk->OddOutput = Outputs[1];
-                Thunk->LastInput = Outputs[2];
+                Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
 
