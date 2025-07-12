@@ -57,7 +57,6 @@ uint32_t PortHandlePortIndexPart(PortHandle Handle)
 
 struct SymbolInfo
 {
-    std::vector<OpCode> Combiners;
     std::vector<std::string> DefaultNames;
     std::vector<std::vector<std::string>> InputNames;
     std::vector<std::vector<std::string>> OutputNames;
@@ -65,29 +64,27 @@ struct SymbolInfo
 
     SymbolInfo()
     {
-        Combiners.resize((int)OpCode::Count);
         DefaultNames.resize((int)OpCode::Count);
         InputNames.resize((int)OpCode::Count);
         OutputNames.resize((int)OpCode::Count);
         Closures.resize((int)OpCode::Count);
 
-        Set(OpCode::CONST, OpCode::ADD, "const", {}, {"#"});
-        Set(OpCode::OUT, OpCode::ADD, "out", {"out"}, {});
-        Set(OpCode::SIN, OpCode::ADD, "sin", {"hz"}, {"amp"}, 1);
-        Set(OpCode::SQR, OpCode::ADD, "sqr", {"hz"}, {"amp"}, 1);
-        Set(OpCode::TRI, OpCode::ADD, "tri", {"hz"}, {"amp"}, 1);
-        Set(OpCode::ADD, OpCode::ADD, "add", {"+"}, {"="});
-        Set(OpCode::MUL, OpCode::MUL, "mul", {"*"}, {"="});
-        Set(OpCode::MIN, OpCode::MIN, "min", {"min"}, {"="});
-        Set(OpCode::MAX, OpCode::MAX, "max", {"max"}, {"="});
-        Set(OpCode::FLP, OpCode::MAX, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
+        Set(OpCode::CONST, "const", {}, {"#"});
+        Set(OpCode::OUT, "out", {"out"}, {});
+        Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
+        Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
+        Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
+        Set(OpCode::ADD, "add", {"+"}, {"="});
+        Set(OpCode::MUL, "mul", {"*"}, {"="});
+        Set(OpCode::MIN, "min", {"min"}, {"="});
+        Set(OpCode::MAX, "max", {"max"}, {"="});
+        Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
+        Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
     }
 
-    void Set(OpCode Symbol, OpCode Combiner, std::string Name,
-             std::vector<std::string> Inputs, std::vector<std::string> Outputs,
-             int HiddenOutputs = 0)
+    void Set(OpCode Symbol, std::string Name,
+             std::vector<std::string> Inputs, std::vector<std::string> Outputs, int HiddenOutputs = 0)
     {
-        Combiners[(int)Symbol] = Combiner;
         DefaultNames[(int)Symbol] = Name;
         InputNames[(int)Symbol] = Inputs;
         OutputNames[(int)Symbol] = Outputs;
@@ -103,6 +100,22 @@ int GetClosureCount(OpCode Symbol)
 }
 
 
+double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
+{
+    double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
+    for (int Index = 1; Index < Inputs.size(); ++Index)
+    {
+        Result = Combiner(Result, Inputs[Index]->Get());
+    }
+    return Result;
+}
+
+static const auto CombinerAdd = [](double LHS, double RHS) -> double { return LHS +RHS; };
+static const auto CombinerMul = [](double LHS, double RHS) -> double { return LHS *RHS; };
+static const auto CombinerMin = [](double LHS, double RHS) -> double { return std::min(LHS, RHS); };
+static const auto CombinerMax = [](double LHS, double RHS) -> double { return std::max(LHS, RHS); };
+
+
 struct SinThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> InFrequencyHz;
@@ -111,11 +124,7 @@ struct SinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Hz = InFrequencyHz.size() == 0 ? 440.0 : 0.0;
-        for (const RunningStateSharedPtr& Input : InFrequencyHz)
-        {
-            Hz += Input->Get();
-        }
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
         if (Phase > Tau)
@@ -138,11 +147,7 @@ struct SqrThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Hz = InFrequencyHz.size() == 0 ? 440.0 : 0.0;
-        for (const RunningStateSharedPtr& Input : InFrequencyHz)
-        {
-            Hz += Input->Get();
-        }
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
         while (Phase > Tau)
@@ -166,11 +171,7 @@ struct TriThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Hz = InFrequencyHz.size() == 0 ? 440.0 : 0.0;
-        for (const RunningStateSharedPtr& Input : InFrequencyHz)
-        {
-            Hz += Input->Get();
-        }
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
         while (Phase > Tau)
@@ -199,19 +200,7 @@ struct AddThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        if (Inputs.size() == 0)
-        {
-            Output->Set(0.0);
-        }
-        else
-        {
-            double Result = Inputs[0]->Get();
-            for (int Index = 1; Index < Inputs.size(); ++Index)
-            {
-                Result += Inputs[Index]->Get();
-            }
-            Output->Set(Result);
-        }
+        Output->Set(Combine(CombinerAdd, Inputs, 0.0));
     }
 
     virtual ~AddThunk() {};
@@ -225,19 +214,7 @@ struct MulThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        if (Inputs.size() == 0)
-        {
-            Output->Set(0.0);
-        }
-        else
-        {
-            double Result = Inputs[0]->Get();
-            for (int Index = 1; Index < Inputs.size(); ++Index)
-            {
-                Result *= Inputs[Index]->Get();
-            }
-            Output->Set(Result);
-        }
+        Output->Set(Combine(CombinerMul, Inputs, 0.0));
     }
 
     virtual ~MulThunk() {};
@@ -251,19 +228,7 @@ struct MinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        if (Inputs.size() == 0)
-        {
-            Output->Set(0.0);
-        }
-        else
-        {
-            double Result = Inputs[0]->Get();
-            for (int Index = 1; Index < Inputs.size(); ++Index)
-            {
-                Result = std::min(Result, Inputs[Index]->Get());
-            }
-            Output->Set(Result);
-        }
+        Output->Set(Combine(CombinerMin, Inputs, 0.0));
     }
 
     virtual ~MinThunk() {};
@@ -277,22 +242,29 @@ struct MaxThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        if (Inputs.size() == 0)
-        {
-            Output->Set(0.0);
-        }
-        else
-        {
-            double Result = Inputs[0]->Get();
-            for (int Index = 1; Index < Inputs.size(); ++Index)
-            {
-                Result = std::max(Result, Inputs[Index]->Get());
-            }
-            Output->Set(Result);
-        }
+        Output->Set(Combine(CombinerMax, Inputs, 0.0));
     }
 
     virtual ~MaxThunk() {};
+};
+
+
+struct MixThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Left;
+    std::vector<RunningStateSharedPtr> Right;
+    std::vector<RunningStateSharedPtr> Balance;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double X = Combine(CombinerAdd, Left, 0.0);
+        double Y = Combine(CombinerAdd, Right, 0.0);
+        double Alpha = Combine(CombinerAdd, Balance, 0.5);
+        Output->Set((1.0 - Alpha) * X + Alpha * Y);
+    }
+
+    virtual ~MixThunk() {};
 };
 
 
@@ -315,15 +287,11 @@ struct FlipFlopThunk : public InstructionThunk
 
         if (Inputs.size() > 0)
         {
-            double Result = Inputs[0]->Get();
-            for (int Index = 1; Index < Inputs.size(); ++Index)
-            {
-                Result = std::max(Result, Inputs[Index]->Get());
-            }
+            double Clock = Combine(CombinerAdd, Inputs, 0.0);
 
             double Previous = LastInput->Get();
-            LastInput->Set(Result);
-            if (Previous <= 0.0 && Result >= 1.0)
+            LastInput->Set(Clock);
+            if (Previous <= 0.0 && Clock >= 1.0)
             {
                 if (LastEven > 0.0)
                 {
@@ -749,6 +717,15 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<MaxThunk>();
                 Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MIX)
+            {
+                auto Thunk = std::make_shared<MixThunk>();
+                Thunk->Left = Inputs[0];
+                Thunk->Right = Inputs[1];
+                Thunk->Balance = Inputs[2];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
