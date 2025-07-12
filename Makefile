@@ -17,7 +17,7 @@ COMMON_ARGS := -std=c++2c -fPIC $(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(RELEAS
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)
-LIBRARIES := -lm $(shell pkg-config --libs libpipewire-0.3)
+LIBRARIES := -lm -lasound $(shell pkg-config --libs libpipewire-0.3)
 
 all: $(OBJECT_TARGETS) $(TARGET_LIB)
 

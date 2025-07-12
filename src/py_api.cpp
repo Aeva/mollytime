@@ -21,6 +21,7 @@
 #include "colors.h"
 #include "patch.h"
 #include "pipewire.h"
+#include "alsa_midi.h"
 
 namespace py = pybind11;
 
@@ -160,4 +161,7 @@ PYBIND11_MODULE(mollytime, m) {
 
 	m.def("init_audio", &AudioStream::Init);
 	m.def("shutdown_audio", &AudioStream::Shutdown);
+
+	m.def("init_midi", &Midi::Init);
+	m.def("shutdown_midi", &Midi::Shutdown);
 }

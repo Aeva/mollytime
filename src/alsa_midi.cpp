@@ -1,0 +1,68 @@
+
+// Copyright 2025 Aeva Palecek
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "alsa_midi.h"
+#include <format>
+#include <print>
+#include <alsa/asoundlib.h>
+
+
+static snd_seq_t *SeqHandle = nullptr;
+static int MidiInPort = -1;
+static int MidiOutPort = -1;
+
+
+void Midi::Init()
+{
+    if (snd_seq_open(&SeqHandle, "default", SND_SEQ_OPEN_DUPLEX, SND_SEQ_NONBLOCK) == 0)
+    {
+        snd_seq_set_client_name(SeqHandle, "mollytime");
+        {
+            const unsigned int Caps = SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
+            const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE | SND_SEQ_PORT_TYPE_SYNTHESIZER;
+            MidiInPort = snd_seq_create_simple_port(SeqHandle, "in", Caps, Type);
+        }
+        {
+            const unsigned int Caps = SND_SEQ_PORT_CAP_READ | SND_SEQ_PORT_CAP_SUBS_READ;
+            const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE;
+            MidiOutPort = snd_seq_create_simple_port(SeqHandle, "out", Caps, Type);
+        }
+    }
+    else
+    {
+        std::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
+        SeqHandle = nullptr;
+    }
+}
+
+
+void Midi::Shutdown()
+{
+    if (SeqHandle)
+    {
+        if (MidiOutPort > -1)
+        {
+            snd_seq_delete_simple_port(SeqHandle, MidiOutPort);
+            MidiOutPort = -1;
+        }
+        if (MidiInPort > -1)
+        {
+            snd_seq_delete_simple_port(SeqHandle, MidiInPort);
+            MidiInPort = -1;
+        }
+        snd_seq_close(SeqHandle);
+        SeqHandle = nullptr;
+    }
+}

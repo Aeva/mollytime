@@ -15,6 +15,7 @@ from patterns import *
 from screens.common import program_card
 from screens.inspect import inspect_screen
 
+mollytime.init_midi()
 mollytime.init_audio(48000)
 pygame.init()
 
@@ -61,3 +62,4 @@ editor = program_card(screen, dpi)
 ui = inspect_screen(editor)
 
 mollytime.shutdown_audio()
+mollytime.shutdown_midi()
