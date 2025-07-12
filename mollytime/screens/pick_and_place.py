@@ -225,6 +225,8 @@ class pick_and_place_screen(editor_screen):
             for archetile, rect in self.tile_palette.items():
                 if archetile == OpCode.CONST:
                     label = str(self.quick_consts[0])
+                elif archetile == OpCode.FLP:
+                    label = "flip\nflop"
                 else:
                     label = archetile.name.lower()
                 editor.tile_bg.draw(frame, rect, label)
