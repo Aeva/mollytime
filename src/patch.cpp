@@ -78,6 +78,7 @@ struct SymbolInfo
         Set(OpCode::MUL, OpCode::MUL, "mul", {"*"}, {"="});
         Set(OpCode::MIN, OpCode::MIN, "min", {"min"}, {"="});
         Set(OpCode::MAX, OpCode::MAX, "max", {"max"}, {"="});
+        Set(OpCode::FLP, OpCode::MAX, "flip\nflop", {"clock"}, {"even", "odd"});
     }
 
     void Set(OpCode Symbol, OpCode Combiner, std::string Name, std::vector<std::string> Inputs, std::vector<std::string> Outputs)
@@ -254,6 +255,39 @@ struct MaxThunk : public InstructionThunk
     }
 
     virtual ~MaxThunk() {};
+};
+
+
+struct FlipFlopThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr EvenOutput = nullptr;
+    RunningStateSharedPtr OddOutput = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double Result = Inputs[0]->Get();
+        for (int Index = 1; Index < Inputs.size(); ++Index)
+        {
+            Result = std::max(Result, Inputs[Index]->Get());
+        }
+
+        if (Result > 0.0)
+        {
+            if (EvenOutput->Get() > 0.0)
+            {
+                EvenOutput->Set(0.0);
+                OddOutput->Set(1.0);
+            }
+            else
+            {
+                EvenOutput->Set(1.0);
+                OddOutput->Set(0.0);
+            }
+        }
+    }
+
+    virtual ~FlipFlopThunk() {};
 };
 
 
@@ -664,6 +698,14 @@ ScratchSharedPtr Patch::Compile()
                     auto Thunk = std::make_shared<MaxThunk>();
                     Thunk->Inputs = Inputs;
                     Thunk->Output = Outputs[0];
+                    Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                }
+                else if (Symbol == OpCode::FLP)
+                {
+                    auto Thunk = std::make_shared<FlipFlopThunk>();
+                    Thunk->Inputs = Inputs;
+                    Thunk->EvenOutput = Outputs[0];
+                    Thunk->OddOutput = Outputs[1];
                     Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 }
             }

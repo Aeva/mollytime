@@ -24,7 +24,7 @@ class pick_and_place_screen(editor_screen):
         shelf = [
             [OpCode.OUT, OpCode.SIN],
             [OpCode.TRI, OpCode.SQR],
-            [None, OpCode.CONST],
+            [OpCode.FLP, OpCode.CONST],
             [OpCode.MIN, OpCode.ADD],
             [OpCode.MAX, OpCode.MUL],
         ]
