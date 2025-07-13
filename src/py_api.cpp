@@ -131,6 +131,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("RNG", OpCode::RNG)
 		.value("ADSR", OpCode::ADSR)
 		.value("NOTE", OpCode::NOTE)
+		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("Count", OpCode::Count);
 
 	m.def("decode_port_tile", &PortHandleTilePart);

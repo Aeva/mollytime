@@ -53,6 +53,7 @@ enum class OpCode : uint32_t
     RNG,
     ADSR,
     NOTE,
+    MIDI_HZ,
     Count
 };
 

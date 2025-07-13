@@ -94,7 +94,8 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 3);
-        Set(OpCode::NOTE, "note", {}, {"gate", "#", "velo", "press"});
+        Set(OpCode::NOTE, "note", {}, {"gate", "note", "velo", "press"});
+        Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -446,6 +447,22 @@ struct MidiNoteThunk : public InstructionThunk
     }
 
     virtual ~MidiNoteThunk() {};
+};
+
+
+struct MidiToHzThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double Note = Combine(CombinerAdd, Inputs, 0.0);
+        double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
+        Output->Set(Hz);
+    }
+
+    virtual ~MidiToHzThunk() {};
 };
 
 
@@ -910,6 +927,13 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->MidiVelocity = MidiVelocity;
                 Thunk->MidiPressure = MidiPressure;
                 Thunk->Outputs = Outputs;
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::MIDI_HZ)
+            {
+                auto Thunk = std::make_shared<MidiToHzThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             return nullptr;
