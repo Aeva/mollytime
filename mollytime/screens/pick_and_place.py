@@ -35,7 +35,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.MIX, OpCode.FLP],
                 [None, OpCode.RNG],
                 ["next", None],
-                [None, None],
+                [None, OpCode.ADSR],
                 [None, None],
             ]),
         ]

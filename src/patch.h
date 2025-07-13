@@ -50,6 +50,7 @@ enum class OpCode : uint32_t
     MIX,
     FLP,
     RNG,
+    ADSR,
     Count
 };
 
