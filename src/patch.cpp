@@ -740,7 +740,7 @@ ScratchSharedPtr Patch::Compile()
     Program->MidiGate = MidiGate;
     Program->MidiNote = MidiNote;
     Program->MidiVelocity = MidiVelocity;
-    Program->MidiPressure = MidiVelocity;
+    Program->MidiPressure = MidiPressure;
 
     std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
     {
@@ -991,7 +991,6 @@ void Scratch::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
         MidiNote->Set(double(Note));
         double V = double(Velocity) / 127.0;
         MidiVelocity->Set(V);
-        MidiPressure->Set(V);
     }
     else if (double(Note) == MidiNote->Get())
     {
