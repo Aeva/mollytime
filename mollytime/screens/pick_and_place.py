@@ -173,10 +173,11 @@ class pick_and_place_screen(editor_screen):
                     return
 
     def on_release(self, editor, pos):
-        if self.rotate_quick_const:
-            self.rotate_quick_const = self.tile_palette[OpCode.CONST].collidepoint(pos)
+        const_rect = self.tile_palette.get(OpCode.CONST)
+        if const_rect and self.rotate_quick_const:
+            self.rotate_quick_const = const_rect.collidepoint(pos)
         if self.prospective_tile:
-            if self.rotate_quick_const and self.tile_palette[OpCode.CONST].collidepoint(pos):
+            if self.rotate_quick_const and const_rect and const_rect.collidepoint(pos):
                 self.quick_consts = self.quick_consts[1:] + [self.quick_consts[0]]
             elif self.last_valid_position and not self.drop_deletes:
                 if self.prospective_tile == OpCode.CONST:
