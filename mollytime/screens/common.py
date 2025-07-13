@@ -82,15 +82,33 @@ class program_card:
         self.clock = pygame.time.Clock()
         self.resize(screen, dpi)
 
+    def find_center_of_mass(self, quantized=False):
+        center_of_mass = (0, 0)
+        count = 0
+        for pos in self.tile_positions.values():
+            center_of_mass = vec_add(center_of_mass, pos)
+            count += 1
+        if count > 0:
+            center_of_mass = vec_scale(center_of_mass, 1/count)
+            if quantized:
+                center_of_mass = tuple([int(i) for i in center_of_mass])
+        return center_of_mass
+
+    def recenter(self):
+        center_of_mass = self.find_center_of_mass()
+        self.focus_x, self.focus_y = vec_scale(center_of_mass, self.grid_size * 3)
+
     def save_patch(self, save_path):
         tiles = sorted(self.patch.get_all_tile_handles())
         entries = []
         entries.append('\t<patch>\n')
         indent = '\t' * 2
 
+        center_of_mass = self.find_center_of_mass(quantized=True)
+
         for tile_id in tiles:
             symbol = self.patch.get_tile_symbol(tile_id)
-            x, y = self.tile_positions.get(tile_id, (0, 0))
+            x, y = vec_sub(self.tile_positions.get(tile_id, (0, 0)), center_of_mass)
             params = {
                 "id" : tile_id,
                 "symbol" : symbol.name.lower(),
@@ -158,6 +176,7 @@ class program_card:
                         in_index = out_key[1]
                         in_port = mollytime.make_port_handle(in_tile, in_index)
                         self.patch.connect_tiles(out_port, in_port)
+        self.recenter()
 
 
     def load_patch(self, load_path):
