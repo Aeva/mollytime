@@ -33,10 +33,10 @@ class pick_and_place_screen(editor_screen):
             ]),
             ("8)", [
                 [OpCode.MIX, OpCode.FLP],
-                [None, OpCode.RNG],
-                ["next", None],
-                [None, OpCode.ADSR],
-                [OpCode.MIDI_HZ, OpCode.NOTE],
+                [OpCode.RNG, OpCode.ADSR],
+                ["next", OpCode.MIDI_HZ],
+                [OpCode.GATE, OpCode.NOTE],
+                [OpCode.PRES, OpCode.VELO],
             ]),
         ]
         for name, shelf in pages:

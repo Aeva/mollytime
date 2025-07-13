@@ -94,7 +94,10 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 3);
-        Set(OpCode::NOTE, "note", {}, {"gate", "note", "velo", "press"});
+        Set(OpCode::GATE, "gate", {}, {"gate"});
+        Set(OpCode::NOTE, "note", {}, {"note"});
+        Set(OpCode::VELO, "velocity", {}, {"velocity"});
+        Set(OpCode::PRES, "pressure", {}, {"pressure"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
     }
 
@@ -430,23 +433,59 @@ struct AdsrThunk : public InstructionThunk
 };
 
 
-struct MidiNoteThunk : public InstructionThunk
+struct GateThunk : public InstructionThunk
 {
     RunningStateSharedPtr MidiGate;
-    RunningStateSharedPtr MidiNote;
-    RunningStateSharedPtr MidiVelocity;
-    RunningStateSharedPtr MidiPressure;
-    std::vector<RunningStateSharedPtr> Outputs;
+    RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
     {
-        Outputs[0]->Set(MidiGate->Get());
-        Outputs[1]->Set(MidiNote->Get());
-        Outputs[2]->Set(MidiVelocity->Get());
-        Outputs[3]->Set(MidiPressure->Get());
+        Output->Set(MidiGate->Get());
     }
 
-    virtual ~MidiNoteThunk() {};
+    virtual ~GateThunk() {};
+};
+
+
+struct NoteThunk : public InstructionThunk
+{
+    RunningStateSharedPtr MidiNote;
+    RunningStateSharedPtr Output;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Output->Set(MidiNote->Get());
+    }
+
+    virtual ~NoteThunk() {};
+};
+
+
+struct VelocityThunk : public InstructionThunk
+{
+    RunningStateSharedPtr MidiVelocity;
+    RunningStateSharedPtr Output;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Output->Set(MidiVelocity->Get());
+    }
+
+    virtual ~VelocityThunk() {};
+};
+
+
+struct PressureThunk : public InstructionThunk
+{
+    RunningStateSharedPtr MidiPressure;
+    RunningStateSharedPtr Output;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Output->Set(MidiPressure->Get());
+    }
+
+    virtual ~PressureThunk() {};
 };
 
 
@@ -919,14 +958,32 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Mode = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
+            else if (Symbol == OpCode::GATE)
+            {
+                auto Thunk = std::make_shared<GateThunk>();
+                Thunk->MidiGate = MidiGate;
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
             else if (Symbol == OpCode::NOTE)
             {
-                auto Thunk = std::make_shared<MidiNoteThunk>();
-                Thunk->MidiGate = MidiGate;
+                auto Thunk = std::make_shared<NoteThunk>();
                 Thunk->MidiNote = MidiNote;
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::VELO)
+            {
+                auto Thunk = std::make_shared<VelocityThunk>();
                 Thunk->MidiVelocity = MidiVelocity;
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::PRES)
+            {
+                auto Thunk = std::make_shared<PressureThunk>();
                 Thunk->MidiPressure = MidiPressure;
-                Thunk->Outputs = Outputs;
+                Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::MIDI_HZ)

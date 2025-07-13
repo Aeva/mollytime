@@ -52,7 +52,10 @@ enum class OpCode : uint32_t
     FLP,
     RNG,
     ADSR,
+    GATE,
     NOTE,
+    VELO,
+    PRES,
     MIDI_HZ,
     Count
 };
