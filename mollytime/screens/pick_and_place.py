@@ -14,7 +14,6 @@ class pick_and_place_screen(editor_screen):
         self.last_valid_position = None
         self.last_hover_position = None
         self.drop_deletes = False
-        self.rotate_quick_const = False
 
         self.set_screen_label(editor, "inspect > pick & place")
         self.repopulate_sidebar(editor)
@@ -27,7 +26,7 @@ class pick_and_place_screen(editor_screen):
             (":D", [
                 [OpCode.OUT, OpCode.SIN],
                 [OpCode.TRI, OpCode.SQR],
-                ["next", OpCode.CONST],
+                ["next", None],
                 [OpCode.MIN, OpCode.ADD],
                 [OpCode.MAX, OpCode.MUL],
             ]),
@@ -38,10 +37,15 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.GATE, OpCode.NOTE],
                 [OpCode.PRES, OpCode.VELO],
             ]),
+            ("XD", [
+                [440, 2],
+                [-1, 1],
+                ["next", 0],
+                [-.5, .5],
+                [-.25, .25],
+            ]),
         ]
         for name, shelf in pages:
-            self.quick_consts = [440, 1, 0.5, 0.25, 0, -1, -.5, 2]
-
             tile_span = (editor.grid_size * 2)
             tile_stride = (editor.grid_size * 3)
 
@@ -56,7 +60,7 @@ class pick_and_place_screen(editor_screen):
             for row in shelf:
                 x = 0
                 for archetile in row:
-                    if archetile:
+                    if archetile is not None:
                         rect = pygame.rect.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
                         palette[archetile] = rect
                     x += 1
@@ -105,9 +109,7 @@ class pick_and_place_screen(editor_screen):
 
             self.press_start = pos
 
-        elif self.grabbed_tile or self.prospective_tile:
-            if self.rotate_quick_const:
-                self.rotate_quick_const = self.tile_palette[OpCode.CONST].collidepoint(pos)
+        elif self.grabbed_tile or self.prospective_tile is not None:
             self.force_redraw = True
             self.drop_deletes = editor.side_bar_rect.collidepoint(pos) or self.shelf_rect.collidepoint(pos)
 
@@ -130,8 +132,8 @@ class pick_and_place_screen(editor_screen):
         if self.shelf_rect.collidepoint(pos):
             for archetile, rect in self.tile_palette.items():
                 if rect.collidepoint(pos):
-                    assert(self.prospective_tile == None)
-                    assert(self.grabbed_tile == None)
+                    assert(self.prospective_tile is None)
+                    assert(self.grabbed_tile is None)
                     if archetile == "next":
                         self.current_palette = (self.current_palette + 1) % len(self.all_palettes)
                         self.tile_palette = self.all_palettes[self.current_palette]
@@ -139,8 +141,6 @@ class pick_and_place_screen(editor_screen):
                         self.update_play_area = True
                     else:
                         self.prospective_tile = archetile
-                        if archetile == OpCode.CONST:
-                            self.rotate_quick_const = True
 
         elif editor.play_rect.collidepoint(pos):
             something_happened = False
@@ -150,8 +150,8 @@ class pick_and_place_screen(editor_screen):
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
                 if rect.collidepoint(pos):
-                    assert(self.prospective_tile == None)
-                    assert(self.grabbed_tile == None)
+                    assert(self.prospective_tile is None)
+                    assert(self.grabbed_tile is None)
                     self.grabbed_tile = tile_id
                     self.original_position = (tile_x, tile_y)
                     self.last_valid_position = (tile_x, tile_y)
@@ -173,15 +173,10 @@ class pick_and_place_screen(editor_screen):
                     return
 
     def on_release(self, editor, pos):
-        const_rect = self.tile_palette.get(OpCode.CONST)
-        if const_rect and self.rotate_quick_const:
-            self.rotate_quick_const = const_rect.collidepoint(pos)
-        if self.prospective_tile:
-            if self.rotate_quick_const and const_rect and const_rect.collidepoint(pos):
-                self.quick_consts = self.quick_consts[1:] + [self.quick_consts[0]]
-            elif self.last_valid_position and not self.drop_deletes:
-                if self.prospective_tile == OpCode.CONST:
-                    editor.make_constant(self.last_valid_position, self.quick_consts[0])
+        if self.prospective_tile is not None:
+            if self.last_valid_position and not self.drop_deletes:
+                if type(self.prospective_tile) in (int, float):
+                    editor.make_constant(self.last_valid_position, self.prospective_tile)
                 else:
                     editor.make_tile(self.last_valid_position, self.prospective_tile)
             self.force_redraw = True
@@ -232,11 +227,11 @@ class pick_and_place_screen(editor_screen):
                 rect = editor.get_grid_rect(self.last_valid_position)
                 editor.valid_placement.draw(frame, rect, label)
 
-            elif self.prospective_tile and self.last_valid_position and not self.drop_deletes:
-                if self.prospective_tile == OpCode.CONST:
-                    label = str(self.quick_consts[0])
-                elif self.prospective_tile == OpCode.FLP:
+            elif self.prospective_tile is not None and self.last_valid_position and not self.drop_deletes:
+                if self.prospective_tile == OpCode.FLP:
                     label = "flip\nflop"
+                elif type(self.prospective_tile) in (int, float):
+                    label = f"{self.prospective_tile}"
                 else:
                     label = self.prospective_tile.name.lower()
                 rect = editor.get_grid_rect(self.last_valid_position)
@@ -252,10 +247,10 @@ class pick_and_place_screen(editor_screen):
             for archetile, rect in self.tile_palette.items():
                 if archetile == "next":
                     label = self.palette_name
-                elif archetile == OpCode.CONST:
-                    label = str(self.quick_consts[0])
                 elif archetile == OpCode.FLP:
                     label = "flip\nflop"
+                elif type(archetile) in (int, float):
+                    label = f"{archetile}"
                 else:
                     label = archetile.name.lower()
                 editor.tile_bg.draw(frame, rect, label)
@@ -274,21 +269,21 @@ class pick_and_place_screen(editor_screen):
 
             editor.screen.blit(frame, editor.side_bar.viewport)
 
-        if self.grabbed_tile or (self.prospective_tile and self.last_hover_position):
+        if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):
             rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
             rect.center = self.cursor_pos
-            if self.prospective_tile:
-                if self.prospective_tile == OpCode.CONST:
-                    label = str(self.quick_consts[0])
-                elif self.prospective_tile == OpCode.FLP:
+            if self.prospective_tile is not None:
+                if self.prospective_tile == OpCode.FLP:
                     label = "flip\nflop"
+                elif type(self.prospective_tile) in (int, float):
+                    label = f"{self.prospective_tile}"
                 else:
                     label = self.prospective_tile.name.lower()
             else:
                 label = editor.patch.get_tile_label(self.grabbed_tile)
 
             if self.drop_deletes:
-                if self.prospective_tile:
+                if self.prospective_tile is not None:
                     editor.tile_bg.draw(editor.screen, rect, "drop\nto\ncancel")
                 else:
                     symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
