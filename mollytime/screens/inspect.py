@@ -1,11 +1,24 @@
 
 import os
+import pathlib
 import threading
 from tkinter import filedialog
 from .common import *
 from .select import select_screen
 from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
+
+
+def find_search_path():
+    examples_dir = os.path.join(os.path.split(__file__)[0], "..", "..", "examples")
+    if os.path.isdir(examples_dir):
+        return os.path.abspath(examples_dir)
+
+    home_dir = pathlib.Path.home()
+    if os.path.isdir(home_dir):
+        return home_dir
+
+    return os.path.abspath(os.getcwd())
 
 
 class inspect_screen(editor_screen):
@@ -16,7 +29,7 @@ class inspect_screen(editor_screen):
         self.repopulate_sidebar(editor)
         self.pending_save = None
         self.pending_load = None
-        self.search_path = None
+        self.search_path = find_search_path()
         self.save_path = None
         self.load_path = None
 
@@ -108,12 +121,12 @@ class inspect_screen(editor_screen):
 
             def run(self):
                 file_types = (
-                    ('mollytime files', '*.patch'),
+                    ('mollytime files', '*.beep'),
                     ('all files', '*'))
                 if self.search_path and os.path.isdir(self.search_path):
                     patch_dir = self.search_path
                 else:
-                    patch_dir = "~"
+                    patch_dir = find_search_path()
                 found = filedialog.SaveAs(
                     title = "Save Patch", initialdir = patch_dir, filetypes = file_types).show()
                 if found:
@@ -135,12 +148,12 @@ class inspect_screen(editor_screen):
 
             def run(self):
                 file_types = (
-                    ('mollytime files', '*.patch'),
+                    ('mollytime files', '*.beep'),
                     ('all files', '*'))
                 if self.search_path and os.path.isdir(self.search_path):
                     patch_dir = self.search_path
                 else:
-                    patch_dir = "~"
+                    patch_dir = find_search_path()
                 found = filedialog.Open(
                     title = "Open Patch", initialdir = patch_dir, filetypes = file_types).show()
                 if found and os.path.isfile(found):
