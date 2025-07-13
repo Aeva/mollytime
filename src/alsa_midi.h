@@ -15,12 +15,29 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vector>
 #include <string>
 
 
+struct MidiHandler
+{
+    virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
+    {
+    }
+    virtual void NoteOff(uint8_t Note, uint8_t Channel)
+    {
+        NoteOn(Note, 0, Channel);
+    }
+    virtual void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
+    {
+    }
+};
+
+
 namespace Midi
 {
+    void ProcessEvents(MidiHandler* Handler);
     void Init();
     void Shutdown();
 };

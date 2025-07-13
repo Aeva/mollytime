@@ -36,7 +36,7 @@ class pick_and_place_screen(editor_screen):
                 [None, OpCode.RNG],
                 ["next", None],
                 [None, OpCode.ADSR],
-                [None, None],
+                [None, OpCode.NOTE],
             ]),
         ]
         for name, shelf in pages:

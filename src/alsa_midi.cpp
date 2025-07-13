@@ -24,6 +24,33 @@ static int MidiInPort = -1;
 static int MidiOutPort = -1;
 
 
+void Midi::ProcessEvents(MidiHandler* Handler)
+{
+    snd_seq_event_t* Event = nullptr;
+    if (SeqHandle)
+    {
+        snd_seq_event_input(SeqHandle, &Event);
+    }
+
+    if (!Event)
+    {
+        return;
+    }
+    else if (Event->type == SND_SEQ_EVENT_NOTEON)
+    {
+        Handler->NoteOn(Event->data.note.note, Event->data.note.velocity, Event->data.note.channel);
+    }
+    else if (Event->type == SND_SEQ_EVENT_NOTEOFF)
+    {
+        Handler->NoteOff(Event->data.note.note, Event->data.note.channel);
+    }
+    else if (Event->type == SND_SEQ_EVENT_KEYPRESS)
+    {
+        Handler->NotePressure(Event->data.note.note, Event->data.note.velocity, Event->data.note.channel);
+    }
+}
+
+
 void Midi::Init()
 {
     if (snd_seq_open(&SeqHandle, "default", SND_SEQ_OPEN_DUPLEX, SND_SEQ_NONBLOCK) == 0)

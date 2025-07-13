@@ -94,6 +94,7 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 3);
+        Set(OpCode::NOTE, "note", {}, {"gate", "#", "velo", "press"});
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -428,6 +429,26 @@ struct AdsrThunk : public InstructionThunk
 };
 
 
+struct MidiNoteThunk : public InstructionThunk
+{
+    RunningStateSharedPtr MidiGate;
+    RunningStateSharedPtr MidiNote;
+    RunningStateSharedPtr MidiVelocity;
+    RunningStateSharedPtr MidiPressure;
+    std::vector<RunningStateSharedPtr> Outputs;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Outputs[0]->Set(MidiGate->Get());
+        Outputs[1]->Set(MidiNote->Get());
+        Outputs[2]->Set(MidiVelocity->Get());
+        Outputs[3]->Set(MidiPressure->Get());
+    }
+
+    virtual ~MidiNoteThunk() {};
+};
+
+
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
@@ -699,6 +720,10 @@ ScratchSharedPtr Patch::Compile()
 {
     std::set<TileHandle> BreadCrumbs;
     ScratchSharedPtr Program = std::make_shared<Scratch>();
+    Program->MidiGate = MidiGate;
+    Program->MidiNote = MidiNote;
+    Program->MidiVelocity = MidiVelocity;
+    Program->MidiPressure = MidiVelocity;
 
     std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
     {
@@ -877,6 +902,16 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Mode = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
+            else if (Symbol == OpCode::NOTE)
+            {
+                auto Thunk = std::make_shared<MidiNoteThunk>();
+                Thunk->MidiGate = MidiGate;
+                Thunk->MidiNote = MidiNote;
+                Thunk->MidiVelocity = MidiVelocity;
+                Thunk->MidiPressure = MidiPressure;
+                Thunk->Outputs = Outputs;
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
             return nullptr;
         }
 
@@ -903,42 +938,14 @@ ScratchSharedPtr Patch::Compile()
 void Patch::Recompile()
 {
     ScratchSharedPtr CurrentProgram = Compile();
-#if 0
-    const int InstructionCount = CurrentProgram->Program.size();
-    if (InstructionCount > 0)
-    {
-        std::print("Compiled instruction count: {}\n", InstructionCount);
-        std::vector<double> Samples;
-        Samples.resize(146);
-        double Gain = 0.5;
-        for (double& Sample : Samples)
-        {
-            Sample = CurrentProgram->Eval(1.0f / 48000.0f) * Gain;
-        }
-        for (int y = 0; y < 30; ++y)
-        {
-            double Alpha = (double(y) / 29.0f) * 2.0f - 1.0f;
-            for (double& Sample : Samples)
-            {
-                if ((Alpha < 0) == (Sample < 0) && std::abs(Alpha) < std::abs(Sample))
-                {
-                    std::print("*");
-                }
-                else
-                {
-                    std::print(" ");
-                }
-            }
-            std::print("\n");
-        }
-    }
-#endif
     AudioStream::Get()->ProgramChange(CurrentProgram);
 }
 
 
 double Scratch::Eval(double SampleInterval)
 {
+    Midi::ProcessEvents(this);
+
     for (std::shared_ptr<InstructionThunk>& Thunk : Program)
     {
         Thunk->Crank(SampleInterval);
@@ -949,4 +956,32 @@ double Scratch::Eval(double SampleInterval)
         Out += Output->Get();
     }
     return Out;
+}
+
+
+void Scratch::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
+{
+    if (Velocity > 0)
+    {
+        MidiGate->Set(1.0);
+        MidiNote->Set(double(Note));
+        double V = double(Velocity) / 127.0;
+        MidiVelocity->Set(V);
+        MidiPressure->Set(V);
+    }
+    else if (double(Note) == MidiNote->Get())
+    {
+        MidiGate->Set(0.0);
+        MidiVelocity->Set(0.0);
+        MidiPressure->Set(0.0);
+    }
+}
+
+
+void Scratch::NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
+{
+    if (double(Note) == MidiNote->Get())
+    {
+        MidiPressure->Set(double(Pressure) / 127.0);
+    }
 }

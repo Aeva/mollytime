@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include "alsa_midi.h"
 
 
 // TileId
@@ -51,6 +52,7 @@ enum class OpCode : uint32_t
     FLP,
     RNG,
     ADSR,
+    NOTE,
     Count
 };
 
@@ -88,12 +90,20 @@ struct InstructionThunk
 };
 
 
-struct Scratch
+struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
 
+    RunningStateSharedPtr MidiGate;
+    RunningStateSharedPtr MidiNote;
+    RunningStateSharedPtr MidiVelocity;
+    RunningStateSharedPtr MidiPressure;
+
     double Eval(double SampleInterval);
+
+    virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel) override;
+    virtual void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel) override;
 };
 
 using ScratchSharedPtr = std::shared_ptr<Scratch>;
@@ -139,6 +149,12 @@ struct Patch
 
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
+
+    // These should only ever be set or read by the audio thread:
+    RunningStateSharedPtr MidiGate = std::make_shared<RunningState>(0.0);
+    RunningStateSharedPtr MidiNote = std::make_shared<RunningState>(255.0);
+    RunningStateSharedPtr MidiVelocity = std::make_shared<RunningState>(0.0);
+    RunningStateSharedPtr MidiPressure = std::make_shared<RunningState>(0.0);
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;

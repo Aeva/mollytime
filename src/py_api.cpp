@@ -130,6 +130,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("FLP", OpCode::FLP)
 		.value("RNG", OpCode::RNG)
 		.value("ADSR", OpCode::ADSR)
+		.value("NOTE", OpCode::NOTE)
 		.value("Count", OpCode::Count);
 
 	m.def("decode_port_tile", &PortHandleTilePart);
