@@ -93,6 +93,7 @@ struct SymbolInfo
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
+        Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 3);
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -346,6 +347,84 @@ struct RandomThunk : public InstructionThunk
     }
 
     virtual ~RandomThunk() {};
+};
+
+
+struct AdsrThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Trigger;
+    std::vector<RunningStateSharedPtr> AttackTime;
+    std::vector<RunningStateSharedPtr> DecayTime;
+    std::vector<RunningStateSharedPtr> SustainAmount;
+    std::vector<RunningStateSharedPtr> ReleaseTime;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr LastTrigger = nullptr;
+    RunningStateSharedPtr ElapsedTime = nullptr;
+    RunningStateSharedPtr Mode = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double Trig = Combine(CombinerAdd, Trigger, 0.0);
+        double Previous = LastTrigger->Get();
+        LastTrigger->Set(Trig);
+
+        double Attack = Combine(CombinerAdd, AttackTime, 0.1);
+        double Decay = Combine(CombinerAdd, DecayTime, 0.1);
+        double Sustain = Combine(CombinerAdd, SustainAmount, 1.0);
+        double Release = Combine(CombinerAdd, ReleaseTime, 1.0);
+
+        if (Trig >= 1.0 && Previous <= 0.0)
+        {
+            // Begin attack.
+            OutAmplitude->Set(0.0);
+            ElapsedTime->Set(0.0);
+            Mode->Set(1.0); // rising
+        }
+        else if (Trig <= 0.0 && Previous >= 1.0)
+        {
+            // Begin release.
+            OutAmplitude->Set(Sustain);
+            ElapsedTime->Set(0.0);
+            Mode->Set(-1.0); // falling
+        }
+        else if (Mode->Get() == 1.0)
+        {
+            // Attack, decay, or sustain
+            double Elapsed = std::max(0.0, std::min(Attack + Decay, ElapsedTime->Get() + SampleInterval));
+            ElapsedTime->Set(Elapsed);
+
+            double Peak = Decay > 0.0 ? 1.0 : Sustain;
+            if (Elapsed < Attack)
+            {
+                double Alpha = std::max(0.0, std::min(1.0, Elapsed / Attack));
+                OutAmplitude->Set(Peak * Alpha);
+            }
+            else
+            {
+                double Alpha = std::max(0.0, std::min(1.0, (Elapsed - Attack) / Decay));
+                OutAmplitude->Set((1.0 - Alpha) * Peak + Alpha * Sustain);
+            }
+
+        }
+        else if (Mode->Get() == -1.0)
+        {
+            // Release
+            double Elapsed = std::max(0.0, std::min(Release, ElapsedTime->Get() + SampleInterval));
+            ElapsedTime->Set(Elapsed);
+            if (Elapsed < Release)
+            {
+                double Alpha = 1.0 - std::max(0.0, std::min(1.0, Elapsed / Release));
+                OutAmplitude->Set(Sustain * Alpha);
+            }
+            else
+            {
+                Mode->Set(0.0);
+                OutAmplitude->Set(0.0);
+            }
+        }
+    }
+
+    virtual ~AdsrThunk() {};
 };
 
 
@@ -782,6 +861,20 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::ADSR)
+            {
+                auto Thunk = std::make_shared<AdsrThunk>();
+                Thunk->Trigger = Inputs[0];
+                Thunk->AttackTime = Inputs[1];
+                Thunk->DecayTime = Inputs[2];
+                Thunk->SustainAmount = Inputs[3];
+                Thunk->ReleaseTime = Inputs[4];
+                Thunk->OutAmplitude = Outputs[0];
+                Thunk->LastTrigger = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ElapsedTime = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->Mode = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             return nullptr;
