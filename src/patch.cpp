@@ -590,6 +590,17 @@ void Patch::EraseTile(TileHandle Tile)
 }
 
 
+std::vector<TileHandle> Patch::GetAllTileHandles()
+{
+    std::vector<TileHandle> Handles;
+    for (const auto& Entry : TileSymbols)
+    {
+        Handles.push_back(Entry.first);
+    }
+    return Handles;
+}
+
+
 OpCode Patch::GetTileSymbol(TileHandle Tile)
 {
     return TileSymbols.at(Tile);

@@ -137,6 +137,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("Count", OpCode::Count);
 
+	m.def("make_port_handle", &MakePortHandle);
 	m.def("decode_port_tile", &PortHandleTilePart);
 	m.def("decode_port_index", &PortHandlePortIndexPart);
 
@@ -152,6 +153,7 @@ PYBIND11_MODULE(mollytime, m) {
 			return Self.MakeTile(Value);
 		})
 		.def("erase_tile", &Patch::EraseTile)
+		.def("get_all_tile_handles", &Patch::GetAllTileHandles)
 		.def("get_tile_symbol", &Patch::GetTileSymbol)
 		.def("get_tile_name", &Patch::GetTileName)
 		.def("set_tile_name", &Patch::SetTileName)

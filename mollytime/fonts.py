@@ -5,16 +5,18 @@ import pygame_setup
 import pygame
 from colors import *
 
-AFACAD_REGULAR = "media/afacad/static/Afacad-Regular.ttf"
-NATIONAL_PARK_LIGHT = "media/national_park/NationalPark-Light.ttf"
-NATIONAL_PARK_REGULAR = "media/national_park/NationalPark-Regular.ttf"
+AFACAD_REGULAR = "afacad/static/Afacad-Regular.ttf"
+NATIONAL_PARK_LIGHT = "national_park/NationalPark-Light.ttf"
+NATIONAL_PARK_REGULAR = "national_park/NationalPark-Regular.ttf"
+
+MEDIA_DIR = os.path.join(os.path.split(__file__)[0], "..", "media")
 
 
 FONT_CACHE = {}
 def get_font(font_path, size):
     size = int(size)
     if font_path:
-        font_path = os.path.abspath(font_path)
+        font_path = os.path.join(MEDIA_DIR, font_path)
         assert(os.path.isfile(font_path))
     key = (font_path, size)
     found = FONT_CACHE.get(key)

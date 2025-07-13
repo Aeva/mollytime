@@ -1,4 +1,7 @@
 
+import os
+import threading
+from tkinter import filedialog
 from .common import *
 from .select import select_screen
 from .calc import calculator_screen
@@ -11,6 +14,11 @@ class inspect_screen(editor_screen):
         self.press_start = None
         self.set_screen_label(editor, "inspect")
         self.repopulate_sidebar(editor)
+        self.pending_save = None
+        self.pending_load = None
+        self.search_path = None
+        self.save_path = None
+        self.load_path = None
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -22,13 +30,6 @@ class inspect_screen(editor_screen):
 
         active_icon = editor.inspect_active
 
-        goto_select_rect = pygame.Rect(
-            editor.grid_size,
-            2 * editor.grid_size * 3,
-            editor.grid_size * 2, editor.grid_size * 2)
-
-        goto_select_icon = editor.select_target
-
         goto_move_rect = pygame.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
@@ -36,10 +37,33 @@ class inspect_screen(editor_screen):
 
         goto_move_icon = editor.move_target
 
+        goto_select_rect = pygame.Rect(
+            editor.grid_size,
+            2 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_select_icon = editor.select_target
+
+        goto_save_rect = pygame.Rect(
+            editor.grid_size,
+            3 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_save_icon = editor.save_target
+
+        goto_load_rect = pygame.Rect(
+            editor.grid_size,
+            4 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_load_icon = editor.load_target
+
         self.side_bar_targets = [
             (active_rect, active_icon, None),
             (goto_select_rect, goto_select_icon, self.goto_select_screen),
-            (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen)]
+            (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen),
+            (goto_save_rect, goto_save_icon, self.goto_save_patch),
+            (goto_load_rect, goto_load_icon, self.goto_load_patch)]
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
@@ -62,6 +86,69 @@ class inspect_screen(editor_screen):
         self.update_sidebar = True
         editor.clear_selection()
 
+    def save_patch(self, editor):
+        self.search_path = os.path.split(self.save_path)[0]
+        editor.save_patch(self.save_path)
+
+    def load_patch(self, editor):
+        assert(os.path.isfile(self.load_path))
+        self.search_path = os.path.split(self.load_path)[0]
+        editor.load_patch(self.load_path)
+
+    def goto_save_patch(self, editor):
+        assert(self.pending_save is None)
+        assert(self.pending_load is None)
+
+        class SaveThread(threading.Thread):
+            def __init__(self, search_path):
+                self.search_path = search_path
+                self.save_path = None
+                super().__init__()
+                self.start()
+
+            def run(self):
+                file_types = (
+                    ('mollytime files', '*.patch'),
+                    ('all files', '*'))
+                if self.search_path and os.path.isdir(self.search_path):
+                    patch_dir = self.search_path
+                else:
+                    patch_dir = "~"
+                found = filedialog.SaveAs(
+                    title = "Save Patch", initialdir = patch_dir, filetypes = file_types).show()
+                if found:
+                    self.save_path = found
+
+        self.purge_events()
+        self.pending_save = SaveThread(self.search_path)
+
+    def goto_load_patch(self, editor):
+        assert(self.pending_save is None)
+        assert(self.pending_load is None)
+
+        class LoadThread(threading.Thread):
+            def __init__(self, search_path):
+                self.search_path = search_path
+                self.load_path = None
+                super().__init__()
+                self.start()
+
+            def run(self):
+                file_types = (
+                    ('mollytime files', '*.patch'),
+                    ('all files', '*'))
+                if self.search_path and os.path.isdir(self.search_path):
+                    patch_dir = self.search_path
+                else:
+                    patch_dir = "~"
+                found = filedialog.Open(
+                    title = "Open Patch", initialdir = patch_dir, filetypes = file_types).show()
+                if found and os.path.isfile(found):
+                    self.load_path = found
+
+        self.purge_events()
+        self.pending_load = LoadThread(self.search_path)
+
     def on_move(self, editor, pos):
         self.cursor_pos = pos
 
@@ -79,6 +166,9 @@ class inspect_screen(editor_screen):
         self.press_start = pos
 
     def on_press(self, editor, pos):
+        if self.pending_save or self.pending_load:
+            return
+
         if editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
@@ -111,6 +201,22 @@ class inspect_screen(editor_screen):
         self.press_start = None
 
     def draw(self, editor):
+        if self.pending_save is not None:
+            self.pending_save.join(timeout=0)
+            if not self.pending_save.is_alive():
+                self.save_path = self.pending_save.save_path
+                self.pending_save = None
+                if self.save_path:
+                    self.save_patch(editor)
+
+        if self.pending_load is not None:
+            self.pending_load.join(timeout=0)
+            if not self.pending_load.is_alive():
+                self.load_path = self.pending_load.load_path
+                self.pending_load = None
+                if self.load_path:
+                    self.load_patch(editor)
+
         update_anything = False
 
         # draw the play area

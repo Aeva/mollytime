@@ -61,6 +61,7 @@ enum class OpCode : uint32_t
 };
 
 
+PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber);
 TileHandle PortHandleTilePart(PortHandle Handle);
 uint32_t PortHandlePortIndexPart(PortHandle Handle);
 
@@ -128,6 +129,8 @@ struct Patch
     TileHandle MakeTile(OpCode Symbol);
     TileHandle MakeTile(double Constant);
     void EraseTile(TileHandle Tile);
+
+    std::vector<TileHandle> GetAllTileHandles();
 
     OpCode GetTileSymbol(TileHandle Tile);
 
