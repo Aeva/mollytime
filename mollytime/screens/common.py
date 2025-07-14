@@ -175,7 +175,14 @@ class program_card:
                         in_tile = rewrite[in_key[0]]
                         in_index = out_key[1]
                         in_port = mollytime.make_port_handle(in_tile, in_index)
-                        self.patch.connect_tiles(out_port, in_port)
+                        try:
+                            self.patch.connect_tiles(out_port, in_port)
+                        except:
+                            old_out_port = patch_child.attrib["from"]
+                            old_in_port = patch_child.attrib["to"]
+                            print(f"Unable to connect {old_out_port} to {old_in_port}!")
+                            print(f"(translated to {out_tile}:{out_index} -> {in_tile}:{in_index} aka {out_port} -> {in_port}")
+                            raise
         self.recenter()
 
 
