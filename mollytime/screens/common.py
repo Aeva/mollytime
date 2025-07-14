@@ -159,6 +159,7 @@ class program_card:
                         x = int(patch_child.attrib["x"])
                         y = int(patch_child.attrib["y"])
                         symbol = opcode_lookup[patch_child.attrib["symbol"]]
+                        assert(old_id not in rewrite)
                         if symbol == OpCode.CONST:
                             value = float(patch_child.attrib["value"])
                             rewrite[old_id] = self.make_constant((x, y), value)
@@ -173,7 +174,7 @@ class program_card:
                         out_port = mollytime.make_port_handle(out_tile, out_index)
                         in_key = [int(i) for i in patch_child.attrib["to"].split(":")]
                         in_tile = rewrite[in_key[0]]
-                        in_index = out_key[1]
+                        in_index = in_key[1]
                         in_port = mollytime.make_port_handle(in_tile, in_index)
                         try:
                             self.patch.connect_tiles(out_port, in_port)
@@ -181,7 +182,13 @@ class program_card:
                             old_out_port = patch_child.attrib["from"]
                             old_in_port = patch_child.attrib["to"]
                             print(f"Unable to connect {old_out_port} to {old_in_port}!")
-                            print(f"(translated to {out_tile}:{out_index} -> {in_tile}:{in_index} aka {out_port} -> {in_port}")
+                            print(f" - translated to {out_tile}:{out_index} -> {in_tile}:{in_index} aka {out_port} -> {in_port}")
+                            print(f" - tile {out_tile} is a {self.patch.get_tile_symbol(out_tile)}")
+                            for name in self.patch.get_tile_output_ports(out_tile):
+                                print(f"   - {name} --->")
+                            print(f" - tile {in_tile} is a {self.patch.get_tile_symbol(in_tile)}")
+                            for name in self.patch.get_tile_input_ports(out_tile):
+                                print(f"   ---> {name}")
                             raise
         self.recenter()
 
