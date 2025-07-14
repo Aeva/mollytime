@@ -141,6 +141,7 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("make_port_handle", &MakePortHandle);
 	m.def("decode_port_tile", &PortHandleTilePart);
 	m.def("decode_port_index", &PortHandlePortIndexPart);
+	m.def("get_symbol_name", &GetDefaultName);
 
 	py::class_<Patch>(m, "Patch")
 		.def(py::init<>())

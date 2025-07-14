@@ -67,6 +67,9 @@ TileHandle PortHandleTilePart(PortHandle Handle);
 uint32_t PortHandlePortIndexPart(PortHandle Handle);
 
 
+std::string GetDefaultName(OpCode Symbol);
+
+
 struct RunningState
 {
     RunningState(double InSample)

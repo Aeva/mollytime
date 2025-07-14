@@ -1,5 +1,5 @@
 
-from mollytime import OpCode
+from mollytime import OpCode, get_symbol_name
 from .common import *
 
 
@@ -26,13 +26,13 @@ class pick_and_place_screen(editor_screen):
             (":D", [
                 [OpCode.OUT, OpCode.SIN],
                 [OpCode.TRI, OpCode.SQR],
-                ["next", OpCode.LOUD_FUDGE],
+                ["next", OpCode.RNG],
                 [OpCode.MIN, OpCode.ADD],
                 [OpCode.MAX, OpCode.MUL],
             ]),
             ("8)", [
                 [OpCode.MIX, OpCode.FLP],
-                [OpCode.RNG, OpCode.ADSR],
+                [OpCode.LOUD_FUDGE, OpCode.ADSR],
                 ["next", OpCode.MIDI_HZ],
                 [OpCode.GATE, OpCode.NOTE],
                 [OpCode.PRES, OpCode.VELO],
@@ -228,12 +228,10 @@ class pick_and_place_screen(editor_screen):
                 editor.valid_placement.draw(frame, rect, label)
 
             elif self.prospective_tile is not None and self.last_valid_position and not self.drop_deletes:
-                if self.prospective_tile == OpCode.FLP:
-                    label = "flip\nflop"
-                elif type(self.prospective_tile) in (int, float):
+                if type(self.prospective_tile) in (int, float):
                     label = f"{self.prospective_tile}"
                 else:
-                    label = self.prospective_tile.name.lower()
+                    label = get_symbol_name(self.prospective_tile)
                 rect = editor.get_grid_rect(self.last_valid_position)
                 editor.valid_placement.draw(frame, rect, label)
 
@@ -247,12 +245,10 @@ class pick_and_place_screen(editor_screen):
             for archetile, rect in self.tile_palette.items():
                 if archetile == "next":
                     label = self.palette_name
-                elif archetile == OpCode.FLP:
-                    label = "flip\nflop"
                 elif type(archetile) in (int, float):
                     label = f"{archetile}"
                 else:
-                    label = archetile.name.lower()
+                    label = get_symbol_name(archetile)
                 editor.tile_bg.draw(frame, rect, label)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
@@ -273,12 +269,10 @@ class pick_and_place_screen(editor_screen):
             rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
             rect.center = self.cursor_pos
             if self.prospective_tile is not None:
-                if self.prospective_tile == OpCode.FLP:
-                    label = "flip\nflop"
-                elif type(self.prospective_tile) in (int, float):
+                if type(self.prospective_tile) in (int, float):
                     label = f"{self.prospective_tile}"
                 else:
-                    label = self.prospective_tile.name.lower()
+                    label = get_symbol_name(self.prospective_tile)
             else:
                 label = editor.patch.get_tile_label(self.grabbed_tile)
 

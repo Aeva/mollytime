@@ -143,6 +143,13 @@ struct SymbolInfo
 
 const SymbolInfo SymbolInfoMap;
 
+
+std::string GetDefaultName(OpCode Symbol)
+{
+    return SymbolInfoMap.DefaultNames[(int)Symbol];
+}
+
+
 int GetClosureCount(OpCode Symbol)
 {
     return SymbolInfoMap.Closures[(int)Symbol];
@@ -542,12 +549,11 @@ struct LoudnessFudgeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         // https://merveilles.town/@cancel/114848900879804284
-        double Hz = Combine(CombinerAdd, Inputs, 0.0);
-        double Note = HzToMidiNote(Hz);
-
         const double Peak = AmplitudeToDecibels(1.0);
         const double LowEdge = HzToMidiNote(2000.0) - 6.0;
         const double HighEdge = LowEdge + 6.0;
+        double Hz = Combine(CombinerAdd, Inputs, 0.0);
+        double Note = HzToMidiNote(Hz);
         double dB = Peak;
         if (Note >= LowEdge && Note <= HighEdge)
         {
