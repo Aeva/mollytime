@@ -42,6 +42,35 @@ double Roll()
 }
 
 
+constexpr double MidiNoteToHz(double Note)
+{
+    double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
+    return Hz;
+}
+
+
+constexpr double HzToMidiNote(double Hz)
+{
+    double Note = std::log2(Hz / 440.0) * 12.0 + 69.0;
+    return Note;
+}
+
+
+constexpr double AmplitudeToDecibels(double Amplitude)
+{
+    // https://stackoverflow.com/questions/2445756/how-can-i-calculate-audio-db-level/9812267#9812267
+    double dB = 20.0 * std::log10(Amplitude);
+    return dB;
+}
+
+
+constexpr double DecibelsToAmplitude(double dB)
+{
+    double Amplitude = std::pow(10.0, dB / 20.0);
+    return Amplitude;
+}
+
+
 PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber)
 {
     return (uint64_t(TileId) << 32) | uint64_t(PortNumber);
@@ -99,6 +128,7 @@ struct SymbolInfo
         Set(OpCode::VELO, "velocity", {}, {"velocity"});
         Set(OpCode::PRES, "pressure", {}, {"pressure"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
+        Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -497,12 +527,44 @@ struct MidiToHzThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         double Note = Combine(CombinerAdd, Inputs, 0.0);
-        double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
-        Output->Set(Hz);
+        Output->Set(MidiNoteToHz(Note));
     }
 
     virtual ~MidiToHzThunk() {};
 };
+
+
+struct LoudnessFudgeThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        // https://merveilles.town/@cancel/114848900879804284
+        double Hz = Combine(CombinerAdd, Inputs, 0.0);
+        double Note = HzToMidiNote(Hz);
+
+        const double Peak = AmplitudeToDecibels(1.0);
+        const double LowEdge = HzToMidiNote(2000.0) - 6.0;
+        const double HighEdge = LowEdge + 6.0;
+        double dB = Peak;
+        if (Note >= LowEdge && Note <= HighEdge)
+        {
+            dB -= 3.0;
+        }
+        else
+        {
+            double NearestEdge = (Note < LowEdge) ? LowEdge : HighEdge;
+            double Offset = std::abs(Note - NearestEdge) / 12.0;
+            dB += Offset * 4.5;
+        }
+        Output->Set(DecibelsToAmplitude(dB));
+    }
+
+    virtual ~LoudnessFudgeThunk() {};
+};
+
 
 
 Patch::Patch()
@@ -1000,6 +1062,13 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::MIDI_HZ)
             {
                 auto Thunk = std::make_shared<MidiToHzThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::LOUD_FUDGE)
+            {
+                auto Thunk = std::make_shared<LoudnessFudgeThunk>();
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));

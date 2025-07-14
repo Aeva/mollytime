@@ -57,6 +57,7 @@ enum class OpCode : uint32_t
     VELO,
     PRES,
     MIDI_HZ,
+    LOUD_FUDGE,
     Count
 };
 

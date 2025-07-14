@@ -26,7 +26,7 @@ class pick_and_place_screen(editor_screen):
             (":D", [
                 [OpCode.OUT, OpCode.SIN],
                 [OpCode.TRI, OpCode.SQR],
-                ["next", None],
+                ["next", OpCode.LOUD_FUDGE],
                 [OpCode.MIN, OpCode.ADD],
                 [OpCode.MAX, OpCode.MUL],
             ]),
