@@ -289,7 +289,7 @@ struct RcpThunk : public InstructionThunk
         double Divisor = Combine(CombinerMul, Inputs, 0.0);
         if (Divisor != 0.0)
         {
-            Output->Set(1.0 / Input);
+            Output->Set(1.0 / Divisor);
         }
     }
 
