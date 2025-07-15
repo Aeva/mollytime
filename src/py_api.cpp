@@ -151,7 +151,7 @@ PYBIND11_MODULE(mollytime, m) {
 		{
 			return Self.MakeTile(Symbol);
 		})
-		.def("make_constant", [](Patch& Self, float Value) -> TileHandle
+		.def("make_constant", [](Patch& Self, double Value) -> TileHandle
 		{
 			return Self.MakeTile(Value);
 		})
