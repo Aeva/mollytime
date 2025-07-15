@@ -14,19 +14,26 @@
 // limitations under the License.
 
 #include "errors.h"
-#if WITH_ASSERTIONS
-#include <cstdlib>
-#include <print>
 
+#include <stdexcept>
 
-void AssertInner(bool Condition, const char* File, const int Line)
-{
-	if (!Condition)
-	{
-		std::print("ASSERTION FAILURE: {}:{}\n", File, Line);
-		BreakPoint();
-		std::abort();
-	}
-}
+#ifdef ENABLE_STACK_TRACES
+#include <sstream>
 
+// Requires package `boost-stacktrace` on Fedora
+// see also: https://www.boost.org/doc/libs/1_88_0/doc/html/stacktrace.html
+#include <boost/stacktrace.hpp>
 #endif
+
+
+void TraceBack()
+{
+#ifdef ENABLE_STACK_TRACES
+	std::stringstream TraceBackBuffer;
+	TraceBackBuffer << "thrown by C++\n\nC++ traceback (most recent call first):\n" << boost::stacktrace::stacktrace() << "\n";
+	std::string ErrorString = TraceBackBuffer.str();
+#else
+	std::string ErrorString = "thrown by C++\n\nC++ traceback unavailable.\n";
+#endif
+	throw std::runtime_error(ErrorString);
+}

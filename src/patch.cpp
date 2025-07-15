@@ -22,6 +22,7 @@
 #include <utility>
 #include <cmath>
 
+#include "errors.h"
 #include "patch.h"
 #include "pipewire.h"
 

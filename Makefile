@@ -12,8 +12,9 @@ TARGET_LIB := mollytime/mollytime$(shell python3-config --extension-suffix)
 DEBUG_MODE_ARGS := -g -O0 -fno-omit-frame-pointer #-fsanitize=address -fno-optimize-sibling-calls
 RELEASE_MODE_ARGS := -O2
 ENABLE_DEBUG := #uncomment me to enable debugging
+ENABLE_STACK_TRACES := #uncomment me to enable stacktraces.  requires boost-stacktrace
 
-COMMON_ARGS := -std=c++2c -fPIC $(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(RELEASE_MODE_ARGS))
+COMMON_ARGS := -std=c++2c -fPIC $(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(RELEASE_MODE_ARGS)) $(if $(ENABLE_STACK_TRACES),-DENABLE_STACK_TRACES,)
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)

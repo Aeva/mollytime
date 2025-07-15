@@ -22,26 +22,4 @@ enum class StatusCode
 };
 
 
-#ifndef WITH_ASSERTIONS
-#define WITH_ASSERTIONS 1
-#endif
-
-
-#if WITH_ASSERTIONS
-void AssertInner(bool Condition, const char* File, const int Line);
-#define Assert(CONDITION) AssertInner(CONDITION, __FILE__, __LINE__);
-#else
-#define Assert(...)
-#endif
-
-
-#if _WIN64
-#define BreakPoint() __debugbreak()
-#define UNREACHABLE() __assume(0)
-#else
-#define BreakPoint()
-#define UNREACHABLE() __builtin_unreachable()
-#endif
-
-
-#define RETURN_ON_FAIL(Expr) { StatusCode Result = Expr; if (Result == StatusCode::FAIL) return Result; }
+void TraceBack();
