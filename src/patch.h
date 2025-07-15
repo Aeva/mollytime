@@ -46,6 +46,7 @@ enum class OpCode : uint32_t
     TRI,
     ADD,
     MUL,
+    RCP,
     MIN,
     MAX,
     MIX,

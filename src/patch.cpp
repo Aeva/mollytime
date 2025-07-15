@@ -118,6 +118,7 @@ struct SymbolInfo
         Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
         Set(OpCode::ADD, "add", {"+"}, {"="});
         Set(OpCode::MUL, "mul", {"*"}, {"="});
+        Set(OpCode::RCP, "rcp", {"*"}, {"="});
         Set(OpCode::MIN, "min", {"min"}, {"="});
         Set(OpCode::MAX, "max", {"max"}, {"="});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
@@ -275,6 +276,21 @@ struct MulThunk : public InstructionThunk
     }
 
     virtual ~MulThunk() {};
+};
+
+
+struct RcpThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        double Input = Combine(CombinerMul, Inputs, 0.0);
+        Output->Set(1.0 / Input);
+    }
+
+    virtual ~RcpThunk() {};
 };
 
 
@@ -980,6 +996,13 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::MUL)
             {
                 auto Thunk = std::make_shared<MulThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::RCP)
+            {
+                auto Thunk = std::make_shared<RcpThunk>();
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
