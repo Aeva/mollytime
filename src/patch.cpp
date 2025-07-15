@@ -286,8 +286,11 @@ struct RcpThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        double Input = Combine(CombinerMul, Inputs, 0.0);
-        Output->Set(1.0 / Input);
+        double Divisor = Combine(CombinerMul, Inputs, 0.0);
+        if (Divisor != 0.0)
+        {
+            Output->Set(1.0 / Input);
+        }
     }
 
     virtual ~RcpThunk() {};
