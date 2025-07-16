@@ -352,6 +352,9 @@ class program_card:
         self.calc_target = plate_bg(self.grid_size, self.tile_color, "calc")
         self.calc_active = plate_bg(self.grid_size, self.select_color, "calc")
 
+        self.scope_target = plate_bg(self.grid_size, self.tile_color, "scope")
+        self.scope_active = plate_bg(self.grid_size, self.select_color, "scope")
+
         self.connect_target = plate_bg(self.grid_size, self.tile_color, "manual\nconnect")
         self.connect_active = plate_bg(self.grid_size, self.select_color, "full\nconnect")
 

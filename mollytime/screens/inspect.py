@@ -8,6 +8,7 @@ from .common import *
 from .select import select_screen
 from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
+from .scope import scope_screen
 
 
 def find_search_path():
@@ -58,26 +59,41 @@ class inspect_screen(editor_screen):
 
         goto_select_icon = editor.select_target
 
-        goto_save_rect = pygame.Rect(
+        goto_scope_rect = pygame.Rect(
             editor.grid_size,
             3 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_scope_icon = editor.scope_target
+
+        goto_save_rect = pygame.Rect(
+            editor.grid_size,
+            4 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_save_icon = editor.save_target
 
         goto_load_rect = pygame.Rect(
             editor.grid_size,
-            4 * editor.grid_size * 3,
+            5 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_load_icon = editor.load_target
 
         self.side_bar_targets = [
             (active_rect, active_icon, None),
-            (goto_select_rect, goto_select_icon, self.goto_select_screen),
             (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen),
+            (goto_select_rect, goto_select_icon, self.goto_select_screen),
+            (goto_scope_rect, goto_scope_icon, self.goto_scope_screen),
             (goto_save_rect, goto_save_icon, self.goto_save_patch),
             (goto_load_rect, goto_load_icon, self.goto_load_patch)]
+
+    def goto_pick_and_place_screen(self, editor):
+        overlay = pick_and_place_screen(editor)
+        self.purge_events()
+        self.update_play_area = True
+        self.update_sidebar = True
+        editor.clear_selection()
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
@@ -86,8 +102,8 @@ class inspect_screen(editor_screen):
         self.update_sidebar = True
         editor.clear_selection()
 
-    def goto_pick_and_place_screen(self, editor):
-        overlay = pick_and_place_screen(editor)
+    def goto_scope_screen(self, editor):
+        overlay = scope_screen(editor)
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True
@@ -250,8 +266,8 @@ class inspect_screen(editor_screen):
                 label = editor.patch.get_tile_label(tile_id)
                 if self.draw_clip and editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
                     editor.clip_tile.draw(frame, rect, label)
-                    continue
-                editor.tile_bg.draw(frame, rect, label)
+                else:
+                    editor.tile_bg.draw(frame, rect, label)
 
             for (out_port, in_port) in editor.patch.wires:
                 lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
