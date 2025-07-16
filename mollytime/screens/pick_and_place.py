@@ -298,6 +298,7 @@ class pick_and_place_screen(editor_screen):
                 editor.invalid_placement.draw(editor.screen, rect, label)
 
         if update_anything:
+            self.force_redraw = False
             self.draw_touch_points(editor)
             pygame.display.flip()
         else:

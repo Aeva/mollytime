@@ -292,6 +292,7 @@ class calculator_screen(editor_screen):
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
+            self.force_redraw = False
             self.draw_touch_points(editor)
             pygame.display.flip()
         else:

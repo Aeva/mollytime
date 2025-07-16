@@ -107,6 +107,7 @@ class inspect_screen(editor_screen):
         assert(os.path.isfile(self.load_path))
         self.search_path = os.path.split(self.load_path)[0]
         editor.load_patch(self.load_path)
+        self.force_redraw = True
 
     def goto_save_patch(self, editor):
         assert(self.pending_save is None)
@@ -270,6 +271,7 @@ class inspect_screen(editor_screen):
 
         if update_anything:
             #font_debug_surface(editor.screen)
+            self.force_redraw = False
             self.draw_touch_points(editor)
             pygame.display.flip()
         else:
