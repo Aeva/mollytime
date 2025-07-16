@@ -871,6 +871,12 @@ std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHand
 }
 
 
+double Patch::ReadOutputProbe()
+{
+    return OutputProbe->Get();
+}
+
+
 ScratchSharedPtr Patch::Compile()
 {
     std::set<TileHandle> BreadCrumbs;
@@ -879,6 +885,7 @@ ScratchSharedPtr Patch::Compile()
     Program->MidiNote = MidiNote;
     Program->MidiVelocity = MidiVelocity;
     Program->MidiPressure = MidiPressure;
+    Program->OutputProbe = OutputProbe;
 
     std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
     {
@@ -1149,6 +1156,7 @@ double Scratch::Eval(double SampleInterval)
     {
         Out += Output->Get();
     }
+    OutputProbe->Set(Out);
     return Out;
 }
 

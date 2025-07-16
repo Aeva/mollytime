@@ -1,4 +1,5 @@
 
+import time
 import random
 from xml.etree import ElementTree
 
@@ -324,6 +325,7 @@ class program_card:
         self.tile_color = parse_color("#dee5e8")
         self.tile_bg = plate_bg(self.grid_size, self.tile_color)
         self.dark_tile_bg = plate_bg(self.grid_size, parse_color("#211a17"))
+        self.clip_tile = plate_bg(self.grid_size, parse_color("#F48"))
 
         self.initial_placement = plate_outline(self.grid_size, parse_color("#888"))
         self.valid_placement = plate_outline(self.grid_size, parse_color("#080"))
@@ -368,10 +370,13 @@ class editor_screen:
     touch_colors = {}
 
     def __init__(self, editor):
-        self.setup(editor)
+        self.last_clip = 0
+        self.draw_clip = False
         self.update_play_area = True
         self.update_sidebar = True
         self.force_redraw = True
+
+        self.setup(editor)
 
         self.live = True
         self.purge_events()
@@ -379,6 +384,20 @@ class editor_screen:
 
         while self.live:
             self.process_events(editor)
+
+            now = time.time()
+            output_probe = abs(editor.patch.read_output_probe())
+            is_clipping = output_probe > 1.0
+            was_clipping = (now - self.last_clip) < .5
+            if is_clipping:
+                self.last_clip = now
+            if not self.draw_clip and was_clipping:
+                self.draw_clip = True
+                self.update_play_area = True
+            elif self.draw_clip and not was_clipping:
+                self.draw_clip = False
+                self.update_play_area = True
+
             self.draw(editor)
 
     def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):

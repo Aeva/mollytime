@@ -20,6 +20,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <set>
+#include <atomic>
 #include <vector>
 #include <string>
 #include <memory>
@@ -93,6 +94,28 @@ private:
 using RunningStateSharedPtr = std::shared_ptr<RunningState>;
 
 
+struct AtomicRunningState
+{
+    AtomicRunningState(double InSample)
+    : Sample(InSample)
+    {
+    }
+    double Get()
+    {
+        return Sample.load();
+    }
+    void Set(double NewSample)
+    {
+        Sample.store(NewSample);
+    }
+
+private:
+    std::atomic<double> Sample;
+};
+
+using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
+
+
 struct InstructionThunk
 {
     virtual void Crank(double SampleInterval) = 0;
@@ -104,6 +127,7 @@ struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
+    AtomicRunningStateSharedPtr OutputProbe;
 
     RunningStateSharedPtr MidiGate;
     RunningStateSharedPtr MidiNote;
@@ -159,6 +183,8 @@ struct Patch
     bool CanConnect(TileHandle OutputTile, TileHandle InputTile);
     std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
 
+    double ReadOutputProbe();
+
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
@@ -170,6 +196,7 @@ private:
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
+    AtomicRunningStateSharedPtr OutputProbe = std::make_shared<AtomicRunningState>(0.0);
 
     void Recompile();
     ScratchSharedPtr Compile();

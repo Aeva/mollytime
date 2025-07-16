@@ -2,6 +2,7 @@
 import os
 import pathlib
 import threading
+import time
 from tkinter import filedialog
 from .common import *
 from .select import select_screen
@@ -247,6 +248,9 @@ class inspect_screen(editor_screen):
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
+                if self.draw_clip and editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
+                    editor.clip_tile.draw(frame, rect, label)
+                    continue
                 editor.tile_bg.draw(frame, rect, label)
 
             for (out_port, in_port) in editor.patch.wires:
