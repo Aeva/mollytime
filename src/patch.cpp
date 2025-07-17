@@ -823,16 +823,17 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
     if (ReceiverSymbol == OpCode::SCOPE)
     {
         // Disconnect all other connected scopes before applying the new connection.
-        for (const auto& [Tile, Symbol] : TileSymbols)
+        std::vector<WireHandle> ScopeConnections;
+        for (const WireHandle& Wire : Wires)
         {
-            if (Symbol == OpCode::SCOPE)
+            if (GetTileSymbol(PortHandleTilePart(std::get<1>(Wire))) == OpCode::SCOPE)
             {
-                PortHandle ScopeInput = MakePortHandle(Tile, 0);
-                for (const PortHandle& ConnectedOutput : ByInput[ScopeInput])
-                {
-                    Disconnect(ConnectedOutput, ScopeInput);
-                }
+                ScopeConnections.push_back(Wire);
             }
+        }
+        for (const WireHandle& Wire : ScopeConnections)
+        {
+            Disconnect(std::get<0>(Wire), std::get<1>(Wire));
         }
     }
 
