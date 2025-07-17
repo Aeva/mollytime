@@ -173,7 +173,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("toggle_connection", &Patch::ToggleConnection)
 		.def("can_connect", &Patch::CanConnect)
 		.def("get_implicit_wire", &Patch::GetImplicitWire)
-		.def("read_output_probe", &Patch::ReadOutputProbe);
+		.def("read_output_probe", &Patch::ReadOutputProbe)
+		.def("read_scope_probe", &Patch::ReadScopeProbe);
 
 	m.def("init_audio", &AudioStream::Init);
 	m.def("shutdown_audio", &AudioStream::Shutdown);

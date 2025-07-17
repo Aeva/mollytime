@@ -897,6 +897,12 @@ std::tuple<double, double> Patch::ReadOutputProbe()
 }
 
 
+std::tuple<double, double> Patch::ReadScopeProbe()
+{
+    return ScopeProbe->Get();
+}
+
+
 ScratchSharedPtr Patch::Compile()
 {
     std::set<TileHandle> BreadCrumbs;
@@ -906,6 +912,7 @@ ScratchSharedPtr Patch::Compile()
     Program->MidiVelocity = MidiVelocity;
     Program->MidiPressure = MidiPressure;
     Program->OutputProbe = OutputProbe;
+    Program->ScopeProbe = ScopeProbe;
 
     std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
     {
@@ -1193,10 +1200,12 @@ double Scratch::Eval(double SampleInterval)
     }
     if (ProbeInput)
     {
-        OutputProbe->Set(ProbeInput->Get());
+        ScopeProbe->Set(ProbeInput->Get());
+        OutputProbe->Set(Out);
     }
     else
     {
+        ScopeProbe->Set(Out);
         OutputProbe->Set(Out);
     }
     return Out;

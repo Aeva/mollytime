@@ -148,6 +148,7 @@ struct Scratch : public MidiHandler
     std::vector<RunningStateSharedPtr> Outputs;
     RunningStateSharedPtr ProbeInput = nullptr;
     ProbeRunningStateSharedPtr OutputProbe;
+    ProbeRunningStateSharedPtr ScopeProbe;
 
     RunningStateSharedPtr MidiGate;
     RunningStateSharedPtr MidiNote;
@@ -204,6 +205,7 @@ struct Patch
     std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
 
     std::tuple<double, double> ReadOutputProbe();
+    std::tuple<double, double> ReadScopeProbe();
 
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
@@ -217,6 +219,7 @@ private:
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
+    ProbeRunningStateSharedPtr ScopeProbe = std::make_shared<ProbeRunningState>();
 
     void Recompile();
     ScratchSharedPtr Compile();
