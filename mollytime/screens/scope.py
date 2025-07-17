@@ -1,4 +1,6 @@
 
+import math
+import time
 import random
 from .common import *
 
@@ -15,7 +17,9 @@ class scope_screen(editor_screen):
         self.wire_color = parse_color("#333")
 
         self.beam_color = parse_color("#fff000")
-        self.scope_cursor = 0
+        self.scope_start = time.time()
+        self.last_x = 0
+        min_sample, max_sample = editor.patch.read_scope_probe()
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -93,24 +97,29 @@ class scope_screen(editor_screen):
 
         min_sample, max_sample = editor.patch.read_scope_probe()
         abs_sample = max(abs(min_sample), abs(max_sample))
-        beam_x = self.scope_cursor
+
+        frame_start = time.time()
+        elapsed = (frame_start - self.scope_start) / 5
+
+        beam_x = int(editor.play_rect.w * elapsed)
         center = editor.play_rect.h // 2 -1
         min_beam_y = center * -min_sample + center
         max_beam_y = center * -max_sample + center
-        beam_rect = pygame.rect.Rect((beam_x, max_beam_y), (1, max(1, abs(max_beam_y - min_beam_y))))
-
-        next_x = (beam_x + 1) % editor.play_rect.w
-        top = (next_x + 1, editor.play_rect.top)
-        bottom = (next_x + 1, editor.play_rect.bottom)
-        draw_line(frame, (0, 0, 0), top, bottom, 1)
+        w = max(1, abs(beam_x - self.last_x))
+        h = max(1, abs(max_beam_y - min_beam_y))
+        beam_rect = pygame.rect.Rect((self.last_x, max_beam_y), (w, h))
+        clear_rect = pygame.rect.Rect((self.last_x, 0), (w, editor.play_rect.h))
 
         beam_color = self.beam_color if abs_sample <= 1.0 else (255, 0, 0)
+        pygame.draw.rect(frame, (0, 0, 0), clear_rect)
         pygame.draw.rect(frame, beam_color, beam_rect)
 
-        self.scope_cursor += 1
-        if self.scope_cursor >= editor.play_rect.w:
-            self.scope_cursor = 0
+        if elapsed > 1:
+            self.last_x = 0
+            self.scope_start = frame_start
             self.beam_color = (random.randint(32, 255), random.randint(32, 255), random.randint(32, 255))
+        else:
+            self.last_x = beam_x
 
         frame.blit(self.screen_label_surface, self.screen_label_rect)
         editor.screen.blit(frame, editor.play_area.viewport)
