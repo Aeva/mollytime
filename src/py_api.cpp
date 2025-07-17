@@ -118,6 +118,7 @@ PYBIND11_MODULE(mollytime, m) {
 
 	py::enum_<OpCode>(m, "OpCode")
 		.value("CONST", OpCode::CONST)
+		.value("SCOPE", OpCode::SCOPE)
 		.value("OUT", OpCode::OUT)
 		.value("SIN", OpCode::SIN)
 		.value("SQR", OpCode::SQR)

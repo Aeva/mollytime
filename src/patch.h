@@ -41,6 +41,7 @@ using WireHandle = std::tuple<PortHandle, PortHandle>;
 enum class OpCode : uint32_t
 {
     CONST = 0,
+    SCOPE,
     OUT,
     SIN,
     SQR,
@@ -145,6 +146,7 @@ struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
+    RunningStateSharedPtr ProbeInput = nullptr;
     ProbeRunningStateSharedPtr OutputProbe;
 
     RunningStateSharedPtr MidiGate;

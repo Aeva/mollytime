@@ -112,6 +112,7 @@ struct SymbolInfo
         Closures.resize((int)OpCode::Count);
 
         Set(OpCode::CONST, "const", {}, {"#"});
+        Set(OpCode::SCOPE, "scope", {"out"}, {});
         Set(OpCode::OUT, "out", {"out"}, {});
         Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
         Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
@@ -915,7 +916,7 @@ ScratchSharedPtr Patch::Compile()
             }
         }
 
-        if (Symbol == OpCode::OUT)
+        if (Symbol == OpCode::OUT || Symbol == OpCode::SCOPE)
         {
             // The output tile does not have any specific behavior, but may emit
             // an implicit add.
@@ -1119,6 +1120,7 @@ ScratchSharedPtr Patch::Compile()
         std::unreachable();
     };
 
+    std::vector<TileHandle> Scopes;
     Program->Outputs.clear();
     for (const auto& [Tile, Symbol] : TileSymbols)
     {
@@ -1129,6 +1131,20 @@ ScratchSharedPtr Patch::Compile()
             {
                 Program->Outputs.push_back(Output);
             }
+        }
+        else if (Symbol == OpCode::SCOPE)
+        {
+            Scopes.push_back(Tile);
+        }
+    }
+    for (const TileHandle& Tile : Scopes)
+    {
+        RunningStateSharedPtr Output = Step(Tile);
+        if (Output != nullptr)
+        {
+            // Only one probe may be connected at a time.
+            Program->ProbeInput = Output;
+            break;
         }
     }
 
@@ -1156,7 +1172,14 @@ double Scratch::Eval(double SampleInterval)
     {
         Out += Output->Get();
     }
-    OutputProbe->Set(Out);
+    if (ProbeInput)
+    {
+        OutputProbe->Set(ProbeInput->Get());
+    }
+    else
+    {
+        OutputProbe->Set(Out);
+    }
     return Out;
 }
 
