@@ -245,7 +245,6 @@ class program_card:
         return (int(rel[0] // tile_size), int(rel[1] // tile_size))
 
     def toggle_connection(self, out_key, in_key):
-        before = self.patch.wires
         self.patch.toggle_connection(out_key, in_key)
 
     def toggle_selection(self, tile_id):

@@ -818,6 +818,24 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
     {
         throw std::range_error(std::format("Fatal error: {} is not a known input port!\n", InputPort));
     }
+
+    OpCode ReceiverSymbol = GetTileSymbol(PortHandleTilePart(InputPort));
+    if (ReceiverSymbol == OpCode::SCOPE)
+    {
+        // Disconnect all other connected scopes before applying the new connection.
+        for (const auto& [Tile, Symbol] : TileSymbols)
+        {
+            if (Symbol == OpCode::SCOPE)
+            {
+                PortHandle ScopeInput = MakePortHandle(Tile, 0);
+                for (const PortHandle& ConnectedOutput : ByInput[ScopeInput])
+                {
+                    Disconnect(ConnectedOutput, ScopeInput);
+                }
+            }
+        }
+    }
+
     ByInput[InputPort].insert(OutputPort);
     ByOutput[OutputPort].insert(InputPort);
     Wires.emplace(OutputPort, InputPort);
