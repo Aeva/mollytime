@@ -20,7 +20,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <set>
-#include <atomic>
+#include <mutex>
 #include <vector>
 #include <string>
 #include <memory>
@@ -94,26 +94,44 @@ private:
 using RunningStateSharedPtr = std::shared_ptr<RunningState>;
 
 
-struct AtomicRunningState
+struct ProbeRunningState
 {
-    AtomicRunningState(double InSample)
-    : Sample(InSample)
+    ProbeRunningState()
+    : SampleMin(0.0)
+    , SampleMax(0.0)
+    , Reset(true)
     {
     }
-    double Get()
+    std::tuple<double, double> Get()
     {
-        return Sample.load();
+        std::lock_guard<std::mutex> Lock(Crit);
+        Reset = true;
+        return { SampleMin, SampleMax };
     }
     void Set(double NewSample)
     {
-        Sample.store(NewSample);
+        std::lock_guard<std::mutex> Lock(Crit);
+        if (Reset)
+        {
+            Reset = false;
+            SampleMin = NewSample;
+            SampleMax = NewSample;
+        }
+        else
+        {
+            SampleMin = std::min(SampleMin, NewSample);
+            SampleMax = std::max(SampleMax, NewSample);
+        }
     }
 
 private:
-    std::atomic<double> Sample;
+    double SampleMin;
+    double SampleMax;
+    double Reset = 0;
+    std::mutex Crit;
 };
 
-using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
+using ProbeRunningStateSharedPtr = std::shared_ptr<ProbeRunningState>;
 
 
 struct InstructionThunk
@@ -127,7 +145,7 @@ struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
-    AtomicRunningStateSharedPtr OutputProbe;
+    ProbeRunningStateSharedPtr OutputProbe;
 
     RunningStateSharedPtr MidiGate;
     RunningStateSharedPtr MidiNote;
@@ -183,7 +201,7 @@ struct Patch
     bool CanConnect(TileHandle OutputTile, TileHandle InputTile);
     std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
 
-    double ReadOutputProbe();
+    std::tuple<double, double> ReadOutputProbe();
 
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
@@ -196,7 +214,7 @@ private:
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
-    AtomicRunningStateSharedPtr OutputProbe = std::make_shared<AtomicRunningState>(0.0);
+    ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
 
     void Recompile();
     ScratchSharedPtr Compile();

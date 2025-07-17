@@ -871,7 +871,7 @@ std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHand
 }
 
 
-double Patch::ReadOutputProbe()
+std::tuple<double, double> Patch::ReadOutputProbe()
 {
     return OutputProbe->Get();
 }

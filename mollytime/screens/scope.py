@@ -91,21 +91,23 @@ class scope_screen(editor_screen):
             radius = max(4, editor.grid_size // 12)
             draw_arrow(frame, self.wire_color, lhs_rect, rhs_rect, radius)
 
-        sample = editor.patch.read_output_probe()
+        min_sample, max_sample = editor.patch.read_output_probe()
+        abs_sample = max(abs(min_sample), abs(max_sample))
         beam_x = self.scope_cursor
         center = editor.play_rect.h * .5
-        beam_y = center * -sample + center
+        min_beam_y = center * -min_sample + center
+        max_beam_y = center * -max_sample + center
 
         next_x = (beam_x + 1) % editor.play_rect.w
         top = (next_x + 1, editor.play_rect.top)
         bottom = (next_x + 1, editor.play_rect.bottom)
         draw_line(frame, (0, 0, 0), top, bottom, 1)
 
-        beam_color = self.beam_color if abs(sample) <= 1.0 else (255, 0, 0)
+        beam_color = self.beam_color if abs_sample <= 1.0 else (255, 0, 0)
 
-        zero = (beam_x, center)
-        beam = (beam_x, beam_y)
-        draw_line(frame, beam_color, zero, beam, 1)
+        min_beam = (beam_x, min_beam_y)
+        max_beam = (beam_x, max_beam_y)
+        draw_line(frame, beam_color, min_beam, max_beam, 1)
 
         self.scope_cursor += 1
         if self.scope_cursor >= editor.play_rect.w:

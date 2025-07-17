@@ -389,7 +389,8 @@ class editor_screen:
             self.process_events(editor)
 
             now = time.time()
-            output_probe = abs(editor.patch.read_output_probe())
+            min_sample, max_sample = editor.patch.read_output_probe()
+            output_probe = max(abs(min_sample), abs(max_sample))
             is_clipping = output_probe > 1.0
             was_clipping = (now - self.last_clip) < .5
             if is_clipping:
