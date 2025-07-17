@@ -122,6 +122,8 @@ struct SymbolInfo
         Set(OpCode::RCP, "rcp", {"*"}, {"="});
         Set(OpCode::MIN, "min", {"min"}, {"="});
         Set(OpCode::MAX, "max", {"max"}, {"="});
+        Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
+        Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
@@ -323,6 +325,34 @@ struct MaxThunk : public InstructionThunk
     }
 
     virtual ~MaxThunk() {};
+};
+
+
+struct FloorThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Output->Set(std::floor(Combine(CombinerAdd, Inputs, 0.0)));
+    }
+
+    virtual ~FloorThunk() {};
+};
+
+
+struct CeilThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Output->Set(std::ceil(Combine(CombinerAdd, Inputs, 0.0)));
+    }
+
+    virtual ~CeilThunk() {};
 };
 
 
@@ -1054,6 +1084,20 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::MAX)
             {
                 auto Thunk = std::make_shared<MaxThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::FLOOR)
+            {
+                auto Thunk = std::make_shared<FloorThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::CEIL)
+            {
+                auto Thunk = std::make_shared<CeilThunk>();
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));

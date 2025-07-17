@@ -128,6 +128,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("RCP", OpCode::RCP)
 		.value("MIN", OpCode::MIN)
 		.value("MAX", OpCode::MAX)
+		.value("FLOOR", OpCode::FLOOR)
+		.value("CEIL", OpCode::CEIL)
 		.value("MIX", OpCode::MIX)
 		.value("FLP", OpCode::FLP)
 		.value("RNG", OpCode::RNG)

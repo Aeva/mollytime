@@ -51,6 +51,8 @@ enum class OpCode : uint32_t
     RCP,
     MIN,
     MAX,
+    FLOOR,
+    CEIL,
     MIX,
     FLP,
     RNG,

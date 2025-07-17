@@ -46,7 +46,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             (":O", [
                 [OpCode.SCOPE, OpCode.RCP],
-                [None, None],
+                [OpCode.CEIL, OpCode.FLOOR],
                 ["next", None],
                 [OpCode.MIN, OpCode.ADD],
                 [OpCode.MAX, OpCode.MUL],
