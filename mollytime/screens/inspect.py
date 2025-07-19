@@ -35,6 +35,8 @@ class inspect_screen(editor_screen):
         self.save_path = None
         self.load_path = None
 
+        self.hold = {}
+
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
@@ -214,6 +216,10 @@ class inspect_screen(editor_screen):
                         editor.toggle_selection(tile_id)
                         self.goto_calculator(editor)
                         return
+                    elif symbol == OpCode.HOLD:
+                        self.hold[tile_id] = True
+                        editor.patch.set_special_input(tile_id, 1.0)
+                        return
                     break
 
             if not something_happened:
@@ -230,6 +236,9 @@ class inspect_screen(editor_screen):
 
     def on_release(self, editor, pos):
         self.press_start = None
+        for tile_id in self.hold:
+            editor.patch.set_special_input(tile_id, 0.0)
+        self.hold = {}
 
     def draw(self, editor):
         if self.pending_save is not None:

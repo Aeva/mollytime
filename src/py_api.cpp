@@ -140,6 +140,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("PRES", OpCode::PRES)
 		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)
+		.value("HOLD", OpCode::HOLD)
 		.value("Count", OpCode::Count);
 
 	m.def("make_port_handle", &MakePortHandle);
@@ -176,7 +177,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("can_connect", &Patch::CanConnect)
 		.def("get_implicit_wire", &Patch::GetImplicitWire)
 		.def("read_output_probe", &Patch::ReadOutputProbe)
-		.def("read_scope_probe", &Patch::ReadScopeProbe);
+		.def("read_scope_probe", &Patch::ReadScopeProbe)
+		.def("set_special_input", &Patch::SetSpecialInput);
 
 	m.def("init_audio", &AudioStream::Init);
 	m.def("shutdown_audio", &AudioStream::Shutdown);

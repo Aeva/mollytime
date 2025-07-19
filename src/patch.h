@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <set>
 #include <mutex>
+#include <atomic>
 #include <vector>
 #include <string>
 #include <memory>
@@ -63,6 +64,7 @@ enum class OpCode : uint32_t
     PRES,
     MIDI_HZ,
     LOUD_FUDGE,
+    HOLD,
     Count
 };
 
@@ -97,12 +99,34 @@ private:
 using RunningStateSharedPtr = std::shared_ptr<RunningState>;
 
 
+struct AtomicRunningState
+{
+    AtomicRunningState(double InSample)
+        : Sample(InSample)
+    {
+    }
+    double Get()
+    {
+        return Sample.load();
+    }
+    void Set(double NewSample)
+    {
+        Sample.store(NewSample);
+    }
+
+private:
+    std::atomic<double> Sample;
+};
+
+using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
+
+
 struct ProbeRunningState
 {
     ProbeRunningState()
-    : SampleMin(0.0)
-    , SampleMax(0.0)
-    , Reset(true)
+        : SampleMin(0.0)
+        , SampleMax(0.0)
+        , Reset(true)
     {
     }
     std::tuple<double, double> Get()
@@ -208,6 +232,7 @@ struct Patch
 
     std::tuple<double, double> ReadOutputProbe();
     std::tuple<double, double> ReadScopeProbe();
+    void SetSpecialInput(TileHandle Tile, double Value);
 
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
@@ -220,6 +245,7 @@ private:
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
+    std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
     ProbeRunningStateSharedPtr ScopeProbe = std::make_shared<ProbeRunningState>();
 

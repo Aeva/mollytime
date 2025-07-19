@@ -134,6 +134,7 @@ struct SymbolInfo
         Set(OpCode::PRES, "pressure", {}, {"pressure"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
+        Set(OpCode::HOLD, "push\n&\nhold", {}, {"gate"});
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -623,6 +624,20 @@ struct LoudnessFudgeThunk : public InstructionThunk
 };
 
 
+struct HoldThunk : public InstructionThunk
+{
+    AtomicRunningStateSharedPtr Input;
+    RunningStateSharedPtr Output;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        Output->Set(Input->Get());
+    }
+
+    virtual ~HoldThunk() {};
+};
+
+
 
 Patch::Patch()
     : LastAssignedTileHandle(0)
@@ -657,6 +672,10 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     {
         PortHandle Closure = MakeClosureHandle(AllocatedHandle, ClosureIndex);
         ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
+    }
+    if (Symbol == OpCode::HOLD)
+    {
+        SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
     }
     return AllocatedHandle;
 }
@@ -700,6 +719,11 @@ void Patch::EraseTile(TileHandle Tile)
     {
         PortHandle Closure = MakeClosureHandle(Tile, ClosureIndex);
         ActiveOutputs.erase(Closure);
+    }
+
+    if (Symbol == OpCode::HOLD)
+    {
+        SpecialInputs.erase(Tile);
     }
 
     TileSymbols.erase(Tile);
@@ -930,6 +954,12 @@ std::tuple<double, double> Patch::ReadOutputProbe()
 std::tuple<double, double> Patch::ReadScopeProbe()
 {
     return ScopeProbe->Get();
+}
+
+
+void Patch::SetSpecialInput(TileHandle Tile, double Value)
+{
+    SpecialInputs[Tile]->Set(Value);
 }
 
 
@@ -1181,6 +1211,13 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<LoudnessFudgeThunk>();
                 Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::HOLD)
+            {
+                auto Thunk = std::make_shared<HoldThunk>();
+                Thunk->Input = SpecialInputs[Tile];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
