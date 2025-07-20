@@ -9,10 +9,11 @@ OBJECT_TARGETS = $(shell find $(SRC_DIR) -name '*.cpp' | sed -e 's/$(SRC_DIR)/$(
 
 TARGET_LIB := mollytime/mollytime$(shell python3-config --extension-suffix)
 
+PERF_MODE_ARGS := -g -O2 -fno-omit-frame-pointer
 DEBUG_MODE_ARGS := -g -O0 -fno-omit-frame-pointer #-fsanitize=address -fno-optimize-sibling-calls
 RELEASE_MODE_ARGS := -O2
 ENABLE_DEBUG := #uncomment me to enable debugging
-ENABLE_STACK_TRACES := #uncomment me to enable stacktraces.  requires boost-stacktrace
+ENABLE_STACK_TRACES := uncomment me to enable stacktraces.  requires boost-stacktrace
 ENABLE_PERF := #uncomment me to enable perf instrumentation (tracy)
 
 TRACY_DIR := third_party/tracy-0.12.2/public
@@ -22,7 +23,7 @@ TRACY_OBJECT := $(BUILD_DIR)/TracyClient.o
 TRACY_TARGET := $(if $(ENABLE_PERF),$(TRACY_OBJECT),)
 
 INSTRUMENTATION := \
-	$(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(RELEASE_MODE_ARGS)) \
+	$(if $(ENABLE_DEBUG),$(DEBUG_MODE_ARGS),$(if $(ENABLE_PERF),$(PERF_MODE_ARGS),$(RELEASE_MODE_ARGS))) \
 	$(if $(ENABLE_STACK_TRACES),-DENABLE_STACK_TRACES,) \
 	$(if $(ENABLE_PERF),$(INCLUDE_TRACY) -DTRACY_ENABLE,)
 

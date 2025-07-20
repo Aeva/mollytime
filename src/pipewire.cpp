@@ -70,6 +70,7 @@ void StreamRealTimeThread::OnProcess(void *UserData)
 
 void StreamRealTimeThread::OnProcessInner()
 {
+    TRACEABLE_SCOPE;
     pw_buffer* StreamBuffer = pw_stream_dequeue_buffer(Stream);
     if (!StreamBuffer)
     {
@@ -200,6 +201,7 @@ void PipeWireStream::Setup(int SampleRate)
 
 void PipeWireStream::ProgramChange(ScratchSharedPtr& NewProgram)
 {
+    TRACEABLE_SCOPE;
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
     BufferState.PendingProgram = NewProgram;
 }
@@ -207,6 +209,7 @@ void PipeWireStream::ProgramChange(ScratchSharedPtr& NewProgram)
 
 void PipeWireStream::Run()
 {
+    TRACEABLE_SCOPE;
     if (Loop && Stream)
     {
         pw_thread_loop_lock(Loop);
@@ -218,6 +221,7 @@ void PipeWireStream::Run()
 
 void PipeWireStream::Reset()
 {
+    TRACEABLE_SCOPE;
     if (Loop)
     {
         pw_thread_loop_lock(Loop);
@@ -262,6 +266,7 @@ AudioStream* AudioStream::Get()
 
 void AudioStream::Init(int SampleRate)
 {
+    TRACEABLE_SCOPE;
     Get()->Setup(SampleRate);
     Get()->Run();
 }
@@ -269,6 +274,7 @@ void AudioStream::Init(int SampleRate)
 
 void AudioStream::Shutdown()
 {
+    TRACEABLE_SCOPE;
     if (StreamSingleton != nullptr)
     {
         delete StreamSingleton;

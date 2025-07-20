@@ -14,19 +14,22 @@
 // limitations under the License.
 
 #pragma once
+#define FORCE_SAMPLE_PROFILING 0
 
-#ifdef TRACY_ENABLE
+
+#if defined(TRACY_ENABLE) && !FORCE_SAMPLE_PROFILING
 #include "tracy/Tracy.hpp"
-
-
 
 #define DECLARE_TRACEABLE_MUTEX(NAME) TracyLockable(std::mutex, NAME)
 #define TRACEABLE_LOCK_GUARD(LOCK_VAR) std::lock_guard<LockableBase(std::mutex)> LOCK_GUARD_##__LINE__(LOCK_VAR)
+#define TRACEABLE_SCOPE ZoneScoped
+#define TRACEABLE_NAMED_SCOPE(NAME) ZoneScopedN(NAME)
 
 #else
 
 #define DECLARE_TRACEABLE_MUTEX(NAME) std::mutex NAME
 #define TRACEABLE_LOCK_GUARD(LOCK_VAR) std::lock_guard<std::mutex> LOCK_GUARD_##__LINE__(LOCK_VAR)
-
+#define TRACEABLE_SCOPE
+#define TRACEABLE_NAMED_SCOPE(NAME)
 
 #endif

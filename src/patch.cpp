@@ -186,6 +186,7 @@ struct SinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("NAME");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
@@ -209,6 +210,7 @@ struct SqrThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("SqrThunk");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
@@ -233,6 +235,7 @@ struct TriThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("TriThunk");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase += Tau * Hz * SampleInterval;
@@ -262,6 +265,7 @@ struct AddThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("AddThunk");
         Output->Set(Combine(CombinerAdd, Inputs, 0.0));
     }
 
@@ -276,6 +280,7 @@ struct MulThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("MulThunk");
         Output->Set(Combine(CombinerMul, Inputs, 0.0));
     }
 
@@ -290,6 +295,7 @@ struct RcpThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("RcpThunk");
         double Divisor = Combine(CombinerMul, Inputs, 0.0);
         if (Divisor != 0.0)
         {
@@ -308,6 +314,7 @@ struct MinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("MinThunk");
         Output->Set(Combine(CombinerMin, Inputs, 0.0));
     }
 
@@ -322,6 +329,7 @@ struct MaxThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("MaxThunk");
         Output->Set(Combine(CombinerMax, Inputs, 0.0));
     }
 
@@ -336,6 +344,7 @@ struct FloorThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("FloorThunk");
         Output->Set(std::floor(Combine(CombinerAdd, Inputs, 0.0)));
     }
 
@@ -350,6 +359,7 @@ struct CeilThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("CeilThunk");
         Output->Set(std::ceil(Combine(CombinerAdd, Inputs, 0.0)));
     }
 
@@ -366,6 +376,7 @@ struct MixThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("MixThunk");
         double X = Combine(CombinerAdd, Left, 0.0);
         double Y = Combine(CombinerAdd, Right, 0.0);
         double Alpha = Combine(CombinerAdd, Balance, 0.5);
@@ -385,6 +396,7 @@ struct FlipFlopThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
         double LastEven = EvenOutput->Get();
         double LastOdd = OddOutput->Get();
         if (LastEven == LastOdd)
@@ -427,6 +439,7 @@ struct RandomThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("RandomThunk");
         if (Inputs.size() > 0)
         {
             double Clock = Combine(CombinerAdd, Inputs, 0.0);
@@ -458,6 +471,7 @@ struct AdsrThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("AdsrThunk");
         double Trig = Combine(CombinerAdd, Trigger, 0.0);
         double Previous = LastTrigger->Get();
         LastTrigger->Set(Trig);
@@ -529,6 +543,7 @@ struct GateThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("GateThunk");
         Output->Set(MidiGate->Get());
     }
 
@@ -543,6 +558,7 @@ struct NoteThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("NoteThunk");
         Output->Set(MidiNote->Get());
     }
 
@@ -557,6 +573,7 @@ struct VelocityThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("VelocityThunk");
         Output->Set(MidiVelocity->Get());
     }
 
@@ -571,6 +588,7 @@ struct PressureThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("PressureThunk");
         Output->Set(MidiPressure->Get());
     }
 
@@ -585,6 +603,7 @@ struct MidiToHzThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
         double Note = Combine(CombinerAdd, Inputs, 0.0);
         Output->Set(MidiNoteToHz(Note));
     }
@@ -600,6 +619,7 @@ struct LoudnessFudgeThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
         // https://merveilles.town/@cancel/114848900879804284
         const double Peak = AmplitudeToDecibels(1.0);
         const double LowEdge = HzToMidiNote(2000.0) - 6.0;
@@ -631,6 +651,7 @@ struct BoopThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("BoopThunk");
         Output->Set(Input->Get());
     }
 
@@ -647,6 +668,7 @@ Patch::Patch()
 
 TileHandle Patch::MakeTile(OpCode Symbol)
 {
+    TRACEABLE_SCOPE;
     TileHandle AllocatedHandle = ++LastAssignedTileHandle;
     {
         auto Result = TileSymbols.try_emplace(AllocatedHandle, Symbol);
@@ -683,6 +705,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
 
 TileHandle Patch::MakeTile(double Constant)
 {
+    TRACEABLE_SCOPE;
     const TileHandle AllocatedHandle = MakeTile(OpCode::CONST);
     auto Result = TileConstants.try_emplace(AllocatedHandle, Constant);
     if (!Result.second)
@@ -696,6 +719,7 @@ TileHandle Patch::MakeTile(double Constant)
 
 void Patch::EraseTile(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     std::vector<WireHandle> MatchingWires;
     for (WireHandle Wire : Wires)
     {
@@ -735,6 +759,7 @@ void Patch::EraseTile(TileHandle Tile)
 
 std::vector<TileHandle> Patch::GetAllTileHandles()
 {
+    TRACEABLE_SCOPE;
     std::vector<TileHandle> Handles;
     for (const auto& Entry : TileSymbols)
     {
@@ -746,12 +771,14 @@ std::vector<TileHandle> Patch::GetAllTileHandles()
 
 OpCode Patch::GetTileSymbol(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     return TileSymbols.at(Tile);
 }
 
 
 std::string Patch::GetTileName(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     auto Found = TileNames.find(Tile);
     if (Found == TileNames.end())
     {
@@ -767,18 +794,21 @@ std::string Patch::GetTileName(TileHandle Tile)
 
 void Patch::SetTileName(TileHandle Tile, std::string NewName)
 {
+    TRACEABLE_SCOPE;
     TileNames[Tile] = NewName;
 }
 
 
 double Patch::GetConstant(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     return TileConstants.at(Tile);
 }
 
 
 void Patch::SetConstant(TileHandle Tile, double NewValue)
 {
+    TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
     if (Symbol == OpCode::CONST)
     {
@@ -794,6 +824,7 @@ void Patch::SetConstant(TileHandle Tile, double NewValue)
 
 void Patch::ReplaceConstantOutput(TileHandle Tile, double NewValue)
 {
+    TRACEABLE_SCOPE;
     // Patch should never mutate the shared pointers stored in Patch::ActiveOutputs,
     // as the active Scratch object will be continuously reading and mutating these
     // values.  By instead replacing the entries stored in Patch::ActiveOutputs, the
@@ -806,6 +837,7 @@ void Patch::ReplaceConstantOutput(TileHandle Tile, double NewValue)
 
 std::string Patch::GetTileLabel(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
     if (Symbol == OpCode::CONST)
     {
@@ -820,6 +852,7 @@ std::string Patch::GetTileLabel(TileHandle Tile)
 
 std::vector<PortHandle> Patch::GetTileInputPorts(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
     int Count = SymbolInfoMap.InputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
@@ -834,6 +867,7 @@ std::vector<PortHandle> Patch::GetTileInputPorts(TileHandle Tile)
 
 std::vector<PortHandle> Patch::GetTileOutputPorts(TileHandle Tile)
 {
+    TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
     int Count = SymbolInfoMap.OutputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
@@ -848,6 +882,7 @@ std::vector<PortHandle> Patch::GetTileOutputPorts(TileHandle Tile)
 
 std::string Patch::GetTileInputName(PortHandle Port)
 {
+    TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(PortHandleTilePart(Port));
     uint32_t PortIndex = PortHandlePortIndexPart(Port);
     return SymbolInfoMap.InputNames[(int)Symbol][PortIndex];
@@ -856,6 +891,7 @@ std::string Patch::GetTileInputName(PortHandle Port)
 
 std::string Patch::GetTileOutputName(PortHandle Port)
 {
+    TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(PortHandleTilePart(Port));
     uint32_t PortIndex = PortHandlePortIndexPart(Port);
     return SymbolInfoMap.OutputNames[(int)Symbol][PortIndex];
@@ -864,6 +900,7 @@ std::string Patch::GetTileOutputName(PortHandle Port)
 
 void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
 {
+    TRACEABLE_SCOPE;
     if (!ByOutput.contains(OutputPort))
     {
         throw std::range_error(std::format("Fatal error: {} is not a known output port!\n", OutputPort));
@@ -901,6 +938,7 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
 
 void Patch::Disconnect(PortHandle OutputPort, PortHandle InputPort)
 {
+    TRACEABLE_SCOPE;
     Wires.erase({OutputPort, InputPort});
     ByInput[InputPort].erase(OutputPort);
     ByOutput[OutputPort].erase(InputPort);
@@ -911,6 +949,7 @@ void Patch::Disconnect(PortHandle OutputPort, PortHandle InputPort)
 
 void Patch::ToggleConnection(PortHandle OutputPort, PortHandle InputPort)
 {
+    TRACEABLE_SCOPE;
     if (Wires.contains({OutputPort, InputPort}))
     {
         Disconnect(OutputPort, InputPort);
@@ -924,6 +963,7 @@ void Patch::ToggleConnection(PortHandle OutputPort, PortHandle InputPort)
 
 bool Patch::CanConnect(TileHandle OutputTile, TileHandle InputTile)
 {
+    TRACEABLE_SCOPE;
     std::vector<PortHandle> OutputPorts = GetTileOutputPorts(OutputTile);
     std::vector<PortHandle> InputPorts = GetTileInputPorts(InputTile);
     return (OutputPorts.size() > 0 && InputPorts.size() > 0);
@@ -932,6 +972,7 @@ bool Patch::CanConnect(TileHandle OutputTile, TileHandle InputTile)
 
 std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHandle InputTile)
 {
+    TRACEABLE_SCOPE;
     std::vector<PortHandle> OutputPorts = GetTileOutputPorts(OutputTile);
     std::vector<PortHandle> InputPorts = GetTileInputPorts(InputTile);
     if (OutputPorts.size() == 1 && InputPorts.size() == 1)
@@ -947,24 +988,28 @@ std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHand
 
 std::tuple<double, double> Patch::ReadOutputProbe()
 {
+    TRACEABLE_SCOPE;
     return OutputProbe->Get();
 }
 
 
 std::tuple<double, double> Patch::ReadScopeProbe()
 {
+    TRACEABLE_SCOPE;
     return ScopeProbe->Get();
 }
 
 
 void Patch::SetSpecialInput(TileHandle Tile, double Value)
 {
+    TRACEABLE_SCOPE;
     SpecialInputs[Tile]->Set(Value);
 }
 
 
 ScratchSharedPtr Patch::Compile()
 {
+    TRACEABLE_SCOPE;
     std::set<TileHandle> BreadCrumbs;
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->MidiGate = MidiGate;
@@ -1261,6 +1306,7 @@ ScratchSharedPtr Patch::Compile()
 
 void Patch::Recompile()
 {
+    TRACEABLE_SCOPE;
     ScratchSharedPtr CurrentProgram = Compile();
     AudioStream::Get()->ProgramChange(CurrentProgram);
 }
@@ -1268,24 +1314,35 @@ void Patch::Recompile()
 
 double Scratch::Eval(double SampleInterval)
 {
-    Midi::ProcessEvents(this);
-
-    for (std::shared_ptr<InstructionThunk>& Thunk : Program)
+    TRACEABLE_SCOPE;
     {
-        Thunk->Crank(SampleInterval);
+        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
+        Midi::ProcessEvents(this);
+    }
+    {
+        TRACEABLE_NAMED_SCOPE("CRANK PHASE");
+        for (std::shared_ptr<InstructionThunk>& Thunk : Program)
+        {
+            Thunk->Crank(SampleInterval);
+        }
     }
     double Out = 0.0;
-    for (RunningStateSharedPtr Output : Outputs)
     {
-        Out += Output->Get();
+        TRACEABLE_NAMED_SCOPE("GATHER OUTPUT");
+        for (RunningStateSharedPtr Output : Outputs)
+        {
+            Out += Output->Get();
+        }
     }
     if (ProbeInput)
     {
+        TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         ScopeProbe->Set(ProbeInput->Get());
         OutputProbe->Set(Out);
     }
     else
     {
+        TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         ScopeProbe->Set(Out);
         OutputProbe->Set(Out);
     }
@@ -1295,6 +1352,7 @@ double Scratch::Eval(double SampleInterval)
 
 void Scratch::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
 {
+    TRACEABLE_SCOPE;
     if (Velocity > 0)
     {
         MidiGate->Set(1.0);
@@ -1313,6 +1371,7 @@ void Scratch::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
 
 void Scratch::NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
 {
+    TRACEABLE_SCOPE;
     if (double(Note) == MidiNote->Get())
     {
         MidiPressure->Set(double(Pressure) / 127.0);
