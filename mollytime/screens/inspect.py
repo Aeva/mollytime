@@ -288,9 +288,10 @@ class inspect_screen(editor_screen):
             self.update_play_area = False
             update_anything = True
 
-            editor.play_area.focus_x = editor.focus_x
-            editor.play_area.focus_y = editor.focus_y
-            editor.play_area.redraw()
+            if editor.play_area.focus_x != editor.focus_x or editor.play_area.focus_y != editor.focus_y:
+                editor.play_area.focus_x = editor.focus_x
+                editor.play_area.focus_y = editor.focus_y
+                editor.play_area.redraw()
 
             frame = editor.play_area.surface.copy()
 
