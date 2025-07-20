@@ -372,6 +372,7 @@ class editor_screen:
     touch_colors = {}
 
     def __init__(self, editor):
+        self.last_time = 0
         self.last_clip = 0
         self.draw_clip = False
         self.update_play_area = True
@@ -388,20 +389,23 @@ class editor_screen:
             self.process_events(editor)
 
             now = time.time()
-            min_sample, max_sample = editor.patch.read_output_probe()
-            output_probe = max(abs(min_sample), abs(max_sample))
-            is_clipping = output_probe > 1.0
-            was_clipping = (now - self.last_clip) < .5
-            if is_clipping:
-                self.last_clip = now
-            if not self.draw_clip and was_clipping:
-                self.draw_clip = True
-                self.update_play_area = True
-            elif self.draw_clip and not was_clipping:
-                self.draw_clip = False
-                self.update_play_area = True
+            delta = now - self.last_time
+            if delta > 0.016:
+                min_sample, max_sample = editor.patch.read_output_probe()
+                output_probe = max(abs(min_sample), abs(max_sample))
+                is_clipping = output_probe > 1.0
+                was_clipping = (now - self.last_clip) < .5
+                if is_clipping:
+                    self.last_clip = now
+                if not self.draw_clip and was_clipping:
+                    self.draw_clip = True
+                    self.update_play_area = True
+                elif self.draw_clip and not was_clipping:
+                    self.draw_clip = False
+                    self.update_play_area = True
 
             self.draw(editor)
+            self.last_time = now
 
     def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):
         inner_w = (editor.play_area.viewport.w // editor.grid_size) * editor.grid_size
