@@ -416,17 +416,17 @@ class editor_screen:
         self.screen_label_rect.left = margin_x
         self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)
 
-    def touch_start(self, key, pos):
+    def touch_start(self, editor, key, pos, event):
         self.force_redraw = True
         editor_screen.touch_points[key] = pos
         editor_screen.touch_colors[key] = oklch(0.5, 0.15, random.randint(0, 360))
 
-    def touch_update(self, key, pos):
+    def touch_update(self, editor, key, pos, event):
         if key in editor_screen.touch_points:
             force_redraw = True
             editor_screen.touch_points[key] = pos
 
-    def touch_end(self, key):
+    def touch_end(self, editor, key, pos, event):
         if key in editor_screen.touch_points:
             self.force_redraw = True
             del editor_screen.touch_points[key]
@@ -458,25 +458,28 @@ class editor_screen:
                 self.live = False
 
             elif event.type == pygame.MOUSEMOTION and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-                self.on_move(editor, event.pos)
+                self.on_move(editor, event.pos, event)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
-                self.on_press(editor, event.pos)
+                self.on_press(editor, event.pos, event)
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
-                self.on_release(editor, event.pos)
+                self.on_release(editor, event.pos, event)
 
             elif event.type == pygame.FINGERMOTION:
                 key = (event.touch_id, event.finger_id)
-                self.touch_update(key, (event.x * editor.screen.get_width(), event.y * editor.screen.get_height()))
+                pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
+                self.touch_update(editor, key, pos, event)
 
             elif event.type == pygame.FINGERDOWN:
                 key = (event.touch_id, event.finger_id)
-                self.touch_start(key, (event.x * editor.screen.get_width(), event.y * editor.screen.get_height()))
+                pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
+                self.touch_start(editor, key, pos, event)
 
             elif event.type == pygame.FINGERUP:
                 key = (event.touch_id, event.finger_id)
-                self.touch_end(key)
+                pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
+                self.touch_end(editor, key, pos, event)
 
             elif event.type == pygame.QUIT:
                 exit(0)

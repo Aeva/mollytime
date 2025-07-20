@@ -45,7 +45,7 @@ class scope_screen(editor_screen):
     def goto_inspect_screen(self, editor):
         self.live = False
 
-    def on_move(self, editor, pos):
+    def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -61,7 +61,7 @@ class scope_screen(editor_screen):
 
         self.press_start = pos
 
-    def on_press(self, editor, pos):
+    def on_press(self, editor, pos, event):
         if editor.play_rect.collidepoint(pos):
             # begin play are view panning
             self.press_start = pos
@@ -74,7 +74,7 @@ class scope_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, pos):
+    def on_release(self, editor, pos, event):
         self.press_start = None
 
     def draw(self, editor):

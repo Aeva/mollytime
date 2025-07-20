@@ -72,7 +72,7 @@ class select_screen(editor_screen):
             self.update_play_area = True
             self.repopulate_sidebar(editor)
 
-    def on_move(self, editor, pos):
+    def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -88,7 +88,7 @@ class select_screen(editor_screen):
 
         self.press_start = pos
 
-    def on_press(self, editor, pos):
+    def on_press(self, editor, pos, event):
         if editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
@@ -114,7 +114,7 @@ class select_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, pos):
+    def on_release(self, editor, pos, event):
         self.press_start = None
 
     def draw(self, editor):

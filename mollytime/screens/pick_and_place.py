@@ -102,7 +102,7 @@ class pick_and_place_screen(editor_screen):
     def goto_inspect_screen(self, editor):
         self.live = False
 
-    def on_move(self, editor, pos):
+    def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 
         if self.press_start:
@@ -133,7 +133,7 @@ class pick_and_place_screen(editor_screen):
                 if not collision:
                     self.last_valid_position = hover_xy
 
-    def on_press(self, editor, pos):
+    def on_press(self, editor, pos, event):
         self.cursor_pos = pos
 
         if self.shelf_rect.collidepoint(pos):
@@ -179,7 +179,7 @@ class pick_and_place_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, pos):
+    def on_release(self, editor, pos, event):
         if self.prospective_tile is not None:
             if self.last_valid_position and not self.drop_deletes:
                 if type(self.prospective_tile) in (int, float):

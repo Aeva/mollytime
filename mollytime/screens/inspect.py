@@ -182,7 +182,7 @@ class inspect_screen(editor_screen):
         self.purge_events()
         self.pending_load = LoadThread(self.search_path)
 
-    def on_move(self, editor, pos):
+    def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -198,7 +198,7 @@ class inspect_screen(editor_screen):
 
         self.press_start = pos
 
-    def on_press(self, editor, pos):
+    def on_press(self, editor, pos, event):
         if self.pending_save or self.pending_load:
             return
 
@@ -217,8 +217,9 @@ class inspect_screen(editor_screen):
                         self.goto_calculator(editor)
                         return
                     elif symbol == OpCode.BOOP:
-                        self.hold[tile_id] = True
-                        editor.patch.set_special_input(tile_id, 1.0)
+                        if not event.touch:
+                            self.hold["m"] = tile_id
+                            editor.patch.set_special_input(tile_id, 1.0)
                         return
                     break
 
@@ -234,11 +235,34 @@ class inspect_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, pos):
+    def on_release(self, editor, pos, event):
         self.press_start = None
-        for tile_id in self.hold:
+        if not event.touch:
+            if tile_id := self.hold.get("m", None):
+                editor.patch.set_special_input(tile_id, 0.0)
+                del self.hold["m"]
+
+    def touch_start(self, editor, key, pos, event):
+        super().touch_start(editor, key, pos, event)
+        for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
+            rect = pygame.Rect(
+                editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                editor.grid_size * 2, editor.grid_size * 2)
+            if rect.collidepoint(pos):
+                symbol = editor.patch.get_tile_symbol(tile_id)
+                if symbol == OpCode.BOOP:
+                    self.hold[key] = tile_id
+                    editor.patch.set_special_input(tile_id, 1.0)
+
+    def touch_update(self, editor, key, pos, event):
+        super().touch_update(editor, key, pos, event)
+
+    def touch_end(self, editor, key, pos, event):
+        super().touch_end(editor, key, pos, event)
+        if tile_id := self.hold.get(key, None):
             editor.patch.set_special_input(tile_id, 0.0)
-        self.hold = {}
+            del self.hold[key]
 
     def draw(self, editor):
         if self.pending_save is not None:

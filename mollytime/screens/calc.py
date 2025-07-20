@@ -205,7 +205,7 @@ class calculator_screen(editor_screen):
         editor.clear_selection()
         self.live = False
 
-    def on_move(self, editor, pos):
+    def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 
         if not self.press_start:
@@ -221,7 +221,7 @@ class calculator_screen(editor_screen):
 
         self.press_start = pos
 
-    def on_press(self, editor, pos):
+    def on_press(self, editor, pos, event):
         if editor.play_rect.collidepoint(pos):
             for rect, _, label in self.buttons:
                 if rect.collidepoint(pos):
@@ -237,7 +237,7 @@ class calculator_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, pos):
+    def on_release(self, editor, pos, event):
         self.press_start = None
 
     def draw(self, editor):

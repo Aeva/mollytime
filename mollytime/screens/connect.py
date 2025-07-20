@@ -175,7 +175,7 @@ class connect_screen(editor_screen):
     def goto_cancel(self, editor):
         self.live = False
 
-    def on_move(self, editor, pos):
+    def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 
         if self.press_start:
@@ -185,7 +185,7 @@ class connect_screen(editor_screen):
             self.cut_stop = pos
             self.update_play_area = True
 
-    def on_press(self, editor, pos):
+    def on_press(self, editor, pos, event):
         if editor.play_rect.collidepoint(pos):
             all_rects = list(self.lhs_output_rects.values()) \
                 + list(self.rhs_output_rects.values()) \
@@ -209,7 +209,7 @@ class connect_screen(editor_screen):
                     action(editor)
                     return
 
-    def on_release(self, editor, pos):
+    def on_release(self, editor, pos, event):
         if self.press_start:
             def find_match(self):
                 def any_hit(self, rect):
