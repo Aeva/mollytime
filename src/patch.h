@@ -25,6 +25,8 @@
 #include <vector>
 #include <string>
 #include <memory>
+
+#include "perf.h"
 #include "alsa_midi.h"
 
 
@@ -131,13 +133,13 @@ struct ProbeRunningState
     }
     std::tuple<double, double> Get()
     {
-        std::lock_guard<std::mutex> Lock(Crit);
+        TRACEABLE_LOCK_GUARD(Crit);
         Reset = true;
         return { SampleMin, SampleMax };
     }
     void Set(double NewSample)
     {
-        std::lock_guard<std::mutex> Lock(Crit);
+        TRACEABLE_LOCK_GUARD(Crit);
         if (Reset)
         {
             Reset = false;
@@ -155,7 +157,7 @@ private:
     double SampleMin;
     double SampleMax;
     double Reset = 0;
-    std::mutex Crit;
+    DECLARE_TRACEABLE_MUTEX(Crit);
 };
 
 using ProbeRunningStateSharedPtr = std::shared_ptr<ProbeRunningState>;

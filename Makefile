@@ -30,7 +30,8 @@ COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION)
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)
-LIBRARIES := -lm -lasound $(shell pkg-config --libs libpipewire-0.3)
+LIBRARIES := -lm -lasound $(shell pkg-config --libs libpipewire-0.3) \
+	$(if $(ENABLE_PERF),-lpthread -ldl,)
 
 all: $(OBJECT_TARGETS) $(TRACY_TARGET) $(TARGET_LIB)
 

@@ -22,6 +22,7 @@
 #include <pipewire/pipewire.h>
 
 #include "pipewire.h"
+#include "perf.h"
 
 
 static bool PipeWireInitialized = false;
@@ -30,7 +31,7 @@ static AudioStream* StreamSingleton = nullptr;
 
 struct ThreadShared
 {
-    std::mutex Mutex;
+    DECLARE_TRACEABLE_MUTEX(Mutex);
     ScratchSharedPtr PendingProgram = nullptr;
 };
 
@@ -88,7 +89,7 @@ void StreamRealTimeThread::OnProcessInner()
     float* WritePtr = (float*)StreamMetaData.data;
 
     {
-        std::lock_guard<std::mutex> Lock(BufferState->Mutex);
+        TRACEABLE_LOCK_GUARD(BufferState->Mutex);
         if (BufferState->PendingProgram)
         {
             Program = BufferState->PendingProgram;
@@ -199,7 +200,7 @@ void PipeWireStream::Setup(int SampleRate)
 
 void PipeWireStream::ProgramChange(ScratchSharedPtr& NewProgram)
 {
-    std::lock_guard<std::mutex> Lock(BufferState.Mutex);
+    TRACEABLE_LOCK_GUARD(BufferState.Mutex);
     BufferState.PendingProgram = NewProgram;
 }
 
