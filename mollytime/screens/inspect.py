@@ -216,7 +216,7 @@ class inspect_screen(editor_screen):
                         editor.toggle_selection(tile_id)
                         self.goto_calculator(editor)
                         return
-                    elif symbol == OpCode.HOLD:
+                    elif symbol == OpCode.BOOP:
                         self.hold[tile_id] = True
                         editor.patch.set_special_input(tile_id, 1.0)
                         return

@@ -64,7 +64,7 @@ enum class OpCode : uint32_t
     PRES,
     MIDI_HZ,
     LOUD_FUDGE,
-    HOLD,
+    BOOP,
     Count
 };
 

@@ -134,7 +134,7 @@ struct SymbolInfo
         Set(OpCode::PRES, "pressure", {}, {"pressure"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
-        Set(OpCode::HOLD, "push\n&\nhold", {}, {"gate"});
+        Set(OpCode::BOOP, "boop", {}, {"gate"});
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -624,7 +624,7 @@ struct LoudnessFudgeThunk : public InstructionThunk
 };
 
 
-struct HoldThunk : public InstructionThunk
+struct BoopThunk : public InstructionThunk
 {
     AtomicRunningStateSharedPtr Input;
     RunningStateSharedPtr Output;
@@ -634,7 +634,7 @@ struct HoldThunk : public InstructionThunk
         Output->Set(Input->Get());
     }
 
-    virtual ~HoldThunk() {};
+    virtual ~BoopThunk() {};
 };
 
 
@@ -673,7 +673,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         PortHandle Closure = MakeClosureHandle(AllocatedHandle, ClosureIndex);
         ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
     }
-    if (Symbol == OpCode::HOLD)
+    if (Symbol == OpCode::BOOP)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
     }
@@ -721,7 +721,7 @@ void Patch::EraseTile(TileHandle Tile)
         ActiveOutputs.erase(Closure);
     }
 
-    if (Symbol == OpCode::HOLD)
+    if (Symbol == OpCode::BOOP)
     {
         SpecialInputs.erase(Tile);
     }
@@ -1214,9 +1214,9 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
-            else if (Symbol == OpCode::HOLD)
+            else if (Symbol == OpCode::BOOP)
             {
-                auto Thunk = std::make_shared<HoldThunk>();
+                auto Thunk = std::make_shared<BoopThunk>();
                 Thunk->Input = SpecialInputs[Tile];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
