@@ -17,7 +17,8 @@ from screens.inspect import inspect_screen
 
 mollytime.init_midi()
 mollytime.init_audio(48000)
-pygame.init()
+pygame.display.init()
+pygame.font.init()
 
 sizes = pygame.display.get_desktop_sizes()
 display_index = len(sizes) - 1
