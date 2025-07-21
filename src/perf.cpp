@@ -14,4 +14,3 @@
 // limitations under the License.
 
 #include "perf.h"
-#include "tracy/Tracy.hpp"

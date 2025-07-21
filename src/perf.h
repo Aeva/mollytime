@@ -16,7 +16,6 @@
 #pragma once
 #define FORCE_SAMPLE_PROFILING 0
 
-
 #if defined(TRACY_ENABLE) && !FORCE_SAMPLE_PROFILING
 #include "tracy/Tracy.hpp"
 
@@ -25,11 +24,33 @@
 #define TRACEABLE_SCOPE ZoneScoped
 #define TRACEABLE_NAMED_SCOPE(NAME) ZoneScopedN(NAME)
 
+inline bool IsProfilingEnabled()
+{
+    return true;
+}
+
+inline void PerfTrampoline(const char* Name, auto& Function, auto& ReturnVal)
+{
+    ZoneScoped;
+    ZoneName(Name, strlen(Name));
+    ReturnVal = Function();
+}
+
 #else
 
 #define DECLARE_TRACEABLE_MUTEX(NAME) std::mutex NAME
 #define TRACEABLE_LOCK_GUARD(LOCK_VAR) std::lock_guard<std::mutex> LOCK_GUARD_##__LINE__(LOCK_VAR)
 #define TRACEABLE_SCOPE
 #define TRACEABLE_NAMED_SCOPE(NAME)
+
+inline bool IsProfilingEnabled()
+{
+    return false;
+}
+
+inline void PerfTrampoline(const char* Name, auto& Function, auto& ReturnVal)
+{
+    ReturnVal = Function();
+}
 
 #endif

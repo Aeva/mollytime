@@ -36,6 +36,12 @@ class inspect_screen(editor_screen):
         self.load_path = None
 
         self.hold = {}
+        self.has_boop = False
+        for tile_id in editor.tile_positions.keys():
+            symbol = editor.patch.get_tile_symbol(tile_id)
+            if symbol == OpCode.BOOP:
+                self.has_boop = True
+                break
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -264,6 +270,7 @@ class inspect_screen(editor_screen):
             editor.patch.set_special_input(tile_id, 0.0)
             del self.hold[key]
 
+    @profile_function("inspect.draw")
     def draw(self, editor):
         if self.pending_save is not None:
             self.pending_save.join(timeout=0)
@@ -328,5 +335,7 @@ class inspect_screen(editor_screen):
             self.force_redraw = False
             self.draw_touch_points(editor)
             pygame.display.flip()
-        else:
+        elif not self.has_boop:
+            # this is skipped when there is a boop instruction in the patch, as
+            # the UI will have to be exceptionally responsive to input events
             editor.clock.tick(60)

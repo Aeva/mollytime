@@ -22,6 +22,7 @@
 #include "patch.h"
 #include "pipewire.h"
 #include "alsa_midi.h"
+#include "perf.h"
 
 namespace py = pybind11;
 
@@ -101,7 +102,7 @@ PYBIND11_MODULE(mollytime, m) {
 
 	py::class_<ColorPoint>(m, "ColorPoint")
 		.def(py::init<>())
-		.def("__len__", [](const ColorPoint &Self) -> int { return 3; })
+		.def("__len__", [](const ColorPoint& Self) -> int { return 3; })
 		.def("__getitem__", &ColorPointGetItem)
 		.def("__repr__", &ColorPointRepr)
 		.def_property_readonly("channels", &ColorPointGetChannels)
@@ -115,6 +116,14 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("parse_color", &PyParseColor, "CSS color parser");
 	m.def("oklab", &MakeOkLAB, "OkLAB color constructor");
 	m.def("oklch", &MakeOkLCH, "OkLCH color constructor");
+
+	m.def("profiling_enabled", &IsProfilingEnabled);
+	m.def("profiling_scope", [](const char* Name, py::function Thunk) -> py::object
+	{
+		py::object Result;
+		PerfTrampoline(Name, Thunk, Result);
+		return Result;
+	});
 
 	py::enum_<OpCode>(m, "OpCode")
 		.value("CONST", OpCode::CONST)

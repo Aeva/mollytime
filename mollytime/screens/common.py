@@ -9,6 +9,7 @@ import pygame
 from fonts import *
 from colors import *
 from patterns import *
+from perf import profile_function
 
 from mollytime import Patch, OpCode, decode_port_tile, decode_port_index
 
@@ -455,6 +456,7 @@ class editor_screen:
             elif event.type == pygame.QUIT:
                 exit(0)
 
+    @profile_function("process_events")
     def process_events(self, editor):
         for event in pygame.event.get():
             if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
