@@ -36,12 +36,15 @@ class inspect_screen(editor_screen):
         self.load_path = None
 
         self.hold = {}
-        self.has_boop = False
+        self.can_throttle = True
+
+    def refresh_can_throttle(self, editor):
         for tile_id in editor.tile_positions.keys():
             symbol = editor.patch.get_tile_symbol(tile_id)
             if symbol == OpCode.BOOP:
-                self.has_boop = True
-                break
+                self.can_throttle = False
+                return
+        self.can_throttle = True
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -102,6 +105,7 @@ class inspect_screen(editor_screen):
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
+        self.refresh_can_throttle(editor)
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
@@ -109,6 +113,7 @@ class inspect_screen(editor_screen):
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
+        self.refresh_can_throttle(editor)
 
     def goto_scope_screen(self, editor):
         overlay = scope_screen(editor)
@@ -133,6 +138,7 @@ class inspect_screen(editor_screen):
         self.search_path = os.path.split(self.load_path)[0]
         editor.load_patch(self.load_path)
         self.force_redraw = True
+        self.refresh_can_throttle(editor)
 
     def goto_save_patch(self, editor):
         assert(self.pending_save is None)
@@ -335,7 +341,7 @@ class inspect_screen(editor_screen):
             self.force_redraw = False
             self.draw_touch_points(editor)
             pygame.display.flip()
-        elif not self.has_boop:
-            # this is skipped when there is a boop instruction in the patch, as
-            # the UI will have to be exceptionally responsive to input events
+        elif self.can_throttle:
+            # This is skipped when there is a boop instruction in the patch, as
+            # the UI has to be exceptionally responsive to input events.
             editor.clock.tick(60)
