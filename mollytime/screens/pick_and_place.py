@@ -48,8 +48,8 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.SCOPE, OpCode.RCP],
                 [OpCode.CEIL, OpCode.FLOOR],
                 ["next", OpCode.BOOP],
-                [OpCode.MIN, OpCode.ADD],
-                [OpCode.MAX, OpCode.MUL],
+                [None, OpCode.PLS],
+                [None, OpCode.GRAD],
             ]),
         ]
         for name, shelf in pages:

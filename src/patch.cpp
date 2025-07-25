@@ -125,8 +125,10 @@ struct SymbolInfo
         Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
         Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
+        Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
+        Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 3);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
@@ -387,6 +389,41 @@ struct MixThunk : public InstructionThunk
 };
 
 
+struct PulseThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+    RunningStateSharedPtr Latch = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("PulseThunk");
+        if (Inputs.size() > 0)
+        {
+            double Clock = Combine(CombinerAdd, Inputs, 0.0);
+            double State = Latch->Get();
+
+            if (State == 0.0 && Clock >= 1.0)
+            {
+                Latch->Set(1.0);
+                Output->Set(1.0);
+            }
+            else if (State == 1.0 && Clock <= 0.0)
+            {
+                Latch->Set(0.0);
+                Output->Set(0.0);
+            }
+            else
+            {
+                Output->Set(0.0);
+            }
+        }
+    }
+
+    virtual ~PulseThunk() {};
+};
+
+
 struct FlipFlopThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> Inputs;
@@ -454,6 +491,37 @@ struct RandomThunk : public InstructionThunk
     }
 
     virtual ~RandomThunk() {};
+};
+
+
+struct GradualThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> ValueInputs;
+    std::vector<RunningStateSharedPtr> RateInputs;
+    RunningStateSharedPtr Output = nullptr;
+    RunningStateSharedPtr Weight = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("GradualThunk");
+        double Value = Combine(CombinerAdd, ValueInputs, 0.0);
+        double Rate = Combine(CombinerAdd, RateInputs, 0.0) * SampleInterval;
+        double Pos = Output->Get();
+        if (std::isnan(Pos))
+        {
+            Pos = Value;
+        }
+        else
+        {
+            double Delta = Value - Pos;
+            double Sign = (Delta < 0.0) ? -1.0 : 1.0;
+            Delta = std::min(std::abs(Delta), Rate) * Sign;
+            Pos += Delta;
+        }
+        Output->Set(Pos);
+    }
+
+    virtual ~GradualThunk() {};
 };
 
 
@@ -695,7 +763,12 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         PortHandle Closure = MakeClosureHandle(AllocatedHandle, ClosureIndex);
         ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
     }
-    if (Symbol == OpCode::BOOP)
+    if (Symbol == OpCode::GRAD)
+    {
+        PortHandle Port = MakePortHandle(AllocatedHandle, 0);
+        ActiveOutputs[Port]->Set(std::sqrt(-1.0));
+    }
+    else if (Symbol == OpCode::BOOP)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
     }
@@ -1186,6 +1259,14 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
+            else if (Symbol == OpCode::PLS)
+            {
+                auto Thunk = std::make_shared<PulseThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Thunk->Latch = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
             else if (Symbol == OpCode::FLP)
             {
                 auto Thunk = std::make_shared<FlipFlopThunk>();
@@ -1201,6 +1282,14 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::GRAD)
+            {
+                auto Thunk = std::make_shared<GradualThunk>();
+                Thunk->ValueInputs = Inputs[0];
+                Thunk->RateInputs = Inputs[1];
+                Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::ADSR)
