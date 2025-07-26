@@ -47,6 +47,7 @@ double Roll()
 
 constexpr double MidiNoteToHz(double Note)
 {
+    // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
     double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
     return Hz;
 }
@@ -54,6 +55,7 @@ constexpr double MidiNoteToHz(double Note)
 
 constexpr double HzToMidiNote(double Hz)
 {
+    // NOTE: std::log2 not constexpr until C++26, and Clang 2c doesn't have it yet
     double Note = std::log2(Hz / 440.0) * 12.0 + 69.0;
     return Note;
 }
@@ -62,6 +64,7 @@ constexpr double HzToMidiNote(double Hz)
 constexpr double AmplitudeToDecibels(double Amplitude)
 {
     // https://stackoverflow.com/questions/2445756/how-can-i-calculate-audio-db-level/9812267#9812267
+    // NOTE: std::log10 not constexpr until C++26, and Clang 2c doesn't have it yet
     double dB = 20.0 * std::log10(Amplitude);
     return dB;
 }
@@ -69,8 +72,48 @@ constexpr double AmplitudeToDecibels(double Amplitude)
 
 constexpr double DecibelsToAmplitude(double dB)
 {
+    // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
     double Amplitude = std::pow(10.0, dB / 20.0);
     return Amplitude;
+}
+
+
+constexpr double PerceptualAmplitudeCorrectionByMidiNoteInner(double Note)
+{
+    // NOTE: Not constexpr until required C++26 features land.  See above notes
+
+    // https://merveilles.town/@cancel/114848900879804284
+    const double Peak = AmplitudeToDecibels(1.0);
+    const double LowEdge = HzToMidiNote(2000.0) - 6.0;
+    const double HighEdge = LowEdge + 6.0;
+    double dB = Peak;
+    if (Note >= LowEdge && Note <= HighEdge)
+    {
+        dB -= 3.0;
+    }
+    else
+    {
+        double NearestEdge = (Note < LowEdge) ? LowEdge : HighEdge;
+        double Offset = std::abs(Note - NearestEdge) / 12.0;
+        dB += Offset * 4.5;
+    }
+    return DecibelsToAmplitude(dB);
+}
+
+
+constexpr double PerceptualAmplitudeCorrectionByMidiNote(double Note)
+{
+    // TODO: Make this constinit once the required C++26 features land
+    static const double Scale = 1.0 / PerceptualAmplitudeCorrectionByMidiNoteInner(HzToMidiNote(50.0));
+
+    return PerceptualAmplitudeCorrectionByMidiNoteInner(Note) * Scale;
+}
+
+
+constexpr double PerceptualAmplitudeCorrectionByHz(double Hz)
+{
+    const double Note = HzToMidiNote(Hz);
+    return PerceptualAmplitudeCorrectionByMidiNote(Note);
 }
 
 
@@ -722,24 +765,8 @@ struct LoudnessFudgeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
-        // https://merveilles.town/@cancel/114848900879804284
-        const double Peak = AmplitudeToDecibels(1.0);
-        const double LowEdge = HzToMidiNote(2000.0) - 6.0;
-        const double HighEdge = LowEdge + 6.0;
         double Hz = Combine(CombinerAdd, Inputs, 0.0);
-        double Note = HzToMidiNote(Hz);
-        double dB = Peak;
-        if (Note >= LowEdge && Note <= HighEdge)
-        {
-            dB -= 3.0;
-        }
-        else
-        {
-            double NearestEdge = (Note < LowEdge) ? LowEdge : HighEdge;
-            double Offset = std::abs(Note - NearestEdge) / 12.0;
-            dB += Offset * 4.5;
-        }
-        Output->Set(DecibelsToAmplitude(dB));
+        Output->Set(PerceptualAmplitudeCorrectionByHz(Hz));
     }
 
     virtual ~LoudnessFudgeThunk() {};
@@ -1123,6 +1150,7 @@ void Patch::SetSpecialInput(TileHandle Tile, double Value)
 ScratchSharedPtr Patch::Compile()
 {
     TRACEABLE_SCOPE;
+
     std::set<TileHandle> BreadCrumbs;
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->MidiGate = MidiGate;
