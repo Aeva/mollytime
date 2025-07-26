@@ -96,9 +96,35 @@ class program_card:
                 center_of_mass = tuple([int(i) for i in center_of_mass])
         return center_of_mass
 
-    def recenter(self):
+    def recenter_bounding_box_method(self):
+        positions = list(self.tile_positions.values())
+        if len(positions) < 2:
+            return False
+        low = positions[0]
+        high = positions[1]
+        for pos in positions[1:]:
+            low = [min(low[c], pos[c]) for c in range(2)]
+            high = [max(high[c], pos[c]) for c in range(2)]
+        w = (high[0] - low[0]) * self.grid_size * 3
+        h = (high[1] - low[1]) * self.grid_size * 3
+
+        if w > self.play_area.viewport.w or h > self.play_area.viewport.h:
+            return False
+
+        mid = vec_add(low, vec_scale(vec_sub(high, low), .5))
+        self.focus_x = mid[0] * self.grid_size * 3
+        self.focus_y = mid[1] * self.grid_size * 3
+        return True
+
+    def recenter_center_of_mass_method(self):
         center_of_mass = self.find_center_of_mass()
         self.focus_x, self.focus_y = vec_scale(center_of_mass, self.grid_size * 3)
+
+    def recenter(self):
+        if self.recenter_bounding_box_method():
+            return
+        else:
+            self.recenter_center_of_mass_method()
 
     def save_patch(self, save_path):
         tiles = sorted(self.patch.get_all_tile_handles())
