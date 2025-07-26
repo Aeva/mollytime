@@ -31,6 +31,8 @@ constinit double Pi = M_PI;
 constinit double Tau = M_PI * 2.0;
 constinit double Leftovers = M_PI / 2.0;
 
+const double ImprobableMagnitude = 123456789.0;
+
 
 static std::random_device RandomDevice;
 static std::mt19937 RandomGenerator{ RandomDevice() };
@@ -539,7 +541,7 @@ struct GradualThunk : public InstructionThunk
         double Value = Combine(CombinerAdd, ValueInputs, 0.0);
         double Rate = Combine(CombinerAdd, RateInputs, 0.0) * SampleInterval;
         double Pos = Output->Get();
-        if (std::isnan(Pos))
+        if (Pos == ImprobableMagnitude)
         {
             Pos = Value;
         }
@@ -547,7 +549,7 @@ struct GradualThunk : public InstructionThunk
         {
             double Delta = Value - Pos;
             double Sign = (Delta < 0.0) ? -1.0 : 1.0;
-            Delta = std::min(std::abs(Delta), Rate) * Sign;
+            Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
             Pos += Delta;
         }
         Output->Set(Pos);
@@ -798,7 +800,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     if (Symbol == OpCode::GRAD)
     {
         PortHandle Port = MakePortHandle(AllocatedHandle, 0);
-        ActiveOutputs[Port]->Set(std::sqrt(-1.0));
+        ActiveOutputs[Port]->Set(ImprobableMagnitude);
     }
     else if (Symbol == OpCode::BOOP)
     {
@@ -1015,7 +1017,8 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
         throw std::range_error(std::format("Fatal error: {} is not a known input port!\n", InputPort));
     }
 
-    OpCode ReceiverSymbol = GetTileSymbol(PortHandleTilePart(InputPort));
+    TileHandle ReceiverTile = PortHandleTilePart(InputPort);
+    OpCode ReceiverSymbol = GetTileSymbol(ReceiverTile);
     if (ReceiverSymbol == OpCode::SCOPE)
     {
         // Disconnect all other connected scopes before applying the new connection.
@@ -1031,6 +1034,11 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
         {
             Disconnect(std::get<0>(Wire), std::get<1>(Wire));
         }
+    }
+    else if (ReceiverSymbol == OpCode::GRAD && PortHandlePortIndexPart(InputPort) == 0)
+    {
+        PortHandle Port = MakePortHandle(ReceiverTile, 0);
+        ActiveOutputs[Port] = std::make_shared<RunningState>(ImprobableMagnitude);
     }
 
     ByInput[InputPort].insert(OutputPort);
