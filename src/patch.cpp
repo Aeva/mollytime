@@ -124,6 +124,8 @@ struct SymbolInfo
         Set(OpCode::MAX, "max", {"max"}, {"="});
         Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
         Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
+        Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
+        Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
         Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
@@ -366,6 +368,36 @@ struct CeilThunk : public InstructionThunk
     }
 
     virtual ~CeilThunk() {};
+};
+
+
+struct ToUnipolarThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
+        Output->Set(Combine(CombinerAdd, Inputs, 0.0) * 0.5 + 0.5);
+    }
+
+    virtual ~ToUnipolarThunk() {};
+};
+
+
+struct ToBipolarThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
+        Output->Set(Combine(CombinerAdd, Inputs, 0.0) * 2.0 - 1.0);
+    }
+
+    virtual ~ToBipolarThunk() {};
 };
 
 
@@ -1246,6 +1278,20 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::CEIL)
             {
                 auto Thunk = std::make_shared<CeilThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::STU)
+            {
+                auto Thunk = std::make_shared<ToUnipolarThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::UTS)
+            {
+                auto Thunk = std::make_shared<ToBipolarThunk>();
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));

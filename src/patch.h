@@ -56,6 +56,8 @@ enum class OpCode : uint32_t
     MAX,
     FLOOR,
     CEIL,
+    STU,
+    UTS,
     MIX,
     PLS,
     FLP,

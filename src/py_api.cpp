@@ -139,6 +139,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("MAX", OpCode::MAX)
 		.value("FLOOR", OpCode::FLOOR)
 		.value("CEIL", OpCode::CEIL)
+		.value("STU", OpCode::STU)
+		.value("UTS", OpCode::UTS)
 		.value("MIX", OpCode::MIX)
 		.value("PLS", OpCode::PLS)
 		.value("FLP", OpCode::FLP)
