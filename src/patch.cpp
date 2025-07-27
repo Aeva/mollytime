@@ -29,7 +29,6 @@
 
 constinit double Pi = M_PI;
 constinit double Tau = M_PI * 2.0;
-constinit double Leftovers = M_PI / 2.0;
 
 const double ImprobableMagnitude = 123456789.0;
 
@@ -238,13 +237,9 @@ struct SinThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("NAME");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
-        Phase += Tau * Hz * SampleInterval;
-        if (Phase > Tau)
-        {
-            Phase -= Tau;
-        }
+        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
-        OutAmplitude->Set(std::sin(Phase));
+        OutAmplitude->Set(std::sin(Phase * Tau));
     }
 
     virtual ~SinThunk() {};
@@ -262,13 +257,9 @@ struct SqrThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("SqrThunk");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
-        Phase += Tau * Hz * SampleInterval;
-        while (Phase > Tau)
-        {
-            Phase -= Tau;
-        }
+        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
-        double Sign = Phase <= Pi ? 1.0 : -1.0;
+        double Sign = Phase < 0.5 ? 1.0 : -1.0;
         OutAmplitude->Set(Sign);
     }
 
@@ -287,15 +278,11 @@ struct TriThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("TriThunk");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
-        Phase += Tau * Hz * SampleInterval;
-        while (Phase > Tau)
-        {
-            Phase -= Tau;
-        }
+        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
-        double Sign = Phase <= Pi ? 1.0 : -1.0;
+        double Sign = Phase < 0.5 ? 1.0 : -1.0;
         double IntegerPart = 0.0;
-        double Alpha = std::modf(Phase / Leftovers, &IntegerPart);
+        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
         if (int(IntegerPart) % 2 == 1)
         {
             Alpha = 1.0 - Alpha;
