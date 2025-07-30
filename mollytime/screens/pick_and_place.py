@@ -270,6 +270,7 @@ class pick_and_place_screen(editor_screen):
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
+            self.draw_battery(editor, frame)
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):

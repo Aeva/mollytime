@@ -133,6 +133,7 @@ class scope_screen(editor_screen):
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
+            self.draw_battery(editor, frame)
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         self.draw_touch_points(editor)

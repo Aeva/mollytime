@@ -10,8 +10,12 @@ from fonts import *
 from colors import *
 from patterns import *
 from perf import profile_function
+from power import poll_battery
 
 from mollytime import Patch, OpCode, decode_port_tile, decode_port_index
+
+
+battery_level = None
 
 
 class program_card:
@@ -432,6 +436,9 @@ class editor_screen:
                     self.draw_clip = False
                     self.update_play_area = True
 
+                # unrelated to clipping, but checking at the same cadence
+                self.battery_check()
+
             self.draw(editor)
 
     def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):
@@ -473,6 +480,38 @@ class editor_screen:
         for key, pos in editor_screen.touch_points.items():
             color = editor_screen.touch_colors[key]
             pygame.draw.circle(editor.screen, color, pos, radius)
+
+    def battery_check(self):
+        global battery_level
+        new_battery_level = poll_battery()
+        if new_battery_level != battery_level:
+            battery_level = new_battery_level
+            self.update_sidebar = True
+
+    def draw_battery(self, editor, frame):
+        global battery_level
+        if battery_level:
+            view_rect = frame.get_rect()
+            font_path, size = NATIONAL_PARK_REGULAR, max(10, editor.grid_size * 2 * .24)
+            if battery_level < 20:
+                ramp = color_ramp(parse_color("#F00"), parse_color("#FF0"))
+                color = ramp.sample(float(battery_level) / 20.0)
+            else:
+                ramp = color_ramp(parse_color("#FF0"), parse_color("#0C0"))
+                color = ramp.sample(float(battery_level - 20) / 80.0)
+            label = render_text(font_path, size, color, f"BAT: {battery_level}%")
+            border = render_text(font_path, size, (0, 0, 0), f"BAT: {battery_level}%")
+            label_rect = label.get_rect()
+            for y in (-2, -1, 1, 2):
+                for x in (-2, -1, 1, 2):
+                    dest = (
+                        view_rect.centerx - label_rect.centerx + x,
+                        view_rect.bottom - label_rect.height + y)
+                    frame.blit(border, dest)
+            dest = (
+                view_rect.centerx - label_rect.centerx,
+                view_rect.bottom - label_rect.height)
+            frame.blit(label, dest)
 
     def purge_events(self):
         self.reset_touch_tracker()
