@@ -150,6 +150,10 @@ struct MagicTape
         return 0.0;
     }
 
+    virtual void WriteAndAdvance(size_t& Index, double NewSample)
+    {
+    }
+
     virtual ~MagicTape()
     {
     }
