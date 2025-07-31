@@ -144,14 +144,18 @@ uint32_t PortHandlePortIndexPart(PortHandle Handle)
 
 double EncodeSampleHandle(uint32_t SampleHandle)
 {
+#if 0
     const uint64_t NaN = (0xffful << 51);
     uint64_t Encoded = NaN | uint64_t(SampleHandle);
     return std::bit_cast<double, uint64_t>(Encoded);
+#endif
+    return std::bit_cast<double, uint64_t>(uint64_t(SampleHandle));
 }
 
 
 uint32_t DecodeSampleHandle(double WireValue)
 {
+#if 0
     // 0x7ffffffffffff is the safe area for encoding things, and that leaves
     // 19 bits for flags in the future.  We only need the bottom 32 bits right
     // now, however.
@@ -159,6 +163,8 @@ uint32_t DecodeSampleHandle(double WireValue)
     uint64_t Encoded = std::bit_cast<double, uint64_t>(WireValue);
     uint32_t SampleHandle = uint32_t(Encoded & HandlePart);
     return SampleHandle;
+#endif
+    return uint32_t(std::bit_cast<uint64_t, double>(WireValue));
 }
 
 
