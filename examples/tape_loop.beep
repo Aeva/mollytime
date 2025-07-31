@@ -5,85 +5,97 @@
 		<tile id="2" symbol="loop_read" x="0" y="-2"/>
 		<tile id="3" symbol="blank_tape" x="-1" y="-2"/>
 		<tile id="4" symbol="out" x="-3" y="-1"/>
-		<tile id="6" symbol="mul" x="0" y="-1"/>
-		<tile id="7" symbol="const" x="-1" y="-3" value="1.0"/>
-		<tile id="8" symbol="const" x="0" y="0" value="0.95"/>
-		<tile id="9" symbol="const" x="0" y="-3" value="0.5"/>
-		<tile id="10" symbol="add" x="-2" y="-1"/>
-		<tile id="11" symbol="boop" x="-4" y="3"/>
-		<tile id="12" symbol="mul" x="-2" y="0"/>
-		<tile id="13" symbol="adsr" x="-3" y="0"/>
-		<tile id="14" symbol="const" x="-1" y="0" value="0.25"/>
-		<tile id="17" symbol="sin" x="-2" y="1"/>
-		<tile id="18" symbol="const" x="-4" y="-1" value="0.01"/>
-		<tile id="19" symbol="const" x="-4" y="0" value="0.2"/>
-		<tile id="20" symbol="const" x="-4" y="1" value="0.2"/>
-		<tile id="21" symbol="rng" x="4" y="3"/>
-		<tile id="22" symbol="sqr" x="4" y="4"/>
-		<tile id="23" symbol="const" x="3" y="4" value="2.0"/>
-		<tile id="24" symbol="mul" x="2" y="3"/>
-		<tile id="25" symbol="add" x="0" y="3"/>
-		<tile id="26" symbol="max" x="-1" y="3"/>
-		<tile id="27" symbol="ceil" x="-2" y="3"/>
-		<tile id="28" symbol="const" x="-2" y="4" value="0.0"/>
-		<tile id="29" symbol="const" x="2" y="4" value="8.0"/>
-		<tile id="31" symbol="max" x="-3" y="2"/>
-		<tile id="34" symbol="add" x="1" y="4"/>
-		<tile id="35" symbol="mul" x="0" y="4"/>
-		<tile id="37" symbol="const" x="0" y="5" value="-1.0"/>
-		<tile id="44" symbol="midi_hz" x="0" y="1"/>
-		<tile id="45" symbol="const" x="2" y="0" value="68.0"/>
-		<tile id="46" symbol="pls" x="4" y="2"/>
-		<tile id="47" symbol="add" x="1" y="1"/>
-		<tile id="48" symbol="mul" x="3" y="0"/>
-		<tile id="49" symbol="rng" x="4" y="0"/>
-		<tile id="50" symbol="ceil" x="2" y="1"/>
-		<tile id="51" symbol="flp" x="3" y="1"/>
-		<tile id="53" symbol="const" x="3" y="-1" value="5.0"/>
-		<tile id="54" symbol="uts" x="4" y="-1"/>
-		<wire from="14:0" to="12:0"/>
-		<wire from="13:0" to="12:0"/>
-		<wire from="22:0" to="21:0"/>
-		<wire from="23:0" to="22:0"/>
-		<wire from="11:0" to="31:0"/>
-		<wire from="45:0" to="47:0"/>
-		<wire from="10:0" to="1:1"/>
-		<wire from="29:0" to="24:0"/>
-		<wire from="6:0" to="10:0"/>
-		<wire from="31:0" to="13:0"/>
-		<wire from="9:0" to="2:1"/>
-		<wire from="19:0" to="13:2"/>
+		<tile id="5" symbol="mul" x="0" y="-1"/>
+		<tile id="6" symbol="const" x="-1" y="-3" value="1.0"/>
+		<tile id="7" symbol="const" x="0" y="0" value="0.95"/>
+		<tile id="8" symbol="const" x="0" y="-3" value="5.4"/>
+		<tile id="9" symbol="add" x="-2" y="-1"/>
+		<tile id="10" symbol="boop" x="-4" y="3"/>
+		<tile id="11" symbol="mul" x="-2" y="0"/>
+		<tile id="12" symbol="adsr" x="-3" y="0"/>
+		<tile id="13" symbol="const" x="-1" y="0" value="0.25"/>
+		<tile id="14" symbol="sin" x="-2" y="1"/>
+		<tile id="15" symbol="const" x="-4" y="-1" value="0.01"/>
+		<tile id="16" symbol="const" x="-4" y="0" value="0.2"/>
+		<tile id="17" symbol="const" x="-4" y="1" value="0.2"/>
+		<tile id="18" symbol="rng" x="4" y="3"/>
+		<tile id="19" symbol="sqr" x="4" y="4"/>
+		<tile id="20" symbol="const" x="3" y="4" value="2.1"/>
+		<tile id="21" symbol="mul" x="2" y="3"/>
+		<tile id="22" symbol="add" x="0" y="3"/>
+		<tile id="23" symbol="max" x="-1" y="3"/>
+		<tile id="24" symbol="ceil" x="-2" y="3"/>
+		<tile id="25" symbol="const" x="-2" y="4" value="0.0"/>
+		<tile id="26" symbol="const" x="2" y="4" value="8.0"/>
+		<tile id="27" symbol="max" x="-3" y="2"/>
+		<tile id="28" symbol="add" x="1" y="4"/>
+		<tile id="29" symbol="mul" x="0" y="4"/>
+		<tile id="30" symbol="const" x="0" y="5" value="-1.0"/>
+		<tile id="31" symbol="midi_hz" x="0" y="1"/>
+		<tile id="32" symbol="const" x="2" y="0" value="68.0"/>
+		<tile id="33" symbol="pls" x="4" y="2"/>
+		<tile id="34" symbol="add" x="1" y="1"/>
+		<tile id="35" symbol="mul" x="3" y="0"/>
+		<tile id="36" symbol="rng" x="4" y="0"/>
+		<tile id="37" symbol="ceil" x="2" y="1"/>
+		<tile id="38" symbol="flp" x="3" y="1"/>
+		<tile id="39" symbol="const" x="3" y="-1" value="5.0"/>
+		<tile id="40" symbol="uts" x="4" y="-1"/>
+		<tile id="41" symbol="const" x="1" y="-2" value="1.0"/>
+		<tile id="42" symbol="const" x="1" y="0" value="0.0"/>
+		<tile id="43" symbol="boop" x="2" y="-2"/>
+		<tile id="44" symbol="mix" x="1" y="-1"/>
+		<tile id="45" symbol="pls" x="1" y="-3"/>
+		<wire from="6:0" to="3:0"/>
+		<wire from="28:0" to="29:0"/>
+		<wire from="45:0" to="1:2"/>
+		<wire from="26:0" to="28:0"/>
+		<wire from="34:0" to="31:0"/>
+		<wire from="9:0" to="1:1"/>
+		<wire from="18:0" to="21:0"/>
+		<wire from="21:0" to="22:0"/>
+		<wire from="7:0" to="5:0"/>
+		<wire from="33:0" to="38:0"/>
+		<wire from="45:0" to="2:2"/>
+		<wire from="16:0" to="12:2"/>
+		<wire from="25:0" to="23:0"/>
 		<wire from="37:0" to="34:0"/>
-		<wire from="27:0" to="31:0"/>
-		<wire from="46:0" to="49:0"/>
-		<wire from="8:0" to="6:0"/>
-		<wire from="37:0" to="35:0"/>
-		<wire from="44:0" to="17:0"/>
-		<wire from="48:0" to="50:0"/>
-		<wire from="47:0" to="44:0"/>
-		<wire from="51:1" to="48:0"/>
-		<wire from="31:0" to="46:0"/>
-		<wire from="21:0" to="24:0"/>
-		<wire from="24:0" to="25:0"/>
-		<wire from="18:0" to="13:1"/>
-		<wire from="28:0" to="26:0"/>
-		<wire from="2:0" to="6:0"/>
-		<wire from="25:0" to="26:0"/>
-		<wire from="34:0" to="35:0"/>
-		<wire from="46:0" to="51:0"/>
+		<wire from="27:0" to="12:0"/>
+		<wire from="23:0" to="24:0"/>
+		<wire from="22:0" to="23:0"/>
+		<wire from="8:0" to="2:1"/>
+		<wire from="31:0" to="14:0"/>
+		<wire from="36:0" to="40:0"/>
+		<wire from="42:0" to="44:1"/>
+		<wire from="40:0" to="35:0"/>
+		<wire from="39:0" to="35:0"/>
+		<wire from="44:0" to="5:0"/>
+		<wire from="2:0" to="5:0"/>
+		<wire from="15:0" to="12:1"/>
+		<wire from="11:0" to="9:0"/>
+		<wire from="10:0" to="27:0"/>
+		<wire from="27:0" to="33:0"/>
+		<wire from="19:0" to="18:0"/>
+		<wire from="32:0" to="34:0"/>
 		<wire from="3:0" to="1:0"/>
-		<wire from="29:0" to="34:0"/>
-		<wire from="17:0" to="12:0"/>
-		<wire from="50:0" to="47:0"/>
-		<wire from="54:0" to="48:0"/>
-		<wire from="53:0" to="48:0"/>
+		<wire from="41:0" to="44:0"/>
+		<wire from="30:0" to="28:0"/>
+		<wire from="43:0" to="45:0"/>
+		<wire from="17:0" to="12:3"/>
+		<wire from="29:0" to="22:0"/>
 		<wire from="3:0" to="2:0"/>
-		<wire from="26:0" to="27:0"/>
-		<wire from="12:0" to="10:0"/>
-		<wire from="7:0" to="3:0"/>
-		<wire from="20:0" to="13:3"/>
-		<wire from="10:0" to="4:0"/>
-		<wire from="49:0" to="54:0"/>
-		<wire from="35:0" to="25:0"/>
+		<wire from="5:0" to="9:0"/>
+		<wire from="9:0" to="4:0"/>
+		<wire from="13:0" to="11:0"/>
+		<wire from="14:0" to="11:0"/>
+		<wire from="20:0" to="19:0"/>
+		<wire from="24:0" to="27:0"/>
+		<wire from="26:0" to="21:0"/>
+		<wire from="30:0" to="29:0"/>
+		<wire from="33:0" to="36:0"/>
+		<wire from="35:0" to="37:0"/>
+		<wire from="38:1" to="35:0"/>
+		<wire from="43:0" to="44:2"/>
+		<wire from="12:0" to="11:0"/>
 	</patch>
 </mollytime>
