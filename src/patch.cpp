@@ -21,6 +21,7 @@
 #include <limits>
 #include <utility>
 #include <cmath>
+#include <bit>
 
 #include "errors.h"
 #include "patch.h"
@@ -141,6 +142,26 @@ uint32_t PortHandlePortIndexPart(PortHandle Handle)
 }
 
 
+double EncodeSampleHandle(uint32_t SampleHandle)
+{
+    const uint64_t NaN = (0xffful << 51);
+    uint64_t Encoded = NaN | uint64_t(SampleHandle);
+    return std::bit_cast<double, uint64_t>(Encoded);
+}
+
+
+uint32_t DecodeSampleHandle(double WireValue)
+{
+    // 0x7ffffffffffff is the safe area for encoding things, and that leaves
+    // 19 bits for flags in the future.  We only need the bottom 32 bits right
+    // now, however.
+    const uint64_t HandlePart = std::numeric_limits<uint32_t>::max();
+    uint64_t Encoded = std::bit_cast<double, uint64_t>(WireValue);
+    uint32_t SampleHandle = uint32_t(Encoded & HandlePart);
+    return SampleHandle;
+}
+
+
 struct SymbolInfo
 {
     std::vector<std::string> DefaultNames;
@@ -183,6 +204,9 @@ struct SymbolInfo
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
+        Set(OpCode::BLANK_TAPE, "blank\ntape", {"seconds"}, {"handle"});
+        Set(OpCode::LOOP_READ, "loop\nread", {"handle", "offset", "reset"}, {"sample"}, 3);
+        Set(OpCode::LOOP_WRITE, "loop\nwrite", {"handle", "reset"}, {"sample"}, 2);
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -775,6 +799,153 @@ struct BoopThunk : public InstructionThunk
 };
 
 
+struct BlankTape : public MagicTape
+{
+    BlankTape(TileHandle Tile)
+        : MagicTape(Tile)
+    {
+    }
+
+    void Reset(double InSeconds)
+    {
+        Seconds = InSeconds;
+        size_t SampleCount = size_t(Seconds * double(SampleRate));
+        Samples.resize(SampleCount, 0.0);
+    }
+
+    virtual size_t FindSample(double Position) override
+    {
+        if (Seconds > 0.0)
+        {
+            double Alpha = std::fmod(Position / Seconds, 1.0);
+            if (Alpha < 0.0)
+            {
+                Alpha += 1.0;
+            }
+            Alpha = std::min(std::max(Alpha, 0.0), 1.0);
+            size_t Index = size_t(double(Samples.size() - 1) * Alpha);
+            return std::min(std::max(Index, 0ul), Samples.size());
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    virtual double ReadAndAdvance(size_t& Index) override
+    {
+        if (Samples.size() > 0)
+        {
+            Index %= Samples.size();
+            return Samples[Index++];
+        }
+        else
+        {
+            return 0.0;
+        }
+    }
+
+    virtual ~BlankTape()
+    {
+    };
+
+    // TODO: pull sampling rate from the audio subsystem on Reset
+    uint32_t SampleRate = 48000;
+    double Seconds = 0.0;
+    std::vector<double> Samples;
+};
+
+using BlankTapeSharedPtr = std::shared_ptr<BlankTape>;
+
+
+struct BlankTapeThunk : public InstructionThunk
+{
+    BlankTapeSharedPtr Tape;
+    std::vector<RunningStateSharedPtr> Input;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("BlankTapeThunk");
+
+        double Seconds = Combine(CombinerAdd, Input, 0.0);
+        if (Seconds != Tape->Seconds)
+        {
+            Tape->Reset(Seconds);
+        }
+        Output->Set(Tape->TapeHandle);
+    }
+
+    virtual ~BlankTapeThunk() {};
+};
+
+
+struct TapeLoopReadThunk : public InstructionThunk
+{
+    Scratch* Program;
+    std::vector<RunningStateSharedPtr> InHandle;
+    std::vector<RunningStateSharedPtr> InOffset;
+    std::vector<RunningStateSharedPtr> InReset;
+    RunningStateSharedPtr Output = nullptr;
+    RunningStateSharedPtr Cursor = nullptr;
+    RunningStateSharedPtr LastOffset = nullptr;
+    RunningStateSharedPtr LastReset = nullptr;
+
+    TapeLoopReadThunk(Scratch* InProgram)
+        : Program(InProgram)
+    {
+    }
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("TapeLoopReadThunk");
+
+        MagicTapeSharedPtr Tape = nullptr;
+        for (RunningStateSharedPtr& Port : InHandle)
+        {
+            Tape = Program->FindTape(Port->Get());
+            if (Tape != nullptr)
+            {
+                break;
+            }
+        }
+
+        if (Tape == nullptr)
+        {
+            Output->Set(0.0);
+            Cursor->Set(std::bit_cast<double, size_t>(0));
+            LastOffset->Set(0.0);
+            LastReset->Set(0.0);
+            return;
+        }
+
+        size_t ReadIndex = std::bit_cast<size_t, double>(Cursor->Get());
+
+        double Offset = Combine(CombinerAdd, InOffset, 0.0);
+        if (Offset != LastOffset->Get())
+        {
+            ReadIndex = Tape->FindSample(Offset);
+            LastOffset->Set(Offset);
+            LastReset->Set(1.0);
+        }
+        else
+        {
+            double Reset = Combine(CombinerAdd, InReset, 0.0);
+            if (LastReset->Get() <= 0.0 && Reset >= 1.0)
+            {
+                ReadIndex = Tape->FindSample(Offset);
+                LastOffset->Set(Offset);
+            }
+            LastReset->Set(Reset);
+        }
+
+        Output->Set(Tape->ReadAndAdvance(ReadIndex));
+        Cursor->Set(std::bit_cast<double, size_t>(ReadIndex));
+    }
+
+    virtual ~TapeLoopReadThunk() {};
+};
+
 
 Patch::Patch()
     : LastAssignedTileHandle(0)
@@ -819,6 +990,10 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     else if (Symbol == OpCode::BOOP)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
+    }
+    else if (Symbol == OpCode::BLANK_TAPE)
+    {
+        TapeCollection[AllocatedHandle] = std::make_shared<BlankTape>(AllocatedHandle);
     }
     return AllocatedHandle;
 }
@@ -869,6 +1044,10 @@ void Patch::EraseTile(TileHandle Tile)
     if (Symbol == OpCode::BOOP)
     {
         SpecialInputs.erase(Tile);
+    }
+    else if (Symbol == OpCode::BLANK_TAPE)
+    {
+        TapeCollection.erase(Tile);
     }
 
     TileSymbols.erase(Tile);
@@ -1424,6 +1603,26 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
+            else if (Symbol == OpCode::BLANK_TAPE)
+            {
+                auto Thunk = std::make_shared<BlankTapeThunk>();
+                Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
+                Thunk->Input = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Tapes[Tile] = TapeCollection.at(Tile);
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::LOOP_READ)
+            {
+                auto Thunk = std::make_shared<TapeLoopReadThunk>(Program.get());
+                Thunk->InHandle = Inputs[0];
+                Thunk->InOffset = Inputs[1];
+                Thunk->InReset = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Thunk->Cursor = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastOffset = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->LastReset = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+            }
             return nullptr;
         }
 
@@ -1505,6 +1704,18 @@ double Scratch::Eval(double SampleInterval)
         OutputProbe->Set(Out);
     }
     return Out;
+}
+
+
+MagicTapeSharedPtr Scratch::FindTape(double WireValue)
+{
+    uint32_t SampleHandle = DecodeSampleHandle(WireValue);
+    auto Found = Tapes.find(SampleHandle);
+    if (Found != Tapes.end())
+    {
+        return Found->second;
+    }
+    return nullptr;
 }
 
 

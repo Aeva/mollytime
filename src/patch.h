@@ -71,42 +71,9 @@ enum class OpCode : uint32_t
     MIDI_HZ,
     LOUD_FUDGE,
     BOOP,
-
-#if 0
-    // I figure blank tape takes two args, a sample length, and a sample frequency
-    // ideally it would reject dynamic inputs, but I don't have any way to determine
-    // that.  Alternatively it could take the number of samples, and the sampling
-    // rate.  Sampling rate defaults to whatever pipewire wants if unset.
-    // Output is a "handle", which probably is just a dictionary key.
     BLANK_TAPE,
-
-    // These guys take a tape handle, and a speed multiplier in addition to the obvious
-    // inputs and outputs.  READ outputs a sample.  WRITE outputs nothing.
-    TAPE_WRITE,
-    TAPE_READ,
-
-    // like TAPE_WRITE and TAPE_READ but they take a clock signal instead of a speed multiplier.
-    STEP_WRITE,
-    STEP_READ,
-
-    // This means there needs to be a map object to hold the shared pointers for active tapes,
-    // and this needs to also be mirrored on the scratch object.
-    // Tape handle inputs should only support one connection at a time like the scope instruction.
-    // Additionally, tape handle outputs and outputs should reject connectinos with other nodes,
-    // which effectively means this introduces a concept of a "type".
-
-    // Tape tiles should also only eval their inputs once at compile time, and their shared
-    // pointers should be reassigned like the grad node does when stuff is reconnected to avoid
-    // disrupting running patches.  These inputs would be omitted from the compiled patch unless
-    // they're referenced by a live branch of the patch.
-
-    // It would be nice to forbid oscillators and other dynamic inputs from being connected to
-    // tape tile inputs, but that will require additional metadata.  It might make sense to have
-    // this also be port type data, where some type attributes are determined by the tile, and
-    // some are propagated via connections.
-
-    // This means that there then needs to be a way to eval subpatches.
-#endif
+    LOOP_READ,
+    LOOP_WRITE,
     Count
 };
 
@@ -114,6 +81,9 @@ enum class OpCode : uint32_t
 PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber);
 TileHandle PortHandleTilePart(PortHandle Handle);
 uint32_t PortHandlePortIndexPart(PortHandle Handle);
+
+double EncodeSampleHandle(uint32_t SampleHandle);
+uint32_t DecodeSampleHandle(double WireValue);
 
 
 std::string GetDefaultName(OpCode Symbol);
@@ -161,6 +131,33 @@ private:
 };
 
 using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
+
+
+struct MagicTape
+{
+    MagicTape(TileHandle Tile)
+        : TapeHandle(EncodeSampleHandle(Tile))
+    {
+    }
+
+    virtual size_t FindSample(double Position)
+    {
+        return 0;
+    }
+
+    virtual double ReadAndAdvance(size_t& Index)
+    {
+        return 0.0;
+    }
+
+    virtual ~MagicTape()
+    {
+    }
+
+    double TapeHandle;
+};
+
+using MagicTapeSharedPtr = std::shared_ptr<MagicTape>;
 
 
 struct ProbeRunningState
@@ -214,6 +211,7 @@ struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
+    std::unordered_map<TileHandle, MagicTapeSharedPtr> Tapes;
     RunningStateSharedPtr ProbeInput = nullptr;
     ProbeRunningStateSharedPtr OutputProbe;
     ProbeRunningStateSharedPtr ScopeProbe;
@@ -224,6 +222,7 @@ struct Scratch : public MidiHandler
     RunningStateSharedPtr MidiPressure;
 
     double Eval(double SampleInterval);
+    MagicTapeSharedPtr FindTape(double WireValue);
 
     virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel) override;
     virtual void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel) override;
@@ -288,6 +287,7 @@ private:
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
     std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;
+    std::unordered_map<TileHandle, MagicTapeSharedPtr> TapeCollection;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
     ProbeRunningStateSharedPtr ScopeProbe = std::make_shared<ProbeRunningState>();
 
