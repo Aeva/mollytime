@@ -195,6 +195,10 @@ struct SymbolInfo
         Set(OpCode::MAX, "max", {"max"}, {"="});
         Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
         Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
+        Set(OpCode::ROUND, "round", {"#"}, {"rounded"});
+        Set(OpCode::SIGN, "sign", {"#"}, {"sign"});
+        Set(OpCode::ABS, "abs", {"#"}, {"abs"});
+        Set(OpCode::FLD, "fold", {"v", "p", "n"}, {"w"});
         Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
         Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
@@ -430,6 +434,86 @@ struct CeilThunk : public InstructionThunk
     }
 
     virtual ~CeilThunk() {};
+};
+
+
+struct RoundThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("RoundThunk");
+        Output->Set(std::round(Combine(CombinerAdd, Inputs, 0.0)));
+    }
+
+    virtual ~RoundThunk() {};
+};
+
+
+struct SignThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("SignThunk");
+        double Sign = Combine(CombinerAdd, Inputs, 0.0) < 0.0 ? -1.0 : 1.0;
+        Output->Set(Sign);
+    }
+
+    virtual ~SignThunk() {};
+};
+
+
+struct AbsThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("AbsThunk");
+        Output->Set(std::abs(Combine(CombinerAdd, Inputs, 0.0)));
+    }
+
+    virtual ~AbsThunk() {};
+};
+
+
+struct FoldThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InValue;
+    std::vector<RunningStateSharedPtr> InPositive;
+    std::vector<RunningStateSharedPtr> InNegative;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("FoldThunk");
+        double Val = Combine(CombinerAdd, InValue, 0.0);
+        double Threshold = 1.0;
+        if (Val < 0.0 && InNegative.size() > 0)
+        {
+            Threshold = Combine(CombinerAdd, InNegative, 0.0);
+        }
+        else
+        {
+            Threshold = Combine(CombinerAdd, InPositive, 0.0);
+        }
+        double Sign = Val < 0.0 ? -1.0 : 1.0;
+        Threshold = std::min(std::max(std::abs(Threshold), 0.0), 1.0);
+        Val = std::abs(Val);
+        if (Val > Threshold)
+        {
+            Val = Threshold - (Val - Threshold);
+        }
+        Output->Set(Val * Sign);
+    }
+
+    virtual ~FoldThunk() {};
 };
 
 
@@ -1549,6 +1633,36 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<CeilThunk>();
                 Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::ROUND)
+            {
+                auto Thunk = std::make_shared<RoundThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::SIGN)
+            {
+                auto Thunk = std::make_shared<SignThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::ABS)
+            {
+                auto Thunk = std::make_shared<AbsThunk>();
+                Thunk->Inputs = Inputs[0];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::FLD)
+            {
+                auto Thunk = std::make_shared<FoldThunk>();
+                Thunk->InValue = Inputs[0];
+                Thunk->InPositive = Inputs[1];
+                Thunk->InNegative = Inputs[2];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }

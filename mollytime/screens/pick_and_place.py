@@ -55,8 +55,8 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.BLANK_TAPE, OpCode.LOOP_READ],
                 [None, OpCode.LOOP_WRITE],
                 ["next", None],
-                [None, None],
-                [None, None],
+                [OpCode.ROUND, OpCode.FLD],
+                [OpCode.SIGN, OpCode.ABS],
             ]),
         ]
         for name, shelf in pages:
