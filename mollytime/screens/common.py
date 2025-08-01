@@ -495,10 +495,10 @@ class editor_screen:
             font_path, size = NATIONAL_PARK_REGULAR, max(10, editor.grid_size * 2 * .24)
             if battery_level < 20:
                 ramp = color_ramp(parse_color("#F00"), parse_color("#FF0"))
-                color = ramp.sample(float(battery_level) / 20.0)
+                color = ramp.sample(float(max(battery_level - 10, 0)) / 10.0)
             else:
                 ramp = color_ramp(parse_color("#FF0"), parse_color("#0C0"))
-                color = ramp.sample(float(battery_level - 20) / 80.0)
+                color = ramp.sample(min(float(battery_level - 20) / 79.0, 1.0))
             label = render_text(font_path, size, color, f"BAT: {battery_level}%")
             border = render_text(font_path, size, (0, 0, 0), f"BAT: {battery_level}%")
             label_rect = label.get_rect()

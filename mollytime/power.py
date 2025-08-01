@@ -36,7 +36,7 @@ def poll_battery():
             any_discharging = True
             worst_percent = min(worst_percent, percent)
 
-    if any_discharging:
+    if any_discharging and worst_percent < 100:
         return worst_percent
     else:
         return None
