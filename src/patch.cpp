@@ -1876,10 +1876,6 @@ double Scratch::Eval(double SampleInterval)
 {
     TRACEABLE_SCOPE;
     {
-        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
-        Midi::ProcessEvents(this);
-    }
-    {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
         for (std::shared_ptr<InstructionThunk>& Thunk : Program)
         {

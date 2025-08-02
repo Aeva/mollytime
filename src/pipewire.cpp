@@ -14,15 +14,22 @@
 // limitations under the License.
 
 #include <vector>
+#include <atomic>
 #include <mutex>
 #include <print>
 #include <cstring>
+#include <chrono>
 
 #include <spa/param/audio/format-utils.h>
 #include <pipewire/pipewire.h>
 
 #include "pipewire.h"
 #include "perf.h"
+
+
+using Clock = std::chrono::steady_clock;
+using TimePoint = std::chrono::time_point<Clock>;
+using Duration = Clock::duration;
 
 
 static bool PipeWireInitialized = false;
@@ -33,6 +40,8 @@ struct ThreadShared
 {
     DECLARE_TRACEABLE_MUTEX(Mutex);
     ScratchSharedPtr PendingProgram = nullptr;
+
+    std::atomic<float> TemporalPressure = 0.0;
 };
 
 
@@ -48,7 +57,14 @@ private:
     double SampleInterval = 0.0;
 
     ScratchSharedPtr Program = nullptr;
+    TimePoint LastFrameStart;
 
+    float TemporalPressure = 0.0f;
+    std::vector<float> FramePressure;
+    int FramePressureIndex = 0;
+    int FramePressureCount = 0;
+
+    void ResetFramePressure();
     void OnProcessInner();
 };
 
@@ -58,6 +74,16 @@ void StreamRealTimeThread::SetupPorts(ThreadShared* InBufferState, pw_stream* In
     BufferState = InBufferState;
     Stream = InStream;
     SampleInterval = 1.0 / double(SampleRate);
+    ResetFramePressure();
+}
+
+
+void StreamRealTimeThread::ResetFramePressure()
+{
+    FramePressure.resize(100, 0.0f);
+    FramePressureIndex = 0;
+    FramePressureCount = 0;
+    TemporalPressure = 0.0f;
 }
 
 
@@ -77,6 +103,8 @@ void StreamRealTimeThread::OnProcessInner()
         return;
     }
 
+    TimePoint FrameStart = Clock::now();
+
     struct spa_data& StreamMetaData = StreamBuffer->buffer->datas[0];
 
     int Stride = sizeof(float); // multiply by channel count if you convert this to stereo
@@ -95,22 +123,36 @@ void StreamRealTimeThread::OnProcessInner()
         {
             Program = BufferState->PendingProgram;
             BufferState->PendingProgram = nullptr;
+            ResetFramePressure();
         }
+        BufferState->TemporalPressure.store(TemporalPressure);
     }
 
     if (Program)
     {
+        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
+        Midi::ProcessEvents(Program.get());
+    }
+
+    TimePoint EvalStart;
+    TimePoint EvalEnd;
+    if (Program)
+    {
+        EvalStart = Clock::now();
         for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
             WritePtr[Frame] = float(Program->Eval(SampleInterval));
         }
+        EvalEnd = Clock::now();
     }
     else
     {
+        EvalStart = Clock::now();
         for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
             WritePtr[Frame] = 0.0f;
         }
+        EvalEnd = Clock::now();
     }
 
     StreamMetaData.chunk->offset = 0;
@@ -118,12 +160,35 @@ void StreamRealTimeThread::OnProcessInner()
     StreamMetaData.chunk->size = FrameCount * Stride;
 
     pw_stream_queue_buffer(Stream, StreamBuffer);
+
+    Duration EvalDelta = Duration(EvalEnd - EvalStart);
+    Duration FrameDelta = Duration(FrameStart - LastFrameStart);
+
+    FramePressure[FramePressureIndex++] = float(EvalDelta.count()) / float(FrameDelta.count());
+
+    FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
+    FramePressureIndex %= FramePressure.size();
+    if (Program && FramePressureCount == FramePressure.size())
+    {
+        TemporalPressure = FramePressure[0];
+        for (int Index = 1; Index < FramePressureCount; ++Index)
+        {
+            TemporalPressure += FramePressure[Index];
+        }
+        TemporalPressure /= float(FramePressureCount);
+    }
+    else
+    {
+        TemporalPressure = 0.0f;
+    }
+    LastFrameStart = FrameStart;
 }
 
 
 struct PipeWireStream : public AudioStream
 {
     PipeWireStream();
+    virtual float GetTemporalPressureInner() override;
     virtual void Setup(int SampleRate) override;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) override;
     virtual void Run() override;
@@ -141,6 +206,13 @@ private:
 
 PipeWireStream::PipeWireStream()
 {
+}
+
+
+float PipeWireStream::GetTemporalPressureInner()
+{
+    TRACEABLE_SCOPE;
+    return BufferState.TemporalPressure.load();
 }
 
 
@@ -285,4 +357,10 @@ void AudioStream::Shutdown()
         PipeWireInitialized = false;
         pw_deinit();
     }
+}
+
+
+float AudioStream::GetTemporalPressure()
+{
+    return Get()->GetTemporalPressureInner();
 }

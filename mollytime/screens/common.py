@@ -12,10 +12,12 @@ from patterns import *
 from perf import profile_function
 from power import poll_battery
 
-from mollytime import Patch, OpCode, decode_port_tile, decode_port_index
+from mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
 
 
 battery_level = None
+temporal_pressure = 0.0
+temporal_pressure_precent = ""
 
 
 class program_card:
@@ -403,6 +405,7 @@ class editor_screen:
     touch_colors = {}
 
     def __init__(self, editor):
+        self.last_status_check = 0
         self.last_clip_check = 0
         self.last_clip = 0
         self.draw_clip = False
@@ -436,7 +439,10 @@ class editor_screen:
                     self.draw_clip = False
                     self.update_play_area = True
 
-                # unrelated to clipping, but checking at the same cadence
+            delta = now - self.last_status_check
+            if delta > 1.0:
+                self.last_status_check = now
+                self.perf_check()
                 self.battery_check()
 
             self.draw(editor)
@@ -481,6 +487,30 @@ class editor_screen:
             color = editor_screen.touch_colors[key]
             pygame.draw.circle(editor.screen, color, pos, radius)
 
+    def perf_check(self):
+        global temporal_pressure, temporal_pressure_precent
+        new_value = get_temporal_pressure()
+        if new_value <= 0:
+            # The current temporal pressure reading is invalid.
+            self.update_sidebar = bool(temporal_pressure_precent)
+            temporal_pressure = 0
+            temporal_pressure_precent = ""
+        else:
+            # Lerp between floor and ceiling temporal pressure percents using the temporal
+            # pressure itself as the alpha value.  This is on the theory that the lower bound
+            # is under the error margin, and thus taking the floor gives less noisy results.
+            # This has a soothing effect to discourage unecessary optimization when a patch is
+            # already very inexpensive, and a motivating effect when it is not.
+            alpha = min(max(new_value, 0), 1)
+            inv_a = 1.0 - alpha
+            percent = new_value * 100
+            percent = int(inv_a * math.floor(percent) + alpha * math.ceil(percent))
+            new_label = f"{percent}%"
+            if new_label != temporal_pressure_precent:
+                temporal_pressure = new_value
+                temporal_pressure_precent = new_label
+                self.update_sidebar = True
+
     def battery_check(self):
         global battery_level
         new_battery_level = poll_battery()
@@ -488,30 +518,53 @@ class editor_screen:
             battery_level = new_battery_level
             self.update_sidebar = True
 
-    def draw_battery(self, editor, frame):
+    def draw_system_status(self, editor, frame):
         global battery_level
+        view_rect = frame.get_rect()
+        font_path, size = NATIONAL_PARK_REGULAR, max(10, editor.grid_size * 2 * .24)
+        line_offset_by = size
+        line_offset = 0
+
+        def draw_label(text, fg_color=(255, 255, 255), bg_color=(0, 0, 0)):
+            nonlocal line_offset
+            label = render_text(font_path, size, fg_color, text)
+            border = render_text(font_path, size, bg_color, text)
+            label_rect = label.get_rect()
+            for y in (-2, -1, 1, 2):
+                for x in (-2, -1, 1, 2):
+                    dest = (
+                        view_rect.centerx - label_rect.centerx + x,
+                        view_rect.bottom - label_rect.height + y - line_offset)
+                    frame.blit(border, dest)
+            dest = (
+                view_rect.centerx - label_rect.centerx,
+                view_rect.bottom - label_rect.height - line_offset)
+            frame.blit(label, dest)
+            line_offset += line_offset_by
+
+        if temporal_pressure > 0.0:
+            alpha = min(max(temporal_pressure, 0), 1)
+            if alpha < .5:
+                color = parse_color("#FFF")
+            else:
+                alpha = alpha * 2 - 1
+                ramp = color_ramp(parse_color("#FFF"), parse_color("#FF0"), parse_color("#F00"))
+                color = ramp.sample(alpha)
+
+            text = f"LOAD: {temporal_pressure_precent}"
+            draw_label(text, color)
+        else:
+            draw_label("LOAD: ???")
+
         if battery_level:
-            view_rect = frame.get_rect()
-            font_path, size = NATIONAL_PARK_REGULAR, max(10, editor.grid_size * 2 * .24)
             if battery_level < 20:
                 ramp = color_ramp(parse_color("#F00"), parse_color("#FF0"))
                 color = ramp.sample(float(max(battery_level - 10, 0)) / 10.0)
             else:
                 ramp = color_ramp(parse_color("#FF0"), parse_color("#0C0"))
                 color = ramp.sample(min(float(battery_level - 20) / 79.0, 1.0))
-            label = render_text(font_path, size, color, f"BAT: {battery_level}%")
-            border = render_text(font_path, size, (0, 0, 0), f"BAT: {battery_level}%")
-            label_rect = label.get_rect()
-            for y in (-2, -1, 1, 2):
-                for x in (-2, -1, 1, 2):
-                    dest = (
-                        view_rect.centerx - label_rect.centerx + x,
-                        view_rect.bottom - label_rect.height + y)
-                    frame.blit(border, dest)
-            dest = (
-                view_rect.centerx - label_rect.centerx,
-                view_rect.bottom - label_rect.height)
-            frame.blit(label, dest)
+            text = f"BAT: {battery_level}%"
+            draw_label(text, color)
 
     def purge_events(self):
         self.reset_touch_tracker()

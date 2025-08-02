@@ -202,6 +202,7 @@ PYBIND11_MODULE(mollytime, m) {
 
 	m.def("init_audio", &AudioStream::Init);
 	m.def("shutdown_audio", &AudioStream::Shutdown);
+	m.def("get_temporal_pressure", &AudioStream::GetTemporalPressure);
 
 	m.def("init_midi", &Midi::Init);
 	m.def("shutdown_midi", &Midi::Shutdown);
