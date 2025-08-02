@@ -58,32 +58,26 @@ class program_card:
             quick_connect(gain, out)
 
         elif False:
-            # a3_hz = self.make_constant((-1, 0), 220)
-            # a3_osc = self.make_tile((0, 0), OpCode.SIN)
-            # a4_osc = self.make_tile((0, 1), OpCode.SIN)
-            # self.make_constant((-1, -1), 2)
-            # self.make_tile((0, -1), OpCode.MUL)
-            # out1 = self.make_tile((1, 0), OpCode.OUT)
-            # out2 = self.make_tile((1, 1), OpCode.OUT)
+            summed = self.make_tile((0, 0), OpCode.ADD)
 
-            quarter = self.make_constant((-3, -3), .25)
-            half = self.make_constant((-2, -3), .5)
-            two = self.make_constant((-1, -3), 2)
-            four = self.make_constant((0, -3), 4)
-            eight = self.make_constant((1, -3), 8)
-            sixteen = self.make_constant((2, -3), 16)
-            a4_hz = self.make_constant((-4, -2), 440)
-            out = self.make_tile((4, 3), OpCode.OUT)
+            ambition = 1000
+            half = ambition // 2
 
-            for y in range(5):
-                self.make_tile((-3, -2 + y), OpCode.MUL)
-                self.make_tile((-2, -2 + y), OpCode.ADD)
-                self.make_tile((-1, -2 + y), OpCode.SIN)
-                self.make_tile((0, -2 + y), OpCode.ADD)
-                self.make_tile((2, -2 + y), OpCode.MUL)
-                if y > 0:
-                    n = 1 / y
-                    self.make_constant((1, -2 + y), n)
+            for i in range(ambition):
+                alpha = i / (ambition - 1)
+                inv_a = 1 - alpha
+                hz = 440 # inv_a * 440 + alpha * 440.5
+                hz = self.make_constant((-2, i - half), hz)
+                osc = self.make_tile((-1, i - half), OpCode.SIN)
+                quick_connect(hz, osc)
+                quick_connect(osc, summed)
+
+            scale_by = self.make_constant((1, -1), (1.0 / ambition) * .5)
+            scale = self.make_tile((1, 0), OpCode.MUL)
+            out = self.make_tile((2, 0), OpCode.OUT)
+            quick_connect(summed, scale)
+            quick_connect(scale_by, scale)
+            quick_connect(scale, out)
 
         self.selected = []
 
