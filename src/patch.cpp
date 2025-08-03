@@ -55,6 +55,10 @@ constexpr double MidiNoteToHz(double Note)
 
 constexpr double HzToMidiNote(double Hz)
 {
+    if (Hz <= 0.0)
+    {
+        return 0.0;
+    }
     // NOTE: std::log2 not constexpr until C++26, and Clang 2c doesn't have it yet
     double Note = std::log2(Hz / 440.0) * 12.0 + 69.0;
     return Note;
@@ -112,6 +116,10 @@ constexpr double PerceptualAmplitudeCorrectionByMidiNote(double Note)
 
 constexpr double PerceptualAmplitudeCorrectionByHz(double Hz)
 {
+    if (Hz <= 0.0)
+    {
+        return 0.0;
+    }
     const double Note = HzToMidiNote(Hz);
     return PerceptualAmplitudeCorrectionByMidiNote(Note);
 }
