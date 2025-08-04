@@ -288,7 +288,7 @@ private:
 
     // These should only ever be set or read by the audio thread:
     RunningStateSharedPtr MidiGate = std::make_shared<RunningState>(0.0);
-    RunningStateSharedPtr MidiNote = std::make_shared<RunningState>(255.0);
+    RunningStateSharedPtr MidiNote = std::make_shared<RunningState>(50.0);
     RunningStateSharedPtr MidiVelocity = std::make_shared<RunningState>(0.0);
     RunningStateSharedPtr MidiPressure = std::make_shared<RunningState>(0.0);
 
