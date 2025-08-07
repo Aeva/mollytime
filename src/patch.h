@@ -75,9 +75,7 @@ enum class OpCode : uint32_t
     MIDI_HZ,
     LOUD_FUDGE,
     BOOP,
-    BLANK_TAPE,
-    LOOP_READ,
-    LOOP_WRITE,
+    TAPE_LOOP,
     Count
 };
 

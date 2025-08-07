@@ -158,9 +158,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)
 		.value("BOOP", OpCode::BOOP)
-		.value("BLANK_TAPE", OpCode::BLANK_TAPE)
-		.value("LOOP_READ", OpCode::LOOP_READ)
-		.value("LOOP_WRITE", OpCode::LOOP_WRITE)
+		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
 		.value("Count", OpCode::Count);
 
 	m.def("make_port_handle", &MakePortHandle);

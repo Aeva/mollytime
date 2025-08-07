@@ -222,9 +222,7 @@ struct SymbolInfo
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
-        Set(OpCode::BLANK_TAPE, "blank\ntape", {"seconds"}, {"handle"});
-        Set(OpCode::LOOP_READ, "loop\nread", {"handle", "offset", "reset"}, {"sample"}, 3);
-        Set(OpCode::LOOP_WRITE, "loop\nwrite", {"handle", "sample", "reset"}, {}, 2);
+        Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -908,6 +906,7 @@ struct BlankTape : public MagicTape
     {
         Seconds = InSeconds;
         size_t SampleCount = size_t(Seconds * double(SampleRate));
+        Samples.clear();
         Samples.resize(SampleCount, 0.0);
     }
 
@@ -932,7 +931,7 @@ struct BlankTape : public MagicTape
 
     virtual double ReadAndAdvance(size_t& Index) override
     {
-        if (Samples.size() > 0)
+        if (Samples.size())
         {
             Index %= Samples.size();
             return Samples[Index++];
@@ -965,145 +964,74 @@ struct BlankTape : public MagicTape
 using BlankTapeSharedPtr = std::shared_ptr<BlankTape>;
 
 
-struct BlankTapeThunk : public InstructionThunk
+struct TapeLoopThunk : public InstructionThunk
 {
-    BlankTapeSharedPtr Tape;
-    std::vector<RunningStateSharedPtr> Input;
+    std::vector<RunningStateSharedPtr> InSample;
+    std::vector<RunningStateSharedPtr> InOffset;
+    std::vector<RunningStateSharedPtr> InLength;
+    std::vector<RunningStateSharedPtr> InReset;
     RunningStateSharedPtr Output = nullptr;
+    RunningStateSharedPtr ReadHead = nullptr;
+    RunningStateSharedPtr WriteHead = nullptr;
+    RunningStateSharedPtr LastReset = nullptr;
+    RunningStateSharedPtr LastOffset = nullptr;
+    BlankTapeSharedPtr Tape;
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("BlankTapeThunk");
+        TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
 
-        double Seconds = Combine(CombinerAdd, Input, 0.0);
+        double Offset = Combine(CombinerAdd, InOffset, 0.0);
+        double Seconds = Combine(CombinerAdd, InLength, 0.0);
+        size_t ReadIndex = std::bit_cast<size_t, double>(ReadHead->Get());
+        size_t WriteIndex = std::bit_cast<size_t, double>(WriteHead->Get());
+
+        auto ResetOffset = [&]()
+        {
+            if (Tape && Tape->Samples.size() > 0)
+            {
+                ReadIndex = Tape->FindSample(Offset);
+                ReadIndex = (ReadIndex + WriteIndex) % Tape->Samples.size();
+            }
+            else
+            {
+                ReadIndex = 0;
+            }
+            LastOffset->Set(Offset);
+        };
+
         if (Seconds != Tape->Seconds)
         {
             Tape->Reset(Seconds);
-        }
-        Output->Set(Tape->TapeHandle);
-    }
-
-    virtual ~BlankTapeThunk() {};
-};
-
-
-struct TapeLoopReadThunk : public InstructionThunk
-{
-    Scratch* Program;
-    std::vector<RunningStateSharedPtr> InHandle;
-    std::vector<RunningStateSharedPtr> InOffset;
-    std::vector<RunningStateSharedPtr> InReset;
-    RunningStateSharedPtr Output = nullptr;
-    RunningStateSharedPtr Cursor = nullptr;
-    RunningStateSharedPtr LastOffset = nullptr;
-    RunningStateSharedPtr LastReset = nullptr;
-
-    TapeLoopReadThunk(Scratch* InProgram)
-        : Program(InProgram)
-    {
-    }
-
-    virtual void Crank(double SampleInterval) override
-    {
-        TRACEABLE_NAMED_SCOPE("TapeLoopReadThunk");
-
-        MagicTapeSharedPtr Tape = nullptr;
-        for (RunningStateSharedPtr& Port : InHandle)
-        {
-            Tape = Program->FindTape(Port->Get());
-            if (Tape != nullptr)
-            {
-                break;
-            }
+            WriteIndex = 0;
+            ResetOffset();
         }
 
-        if (Tape == nullptr)
-        {
-            Output->Set(0.0);
-            Cursor->Set(std::bit_cast<double, size_t>(0));
-            LastOffset->Set(0.0);
-            LastReset->Set(0.0);
-            return;
-        }
-
-        size_t ReadIndex = std::bit_cast<size_t, double>(Cursor->Get());
-
-        double Offset = Combine(CombinerAdd, InOffset, 0.0);
-        if (Offset != LastOffset->Get())
-        {
-            ReadIndex = Tape->FindSample(Offset);
-            LastOffset->Set(Offset);
-            LastReset->Set(1.0);
-        }
-        else
+        if (Tape->Samples.size() > 0)
         {
             double Reset = Combine(CombinerAdd, InReset, 0.0);
             if (LastReset->Get() <= 0.0 && Reset >= 1.0)
             {
-                ReadIndex = Tape->FindSample(Offset);
-                LastOffset->Set(Offset);
+                Tape->Reset(Seconds);
+                WriteIndex = 0;
+                ResetOffset();
+            }
+            else if (Offset != LastOffset->Get())
+            {
+                ResetOffset();
             }
             LastReset->Set(Reset);
-        }
 
-        Output->Set(Tape->ReadAndAdvance(ReadIndex));
-        Cursor->Set(std::bit_cast<double, size_t>(ReadIndex));
+            Output->Set(Tape->ReadAndAdvance(ReadIndex));
+            ReadHead->Set(std::bit_cast<double, size_t>(ReadIndex));
+
+            double Sample = Combine(CombinerAdd, InSample, 0.0);
+            Tape->WriteAndAdvance(WriteIndex, Sample);
+            WriteHead->Set(std::bit_cast<double, size_t>(WriteIndex));
+        }
     }
 
-    virtual ~TapeLoopReadThunk() {};
-};
-
-
-struct TapeLoopWriteThunk : public InstructionThunk
-{
-    Scratch* Program;
-    std::vector<RunningStateSharedPtr> InHandle;
-    std::vector<RunningStateSharedPtr> InSample;
-    std::vector<RunningStateSharedPtr> InReset;
-    RunningStateSharedPtr Cursor = nullptr;
-    RunningStateSharedPtr LastReset = nullptr;
-
-    TapeLoopWriteThunk(Scratch* InProgram)
-    : Program(InProgram)
-    {
-    }
-
-    virtual void Crank(double SampleInterval) override
-    {
-        TRACEABLE_NAMED_SCOPE("TapeLoopWriteThunk");
-
-        MagicTapeSharedPtr Tape = nullptr;
-        for (RunningStateSharedPtr& Port : InHandle)
-        {
-            Tape = Program->FindTape(Port->Get());
-            if (Tape != nullptr)
-            {
-                break;
-            }
-        }
-
-        if (Tape == nullptr)
-        {
-            Cursor->Set(std::bit_cast<double, size_t>(0));
-            LastReset->Set(0.0);
-            return;
-        }
-
-        size_t WriteIndex = std::bit_cast<size_t, double>(Cursor->Get());
-
-        double Reset = Combine(CombinerAdd, InReset, 0.0);
-        if (LastReset->Get() <= 0.0 && Reset >= 1.0)
-        {
-            WriteIndex = 0;
-        }
-        LastReset->Set(Reset);
-
-        double Sample = Combine(CombinerAdd, InSample, 0.0);
-        Tape->WriteAndAdvance(WriteIndex, Sample);
-        Cursor->Set(std::bit_cast<double, size_t>(WriteIndex));
-    }
-
-    virtual ~TapeLoopWriteThunk() {};
+    virtual ~TapeLoopThunk() {};
 };
 
 
@@ -1151,7 +1079,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
     }
-    else if (Symbol == OpCode::BLANK_TAPE)
+    else if (Symbol == OpCode::TAPE_LOOP)
     {
         TapeCollection[AllocatedHandle] = std::make_shared<BlankTape>(AllocatedHandle);
     }
@@ -1205,7 +1133,7 @@ void Patch::EraseTile(TileHandle Tile)
     {
         SpecialInputs.erase(Tile);
     }
-    else if (Symbol == OpCode::BLANK_TAPE)
+    else if (Symbol == OpCode::TAPE_LOOP)
     {
         TapeCollection.erase(Tile);
     }
@@ -1793,35 +1721,19 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
-            else if (Symbol == OpCode::BLANK_TAPE)
+            else if (Symbol == OpCode::TAPE_LOOP)
             {
-                auto Thunk = std::make_shared<BlankTapeThunk>();
-                Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
-                Thunk->Input = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Tapes[Tile] = TapeCollection.at(Tile);
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-            }
-            else if (Symbol == OpCode::LOOP_READ)
-            {
-                auto Thunk = std::make_shared<TapeLoopReadThunk>(Program.get());
-                Thunk->InHandle = Inputs[0];
+                auto Thunk = std::make_shared<TapeLoopThunk>();
+                Thunk->InSample = Inputs[0];
                 Thunk->InOffset = Inputs[1];
-                Thunk->InReset = Inputs[2];
+                Thunk->InLength = Inputs[2];
+                Thunk->InReset = Inputs[3];
                 Thunk->Output = Outputs[0];
-                Thunk->Cursor = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastOffset = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->ReadHead = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->WriteHead = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
                 Thunk->LastReset = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-            }
-            else if (Symbol == OpCode::LOOP_WRITE)
-            {
-                auto Thunk = std::make_shared<TapeLoopWriteThunk>(Program.get());
-                Thunk->InHandle = Inputs[0];
-                Thunk->InSample = Inputs[1];
-                Thunk->InReset = Inputs[2];
-                Thunk->Cursor = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastReset = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->LastOffset = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             return nullptr;
@@ -1834,7 +1746,7 @@ ScratchSharedPtr Patch::Compile()
     Program->Outputs.clear();
     for (const auto& [Tile, Symbol] : TileSymbols)
     {
-        if (Symbol == OpCode::LOOP_WRITE)
+        if (Symbol == OpCode::TAPE_LOOP)
         {
             // TODO: In theory, we probably want to evaluate all of the dependencies for
             // pseudo outputs first, then evaluate the thunks for the pseudo outputs, then
