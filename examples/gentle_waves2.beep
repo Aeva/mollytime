@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="1" symbol="rng" x="1" y="-1"/>
+		<tile id="2" symbol="sqr" x="0" y="-1"/>
+		<tile id="3" symbol="const" x="-1" y="-1" value="1000.0"/>
+		<tile id="4" symbol="uts" x="2" y="-1"/>
+		<tile id="5" symbol="out" x="3" y="0"/>
+		<tile id="6" symbol="mul" x="0" y="0"/>
+		<tile id="7" symbol="stu" x="0" y="1"/>
+		<tile id="8" symbol="const" x="-4" y="0" value="0.75"/>
+		<tile id="9" symbol="mul" x="-1" y="0"/>
+		<tile id="10" symbol="sin" x="-1" y="1"/>
+		<tile id="11" symbol="const" x="1" y="0" value="62.5"/>
+		<tile id="12" symbol="stu" x="2" y="2"/>
+		<tile id="13" symbol="sin" x="3" y="2"/>
+		<tile id="14" symbol="const" x="2" y="3" value="0.1"/>
+		<tile id="15" symbol="mul" x="2" y="0"/>
+		<tile id="16" symbol="const" x="0" y="3" value="0.0"/>
+		<tile id="17" symbol="const" x="-1" y="3" value="1.0"/>
+		<tile id="18" symbol="mix" x="0" y="2"/>
+		<tile id="19" symbol="pls" x="-1" y="2"/>
+		<tile id="20" symbol="rng" x="-3" y="2"/>
+		<tile id="21" symbol="const" x="-4" y="1" value="-0.25"/>
+		<tile id="22" symbol="const" x="-2" y="1" value="0.25"/>
+		<tile id="23" symbol="mix" x="-3" y="1"/>
+		<tile id="24" symbol="add" x="-3" y="0"/>
+		<tile id="25" symbol="mix" x="2" y="1"/>
+		<tile id="26" symbol="const" x="1" y="1" value="0.125"/>
+		<tile id="27" symbol="const" x="3" y="1" value="0.5"/>
+		<wire from="22:0" to="23:1"/>
+		<wire from="19:0" to="20:0"/>
+		<wire from="11:0" to="6:0"/>
+		<wire from="13:0" to="12:0"/>
+		<wire from="27:0" to="25:1"/>
+		<wire from="14:0" to="13:0"/>
+		<wire from="9:0" to="6:0"/>
+		<wire from="8:0" to="24:0"/>
+		<wire from="1:0" to="4:0"/>
+		<wire from="7:0" to="6:0"/>
+		<wire from="10:0" to="7:0"/>
+		<wire from="23:0" to="24:0"/>
+		<wire from="21:0" to="23:0"/>
+		<wire from="12:0" to="18:2"/>
+		<wire from="26:0" to="25:0"/>
+		<wire from="16:0" to="18:1"/>
+		<wire from="12:0" to="25:2"/>
+		<wire from="17:0" to="18:0"/>
+		<wire from="15:0" to="5:0"/>
+		<wire from="9:0" to="10:0"/>
+		<wire from="18:0" to="19:0"/>
+		<wire from="3:0" to="2:0"/>
+		<wire from="2:0" to="1:0"/>
+		<wire from="20:0" to="23:2"/>
+		<wire from="6:0" to="2:0"/>
+		<wire from="25:0" to="15:0"/>
+		<wire from="4:0" to="15:0"/>
+		<wire from="24:0" to="9:0"/>
+		<wire from="3:0" to="9:0"/>
+	</patch>
+</mollytime>
