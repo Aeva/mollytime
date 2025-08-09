@@ -60,6 +60,7 @@ enum class OpCode : uint32_t
     SIGN,
     ABS,
     FLD,
+    INV,
     STU,
     UTS,
     MIX,

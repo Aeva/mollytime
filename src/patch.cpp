@@ -207,6 +207,7 @@ struct SymbolInfo
         Set(OpCode::SIGN, "sign", {"#"}, {"sign"});
         Set(OpCode::ABS, "abs", {"#"}, {"abs"});
         Set(OpCode::FLD, "fold", {"v", "p", "n"}, {"w"});
+        Set(OpCode::INV, "invert", {"#"}, {"#"});
         Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
         Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
@@ -520,6 +521,23 @@ struct FoldThunk : public InstructionThunk
     }
 
     virtual ~FoldThunk() {};
+};
+
+
+struct InvertThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Inputs;
+    RunningStateSharedPtr Output = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("InvertThunk");
+        double Value = Combine(CombinerAdd, Inputs, 0.0);
+        double Sign = Value < 0.0 ? -1.0 : 1.0;
+        Output->Set((1.0 - std::abs(Value)) * Sign);
+    }
+
+    virtual ~InvertThunk() {};
 };
 
 
@@ -1599,6 +1617,13 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->InValue = Inputs[0];
                 Thunk->InPositive = Inputs[1];
                 Thunk->InNegative = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::INV)
+            {
+                auto Thunk = std::make_shared<InvertThunk>();
+                Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }

@@ -143,6 +143,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("SIGN", OpCode::SIGN)
 		.value("ABS", OpCode::ABS)
 		.value("FLD", OpCode::FLD)
+		.value("INV", OpCode::INV)
 		.value("STU", OpCode::STU)
 		.value("UTS", OpCode::UTS)
 		.value("MIX", OpCode::MIX)
