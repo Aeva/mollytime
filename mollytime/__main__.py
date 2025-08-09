@@ -42,30 +42,36 @@ unscaled_display_size = pygame.display.list_modes(display=display_index)[0]
 
 screen = pygame.display.set_mode(size=unscaled_display_size, display=display_index, flags=pygame.FULLSCREEN)
 
-dpi = None
+xrandr_dpi = {}
+screen_index = 0
+while True:
+    xrandr = subprocess.run(("xrandr", "--screen", str(screen_index)), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if xrandr.returncode == 0:
+        try:
+            report = xrandr.stdout.decode()
+            regex = r"Screen (\d+):.+current (\d+) x (\d+).+\n.+ (\d+)mm x (\d+)mm"
+            found = [list(map(int, r)) for r in re.findall(regex, report)]
+            assert(len(found) == 1)
+            reported_index, res_x, res_y, mm_x, mm_y = list(map(int, found[0]))
 
-xrandr = subprocess.run("xrandr", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-if xrandr.returncode == 0:
-    try:
-        report = xrandr.stdout.decode()
-        regex = r"Screen (\d+):.+current (\d+) x (\d+).+\n.+ (\d+)mm x (\d+)mm"
-        found = [list(map(int, r)) for r in re.findall(regex, report)]
-        assert(len(found) == len(sizes))
-        for index, (reported_index, res_x, res_y, mm_x, mm_y) in enumerate(found):
-            index = reported_index
-            assert(sizes[index][0] == res_x)
-            assert(sizes[index][1] == res_y)
-        reported_index, res_x, res_y, mm_x, mm_y = list(map(int, found[display_index]))
-        in_x = mm_x / 25.4
-        in_y = mm_y / 25.4
-        dpi_x = res_x / in_x
-        dpi_y = res_y / in_y
-        dpi = round((dpi_x + dpi_y) / 2)
-    except AssertionError:
-        print("Cannot determine DPI: information reported by xrandr contradicts pygame.")
-        dpi = None
+            # xrandr may report the scaled or unscaled resolution, and so it cannot be relied upon for DPI calculation
+            res_x, res_y = sizes[screen_index]
+
+            in_x = mm_x / 25.4
+            in_y = mm_y / 25.4
+            dpi_x = res_x / in_x
+            dpi_y = res_y / in_y
+            xrandr_dpi[screen_index] = round((dpi_x + dpi_y) / 2)
+            screen_index += 1
+        except AssertionError:
+            break
+    else:
+        break
+
+dpi = xrandr_dpi.get(display_index, None)
 
 if dpi is None:
+    print("Unable to calculate screen DPI via xrandr!")
     in_y = 7.5
     res_y = min(scaled_display_size)
     dpi = round(res_y / in_y)
