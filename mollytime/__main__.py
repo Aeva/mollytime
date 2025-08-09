@@ -68,6 +68,10 @@ while True:
     else:
         break
 
+if len(xrandr_dpi.keys()) != len(sizes):
+    print("Number of screens reported by xrandr does not match the number of screens reported by pygame!")
+    xrandr_dpi = {}
+
 dpi = xrandr_dpi.get(display_index, None)
 
 if dpi is None:
