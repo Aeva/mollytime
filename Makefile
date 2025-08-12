@@ -16,6 +16,8 @@ ENABLE_DEBUG := #uncomment me to enable debugging
 ENABLE_STACK_TRACES := uncomment me to enable stacktraces.  requires boost-stacktrace
 ENABLE_PERF := #uncomment me to enable perf instrumentation (tracy)
 
+ENABLE_JACK := #uncomment to enable jack
+
 TRACY_DIR := third_party/tracy-0.12.2/public
 INCLUDE_TRACY := -I "$(TRACY_DIR)"
 TRACY_SOURCE := $(TRACY_DIR)/TracyClient.cpp
@@ -27,12 +29,16 @@ INSTRUMENTATION := \
 	$(if $(ENABLE_STACK_TRACES),-DENABLE_STACK_TRACES,) \
 	$(if $(ENABLE_PERF),$(INCLUDE_TRACY) -DTRACY_ENABLE,)
 
-COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) -DENABLE_PIPEWIRE
+COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) $(if $(ENABLE_JACK),-DENABLE_JACK,-DENABLE_PIPEWIRE)
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
+INCLUDE_JACK := $(shell pkg-config --cflags jack)
 INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)
-LIBRARIES := -lm -lasound $(shell pkg-config --libs libpipewire-0.3) \
-	$(if $(ENABLE_PERF),-lpthread -ldl,)
+INCLUDE_AUDIO := $(if $(ENABLE_JACK), $(INCLUDE_JACK), $(INCLUDE_PIPEWIRE))
+LIB_JACK := $(shell pkg-config --libs jack)
+LIB_PIPEWIRE := $(shell pkg-config --libs libpipewire-0.3)
+LIB_AUDIO := $(if $(ENABLE_JACK), $(LIB_JACK), $(LIB_PIPEWIRE))
+LIBRARIES := -lm -lasound $(LIB_AUDIO) $(if $(ENABLE_PERF),-lpthread -ldl,)
 
 all: $(OBJECT_TARGETS) $(TRACY_TARGET) $(TARGET_LIB)
 
@@ -42,7 +48,7 @@ clean:
 
 $(OBJECT_FILES): $(SOURCE_FILES)
 	mkdir -p build
-	clang++ $(COMMON_ARGS) $(INCLUDE_GLM) $(INCLUDE_PYTHON) $(INCLUDE_PIPEWIRE) -c $< -o $@
+	clang++ $(COMMON_ARGS) $(INCLUDE_GLM) $(INCLUDE_PYTHON) $(INCLUDE_AUDIO) -c $< -o $@
 
 $(TRACY_OBJECT): $(TRACY_SOURCE)
 	mkdir -p build
