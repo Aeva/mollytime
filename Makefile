@@ -16,7 +16,7 @@ ENABLE_DEBUG := #uncomment me to enable debugging
 ENABLE_STACK_TRACES := uncomment me to enable stacktraces.  requires boost-stacktrace
 ENABLE_PERF := #uncomment me to enable perf instrumentation (tracy)
 
-ENABLE_JACK := #uncomment to enable jack
+ENABLE_JACK := uncomment to enable jack
 
 TRACY_DIR := third_party/tracy-0.12.2/public
 INCLUDE_TRACY := -I "$(TRACY_DIR)"
