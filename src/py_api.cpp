@@ -20,7 +20,7 @@
 #include <pybind11/stl.h>
 #include "colors.h"
 #include "patch.h"
-#include "pipewire.h"
+#include "audio_backend.h"
 #include "alsa_midi.h"
 #include "perf.h"
 

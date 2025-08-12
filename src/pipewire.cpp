@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef ENABLE_PIPEWIRE
+
 #include <vector>
 #include <atomic>
 #include <mutex>
@@ -23,7 +25,7 @@
 #include <spa/param/audio/format-utils.h>
 #include <pipewire/pipewire.h>
 
-#include "pipewire.h"
+#include "audio_backend.h"
 #include "perf.h"
 
 
@@ -364,3 +366,6 @@ float AudioStream::GetTemporalPressure()
 {
     return Get()->GetTemporalPressureInner();
 }
+
+
+#endif // ENABLE_PIPEWIRE

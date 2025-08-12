@@ -27,7 +27,7 @@ INSTRUMENTATION := \
 	$(if $(ENABLE_STACK_TRACES),-DENABLE_STACK_TRACES,) \
 	$(if $(ENABLE_PERF),$(INCLUDE_TRACY) -DTRACY_ENABLE,)
 
-COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION)
+COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) -DENABLE_PIPEWIRE
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)
