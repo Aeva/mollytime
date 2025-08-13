@@ -6,6 +6,8 @@ touch screen devices.  Mollytime is intended to be useful for live
 performances, and dynamic sound tracks for interactive media such as video-games
 and installation art.
 
+![A screeenshot of a virtual synthesizer visual programming language.  Patches are described as a set of tiles linked by arrows which describe the flow of samples through the system and how they are mutated.](screenshot.png)
+
 # This Synthesizer Is Under Construction
 
 While Mollytime is already quite usable, it is still missing quite a bit of
