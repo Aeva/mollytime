@@ -23,7 +23,7 @@ AFACAD_REGULAR = "afacad/static/Afacad-Regular.ttf"
 NATIONAL_PARK_LIGHT = "national_park/NationalPark-Light.ttf"
 NATIONAL_PARK_REGULAR = "national_park/NationalPark-Regular.ttf"
 
-MEDIA_DIR = os.path.join(os.path.split(__file__)[0], "..", "media")
+MEDIA_DIR = os.path.join(os.path.split(__file__)[0], "media")
 
 
 FONT_CACHE = {}
