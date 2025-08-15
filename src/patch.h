@@ -228,7 +228,7 @@ struct Scratch : public MidiHandler
     RunningStateSharedPtr MidiVelocity;
     RunningStateSharedPtr MidiPressure;
 
-    double Eval(double SampleInterval);
+    void Crank(double SampleInterval);
     MagicTapeSharedPtr FindTape(double WireValue);
 
     virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel) override;

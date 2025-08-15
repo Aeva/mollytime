@@ -41,8 +41,8 @@ using Duration = Clock::duration;
 
 static bool JackInitialized = false;
 static AudioStream* StreamSingleton = nullptr;
-jack_client_t* JackClient;
-const char* ClientName = "mollytime";
+static jack_client_t* JackClient;
+static const char* ClientName = "mollytime";
 
 
 void JackShutdown(void* UserData = nullptr)
@@ -61,18 +61,18 @@ struct ThreadShared
     ScratchSharedPtr PendingProgram = nullptr;
 
     std::atomic<float> TemporalPressure = 0.0;
+
+    std::vector<jack_port_t*> OutputPorts;
 };
 
 
 struct StreamRealTimeThread
 {
-    void SetupPorts(ThreadShared* InBufferState, int SampleRate);
+    void Setup(ThreadShared* InBufferState, int SampleRate);
 
     static int OnProcess(jack_nframes_t FrameCount, void *UserData);
 
 private:
-    jack_port_t* OutputMono = nullptr;
-
     ThreadShared* BufferState = nullptr;
     double SampleInterval = 0.0;
 
@@ -89,19 +89,28 @@ private:
 };
 
 
-void StreamRealTimeThread::SetupPorts(ThreadShared* InBufferState, int SampleRate)
+void StreamRealTimeThread::Setup(ThreadShared* InBufferState, int SampleRate)
 {
     BufferState = InBufferState;
     SampleInterval = 1.0 / double(SampleRate);
     ResetFramePressure();
 
-    OutputMono = jack_port_register(
-        JackClient, "output_mono", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    BufferState->OutputPorts.clear();
+    BufferState->OutputPorts.resize(2, nullptr);
 
-    if (OutputMono == nullptr)
+    BufferState->OutputPorts[0] = jack_port_register(
+        JackClient, "output_FL", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+
+    BufferState->OutputPorts[1] = jack_port_register(
+        JackClient, "output_FR", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+
+    for (jack_port_t* Port : BufferState->OutputPorts)
     {
-        JackShutdown();
-        throw std::runtime_error("Unable to create jack ports!\n");
+        if (Port == nullptr)
+        {
+            JackShutdown();
+            throw std::runtime_error("Unable to create jack ports!\n");
+        }
     }
 
     if (jack_activate(JackClient))
@@ -117,14 +126,13 @@ void StreamRealTimeThread::SetupPorts(ThreadShared* InBufferState, int SampleRat
         throw std::runtime_error("No physical playback ports!\n");
     }
 
-    if (jack_connect(JackClient, jack_port_name(OutputMono), Ports[0]))
+    for (int PortIndex = 0; Ports[PortIndex] != nullptr && PortIndex < 2; ++PortIndex)
     {
-        // unable to connect to physical port
-    }
-
-    if (jack_connect(JackClient, jack_port_name(OutputMono), Ports[1]))
-    {
-        // unable to connect to physical port
+        const char* ProgramOut = jack_port_name(BufferState->OutputPorts[PortIndex]);
+        if (jack_connect(JackClient, ProgramOut, Ports[PortIndex]))
+        {
+            // unable to connect to physical port
+        }
     }
 
     jack_free(Ports);
@@ -150,7 +158,7 @@ int StreamRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
 int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
 {
     TRACEABLE_SCOPE;
-    auto* WritePtr = (jack_default_audio_sample_t*)jack_port_get_buffer(OutputMono, FrameCount);
+    std::vector<std::tuple<int, jack_default_audio_sample_t*>> WritePtrs;
 
     TimePoint FrameStart = Clock::now();
     {
@@ -162,6 +170,27 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
             ResetFramePressure();
         }
         BufferState->TemporalPressure.store(TemporalPressure);
+
+        int OutputCount = Program ? std::min(BufferState->OutputPorts.size(), Program->Outputs.size()) : 0;
+        auto GetPortBuffer = [&](int PortIndex)
+        {
+            return (jack_default_audio_sample_t*)jack_port_get_buffer(
+                BufferState->OutputPorts[PortIndex], FrameCount);
+        };
+        if (OutputCount == 1)
+        {
+            WritePtrs.reserve(2);
+            WritePtrs.emplace_back(0, GetPortBuffer(0));
+            WritePtrs.emplace_back(0, GetPortBuffer(1));
+        }
+        else
+        {
+            WritePtrs.reserve(OutputCount);
+            for (int PortIndex = 0; PortIndex < OutputCount; ++PortIndex)
+            {
+                WritePtrs.emplace_back(PortIndex, GetPortBuffer(PortIndex));
+            }
+        }
     }
 
     if (Program)
@@ -177,16 +206,23 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
         EvalStart = Clock::now();
         for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
-            WritePtr[Frame] = float(Program->Eval(SampleInterval));
+            Program->Crank(SampleInterval);
+            for (auto [PortIndex, WritePtr] : WritePtrs)
+            {
+                WritePtr[Frame] = float(Program->Outputs[PortIndex]->Get());
+            }
         }
         EvalEnd = Clock::now();
     }
     else
     {
         EvalStart = Clock::now();
-        for (int Frame = 0; Frame < FrameCount; ++Frame)
+        for (auto [PortIndex, WritePtr] : WritePtrs)
         {
-            WritePtr[Frame] = 0.0f;
+            for (int Frame = 0; Frame < FrameCount; ++Frame)
+            {
+                WritePtr[Frame] = 0.0f;
+            }
         }
         EvalEnd = Clock::now();
     }
@@ -249,7 +285,7 @@ float JackStream::GetTemporalPressureInner()
 
 void JackStream::Setup(int SampleRate)
 {
-    RealTimeThread.SetupPorts(&BufferState, SampleRate);
+    RealTimeThread.Setup(&BufferState, SampleRate);
 }
 
 

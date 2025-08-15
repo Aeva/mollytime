@@ -1817,7 +1817,7 @@ void Patch::Recompile()
 }
 
 
-double Scratch::Eval(double SampleInterval)
+void Scratch::Crank(double SampleInterval)
 {
     TRACEABLE_SCOPE;
     {
@@ -1827,27 +1827,20 @@ double Scratch::Eval(double SampleInterval)
             Thunk->Crank(SampleInterval);
         }
     }
-    double Out = 0.0;
-    {
-        TRACEABLE_NAMED_SCOPE("GATHER OUTPUT");
-        for (RunningStateSharedPtr Output : Outputs)
-        {
-            Out += Output->Get();
-        }
-    }
     if (ProbeInput)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         ScopeProbe->Set(ProbeInput->Get());
-        OutputProbe->Set(Out);
+        // TODO : Add probes for the other outputs
+        OutputProbe->Set(Outputs[0]->Get());
     }
     else
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
-        ScopeProbe->Set(Out);
-        OutputProbe->Set(Out);
+        // TODO : Add probes for the other output
+        ScopeProbe->Set(Outputs[0]->Get());
+        OutputProbe->Set(Outputs[0]->Get());
     }
-    return Out;
 }
 
 
