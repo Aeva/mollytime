@@ -46,6 +46,7 @@ enum class OpCode : uint32_t
     CONST = 0,
     SCOPE,
     OUT,
+    AUX,
     SIN,
     SQR,
     TRI,
@@ -218,6 +219,7 @@ struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
+    std::vector<RunningStateSharedPtr> AuxOutputs;
     std::unordered_map<TileHandle, MagicTapeSharedPtr> Tapes;
     RunningStateSharedPtr ProbeInput = nullptr;
     ProbeRunningStateSharedPtr OutputProbe;

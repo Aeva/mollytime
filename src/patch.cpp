@@ -193,6 +193,7 @@ struct SymbolInfo
         Set(OpCode::CONST, "const", {}, {"#"});
         Set(OpCode::SCOPE, "scope", {"out"}, {});
         Set(OpCode::OUT, "out", {"out"}, {});
+        Set(OpCode::AUX, "aux", {"out"}, {});
         Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
         Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
         Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
@@ -1460,7 +1461,7 @@ ScratchSharedPtr Patch::Compile()
             }
         }
 
-        if (Symbol == OpCode::OUT || Symbol == OpCode::SCOPE)
+        if (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE)
         {
             // The output tile does not have any specific behavior, but may emit
             // an implicit add.
@@ -1789,6 +1790,14 @@ ScratchSharedPtr Patch::Compile()
                 Program->Outputs.push_back(Output);
             }
         }
+        else if (Symbol == OpCode::AUX)
+        {
+            RunningStateSharedPtr Output = Step(Tile);
+            if (Output != nullptr)
+            {
+                Program->AuxOutputs.push_back(Output);
+            }
+        }
         else if (Symbol == OpCode::SCOPE)
         {
             Scopes.push_back(Tile);
@@ -1831,13 +1840,16 @@ void Scratch::Crank(double SampleInterval)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         ScopeProbe->Set(ProbeInput->Get());
-        // TODO : Add probes for the other outputs
-        OutputProbe->Set(Outputs[0]->Get());
+        if (Outputs.size() > 0)
+        {
+            // TODO : per-output probes
+            OutputProbe->Set(Outputs[0]->Get());
+        }
     }
-    else
+    else if (Outputs.size() > 0)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
-        // TODO : Add probes for the other output
+        // TODO : per-output probes
         ScopeProbe->Set(Outputs[0]->Get());
         OutputProbe->Set(Outputs[0]->Get());
     }
