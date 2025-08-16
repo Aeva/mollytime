@@ -63,6 +63,7 @@ struct ThreadShared
     std::atomic<float> TemporalPressure = 0.0;
 
     std::vector<jack_port_t*> OutputPorts;
+            std::vector<jack_port_t*> AuxOutPorts;
 };
 
 
@@ -158,7 +159,8 @@ int StreamRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
 int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
 {
     TRACEABLE_SCOPE;
-    std::vector<std::tuple<int, jack_default_audio_sample_t*>> WritePtrs;
+    std::vector<std::tuple<int, jack_default_audio_sample_t*>> OutPtrs;
+    std::vector<std::tuple<int, jack_default_audio_sample_t*>> AuxPtrs;
 
     TimePoint FrameStart = Clock::now();
     {
@@ -171,24 +173,60 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
         }
         BufferState->TemporalPressure.store(TemporalPressure);
 
-        int OutputCount = Program ? std::min(BufferState->OutputPorts.size(), Program->Outputs.size()) : 0;
-        auto GetPortBuffer = [&](int PortIndex)
         {
-            return (jack_default_audio_sample_t*)jack_port_get_buffer(
-                BufferState->OutputPorts[PortIndex], FrameCount);
-        };
-        if (OutputCount == 1)
-        {
-            WritePtrs.reserve(2);
-            WritePtrs.emplace_back(0, GetPortBuffer(0));
-            WritePtrs.emplace_back(0, GetPortBuffer(1));
-        }
-        else
-        {
-            WritePtrs.reserve(OutputCount);
-            for (int PortIndex = 0; PortIndex < OutputCount; ++PortIndex)
+            const int OutPortCount = BufferState->OutputPorts.size();
+            const int ProgramOutputs = Program ? Program->Outputs.size() : 0;
+            const int ConnectedCount = std::min(OutPortCount, ProgramOutputs);
+            const int DisconnectedCount = OutPortCount - ConnectedCount;
+            OutPtrs.reserve(OutPortCount);
+
+            auto GetPortBuffer = [&](int OutIndex)
             {
-                WritePtrs.emplace_back(PortIndex, GetPortBuffer(PortIndex));
+                return (jack_default_audio_sample_t*)jack_port_get_buffer(
+                    BufferState->OutputPorts[OutIndex], FrameCount);
+            };
+
+            if (ProgramOutputs == 1)
+            {
+                for (int PortIndex = 0; PortIndex < OutPortCount; ++PortIndex)
+                {
+                    OutPtrs.emplace_back(0, GetPortBuffer(PortIndex));
+                }
+            }
+            else
+            {
+                int PortIndex = 0;
+                for (; PortIndex < ConnectedCount; ++PortIndex)
+                {
+                    OutPtrs.emplace_back(PortIndex, GetPortBuffer(PortIndex));
+                }
+                for (; PortIndex < DisconnectedCount; ++PortIndex)
+                {
+                    OutPtrs.emplace_back(-1, GetPortBuffer(PortIndex));
+                }
+            }
+        }
+        {
+            const int AuxPortCount = BufferState->AuxOutPorts.size();
+            const int ProgramAuxen = Program ? Program->AuxOutputs.size() : 0;
+            const int ConnectedCount = std::min(AuxPortCount, ProgramAuxen);
+            const int DisconnectedCount = AuxPortCount - ConnectedCount;
+            AuxPtrs.reserve(AuxPortCount);
+
+            auto GetPortBuffer = [&](int AuxIndex)
+            {
+                return (jack_default_audio_sample_t*)jack_port_get_buffer(
+                    BufferState->AuxOutPorts[AuxIndex], FrameCount);
+            };
+
+            int PortIndex = 0;
+            for (; PortIndex < ConnectedCount; ++PortIndex)
+            {
+                AuxPtrs.emplace_back(PortIndex, GetPortBuffer(PortIndex));
+            }
+            for (; PortIndex < DisconnectedCount; ++PortIndex)
+            {
+                AuxPtrs.emplace_back(-1, GetPortBuffer(PortIndex));
             }
         }
     }
@@ -207,9 +245,27 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
         for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
             Program->Crank(SampleInterval);
-            for (auto [PortIndex, WritePtr] : WritePtrs)
+            for (auto [PortIndex, WritePtr] : OutPtrs)
             {
-                WritePtr[Frame] = float(Program->Outputs[PortIndex]->Get());
+                if (PortIndex > -1)
+                {
+                    WritePtr[Frame] = float(Program->Outputs[PortIndex]->Get());
+                }
+                else
+                {
+                    WritePtr[Frame] = 0.0f;
+                }
+            }
+            for (auto [PortIndex, WritePtr] : AuxPtrs)
+            {
+                if (PortIndex > -1)
+                {
+                    WritePtr[Frame] = float(Program->AuxOutputs[PortIndex]->Get());
+                }
+                else
+                {
+                    WritePtr[Frame] = 0.0f;
+                }
             }
         }
         EvalEnd = Clock::now();
@@ -217,7 +273,14 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
     else
     {
         EvalStart = Clock::now();
-        for (auto [PortIndex, WritePtr] : WritePtrs)
+        for (auto [PortIndex, WritePtr] : OutPtrs)
+        {
+            for (int Frame = 0; Frame < FrameCount; ++Frame)
+            {
+                WritePtr[Frame] = 0.0f;
+            }
+        }
+        for (auto [PortIndex, WritePtr] : AuxPtrs)
         {
             for (int Frame = 0; Frame < FrameCount; ++Frame)
             {
@@ -294,6 +357,14 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
     TRACEABLE_SCOPE;
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
     BufferState.PendingProgram = NewProgram;
+
+    while (BufferState.AuxOutPorts.size() < NewProgram->AuxOutputs.size())
+    {
+        int NextId = BufferState.AuxOutPorts.size() + 1;
+        std::string Name = std::format("aux {}", NextId);
+        BufferState.AuxOutPorts.push_back(jack_port_register(
+            JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
+    }
 }
 
 
