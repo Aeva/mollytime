@@ -63,7 +63,7 @@ struct ThreadShared
     std::atomic<float> TemporalPressure = 0.0;
 
     std::vector<jack_port_t*> OutputPorts;
-            std::vector<jack_port_t*> AuxOutPorts;
+    std::map<TileHandle, jack_port_t*> AuxOutPorts;
 };
 
 
@@ -160,7 +160,7 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
 {
     TRACEABLE_SCOPE;
     std::vector<std::tuple<int, jack_default_audio_sample_t*>> OutPtrs;
-    std::vector<std::tuple<int, jack_default_audio_sample_t*>> AuxPtrs;
+    std::vector<std::tuple<double*, jack_default_audio_sample_t*>> AuxPtrs;
 
     TimePoint FrameStart = Clock::now();
     {
@@ -207,26 +207,11 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
             }
         }
         {
-            const int AuxPortCount = BufferState->AuxOutPorts.size();
-            const int ProgramAuxen = Program ? Program->AuxOutputs.size() : 0;
-            const int ConnectedCount = std::min(AuxPortCount, ProgramAuxen);
-            const int DisconnectedCount = AuxPortCount - ConnectedCount;
-            AuxPtrs.reserve(AuxPortCount);
-
-            auto GetPortBuffer = [&](int AuxIndex)
+            // All "aux" jack ports are always guaranteed to correspond to an "aux" program output.
+            for (const auto& [Tile, JackPort] : BufferState->AuxOutPorts)
             {
-                return (jack_default_audio_sample_t*)jack_port_get_buffer(
-                    BufferState->AuxOutPorts[AuxIndex], FrameCount);
-            };
-
-            int PortIndex = 0;
-            for (; PortIndex < ConnectedCount; ++PortIndex)
-            {
-                AuxPtrs.emplace_back(PortIndex, GetPortBuffer(PortIndex));
-            }
-            for (; PortIndex < DisconnectedCount; ++PortIndex)
-            {
-                AuxPtrs.emplace_back(-1, GetPortBuffer(PortIndex));
+                double* ReadPtr = Program->AuxOutputs.at(Tile)->DangerGet();
+                AuxPtrs.emplace_back(ReadPtr, (jack_default_audio_sample_t*)jack_port_get_buffer(JackPort, FrameCount));
             }
         }
     }
@@ -256,16 +241,9 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
                     WritePtr[Frame] = 0.0f;
                 }
             }
-            for (auto [PortIndex, WritePtr] : AuxPtrs)
+            for (auto [ReadPtr, WritePtr] : AuxPtrs)
             {
-                if (PortIndex > -1)
-                {
-                    WritePtr[Frame] = float(Program->AuxOutputs[PortIndex]->Get());
-                }
-                else
-                {
-                    WritePtr[Frame] = 0.0f;
-                }
+                WritePtr[Frame] = float(*ReadPtr);
             }
         }
         EvalEnd = Clock::now();
@@ -358,12 +336,33 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
     BufferState.PendingProgram = NewProgram;
 
-    while (BufferState.AuxOutPorts.size() < NewProgram->AuxOutputs.size())
     {
-        int NextId = BufferState.AuxOutPorts.size() + 1;
-        std::string Name = std::format("aux {}", NextId);
-        BufferState.AuxOutPorts.push_back(jack_port_register(
-            JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
+        // Remove all jack aux ports that no longer correspond to patch aux ports.
+        std::vector<TileHandle> Erased;
+        for (const auto& [Tile, JackPort] : BufferState.AuxOutPorts)
+        {
+            if (!NewProgram->AuxOutputs.contains(Tile))
+            {
+                Erased.push_back(Tile);
+                jack_port_unregister(JackClient, JackPort);
+            }
+        }
+        for (TileHandle Tile : Erased)
+        {
+            BufferState.AuxOutPorts.erase(Tile);
+        }
+    }
+    {
+        // Create jack aux ports for any new patch aux ports.
+        for (const auto& [Tile, OutputRegister] : NewProgram->AuxOutputs)
+        {
+            if (!BufferState.AuxOutPorts.contains(Tile))
+            {
+                std::string Name = std::format("aux {}", Tile);
+                BufferState.AuxOutPorts[Tile] = jack_port_register(
+                    JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+            }
+        }
     }
 }
 

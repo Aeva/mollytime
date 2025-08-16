@@ -1795,7 +1795,7 @@ ScratchSharedPtr Patch::Compile()
             RunningStateSharedPtr Output = Step(Tile);
             if (Output != nullptr)
             {
-                Program->AuxOutputs.push_back(Output);
+                Program->AuxOutputs[Tile] = Output;
             }
         }
         else if (Symbol == OpCode::SCOPE)

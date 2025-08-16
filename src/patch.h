@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <optional>
 #include <tuple>
+#include <map>
 #include <unordered_map>
 #include <set>
 #include <mutex>
@@ -98,6 +99,10 @@ struct RunningState
     RunningState(double InSample)
         : Sample(InSample)
     {
+    }
+    double* DangerGet()
+    {
+        return &Sample;
     }
     double Get()
     {
@@ -219,7 +224,8 @@ struct Scratch : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
-    std::vector<RunningStateSharedPtr> AuxOutputs;
+    std::map<TileHandle, RunningStateSharedPtr> AuxOutputs;
+
     std::unordered_map<TileHandle, MagicTapeSharedPtr> Tapes;
     RunningStateSharedPtr ProbeInput = nullptr;
     ProbeRunningStateSharedPtr OutputProbe;
