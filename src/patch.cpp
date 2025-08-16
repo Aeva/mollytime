@@ -1186,15 +1186,23 @@ OpCode Patch::GetTileSymbol(TileHandle Tile)
 std::string Patch::GetTileName(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
-    auto Found = TileNames.find(Tile);
-    if (Found == TileNames.end())
+    OpCode Symbol = GetTileSymbol(Tile);
+
+    if (Symbol == OpCode::AUX)
     {
-        OpCode Symbol = GetTileSymbol(Tile);
-        return SymbolInfoMap.DefaultNames[(int)Symbol];
+        return std::format("aux {}", Tile);
     }
     else
     {
-        return Found->second;
+        auto Found = TileNames.find(Tile);
+        if (Found == TileNames.end())
+        {
+            return SymbolInfoMap.DefaultNames[(int)Symbol];
+        }
+        else
+        {
+            return Found->second;
+        }
     }
 }
 
