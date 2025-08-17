@@ -80,8 +80,6 @@ struct AudioStream
 
     virtual void Setup(int SampleRate) = 0;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) = 0;
-    virtual void Run() = 0;
-    virtual void Reset() = 0;
 
     virtual ~AudioStream() {};
 };

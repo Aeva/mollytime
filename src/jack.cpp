@@ -168,8 +168,6 @@ struct JackStream : public AudioStream
     virtual float GetTemporalPressureInner() override;
     virtual void Setup(int SampleRate) override;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) override;
-    virtual void Run() override;
-    virtual void Reset() override;
     virtual ~JackStream();
 
 private:
@@ -271,18 +269,6 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
 }
 
 
-void JackStream::Run()
-{
-    // TODO dead code?
-}
-
-
-void JackStream::Reset()
-{
-    // TODO dead code?
-}
-
-
 JackStream::~JackStream()
 {
 }
@@ -318,7 +304,6 @@ void AudioStream::Init(int SampleRate)
 {
     TRACEABLE_SCOPE;
     Get()->Setup(SampleRate);
-    Get()->Run();
 }
 
 
