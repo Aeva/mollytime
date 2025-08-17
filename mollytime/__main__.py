@@ -14,8 +14,10 @@
 # limitations under the License.
 
 import math
-import os
 import re
+import os
+import sys
+import platform
 import subprocess
 
 import pygame_setup
@@ -29,60 +31,91 @@ from patterns import *
 from screens.common import program_card
 from screens.inspect import inspect_screen
 
+operating_system = platform.system()
+
 mollytime.init_midi()
 mollytime.init_audio(48000)
 pygame.display.init()
 pygame.font.init()
 
+display_index_arg, vertical_inches_arg = (sys.argv[1:] + [None, None])[:2]
+display_index = 0
+vertical_inches = 7.5
+skip_dpi_detection = False
+
 sizes = pygame.display.get_desktop_sizes()
-display_index = len(sizes) - 1
+
+if display_index_arg is not None:
+    try:
+        override_display_index = int(display_index_arg)
+        assert(override_display_index > -1 and override_display_index < len(sizes))
+        display_index = override_display_index
+    except:
+        print(f"\"{display_index_arg}\" is not a valid display index.  Defaulting to \"{display_index}\".")
+
+if vertical_inches_arg is not None:
+    try:
+        override_vertical_inches = float(vertical_inches_arg)
+        assert(override_vertical_inches > 0)
+        vertical_inches = override_vertical_inches
+        skip_dpi_detection = True
+    except:
+        print(f"\"{vertical_inches_arg}\" is not a valid vertical distance.  Defaulting to \"{vertical_inches}\".")
 
 scaled_display_size = sizes[display_index]
 unscaled_display_size = pygame.display.list_modes(display=display_index)[0]
 
 screen = pygame.display.set_mode(size=unscaled_display_size, display=display_index, flags=pygame.FULLSCREEN)
 
-xrandr_dpi = None
-screen_index = 0
+dpi = None
 
-xrandr = subprocess.run(("xrandr", "--listactivemonitors"), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-if xrandr.returncode == 0:
-    try:
-        report = xrandr.stdout.decode().split("\n")
-        regex = r'^Monitors: (\d)$'
-        found = re.findall(regex, report[0], re.M)
-        assert(len(found) == 1)
-        assert(int(found[0]) == len(sizes))
-
-        monitor_info = report[1 + display_index]
-        regex = r'^\s+(\d+):.+ (\d+)/(\d+)x(\d+)/(\d+)'
-        found = re.findall(regex, monitor_info, re.M)
-        assert(len(found) == 1)
-        reported_index, res_x, mm_x, res_y, mm_y = list(map(int, found[0]))
-        #print(f"monitor {display_index}: {res_x}x{res_y} ({mm_x}mm by {mm_y}mm)")
-
-        assert(len(found) == 1)
-
-        # xrandr may report the scaled or unscaled resolution, and so it cannot be relied upon for DPI calculation
-        res_x, res_y = sizes[screen_index]
-
-        in_x = mm_x / 25.4
-        in_y = mm_y / 25.4
-        dpi_x = res_x / in_x
-        dpi_y = res_y / in_y
-        xrandr_dpi = round((dpi_x + dpi_y) / 2)
-        screen_index += 1
-    except AssertionError:
+if not skip_dpi_detection:
+    if operating_system == "Linux":
         xrandr_dpi = None
 
-dpi = xrandr_dpi
+        xrandr = subprocess.run(("xrandr", "--listactivemonitors"), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if xrandr.returncode == 0:
+            try:
+                report = xrandr.stdout.decode().split("\n")
+                regex = r'^Monitors: (\d)$'
+                found = re.findall(regex, report[0], re.M)
+                assert(len(found) == 1)
+                assert(int(found[0]) == len(sizes))
+
+                monitor_info = report[1 + display_index]
+                regex = r'^\s+(\d+):.+ (\d+)/(\d+)x(\d+)/(\d+)'
+                found = re.findall(regex, monitor_info, re.M)
+                assert(len(found) == 1)
+                reported_index, res_x, mm_x, res_y, mm_y = list(map(int, found[0]))
+                #print(f"monitor {display_index}: {res_x}x{res_y} ({mm_x}mm by {mm_y}mm)")
+
+                assert(len(found) == 1)
+
+                # xrandr may report the scaled or unscaled resolution, and so it cannot be relied upon for DPI calculation
+                res_x, res_y = sizes[display_index]
+
+                in_x = mm_x / 25.4
+                in_y = mm_y / 25.4
+                dpi_x = res_x / in_x
+                dpi_y = res_y / in_y
+                xrandr_dpi = round((dpi_x + dpi_y) / 2)
+            except AssertionError:
+                xrandr_dpi = None
+
+        if xrandr_dpi:
+            dpi = xrandr_dpi
+        else:
+            print("Unable to calculate screen DPI via xrandr!")
+    else:
+        print("Unable to automatically determine the screen DPI!")
+else:
+    print("Automatic DPI detection skipped at operator request.")
 
 if dpi is None:
-    print("Unable to calculate screen DPI via xrandr!")
-    in_y = 7.5
+    in_y = vertical_inches
     res_y = min(scaled_display_size)
     dpi = round(res_y / in_y)
-    print(f"DPI assuming smallest physical screen dimension is 7.5 inches: {dpi} dpi")
+    print(f"DPI assuming smallest physical screen dimension is {in_y} inches: {dpi} dpi")
 
 dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
