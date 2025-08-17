@@ -157,7 +157,7 @@ class plate_bg:
 
     def redraw(self):
         rect = pygame.Rect(0, 0, self.size, self.size)
-        depth = 6
+        depth = max(round(self.size / 22.6), 1)
 
         pygame.draw.rect(self.surface, self.color_base, rect)
         pygame.draw.rect(self.surface, self.color_sides, rect, depth)
