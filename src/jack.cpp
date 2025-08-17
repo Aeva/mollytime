@@ -63,6 +63,7 @@ struct ThreadShared
     std::atomic<float> TemporalPressure = 0.0;
 
     std::vector<jack_port_t*> OutputPorts;
+    std::map<TileHandle, jack_port_t*> InputPorts;
     std::map<TileHandle, jack_port_t*> AuxOutPorts;
 };
 
@@ -159,6 +160,7 @@ int StreamRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
 int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
 {
     TRACEABLE_SCOPE;
+    std::vector<std::tuple<jack_default_audio_sample_t*, double*>> InPtrs;
     std::vector<std::tuple<double*, jack_default_audio_sample_t*>> OutPtrs;
     std::vector<std::tuple<double*, jack_default_audio_sample_t*>> AuxPtrs;
 
@@ -173,6 +175,14 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
         }
         BufferState->TemporalPressure.store(TemporalPressure);
 
+        {
+            // All "input" jack ports are guaranteed to correspond to a program input.
+            for (const auto& [Tile, JackPort] : BufferState->InputPorts)
+            {
+                double* WritePtr = Program->Inputs.at(Tile)->DangerGet();
+                InPtrs.emplace_back((jack_default_audio_sample_t*)jack_port_get_buffer(JackPort, FrameCount), WritePtr);
+            }
+        }
         {
             const int OutPortCount = BufferState->OutputPorts.size();
             const int ProgramOutputs = Program ? Program->Outputs.size() : 0;
@@ -231,7 +241,16 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
         EvalStart = Clock::now();
         for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
+            // Copy the applicable input samples into the patch's input registers:
+            for (auto [ReadPtr, WritePtr] : InPtrs)
+            {
+                *WritePtr = double(ReadPtr[Frame]);
+            }
+
+            // Advance the program by one frame:
             Program->Crank(SampleInterval);
+
+            // Copy the applicable output samples from the patch's output registers:
             for (auto [ReadPtr, WritePtr] : OutPtrs)
             {
                 WritePtr[Frame] = ReadPtr ? float(*ReadPtr) : 0.0f;
@@ -332,6 +351,22 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
     BufferState.PendingProgram = NewProgram;
 
     {
+        // Remove all jack input ports that no longer correspond to patch input ports.
+        std::vector<TileHandle> Erased;
+        for (const auto& [Tile, JackPort] : BufferState.InputPorts)
+        {
+            if (!NewProgram->Inputs.contains(Tile))
+            {
+                Erased.push_back(Tile);
+                jack_port_unregister(JackClient, JackPort);
+            }
+        }
+        for (TileHandle Tile : Erased)
+        {
+            BufferState.InputPorts.erase(Tile);
+        }
+    }
+    {
         // Remove all jack aux ports that no longer correspond to patch aux ports.
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.AuxOutPorts)
@@ -345,6 +380,22 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
         for (TileHandle Tile : Erased)
         {
             BufferState.AuxOutPorts.erase(Tile);
+        }
+    }
+    {
+        // Create jack input ports for any new patch input ports.
+        for (const auto& [Tile, InputRegister] : NewProgram->Inputs)
+        {
+            if (!BufferState.InputPorts.contains(Tile))
+            {
+                std::string Name = std::format("in {}", Tile);
+                jack_port_t* JackPort = jack_port_register(
+                    JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+                if (JackPort)
+                {
+                    BufferState.InputPorts[Tile] = JackPort;
+                }
+            }
         }
     }
     {

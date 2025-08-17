@@ -192,6 +192,7 @@ struct SymbolInfo
 
         Set(OpCode::CONST, "const", {}, {"#"});
         Set(OpCode::SCOPE, "scope", {"out"}, {});
+        Set(OpCode::IN, "in", {}, {"in"});
         Set(OpCode::OUT, "out", {"out"}, {});
         Set(OpCode::AUX, "aux", {"out"}, {});
         Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
@@ -1188,7 +1189,11 @@ std::string Patch::GetTileName(TileHandle Tile)
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
 
-    if (Symbol == OpCode::AUX)
+    if (Symbol == OpCode::IN)
+    {
+        return std::format("in {}", Tile);
+    }
+    else if (Symbol == OpCode::AUX)
     {
         return std::format("aux {}", Tile);
     }
@@ -1440,6 +1445,17 @@ ScratchSharedPtr Patch::Compile()
     Program->MidiPressure = MidiPressure;
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
+
+    // Input tiles must be processed first and added to the "BreadCrumbs" set
+    // to prevent the Step function below from attempting to process them.
+    for (const auto& [Tile, Symbol] : TileSymbols)
+    {
+        if (Symbol == OpCode::IN)
+        {
+            BreadCrumbs.insert(Tile);
+            Program->Inputs[Tile] = ActiveOutputs.at(MakePortHandle(Tile, 0));
+        }
+    }
 
     std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
     {
