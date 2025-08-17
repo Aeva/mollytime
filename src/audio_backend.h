@@ -76,9 +76,8 @@ struct AudioStream
     static void Init(int SampleRate);
     static void Shutdown();
     static float GetTemporalPressure();
-    virtual float GetTemporalPressureInner() = 0;
 
-    virtual void Setup(int SampleRate) = 0;
+    virtual float GetTemporalPressureInner() = 0;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) = 0;
 
     virtual ~AudioStream() {};

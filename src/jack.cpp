@@ -165,8 +165,8 @@ void JackRealTimeThread::BeginFrame(FramePointers& Frame)
 struct JackStream : public AudioStream
 {
     JackStream();
+    void Setup(int SampleRate);
     virtual float GetTemporalPressureInner() override;
-    virtual void Setup(int SampleRate) override;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) override;
     virtual ~JackStream();
 
@@ -303,7 +303,8 @@ AudioStream* AudioStream::Get()
 void AudioStream::Init(int SampleRate)
 {
     TRACEABLE_SCOPE;
-    Get()->Setup(SampleRate);
+    JackStream* JackSingleton = (JackStream*)Get();
+    JackSingleton->Setup(SampleRate);
 }
 
 
