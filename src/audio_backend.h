@@ -15,7 +15,59 @@
 
 #pragma once
 
+#include <map>
+#include <vector>
+#include <atomic>
+#include <mutex>
+#include <chrono>
+
 #include "patch.h"
+
+
+using Clock = std::chrono::steady_clock;
+using TimePoint = std::chrono::time_point<Clock>;
+using Duration = Clock::duration;
+
+
+struct AudioThreadShared
+{
+    DECLARE_TRACEABLE_MUTEX(Mutex);
+    ScratchSharedPtr PendingProgram = nullptr;
+
+    std::atomic<float> TemporalPressure = 0.0;
+};
+
+
+struct FramePointers
+{
+    size_t SampleCount = 0;
+    float* OutLeft = nullptr;
+    float* OutRight = nullptr;
+    std::vector<std::tuple<float*, double*>> InPtrs;
+    std::vector<std::tuple<double*, float*>> AuxPtrs;
+};
+
+
+struct RealTimeAudioThread
+{
+protected:
+    AudioThreadShared* BufferState = nullptr;
+    double SampleInterval = 0.0;
+
+    ScratchSharedPtr Program = nullptr;
+    TimePoint LastFrameStart;
+
+    float TemporalPressure = 0.0f;
+    std::vector<float> FramePressure;
+    int FramePressureIndex = 0;
+    int FramePressureCount = 0;
+
+    virtual void BeginFrame(FramePointers& Frame) = 0;
+    virtual void EndFrame(FramePointers& Frame) {};
+
+    void ResetFramePressure();
+    void AdvanceFrames(FramePointers& Frame);
+};
 
 
 struct AudioStream

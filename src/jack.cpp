@@ -16,13 +16,11 @@
 #ifdef ENABLE_JACK
 
 #include <vector>
-#include <atomic>
 #include <mutex>
 #include <print>
 #include <format>
-#include <cstring>
+//#include <cstring>
 #include <string>
-#include <chrono>
 
 #include <signal.h>
 #ifndef WIN32
@@ -32,12 +30,6 @@
 
 #include "audio_backend.h"
 #include "perf.h"
-
-
-using Clock = std::chrono::steady_clock;
-using TimePoint = std::chrono::time_point<Clock>;
-using Duration = Clock::duration;
-
 
 static bool JackInitialized = false;
 static AudioStream* StreamSingleton = nullptr;
@@ -55,58 +47,42 @@ void JackShutdown(void* UserData = nullptr)
 }
 
 
-struct ThreadShared
+struct JackThreadShared : AudioThreadShared
 {
-    DECLARE_TRACEABLE_MUTEX(Mutex);
-    ScratchSharedPtr PendingProgram = nullptr;
-
-    std::atomic<float> TemporalPressure = 0.0;
-
     std::vector<jack_port_t*> OutputPorts;
     std::map<TileHandle, jack_port_t*> InputPorts;
     std::map<TileHandle, jack_port_t*> AuxOutPorts;
 };
 
 
-struct StreamRealTimeThread
+struct JackRealTimeThread : RealTimeAudioThread
 {
-    void Setup(ThreadShared* InBufferState, int SampleRate);
+    void Setup(JackThreadShared* InBufferState, int SampleRate);
 
     static int OnProcess(jack_nframes_t FrameCount, void *UserData);
 
 private:
-    ThreadShared* BufferState = nullptr;
-    double SampleInterval = 0.0;
-
-    ScratchSharedPtr Program = nullptr;
-    TimePoint LastFrameStart;
-
-    float TemporalPressure = 0.0f;
-    std::vector<float> FramePressure;
-    int FramePressureIndex = 0;
-    int FramePressureCount = 0;
-
-    void ResetFramePressure();
     int OnProcessInner(jack_nframes_t FrameCount);
+    virtual void BeginFrame(FramePointers& Frame) override;
 };
 
 
-void StreamRealTimeThread::Setup(ThreadShared* InBufferState, int SampleRate)
+void JackRealTimeThread::Setup(JackThreadShared* JackBufferState, int SampleRate)
 {
-    BufferState = InBufferState;
+    BufferState = JackBufferState;
     SampleInterval = 1.0 / double(SampleRate);
     ResetFramePressure();
 
-    BufferState->OutputPorts.clear();
-    BufferState->OutputPorts.resize(2, nullptr);
+    JackBufferState->OutputPorts.clear();
+    JackBufferState->OutputPorts.resize(2, nullptr);
 
-    BufferState->OutputPorts[0] = jack_port_register(
+    JackBufferState->OutputPorts[0] = jack_port_register(
         JackClient, "output_FL", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
 
-    BufferState->OutputPorts[1] = jack_port_register(
+    JackBufferState->OutputPorts[1] = jack_port_register(
         JackClient, "output_FR", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
 
-    for (jack_port_t* Port : BufferState->OutputPorts)
+    for (jack_port_t* Port : JackBufferState->OutputPorts)
     {
         if (Port == nullptr)
         {
@@ -130,7 +106,7 @@ void StreamRealTimeThread::Setup(ThreadShared* InBufferState, int SampleRate)
 
     for (int PortIndex = 0; Ports[PortIndex] != nullptr && PortIndex < 2; ++PortIndex)
     {
-        const char* ProgramOut = jack_port_name(BufferState->OutputPorts[PortIndex]);
+        const char* ProgramOut = jack_port_name(JackBufferState->OutputPorts[PortIndex]);
         if (jack_connect(JackClient, ProgramOut, Ports[PortIndex]))
         {
             // unable to connect to physical port
@@ -141,138 +117,48 @@ void StreamRealTimeThread::Setup(ThreadShared* InBufferState, int SampleRate)
 }
 
 
-void StreamRealTimeThread::ResetFramePressure()
+int JackRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
 {
-    FramePressure.resize(100, 0.0f);
-    FramePressureIndex = 0;
-    FramePressureCount = 0;
-    TemporalPressure = 0.0f;
-}
-
-
-int StreamRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
-{
-    StreamRealTimeThread* RealTimeThread = (StreamRealTimeThread*)UserData;
+    JackRealTimeThread* RealTimeThread = (JackRealTimeThread*)UserData;
     return RealTimeThread->OnProcessInner(FrameCount);
 }
 
 
-int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
+int JackRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
 {
     static_assert(std::is_same_v<float, jack_default_audio_sample_t>);
     TRACEABLE_SCOPE;
-    float* OutLeft = nullptr;
-    float* OutRight = nullptr;
-    std::vector<std::tuple<float*, double*>> InPtrs;
-    std::vector<std::tuple<double*, float*>> AuxPtrs;
+    FramePointers Frame;
+    Frame.SampleCount = size_t(FrameCount);
 
-    TimePoint FrameStart = Clock::now();
-    {
-        TRACEABLE_LOCK_GUARD(BufferState->Mutex);
-        if (BufferState->PendingProgram)
-        {
-            Program = BufferState->PendingProgram;
-            BufferState->PendingProgram = nullptr;
-            ResetFramePressure();
-        }
-        BufferState->TemporalPressure.store(TemporalPressure);
-
-        {
-            // All "input" jack ports are guaranteed to correspond to a program input.
-            for (const auto& [Tile, JackPort] : BufferState->InputPorts)
-            {
-                double* WritePtr = Program->Inputs.at(Tile)->DangerGet();
-                InPtrs.emplace_back((float*)jack_port_get_buffer(JackPort, FrameCount), WritePtr);
-            }
-        }
-        {
-            if (BufferState->OutputPorts.size() >= 2)
-            {
-                OutLeft = (float*)jack_port_get_buffer(BufferState->OutputPorts[0], FrameCount);
-                OutRight = (float*)jack_port_get_buffer(BufferState->OutputPorts[1], FrameCount);
-            }
-        }
-        {
-            // All "aux" jack ports are always guaranteed to correspond to an "aux" program output.
-            for (const auto& [Tile, JackPort] : BufferState->AuxOutPorts)
-            {
-                double* ReadPtr = Program->AuxOutputs.at(Tile)->DangerGet();
-                AuxPtrs.emplace_back(ReadPtr, (float*)jack_port_get_buffer(JackPort, FrameCount));
-            }
-        }
-    }
-
-    if (Program)
-    {
-        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
-        Midi::ProcessEvents(Program.get());
-    }
-
-    TimePoint EvalStart;
-    TimePoint EvalEnd;
-    if (Program)
-    {
-        EvalStart = Clock::now();
-        for (int Frame = 0; Frame < FrameCount; ++Frame)
-        {
-            // Copy the applicable input samples into the patch's input registers:
-            for (auto [ReadPtr, WritePtr] : InPtrs)
-            {
-                *WritePtr = double(ReadPtr[Frame]);
-            }
-
-            // Advance the program by one frame:
-            Program->Crank(SampleInterval, OutLeft[Frame], OutRight[Frame]);
-
-            // Copy the applicable output samples from the patch's output registers:
-            for (auto [ReadPtr, WritePtr] : AuxPtrs)
-            {
-                WritePtr[Frame] = float(*ReadPtr);
-            }
-        }
-        EvalEnd = Clock::now();
-    }
-    else
-    {
-        EvalStart = Clock::now();
-        for (int Frame = 0; Frame < FrameCount; ++Frame)
-        {
-            *OutLeft = 0.0f;
-            *OutRight = 0.0f;
-        }
-        for (auto [ReadPtr, WritePtr] : AuxPtrs)
-        {
-            for (int Frame = 0; Frame < FrameCount; ++Frame)
-            {
-                WritePtr[Frame] = 0.0f;
-            }
-        }
-        EvalEnd = Clock::now();
-    }
-
-    Duration EvalDelta = Duration(EvalEnd - EvalStart);
-    Duration FrameDelta = Duration(FrameStart - LastFrameStart);
-
-    FramePressure[FramePressureIndex++] = float(EvalDelta.count()) / float(FrameDelta.count());
-
-    FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
-    FramePressureIndex %= FramePressure.size();
-    if (Program && FramePressureCount == FramePressure.size())
-    {
-        TemporalPressure = FramePressure[0];
-        for (int Index = 1; Index < FramePressureCount; ++Index)
-        {
-            TemporalPressure += FramePressure[Index];
-        }
-        TemporalPressure /= float(FramePressureCount);
-    }
-    else
-    {
-        TemporalPressure = 0.0f;
-    }
-    LastFrameStart = FrameStart;
-
+    // This will invoke JackRealTimeThread::BeginFrame
+    AdvanceFrames(Frame);
     return 0;
+}
+
+
+void JackRealTimeThread::BeginFrame(FramePointers& Frame)
+{
+    const jack_nframes_t FrameCount = jack_nframes_t(Frame.SampleCount);
+    JackThreadShared* JackBufferState = (JackThreadShared*)BufferState;
+
+    // All "input" jack ports are guaranteed to correspond to a program input.
+    for (const auto& [Tile, JackPort] : JackBufferState->InputPorts)
+    {
+        double* WritePtr = Program->Inputs.at(Tile)->DangerGet();
+        Frame.InPtrs.emplace_back((float*)jack_port_get_buffer(JackPort, FrameCount), WritePtr);
+    }
+    if (JackBufferState->OutputPorts.size() >= 2)
+    {
+        Frame.OutLeft = (float*)jack_port_get_buffer(JackBufferState->OutputPorts[0], FrameCount);
+        Frame.OutRight = (float*)jack_port_get_buffer(JackBufferState->OutputPorts[1], FrameCount);
+    }
+    // All "aux" jack ports are always guaranteed to correspond to an "aux" program output.
+    for (const auto& [Tile, JackPort] : JackBufferState->AuxOutPorts)
+    {
+        double* ReadPtr = Program->AuxOutputs.at(Tile)->DangerGet();
+        Frame.AuxPtrs.emplace_back(ReadPtr, (float*)jack_port_get_buffer(JackPort, FrameCount));
+    }
 }
 
 
@@ -287,14 +173,14 @@ struct JackStream : public AudioStream
     virtual ~JackStream();
 
 private:
-    StreamRealTimeThread RealTimeThread;
-    ThreadShared BufferState;
+    JackRealTimeThread RealTimeThread;
+    JackThreadShared BufferState;
 };
 
 
 JackStream::JackStream()
 {
-    jack_set_process_callback(JackClient, StreamRealTimeThread::OnProcess, &RealTimeThread);
+    jack_set_process_callback(JackClient, JackRealTimeThread::OnProcess, &RealTimeThread);
     jack_on_shutdown(JackClient, JackShutdown, 0);
 }
 
