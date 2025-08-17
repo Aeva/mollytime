@@ -21,7 +21,18 @@ operating_system = platform.system()
 # Correct support of HiDPI on Linux requires setting both of these environment variables as well
 # as passing the desired unscaled resolution to `pygame.display.set_mode` via the `size` parameter.
 if operating_system == "Linux":
-	os.environ["SDL_VIDEODRIVER"] = "wayland,x11"
+    import re, subprocess
+    xrandr = subprocess.run(("xrandr", "--listactivemonitors"), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if xrandr.returncode == 0:
+        report = xrandr.stdout.decode().split("\n")
+        regex = r'^Monitors: (\d)$'
+        found = re.findall(regex, report[0], re.M)
+        assert(len(found) == 1)
+        if found[0] == 1:
+            os.environ["SDL_VIDEODRIVER"] = "wayland,x11"
+        else:
+            # Wayland fucking broke multiple monitor support it is 2025 and I cannot fucking believe it.
+            os.environ["SDL_VIDEODRIVER"] = "x11,wayland"
 
 os.environ["SDL_VIDEO_SCALE_METHOD"] = "letterbox"
 #os.environ["SDL_MOUSE_TOUCH_EVENTS"] = "1"
