@@ -264,7 +264,7 @@ class plate_outline(plate_bg):
 
     def redraw(self):
         self.surface = pygame.Surface((self.size, self.size), flags=pygame.SRCALPHA)
-        line_radius = 2
+        line_radius = max(int(self.size / 67), 1)
         inset = line_radius * 2
         rect = pygame.Rect(0, 0, self.size, self.size)
         corners = [
