@@ -1103,6 +1103,10 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     {
         TapeCollection[AllocatedHandle] = std::make_shared<BlankTape>(AllocatedHandle);
     }
+    if (Symbol == OpCode::IN || Symbol == OpCode::OUT || Symbol == OpCode::AUX)
+    {
+        Recompile();
+    }
     return AllocatedHandle;
 }
 
@@ -1495,7 +1499,7 @@ ScratchSharedPtr Patch::Compile()
 
             if (ConnectedOutputs.size() == 0)
             {
-                return nullptr;
+                return std::make_shared<RunningState>(0.0);
             }
             else if (ConnectedOutputs.size() == 1)
             {
