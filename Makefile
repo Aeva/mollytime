@@ -29,15 +29,13 @@ INSTRUMENTATION := \
 	$(if $(ENABLE_STACK_TRACES),-DENABLE_STACK_TRACES,) \
 	$(if $(ENABLE_PERF),$(INCLUDE_TRACY) -DTRACY_ENABLE,)
 
-COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) $(if $(ENABLE_JACK),-DENABLE_JACK,-DENABLE_PIPEWIRE)
+COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) $(if $(ENABLE_JACK),-DENABLE_JACK,)
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_JACK := $(shell pkg-config --cflags jack)
-INCLUDE_PIPEWIRE := $(shell pkg-config --cflags libpipewire-0.3)
-INCLUDE_AUDIO := $(if $(ENABLE_JACK), $(INCLUDE_JACK), $(INCLUDE_PIPEWIRE))
+INCLUDE_AUDIO := $(if $(ENABLE_JACK), $(INCLUDE_JACK),)
 LIB_JACK := $(shell pkg-config --libs jack)
-LIB_PIPEWIRE := $(shell pkg-config --libs libpipewire-0.3)
-LIB_AUDIO := $(if $(ENABLE_JACK), $(LIB_JACK), $(LIB_PIPEWIRE))
+LIB_AUDIO := $(if $(ENABLE_JACK), $(LIB_JACK),)
 LIBRARIES := -lm -lasound $(LIB_AUDIO) $(if $(ENABLE_PERF),-lpthread -ldl,)
 
 all: $(OBJECT_TARGETS) $(TRACY_TARGET) $(TARGET_LIB)
