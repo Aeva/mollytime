@@ -1850,7 +1850,7 @@ void Patch::Recompile()
 }
 
 
-void Scratch::Crank(double SampleInterval)
+void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
     {
@@ -1858,6 +1858,18 @@ void Scratch::Crank(double SampleInterval)
         for (std::shared_ptr<InstructionThunk>& Thunk : Program)
         {
             Thunk->Crank(SampleInterval);
+        }
+    }
+    {
+        if (Outputs.size() == 1)
+        {
+            OutLeft = float(Outputs[0]->Get());
+            OutRight = float(Outputs[0]->Get());
+        }
+        else if (Outputs.size() > 1)
+        {
+            OutLeft = float(Outputs[0]->Get());
+            OutRight = float(Outputs[1]->Get());
         }
     }
     if (ProbeInput)

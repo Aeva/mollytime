@@ -159,10 +159,12 @@ int StreamRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
 
 int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
 {
+    static_assert(std::is_same_v<float, jack_default_audio_sample_t>);
     TRACEABLE_SCOPE;
-    std::vector<std::tuple<jack_default_audio_sample_t*, double*>> InPtrs;
-    std::vector<std::tuple<double*, jack_default_audio_sample_t*>> OutPtrs;
-    std::vector<std::tuple<double*, jack_default_audio_sample_t*>> AuxPtrs;
+    float* OutLeft = nullptr;
+    float* OutRight = nullptr;
+    std::vector<std::tuple<float*, double*>> InPtrs;
+    std::vector<std::tuple<double*, float*>> AuxPtrs;
 
     TimePoint FrameStart = Clock::now();
     {
@@ -180,42 +182,14 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
             for (const auto& [Tile, JackPort] : BufferState->InputPorts)
             {
                 double* WritePtr = Program->Inputs.at(Tile)->DangerGet();
-                InPtrs.emplace_back((jack_default_audio_sample_t*)jack_port_get_buffer(JackPort, FrameCount), WritePtr);
+                InPtrs.emplace_back((float*)jack_port_get_buffer(JackPort, FrameCount), WritePtr);
             }
         }
         {
-            const int OutPortCount = BufferState->OutputPorts.size();
-            const int ProgramOutputs = Program ? Program->Outputs.size() : 0;
-            const int ConnectedCount = std::min(OutPortCount, ProgramOutputs);
-            const int DisconnectedCount = OutPortCount - ConnectedCount;
-            OutPtrs.reserve(OutPortCount);
-
-            auto GetPortBuffer = [&](int OutIndex)
+            if (BufferState->OutputPorts.size() >= 2)
             {
-                return (jack_default_audio_sample_t*)jack_port_get_buffer(
-                    BufferState->OutputPorts[OutIndex], FrameCount);
-            };
-
-            if (ProgramOutputs == 1)
-            {
-                for (int PortIndex = 0; PortIndex < OutPortCount; ++PortIndex)
-                {
-                    double* ReadPtr = Program->Outputs[0]->DangerGet();
-                    OutPtrs.emplace_back(ReadPtr, GetPortBuffer(PortIndex));
-                }
-            }
-            else
-            {
-                int PortIndex = 0;
-                for (; PortIndex < ConnectedCount; ++PortIndex)
-                {
-                    double* ReadPtr = Program->Outputs[PortIndex]->DangerGet();
-                    OutPtrs.emplace_back(ReadPtr, GetPortBuffer(PortIndex));
-                }
-                for (; PortIndex < DisconnectedCount; ++PortIndex)
-                {
-                    OutPtrs.emplace_back(nullptr, GetPortBuffer(PortIndex));
-                }
+                OutLeft = (float*)jack_port_get_buffer(BufferState->OutputPorts[0], FrameCount);
+                OutRight = (float*)jack_port_get_buffer(BufferState->OutputPorts[1], FrameCount);
             }
         }
         {
@@ -223,7 +197,7 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
             for (const auto& [Tile, JackPort] : BufferState->AuxOutPorts)
             {
                 double* ReadPtr = Program->AuxOutputs.at(Tile)->DangerGet();
-                AuxPtrs.emplace_back(ReadPtr, (jack_default_audio_sample_t*)jack_port_get_buffer(JackPort, FrameCount));
+                AuxPtrs.emplace_back(ReadPtr, (float*)jack_port_get_buffer(JackPort, FrameCount));
             }
         }
     }
@@ -248,13 +222,9 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
             }
 
             // Advance the program by one frame:
-            Program->Crank(SampleInterval);
+            Program->Crank(SampleInterval, OutLeft[Frame], OutRight[Frame]);
 
             // Copy the applicable output samples from the patch's output registers:
-            for (auto [ReadPtr, WritePtr] : OutPtrs)
-            {
-                WritePtr[Frame] = ReadPtr ? float(*ReadPtr) : 0.0f;
-            }
             for (auto [ReadPtr, WritePtr] : AuxPtrs)
             {
                 WritePtr[Frame] = float(*ReadPtr);
@@ -265,12 +235,10 @@ int StreamRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
     else
     {
         EvalStart = Clock::now();
-        for (auto [ReadPtr, WritePtr] : OutPtrs)
+        for (int Frame = 0; Frame < FrameCount; ++Frame)
         {
-            for (int Frame = 0; Frame < FrameCount; ++Frame)
-            {
-                WritePtr[Frame] = 0.0f;
-            }
+            *OutLeft = 0.0f;
+            *OutRight = 0.0f;
         }
         for (auto [ReadPtr, WritePtr] : AuxPtrs)
         {
