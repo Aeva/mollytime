@@ -16,8 +16,18 @@
 #include <cstdint>
 #include <stdexcept>
 #include <algorithm>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#pragma warning(push)
+#pragma warning(disable : 4191 4355 4371 4464 4686 4868 5039)
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#pragma warning(pop)
+#pragma clang diagnostic pop
+
 #include "colors.h"
 #include "patch.h"
 #include "audio_backend.h"
