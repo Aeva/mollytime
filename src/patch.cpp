@@ -28,8 +28,8 @@
 #include "patch.h"
 #include "audio_backend.h"
 
-constinit double Pi = std::numbers::pi;
-constinit double Tau = std::numbers::pi * 2.0;
+constexpr double Pi = std::numbers::pi;
+constexpr double Tau = std::numbers::pi * 2.0;
 
 const double ImprobableMagnitude = 123456789.0;
 
@@ -107,7 +107,7 @@ constexpr double PerceptualAmplitudeCorrectionByMidiNoteInner(double Note)
 
 constexpr double PerceptualAmplitudeCorrectionByMidiNote(double Note)
 {
-    // TODO: Make this constinit once the required C++26 features land
+    // TODO: Make this constexpr once the required C++26 features land
     static const double Scale = 1.0 / PerceptualAmplitudeCorrectionByMidiNoteInner(HzToMidiNote(50.0));
 
     return PerceptualAmplitudeCorrectionByMidiNoteInner(Note) * Scale;
