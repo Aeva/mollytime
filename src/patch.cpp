@@ -1512,10 +1512,7 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (ConnectedOutputs.size() == 1)
             {
-                for (PortHandle ConnectedOutput : ConnectedOutputs)
-                {
-                    return ActiveOutputs.at(ConnectedOutput);
-                }
+                return ActiveOutputs.at(*ConnectedOutputs.begin());
             }
             else
             {
@@ -1800,8 +1797,6 @@ ScratchSharedPtr Patch::Compile()
             }
             return nullptr;
         }
-
-        std::unreachable();
     };
 
     std::vector<TileHandle> Scopes;
