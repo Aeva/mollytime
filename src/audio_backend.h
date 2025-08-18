@@ -40,7 +40,7 @@ struct AudioThreadShared
 
 struct FramePointers
 {
-    size_t SampleCount = 0;
+    int SampleCount = 0;
     float* OutLeft = nullptr;
     float* OutRight = nullptr;
     std::vector<std::tuple<float*, double*>> InPtrs;

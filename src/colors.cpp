@@ -36,7 +36,7 @@ const std::array<std::pair<ColorSpace, std::string>, size_t(ColorSpace::Count) >
 
 std::string ColorSpaceName(ColorSpace Encoding)
 {
-	for (int i = 0; i < size_t(ColorSpace::Count) ; ++i)
+	for (int i = 0; i < static_cast<int>(ColorSpace::Count); ++i)
 	{
 		if (EncodingNames[i].first == Encoding)
 		{
@@ -49,7 +49,7 @@ std::string ColorSpaceName(ColorSpace Encoding)
 
 bool FindColorSpace(std::string Name, ColorSpace& OutEncoding)
 {
-	for (int i = 0; i < size_t(ColorSpace::Count); ++i)
+	for (int i = 0; i < static_cast<int>(ColorSpace::Count); ++i)
 	{
 		if (EncodingNames[i].second == Name)
 		{

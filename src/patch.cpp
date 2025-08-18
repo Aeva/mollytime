@@ -255,7 +255,7 @@ int GetClosureCount(OpCode Symbol)
 double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
 {
     double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
-    for (int Index = 1; Index < Inputs.size(); ++Index)
+    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
     {
         Result = Combiner(Result, Inputs[Index]->Get());
     }
@@ -1305,7 +1305,7 @@ std::vector<PortHandle> Patch::GetTileOutputPorts(TileHandle Tile)
     int Count = SymbolInfoMap.OutputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
     Handles.reserve(Count);
-    for (uint32_t PortIndex = 0; PortIndex < Count; ++PortIndex)
+    for (uint32_t PortIndex = 0; PortIndex < static_cast<uint32_t>(Count); ++PortIndex)
     {
         Handles.push_back(MakePortHandle(Tile, PortIndex));
     }

@@ -100,7 +100,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 
     FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
     FramePressureIndex %= FramePressure.size();
-    if (Program && FramePressureCount == FramePressure.size())
+    if (Program && FramePressureCount == static_cast<int>(FramePressure.size()))
     {
         TemporalPressure = FramePressure[0];
         for (int Index = 1; Index < FramePressureCount; ++Index)
