@@ -1035,6 +1035,6 @@ StatusCode ParseColor(std::string ColorString, glm::vec3& OutColor)
 ColorPoint ParseColor(std::string ColorString)
 {
 	ColorPoint ParsedColor = ColorPoint();
-	StatusCode Result = ParseColor(ColorString, ParsedColor);
+	ParseColor(ColorString, ParsedColor);
 	return ParsedColor;
 }
