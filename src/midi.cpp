@@ -11,23 +11,41 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.
-
-#pragma once
+// limitations under the License.#include "midi.h"
 
 #include "midi.h"
+#include "alsa_midi.h"
 
-struct snd_seq_t;
+#include <memory>
+#include <print>
 
-class AlsaMidiDriver final : public MidiDriver
+
+static std::unique_ptr<MidiDriver> Driver;
+
+
+void Midi::ProcessEvents(MidiHandler* Handler)
 {
-    snd_seq_t *SeqHandle = nullptr;
-    int MidiInPort = -1;
-    int MidiOutPort = -1;
+    if (Driver)
+    {
+        Driver->ProcessEvents(Handler);
+    }
+}
 
-public:
-    AlsaMidiDriver();
-    virtual ~AlsaMidiDriver() override;
 
-    void ProcessEvents(MidiHandler* Handler) override;
-};
+void Midi::Init()
+{
+#ifdef MIDI_ALSA
+    Driver = std::make_unique<AlsaMidiDriver>();
+#else
+    std::println("No MIDI driver is available.");
+#endif
+}
+
+
+void Midi::Shutdown()
+{
+    if (Driver)
+    {
+        Driver.reset();
+    }
+}

@@ -13,18 +13,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MIDI_ALSA
+
 #include "alsa_midi.h"
 #include <format>
 #include <print>
 #include <alsa/asoundlib.h>
 
 
-static snd_seq_t *SeqHandle = nullptr;
-static int MidiInPort = -1;
-static int MidiOutPort = -1;
+AlsaMidiDriver::AlsaMidiDriver()
+{
+    if (snd_seq_open(&SeqHandle, "default", SND_SEQ_OPEN_DUPLEX, SND_SEQ_NONBLOCK) == 0)
+    {
+        snd_seq_set_client_name(SeqHandle, "mollytime");
+        {
+            const unsigned int Caps = SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
+            const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE | SND_SEQ_PORT_TYPE_SYNTHESIZER;
+            MidiInPort = snd_seq_create_simple_port(SeqHandle, "in", Caps, Type);
+        }
+        {
+            const unsigned int Caps = SND_SEQ_PORT_CAP_READ | SND_SEQ_PORT_CAP_SUBS_READ;
+            const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE;
+            MidiOutPort = snd_seq_create_simple_port(SeqHandle, "out", Caps, Type);
+        }
+    }
+    else
+    {
+        std::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
+        SeqHandle = nullptr;
+    }
+}
 
 
-void Midi::ProcessEvents(MidiHandler* Handler)
+AlsaMidiDriver::~AlsaMidiDriver()
+{
+    if (SeqHandle)
+    {
+        if (MidiOutPort > -1)
+        {
+            snd_seq_delete_simple_port(SeqHandle, MidiOutPort);
+            MidiOutPort = -1;
+        }
+        if (MidiInPort > -1)
+        {
+            snd_seq_delete_simple_port(SeqHandle, MidiInPort);
+            MidiInPort = -1;
+        }
+        snd_seq_close(SeqHandle);
+        SeqHandle = nullptr;
+    }
+}
+
+
+void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
 {
     snd_seq_event_t* Event = nullptr;
     if (SeqHandle)
@@ -50,46 +91,4 @@ void Midi::ProcessEvents(MidiHandler* Handler)
     }
 }
 
-
-void Midi::Init()
-{
-    if (snd_seq_open(&SeqHandle, "default", SND_SEQ_OPEN_DUPLEX, SND_SEQ_NONBLOCK) == 0)
-    {
-        snd_seq_set_client_name(SeqHandle, "mollytime");
-        {
-            const unsigned int Caps = SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
-            const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE | SND_SEQ_PORT_TYPE_SYNTHESIZER;
-            MidiInPort = snd_seq_create_simple_port(SeqHandle, "in", Caps, Type);
-        }
-        {
-            const unsigned int Caps = SND_SEQ_PORT_CAP_READ | SND_SEQ_PORT_CAP_SUBS_READ;
-            const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE;
-            MidiOutPort = snd_seq_create_simple_port(SeqHandle, "out", Caps, Type);
-        }
-    }
-    else
-    {
-        std::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
-        SeqHandle = nullptr;
-    }
-}
-
-
-void Midi::Shutdown()
-{
-    if (SeqHandle)
-    {
-        if (MidiOutPort > -1)
-        {
-            snd_seq_delete_simple_port(SeqHandle, MidiOutPort);
-            MidiOutPort = -1;
-        }
-        if (MidiInPort > -1)
-        {
-            snd_seq_delete_simple_port(SeqHandle, MidiInPort);
-            MidiInPort = -1;
-        }
-        snd_seq_close(SeqHandle);
-        SeqHandle = nullptr;
-    }
-}
+#endif
