@@ -106,7 +106,7 @@ class scope_screen(editor_screen):
         for (out_port, in_port) in editor.patch.wires:
             lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
             rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
-            radius = max(4, editor.grid_size // 12)
+            radius = max(1, editor.grid_size // 12)
             draw_arrow(frame, self.wire_color, lhs_rect, rhs_rect, radius)
 
         min_sample, max_sample = editor.patch.read_scope_probe()

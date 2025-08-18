@@ -62,7 +62,7 @@ class connect_screen(editor_screen):
         for (out_port, in_port) in editor.patch.wires:
             lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
             rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
-            radius = max(4, editor.grid_size // 12)
+            radius = max(1, editor.grid_size // 12)
             draw_arrow(node_graph, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
         node_graph.set_alpha(int(0.25 * 255))
