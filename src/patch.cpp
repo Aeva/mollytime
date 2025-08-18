@@ -217,7 +217,7 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
-        Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 3);
+        Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
         Set(OpCode::VELO, "velocity", {}, {"velocity"});
@@ -738,7 +738,6 @@ struct AdsrThunk : public InstructionThunk
     std::vector<RunningStateSharedPtr> ReleaseTime;
     RunningStateSharedPtr OutAmplitude = nullptr;
     RunningStateSharedPtr LastTrigger = nullptr;
-    RunningStateSharedPtr ElapsedTime = nullptr;
     RunningStateSharedPtr Mode = nullptr;
 
     virtual void Crank(double SampleInterval) override
@@ -750,57 +749,65 @@ struct AdsrThunk : public InstructionThunk
 
         double Attack = Combine(CombinerAdd, AttackTime, 0.1);
         double Decay = Combine(CombinerAdd, DecayTime, 0.1);
-        double Sustain = Combine(CombinerAdd, SustainAmount, 1.0);
+        double Sustain = std::min(std::max(Combine(CombinerAdd, SustainAmount, 1.0), 0.0), 1.0);
         double Release = Combine(CombinerAdd, ReleaseTime, 1.0);
+
+        double Amplitude = OutAmplitude->Get();
 
         if (Trig >= 1.0 && Previous <= 0.0)
         {
-            // Begin attack.
-            OutAmplitude->Set(0.0);
-            ElapsedTime->Set(0.0);
-            Mode->Set(1.0); // rising
+            if (Attack > 0.0)
+            {
+                // Begin attack.
+                Mode->Set(2.0);
+            }
+            else
+            {
+                // Immediatly decay / sustain.
+                Mode->Set(1.0);
+                Amplitude = 1.0;
+            }
         }
         else if (Trig <= 0.0 && Previous >= 1.0)
         {
             // Begin release.
-            OutAmplitude->Set(Sustain);
-            ElapsedTime->Set(0.0);
-            Mode->Set(-1.0); // falling
+            Mode->Set(0.0);
         }
-        else if (Mode->Get() == 1.0)
-        {
-            // Attack, decay, or sustain
-            double Elapsed = std::max(0.0, std::min(Attack + Decay, ElapsedTime->Get() + SampleInterval));
-            ElapsedTime->Set(Elapsed);
 
-            double Peak = Decay > 0.0 ? 1.0 : Sustain;
-            if (Elapsed < Attack)
+        if (Mode->Get() == 2.0)
+        {
+            if (Attack > 0.0)
             {
-                double Alpha = std::max(0.0, std::min(1.0, Elapsed / Attack));
-                OutAmplitude->Set(Peak * Alpha);
+                Amplitude = std::min(1.0, Amplitude + (SampleInterval / Attack));
+                OutAmplitude->Set(Amplitude);
+                if (Amplitude == 1.0)
+                {
+                    Mode->Set(1.0);
+                }
             }
             else
             {
-                double Alpha = std::max(0.0, std::min(1.0, (Elapsed - Attack) / Decay));
-                OutAmplitude->Set((1.0 - Alpha) * Peak + Alpha * Sustain);
+                Mode->Set(1.0);
             }
-
         }
-        else if (Mode->Get() == -1.0)
+        else
         {
-            // Release
-            double Elapsed = std::max(0.0, std::min(Release, ElapsedTime->Get() + SampleInterval));
-            ElapsedTime->Set(Elapsed);
-            if (Elapsed < Release)
+            if (Amplitude > Sustain && Decay > 0.0 && (Mode->Get() == 1.0 || Decay < Attack))
             {
-                double Alpha = 1.0 - std::max(0.0, std::min(1.0, Elapsed / Release));
-                OutAmplitude->Set(Sustain * Alpha);
+                Amplitude = std::max(Sustain, Amplitude - (SampleInterval / Decay) * (1.0 - Sustain));
             }
-            else
+            else if (Amplitude > 0.0 && Mode->Get() == 0.0)
             {
-                Mode->Set(0.0);
-                OutAmplitude->Set(0.0);
+                if (Release > 0.0)
+                {
+                    Amplitude = std::max(0.0, Amplitude - (SampleInterval / Release) * Sustain);
+                }
+                else
+                {
+                    Amplitude = 0.0;
+                }
             }
+            OutAmplitude->Set(Amplitude);
         }
     }
 
@@ -1725,8 +1732,7 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->ReleaseTime = Inputs[4];
                 Thunk->OutAmplitude = Outputs[0];
                 Thunk->LastTrigger = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->ElapsedTime = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->Mode = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->Mode = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::GATE)
