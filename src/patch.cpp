@@ -1058,6 +1058,9 @@ struct TapeLoopThunk : public InstructionThunk
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
+    // This forces the playing patch to clear, which is useful for the editor, but
+    // probably not something we want in a future stand-alone runtime.
+    Recompile();
 }
 
 

@@ -77,8 +77,8 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
         EvalStart = Clock::now();
         for (int SampleIndex = 0; SampleIndex < Frame.SampleCount; ++SampleIndex)
         {
-            *Frame.OutLeft = 0.0f;
-            *Frame.OutRight = 0.0f;
+            Frame.OutLeft[SampleIndex] = 0.0f;
+            Frame.OutRight[SampleIndex] = 0.0f;
         }
         for (auto [ReadPtr, WritePtr] : Frame.AuxPtrs)
         {
