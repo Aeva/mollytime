@@ -948,7 +948,7 @@ struct BlankTape : public MagicTape
             }
             Alpha = std::min(std::max(Alpha, 0.0), 1.0);
             size_t Index = size_t(double(Samples.size() - 1) * Alpha);
-            return std::min(std::max(Index, 0ul), Samples.size());
+            return std::min(std::max(Index, 0zu), Samples.size());
         }
         else
         {
@@ -956,7 +956,7 @@ struct BlankTape : public MagicTape
         }
     }
 
-    virtual double ReadAndAdvance(size_t& Index) override
+    virtual double ReadAndAdvance(uint64_t& Index) override
     {
         if (Samples.size())
         {
@@ -969,7 +969,7 @@ struct BlankTape : public MagicTape
         }
     }
 
-    virtual void WriteAndAdvance(size_t& Index, double NewSample) override
+    virtual void WriteAndAdvance(uint64_t& Index, double NewSample) override
     {
         if (Samples.size() > 0)
         {
@@ -1010,8 +1010,8 @@ struct TapeLoopThunk : public InstructionThunk
 
         double Offset = Combine(CombinerAdd, InOffset, 0.0);
         double Seconds = Combine(CombinerAdd, InLength, 0.0);
-        size_t ReadIndex = std::bit_cast<size_t, double>(ReadHead->Get());
-        size_t WriteIndex = std::bit_cast<size_t, double>(WriteHead->Get());
+        uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead->Get());
+        uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead->Get());
 
         auto ResetOffset = [&]()
         {
@@ -1050,11 +1050,11 @@ struct TapeLoopThunk : public InstructionThunk
             LastReset->Set(Reset);
 
             Output->Set(Tape->ReadAndAdvance(ReadIndex));
-            ReadHead->Set(std::bit_cast<double, size_t>(ReadIndex));
+            ReadHead->Set(std::bit_cast<double, uint64_t>(ReadIndex));
 
             double Sample = Combine(CombinerAdd, InSample, 0.0);
             Tape->WriteAndAdvance(WriteIndex, Sample);
-            WriteHead->Set(std::bit_cast<double, size_t>(WriteIndex));
+            WriteHead->Set(std::bit_cast<double, uint64_t>(WriteIndex));
         }
     }
 
