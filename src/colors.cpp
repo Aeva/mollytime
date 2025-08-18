@@ -311,7 +311,7 @@ static glm::vec3 sRGB2HSL(glm::vec3 sRGB)
 				Hue = (sRGB.r - sRGB.g) / D + 4.0f;
 			}
 
-			Hue = Hue * 60.0;
+			Hue = Hue * 60.0f;
 		}
 	}
 
