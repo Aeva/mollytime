@@ -62,6 +62,8 @@ protected:
     int FramePressureIndex = 0;
     int FramePressureCount = 0;
 
+    virtual ~RealTimeAudioThread() {}
+
     virtual void BeginFrame(FramePointers& Frame) = 0;
     virtual void EndFrame(FramePointers& Frame) {};
 

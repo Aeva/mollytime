@@ -221,7 +221,7 @@ struct InstructionThunk
 };
 
 
-struct Scratch : public MidiHandler
+struct Scratch final : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
