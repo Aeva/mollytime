@@ -19,6 +19,7 @@
 #include <print>
 #include <functional>
 #include <limits>
+#include <numbers>
 #include <utility>
 #include <cmath>
 #include <bit>
@@ -27,9 +28,8 @@
 #include "patch.h"
 #include "audio_backend.h"
 
-
-constinit double Pi = M_PI;
-constinit double Tau = M_PI * 2.0;
+constinit double Pi = std::numbers::pi;
+constinit double Tau = std::numbers::pi * 2.0;
 
 const double ImprobableMagnitude = 123456789.0;
 
