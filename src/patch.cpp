@@ -1287,10 +1287,10 @@ std::vector<PortHandle> Patch::GetTileInputPorts(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
-    int Count = SymbolInfoMap.InputNames[(int)Symbol].size();
+    size_t Count = SymbolInfoMap.InputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
     Handles.reserve(Count);
-    for (int PortIndex = 0; PortIndex < Count; ++PortIndex)
+    for (int PortIndex = 0; PortIndex < static_cast<int>(Count); ++PortIndex)
     {
         Handles.push_back(MakePortHandle(Tile, PortIndex));
     }
@@ -1302,7 +1302,7 @@ std::vector<PortHandle> Patch::GetTileOutputPorts(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
-    int Count = SymbolInfoMap.OutputNames[(int)Symbol].size();
+    size_t Count = SymbolInfoMap.OutputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
     Handles.reserve(Count);
     for (uint32_t PortIndex = 0; PortIndex < static_cast<uint32_t>(Count); ++PortIndex)
@@ -1485,11 +1485,11 @@ ScratchSharedPtr Patch::Compile()
             return nullptr;
         }
 
-        const int InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
-        const int OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+        const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
+        const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
 
         // Recurse first to populate everything sequentally.
-        for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
+        for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
         {
             PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
             for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
@@ -1532,7 +1532,7 @@ ScratchSharedPtr Patch::Compile()
         else
         {
             std::vector<std::vector<RunningStateSharedPtr>> Inputs;
-            for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
+            for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
             {
                 std::vector<RunningStateSharedPtr>& PortInputs = Inputs.emplace_back();
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
@@ -1543,7 +1543,7 @@ ScratchSharedPtr Patch::Compile()
             }
 
             std::vector<RunningStateSharedPtr> Outputs;
-            for (int PortIndex = 0; PortIndex < OutputCount; ++PortIndex)
+            for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
                 PortHandle OutputHandle = MakePortHandle(Tile, PortIndex);
                 Outputs.push_back(ActiveOutputs.at(OutputHandle));
