@@ -1,73 +1,15 @@
-
-// Copyright 2025 Aeva Palecek
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #ifdef ENABLE_JACK
 
-#include <vector>
-#include <mutex>
-#include <print>
-#include <format>
-//#include <cstring>
-#include <string>
+#include "audio_backend.h"
+#include "jack_stream.h"
 
-#include <signal.h>
-#ifndef WIN32
-#include <unistd.h>
-#endif
 #include <jack/jack.h>
 
-#include "audio_backend.h"
-#include "perf.h"
 
-static bool JackInitialized = false;
-static AudioStream* StreamSingleton = nullptr;
-static jack_client_t* JackClient;
-static const char* ClientName = "mollytime";
+// ---
 
 
-void JackShutdown(void* UserData = nullptr)
-{
-    if (JackInitialized)
-    {
-        JackInitialized = false;
-        jack_client_close(JackClient);
-    }
-}
-
-
-struct JackThreadShared : AudioThreadShared
-{
-    std::vector<jack_port_t*> OutputPorts;
-    std::map<TileHandle, jack_port_t*> InputPorts;
-    std::map<TileHandle, jack_port_t*> AuxOutPorts;
-};
-
-
-struct JackRealTimeThread : RealTimeAudioThread
-{
-    void Setup(JackThreadShared* InBufferState, int SampleRate);
-
-    static int OnProcess(jack_nframes_t FrameCount, void *UserData);
-
-private:
-    int OnProcessInner(jack_nframes_t FrameCount);
-    virtual void BeginFrame(FramePointers& Frame) override;
-};
-
-
-void JackRealTimeThread::Setup(JackThreadShared* JackBufferState, int SampleRate)
+JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShared* JackBufferState, int SampleRate)
 {
     BufferState = JackBufferState;
     SampleInterval = 1.0 / double(SampleRate);
@@ -86,21 +28,18 @@ void JackRealTimeThread::Setup(JackThreadShared* JackBufferState, int SampleRate
     {
         if (Port == nullptr)
         {
-            JackShutdown();
             throw std::runtime_error("Unable to create jack ports!\n");
         }
     }
 
     if (jack_activate(JackClient))
     {
-        JackShutdown();
         throw std::runtime_error("Unable to activate jack client!\n");
     }
 
     const char** Ports = jack_get_ports(JackClient, nullptr, nullptr, JackPortIsPhysical|JackPortIsInput);
     if (Ports == nullptr)
     {
-        JackShutdown();
         throw std::runtime_error("No physical playback ports!\n");
     }
 
@@ -117,14 +56,14 @@ void JackRealTimeThread::Setup(JackThreadShared* JackBufferState, int SampleRate
 }
 
 
-int JackRealTimeThread::OnProcess(jack_nframes_t FrameCount, void *UserData)
+int JackRealTimeThread::OnProcess(uint32_t FrameCount, void *UserData)
 {
     JackRealTimeThread* RealTimeThread = (JackRealTimeThread*)UserData;
     return RealTimeThread->OnProcessInner(FrameCount);
 }
 
 
-int JackRealTimeThread::OnProcessInner(jack_nframes_t FrameCount)
+int JackRealTimeThread::OnProcessInner(uint32_t FrameCount)
 {
     static_assert(std::is_same_v<float, jack_default_audio_sample_t>);
     TRACEABLE_SCOPE;
@@ -162,37 +101,50 @@ void JackRealTimeThread::BeginFrame(FramePointers& Frame)
 }
 
 
-struct JackStream : public AudioStream
+// ---
+
+
+static jack_client_t* OpenJackClient(const char*& ClientName)
 {
-    JackStream();
-    void Setup(int SampleRate);
-    virtual float GetTemporalPressureInner() override;
-    virtual void ProgramChange(ScratchSharedPtr& NewProgram) override;
-    virtual ~JackStream();
+    jack_status_t JackStatus;
+    jack_options_t JackOptions = JackNoStartServer;
+    jack_client_t* JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
+    if (JackClient == nullptr)
+    {
+        throw std::runtime_error(std::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
+    }
+    if (JackStatus & JackNameNotUnique)
+    {
+        ClientName = jack_get_client_name(JackClient);
+    }
 
-private:
-    JackRealTimeThread RealTimeThread;
-    JackThreadShared BufferState;
-};
-
-
-JackStream::JackStream()
-{
-    jack_set_process_callback(JackClient, JackRealTimeThread::OnProcess, &RealTimeThread);
-    jack_on_shutdown(JackClient, JackShutdown, 0);
+    return JackClient;
 }
 
 
-float JackStream::GetTemporalPressureInner()
+JackStream::JackStream(int SampleRate) :
+    JackClient(OpenJackClient(ClientName)),
+    RealTimeThread(JackClient, &BufferState, SampleRate)
+{
+    static_assert(std::is_same_v<jack_nframes_t, uint32_t>);
+    jack_set_process_callback(JackClient, JackRealTimeThread::OnProcess, &RealTimeThread);
+}
+
+
+JackStream::~JackStream()
+{
+    if(JackClient != nullptr)
+    {
+        jack_client_close(JackClient);
+        JackClient = nullptr;
+    }
+}
+
+
+float JackStream::GetTemporalPressure()
 {
     TRACEABLE_SCOPE;
     return BufferState.TemporalPressure.load();
-}
-
-
-void JackStream::Setup(int SampleRate)
-{
-    RealTimeThread.Setup(&BufferState, SampleRate);
 }
 
 
@@ -268,62 +220,4 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
     }
 }
 
-
-JackStream::~JackStream()
-{
-}
-
-
-AudioStream* AudioStream::Get()
-{
-    if (!JackInitialized)
-    {
-        JackInitialized = true;
-
-        jack_status_t JackStatus;
-        jack_options_t JackOptions = JackNoStartServer;
-        JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
-        if (JackClient == nullptr)
-        {
-            throw std::runtime_error(std::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
-        }
-        if (JackStatus & JackNameNotUnique)
-        {
-            ClientName = jack_get_client_name(JackClient);
-        }
-    }
-    if (StreamSingleton == nullptr)
-    {
-        StreamSingleton = new JackStream();
-    }
-    return StreamSingleton;
-}
-
-
-void AudioStream::Init(int SampleRate)
-{
-    TRACEABLE_SCOPE;
-    JackStream* JackSingleton = (JackStream*)Get();
-    JackSingleton->Setup(SampleRate);
-}
-
-
-void AudioStream::Shutdown()
-{
-    TRACEABLE_SCOPE;
-    if (StreamSingleton != nullptr)
-    {
-        delete StreamSingleton;
-        StreamSingleton = nullptr;
-    }
-    JackShutdown();
-}
-
-
-float AudioStream::GetTemporalPressure()
-{
-    return Get()->GetTemporalPressureInner();
-}
-
-
-#endif // ENABLE_JACK
+#endif

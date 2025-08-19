@@ -211,9 +211,9 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("read_scope_probe", &Patch::ReadScopeProbe)
 		.def("set_special_input", &Patch::SetSpecialInput);
 
-	m.def("init_audio", &AudioStream::Init);
-	m.def("shutdown_audio", &AudioStream::Shutdown);
-	m.def("get_temporal_pressure", &AudioStream::GetTemporalPressure);
+	m.def("init_audio", &Audio::Init);
+	m.def("shutdown_audio", &Audio::Shutdown);
+	m.def("get_temporal_pressure", &Audio::GetTemporalPressure);
 
 	m.def("init_midi", &Midi::Init);
 	m.def("shutdown_midi", &Midi::Shutdown);

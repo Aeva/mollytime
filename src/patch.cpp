@@ -1853,7 +1853,7 @@ void Patch::Recompile()
 {
     TRACEABLE_SCOPE;
     ScratchSharedPtr CurrentProgram = Compile();
-    AudioStream::Get()->ProgramChange(CurrentProgram);
+    Audio::GetStream()->ProgramChange(CurrentProgram);
 }
 
 

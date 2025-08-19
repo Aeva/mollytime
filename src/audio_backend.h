@@ -74,13 +74,18 @@ protected:
 
 struct AudioStream
 {
-    static AudioStream* Get();
-    static void Init(int SampleRate);
-    static void Shutdown();
-    static float GetTemporalPressure();
+    virtual ~AudioStream() {}
 
-    virtual float GetTemporalPressureInner() = 0;
+    virtual float GetTemporalPressure() = 0;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) = 0;
+};
 
-    virtual ~AudioStream() {};
+
+namespace Audio
+{
+    AudioStream* GetStream();
+
+    void Init(int SampleRate);
+    void Shutdown();
+    float GetTemporalPressure();
 };

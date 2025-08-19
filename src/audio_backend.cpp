@@ -115,3 +115,54 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
     }
     LastFrameStart = FrameStart;
 }
+
+// ---
+
+#include "jack_stream.h"
+
+#include <memory>
+
+static std::unique_ptr<AudioStream> Stream;
+
+
+struct StubStream final : AudioStream
+{
+    virtual float GetTemporalPressure() override { return 0.0f; }
+    virtual void ProgramChange(ScratchSharedPtr& NewProgram) override {}
+};
+
+
+AudioStream* Audio::GetStream()
+{
+    return Stream.get();
+}
+
+
+void Audio::Init(int SampleRate)
+{
+#ifdef ENABLE_JACK
+    Stream = std::make_unique<JackStream>(SampleRate);
+#else
+    Stream = std::make_unique<StubStream>();
+#endif
+}
+
+
+void Audio::Shutdown()
+{
+    if(Stream)
+    {
+        Stream.reset();
+    }
+}
+
+
+float Audio::GetTemporalPressure()
+{
+    if(!Stream)
+    {
+        return 0.0f;
+    }
+    
+    return Stream->GetTemporalPressure();
+}
