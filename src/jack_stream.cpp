@@ -31,54 +31,15 @@ static int OnProcess(jack_nframes_t FrameCount, void *UserData)
 }
 
 
-JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShared* JackBufferState, int SampleRate)
+JackRealTimeThread::JackRealTimeThread(JackThreadShared* JackBufferState, int SampleRate)
 {
-    assert(JackClient != nullptr);
     assert(JackBufferState != nullptr);
+    assert(SampleRate != 0);
 
     BufferState = JackBufferState;
     SampleInterval = 1.0 / double(SampleRate);
 
     ResetFramePressure();
-
-    JackBufferState->OutputPorts.clear();
-    JackBufferState->OutputPorts.resize(2, nullptr);
-
-    JackBufferState->OutputPorts[0] = jack_port_register(
-        JackClient, "output_FL", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-
-    JackBufferState->OutputPorts[1] = jack_port_register(
-        JackClient, "output_FR", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-
-    for (jack_port_t* Port : JackBufferState->OutputPorts)
-    {
-        if (Port == nullptr)
-        {
-            throw std::runtime_error("Unable to create jack ports!\n");
-        }
-    }
-
-    if (jack_activate(JackClient))
-    {
-        throw std::runtime_error("Unable to activate jack client!\n");
-    }
-
-    const char** Ports = jack_get_ports(JackClient, nullptr, nullptr, JackPortIsPhysical|JackPortIsInput);
-    if (Ports == nullptr)
-    {
-        throw std::runtime_error("No physical playback ports!\n");
-    }
-
-    for (int PortIndex = 0; Ports[PortIndex] != nullptr && PortIndex < 2; ++PortIndex)
-    {
-        const char* ProgramOut = jack_port_name(JackBufferState->OutputPorts[PortIndex]);
-        if (jack_connect(JackClient, ProgramOut, Ports[PortIndex]))
-        {
-            // unable to connect to physical port
-        }
-    }
-
-    jack_free(Ports);
 }
 
 
@@ -120,11 +81,14 @@ void JackRealTimeThread::BeginFrame(FramePointers& Frame)
 }
 
 
-// ---
-
-
-static jack_client_t* OpenJackClient(const char*& ClientName, JackRealTimeThread& RealTimeThread)
+JackStream::JackStream(int SampleRate) :
+    JackClient(),
+    BufferState(),
+    RealTimeThread(&BufferState, SampleRate)
 {
+    TRACEABLE_SCOPE;
+
+    // First, open a Jack client.
     jack_status_t JackStatus;
     jack_options_t JackOptions = JackNoStartServer;
     jack_client_t* JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
@@ -135,20 +99,61 @@ static jack_client_t* OpenJackClient(const char*& ClientName, JackRealTimeThread
     if (JackStatus & JackNameNotUnique)
     {
         ClientName = jack_get_client_name(JackClient);
+        assert(ClientName != nullptr);
     }
 
-    static_assert(std::is_same_v<jack_nframes_t, uint32_t>);
-    jack_set_process_callback(JackClient, OnProcess, &RealTimeThread);
+    // Then, register a process callback. We *must* do this now, before anything else.
+    int process_callback_status = jack_set_process_callback(JackClient, OnProcess, &RealTimeThread);
+    if(process_callback_status != 0)
+    {
+        throw std::runtime_error(std::format("jack_set_process_callback() failed, error code = {}\n", process_callback_status));
+    }
+    
+    // Now that that's taken care of, we can register output ports...
+    BufferState.OutputPorts.clear();
+    BufferState.OutputPorts.resize(2, nullptr);
 
-    return JackClient;
+    BufferState.OutputPorts[0] = jack_port_register(
+        JackClient, "output_FL", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+
+    BufferState.OutputPorts[1] = jack_port_register(
+        JackClient, "output_FR", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+
+    for (jack_port_t* Port : BufferState.OutputPorts)
+    {
+        if (Port == nullptr)
+        {
+            throw std::runtime_error("Unable to create jack ports!\n");
+        }
+    }
+
+    // ...Signal that we're ready to start processing...
+    if (jack_activate(JackClient))
+    {
+        throw std::runtime_error("Unable to activate jack client!\n");
+    }
+
+    // ...And conenct to the registered output ports.
+    const char** Ports = jack_get_ports(JackClient, nullptr, nullptr, JackPortIsPhysical|JackPortIsInput);
+    if (Ports == nullptr)
+    {
+        throw std::runtime_error("No physical playback ports!\n");
+    }
+
+    for (int PortIndex = 0; Ports[PortIndex] != nullptr && PortIndex < 2; ++PortIndex)
+    {
+        const char* ProgramOut = jack_port_name(BufferState.OutputPorts[PortIndex]);
+        assert(ProgramOut != nullptr);
+        
+        if (jack_connect(JackClient, ProgramOut, Ports[PortIndex]))
+        {
+            // unable to connect to physical port
+        }
+    }
+
+    // Now that we're connected, we can free the temporary Ports array.
+    jack_free(Ports);
 }
-
-
-JackStream::JackStream(int SampleRate) :
-    JackClient(OpenJackClient(ClientName, RealTimeThread)),
-    BufferState(),
-    RealTimeThread(JackClient, &BufferState, SampleRate)
-{ }
 
 
 JackStream::~JackStream()

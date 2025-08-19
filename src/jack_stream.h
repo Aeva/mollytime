@@ -36,7 +36,7 @@ struct JackThreadShared : AudioThreadShared
 class JackRealTimeThread final : public RealTimeAudioThread
 {
 public:
-    JackRealTimeThread(struct _jack_client* JackClient, JackThreadShared* JackBufferState, int SampleRate);
+    JackRealTimeThread(JackThreadShared* JackBufferState, int SampleRate);
 
     virtual void BeginFrame(FramePointers& Frame) override;
     int OnProcess(size_t FrameCount);
