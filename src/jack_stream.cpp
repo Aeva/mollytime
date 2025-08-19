@@ -3,6 +3,9 @@
 #include "audio_backend.h"
 #include "jack_stream.h"
 
+#include <cassert>
+#include <print>
+
 #include <jack/jack.h>
 
 
@@ -11,6 +14,12 @@
 
 JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShared* JackBufferState, int SampleRate)
 {
+    assert(JackClient != nullptr);
+    std::println("jack client is good");
+
+    assert(JackBufferState != nullptr);
+    std::println("buffer staté is good");
+
     BufferState = JackBufferState;
     SampleInterval = 1.0 / double(SampleRate);
     ResetFramePressure();
@@ -20,9 +29,12 @@ JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShar
 
     JackBufferState->OutputPorts[0] = jack_port_register(
         JackClient, "output_FL", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    assert(JackBufferState->OutputPorts[0] != nullptr);
+    std::println("port 0 is good");
 
     JackBufferState->OutputPorts[1] = jack_port_register(
         JackClient, "output_FR", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    std::println("port 1 is good");
 
     for (jack_port_t* Port : JackBufferState->OutputPorts)
     {
