@@ -21,8 +21,8 @@
 #include <vector>
 
 
-struct _jack_client;
-struct _jack_port;
+struct _jack_port;      // Forward declares `typedef struct _jack_port jack_port_t` from <jack/types.h>
+struct _jack_client;    // Forward declares `typedef struct _jack_client jack_client_t` from <jack/types.h>
 
 
 struct JackThreadShared : AudioThreadShared
