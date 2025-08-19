@@ -129,7 +129,7 @@ void JackRealTimeThread::BeginFrame(FramePointers& Frame)
 // ---
 
 
-static jack_client_t* OpenJackClient(const char*& ClientName)
+static jack_client_t* OpenJackClient(const char*& ClientName, JackRealTimeThread& RealTimeThread)
 {
     jack_status_t JackStatus;
     jack_options_t JackOptions = JackNoStartServer;
@@ -143,18 +143,18 @@ static jack_client_t* OpenJackClient(const char*& ClientName)
         ClientName = jack_get_client_name(JackClient);
     }
 
+    static_assert(std::is_same_v<jack_nframes_t, uint32_t>);
+    jack_set_process_callback(JackClient, JackRealTimeThread::OnProcess, &RealTimeThread);
+
     return JackClient;
 }
 
 
 JackStream::JackStream(int SampleRate) :
-    JackClient(OpenJackClient(ClientName)),
+    JackClient(OpenJackClient(ClientName, RealTimeThread)),
     BufferState(),
     RealTimeThread(JackClient, &BufferState, SampleRate)
-{
-    static_assert(std::is_same_v<jack_nframes_t, uint32_t>);
-    jack_set_process_callback(JackClient, JackRealTimeThread::OnProcess, &RealTimeThread);
-}
+{ }
 
 
 JackStream::~JackStream()
