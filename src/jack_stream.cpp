@@ -23,8 +23,13 @@
 
 #include <jack/jack.h>
 
+static int OnProcess(jack_nframes_t FrameCount, void *UserData)
+{
+    assert(UserData != nullptr);
 
-// ---
+    JackRealTimeThread* RealTimeThread = (JackRealTimeThread*)UserData;
+    return RealTimeThread->OnProcess(static_cast<size_t>(FrameCount));
+}
 
 
 JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShared* JackBufferState, int SampleRate)
@@ -96,14 +101,7 @@ JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShar
 }
 
 
-int JackRealTimeThread::OnProcess(uint32_t FrameCount, void *UserData)
-{
-    JackRealTimeThread* RealTimeThread = (JackRealTimeThread*)UserData;
-    return RealTimeThread->OnProcessInner(FrameCount);
-}
-
-
-int JackRealTimeThread::OnProcessInner(uint32_t FrameCount)
+int JackRealTimeThread::OnProcess(size_t FrameCount)
 {
     static_assert(std::is_same_v<float, jack_default_audio_sample_t>);
     TRACEABLE_SCOPE;
@@ -159,7 +157,7 @@ static jack_client_t* OpenJackClient(const char*& ClientName, JackRealTimeThread
     }
 
     static_assert(std::is_same_v<jack_nframes_t, uint32_t>);
-    jack_set_process_callback(JackClient, JackRealTimeThread::OnProcess, &RealTimeThread);
+    jack_set_process_callback(JackClient, OnProcess, &RealTimeThread);
 
     return JackClient;
 }

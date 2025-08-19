@@ -39,9 +39,7 @@ public:
     JackRealTimeThread(struct _jack_client* JackClient, JackThreadShared* JackBufferState, int SampleRate);
 
     virtual void BeginFrame(FramePointers& Frame) override;
-
-    static int OnProcess(uint32_t FrameCount, void *UserData);
-    int OnProcessInner(uint32_t FrameCount);
+    int OnProcess(size_t FrameCount);
 };
 
 
