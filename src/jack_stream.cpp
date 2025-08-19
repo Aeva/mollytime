@@ -149,6 +149,7 @@ static jack_client_t* OpenJackClient(const char*& ClientName)
 
 JackStream::JackStream(int SampleRate) :
     JackClient(OpenJackClient(ClientName)),
+    BufferState(),
     RealTimeThread(JackClient, &BufferState, SampleRate)
 {
     static_assert(std::is_same_v<jack_nframes_t, uint32_t>);

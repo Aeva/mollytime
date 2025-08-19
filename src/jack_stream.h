@@ -50,8 +50,8 @@ class JackStream final : public AudioStream
     const char* ClientName = "mollytime";
 
     struct _jack_client* JackClient;
-    JackRealTimeThread RealTimeThread;
     JackThreadShared BufferState;
+    JackRealTimeThread RealTimeThread;
 
 public:
     JackStream(int SampleRate);
