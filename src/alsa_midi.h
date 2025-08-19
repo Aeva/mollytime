@@ -17,11 +17,11 @@
 
 #include "midi.h"
 
-struct snd_seq_t;
+struct _snd_seq;
 
 class AlsaMidiDriver final : public MidiDriver
 {
-    snd_seq_t *SeqHandle = nullptr;
+    struct _snd_seq *SeqHandle = nullptr;
     int MidiInPort = -1;
     int MidiOutPort = -1;
 
