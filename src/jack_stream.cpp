@@ -19,7 +19,6 @@
 #include "jack_stream.h"
 
 #include <cassert>
-#include <print>
 
 #include <jack/jack.h>
 
@@ -35,39 +34,21 @@ static int OnProcess(jack_nframes_t FrameCount, void *UserData)
 JackRealTimeThread::JackRealTimeThread(jack_client_t* JackClient, JackThreadShared* JackBufferState, int SampleRate)
 {
     assert(JackClient != nullptr);
-    std::println("jack client is good");
-
     assert(JackBufferState != nullptr);
-    std::println("buffer staté is good");
 
     BufferState = JackBufferState;
-    std::println("assigned buffer staté");
-
     SampleInterval = 1.0 / double(SampleRate);
-    std::println("calculated sample interval");
 
     ResetFramePressure();
-    std::println("reset frame pressure");
 
     JackBufferState->OutputPorts.clear();
-    std::println("cleared output ports");
-
     JackBufferState->OutputPorts.resize(2, nullptr);
-    std::println("prepared 2 output ports");
 
     JackBufferState->OutputPorts[0] = jack_port_register(
         JackClient, "output_FL", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    std::println("registered output port 0");
-
-    assert(JackBufferState->OutputPorts[0] != nullptr);
-    std::println("port 0 is good");
 
     JackBufferState->OutputPorts[1] = jack_port_register(
         JackClient, "output_FR", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    std::println("registered output port 1");
-
-    assert(JackBufferState->OutputPorts[1] != nullptr);
-    std::println("port 1 is good");
 
     for (jack_port_t* Port : JackBufferState->OutputPorts)
     {
