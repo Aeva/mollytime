@@ -17,7 +17,10 @@
 #define FORCE_SAMPLE_PROFILING 0
 
 #if defined(TRACY_ENABLE) && !FORCE_SAMPLE_PROFILING
+#pragma warning(push)
+#pragma warning(disable : 4464)
 #include "tracy/Tracy.hpp"
+#pragma warning(pop)
 
 #define DECLARE_TRACEABLE_MUTEX(NAME) TracyLockable(std::mutex, NAME)
 #define TRACEABLE_LOCK_GUARD(LOCK_VAR) std::lock_guard<LockableBase(std::mutex)> LOCK_GUARD_##__LINE__(LOCK_VAR)
