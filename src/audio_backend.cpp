@@ -124,8 +124,8 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 }
 
 
-// This no-op stub is used if no AudioStream is available.
-// It's quite possible the program should just crash, instead. What use is an audio generator with no audio?
+// This no-op stub is used if no AudioStream is available.  This is
+// primarily intended to aid in porting Mollytime to new platforms.
 struct StubStream final : AudioStream
 {
     virtual float GetTemporalPressure() override { return 0.0f; }
