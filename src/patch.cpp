@@ -197,6 +197,7 @@ struct SymbolInfo
         Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
         Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
         Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
+        Set(OpCode::NOI, "noise", {"hz"}, {"amp"}, 3);
         Set(OpCode::ADD, "add", {"+"}, {"="});
         Set(OpCode::MUL, "mul", {"*"}, {"="});
         Set(OpCode::RCP, "rcp", {"*"}, {"="});
@@ -276,7 +277,7 @@ struct SinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("NAME");
+        TRACEABLE_NAMED_SCOPE("SinThunk");
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
@@ -333,6 +334,44 @@ struct TriThunk : public InstructionThunk
     }
 
     virtual ~TriThunk() {};
+};
+
+
+struct NoiThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InFrequencyHz;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr ActivePhase = nullptr;
+    RunningStateSharedPtr HighAmp = nullptr;
+    RunningStateSharedPtr LowAmp = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("NoiThunk");
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
+        double Phase = ActivePhase->Get();
+        int Before = int(Phase * 4.0);
+        Phase += Hz * SampleInterval;
+        int After = int(Phase * 4.0);
+        if (Before < After)
+        {
+            After %= 4;
+            if (After == 1)
+            {
+                LowAmp->Set(Roll() * 2.0 - 1.0);
+            }
+            else if (After == 3)
+            {
+                HighAmp->Set(Roll() * 2.0 - 1.0);
+            }
+        }
+        Phase = std::fmod(Phase, 1.0);
+        ActivePhase->Set(Phase);
+        double Alpha = std::sin(Phase * Tau) * .5 + .5;
+        OutAmplitude->Set(LowAmp->Get() * (1.0 - Alpha) + HighAmp->Get() * Alpha);
+    }
+
+    virtual ~NoiThunk() {};
 };
 
 
@@ -1573,6 +1612,17 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return nullptr;
+            }
+            else if (Symbol == OpCode::NOI)
+            {
+                auto Thunk = std::make_shared<NoiThunk>();
+                Thunk->InFrequencyHz = Inputs[0];
+                Thunk->OutAmplitude = Outputs[0];
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->HighAmp = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->LowAmp = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }

@@ -68,7 +68,7 @@ class pick_and_place_screen(editor_screen):
             (":3", [
                 [OpCode.INV, OpCode.TAPE_LOOP],
                 [OpCode.IN, OpCode.AUX],
-                ["next", None],
+                ["next", OpCode.NOI],
                 [OpCode.ROUND, OpCode.FLD],
                 [OpCode.SIGN, OpCode.ABS],
             ]),
