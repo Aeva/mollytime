@@ -155,12 +155,12 @@ struct MagicTape
         return 0;
     }
 
-    virtual double ReadAndAdvance(size_t& Index)
+    virtual double ReadAndAdvance(uint64_t& Index)
     {
         return 0.0;
     }
 
-    virtual void WriteAndAdvance(size_t& Index, double NewSample)
+    virtual void WriteAndAdvance(uint64_t& Index, double NewSample)
     {
     }
 
@@ -221,7 +221,7 @@ struct InstructionThunk
 };
 
 
-struct Scratch : public MidiHandler
+struct Scratch final : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;

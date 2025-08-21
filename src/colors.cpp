@@ -36,7 +36,7 @@ const std::array<std::pair<ColorSpace, std::string>, size_t(ColorSpace::Count) >
 
 std::string ColorSpaceName(ColorSpace Encoding)
 {
-	for (int i = 0; i < size_t(ColorSpace::Count) ; ++i)
+	for (int i = 0; i < static_cast<int>(ColorSpace::Count); ++i)
 	{
 		if (EncodingNames[i].first == Encoding)
 		{
@@ -49,7 +49,7 @@ std::string ColorSpaceName(ColorSpace Encoding)
 
 bool FindColorSpace(std::string Name, ColorSpace& OutEncoding)
 {
-	for (int i = 0; i < size_t(ColorSpace::Count); ++i)
+	for (int i = 0; i < static_cast<int>(ColorSpace::Count); ++i)
 	{
 		if (EncodingNames[i].second == Name)
 		{
@@ -311,7 +311,7 @@ static glm::vec3 sRGB2HSL(glm::vec3 sRGB)
 				Hue = (sRGB.r - sRGB.g) / D + 4.0f;
 			}
 
-			Hue = Hue * 60.0;
+			Hue = Hue * 60.0f;
 		}
 	}
 
@@ -1035,6 +1035,6 @@ StatusCode ParseColor(std::string ColorString, glm::vec3& OutColor)
 ColorPoint ParseColor(std::string ColorString)
 {
 	ColorPoint ParsedColor = ColorPoint();
-	StatusCode Result = ParseColor(ColorString, ParsedColor);
+	ParseColor(ColorString, ParsedColor);
 	return ParsedColor;
 }

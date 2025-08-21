@@ -19,6 +19,7 @@
 #include <print>
 #include <functional>
 #include <limits>
+#include <numbers>
 #include <utility>
 #include <cmath>
 #include <bit>
@@ -27,9 +28,8 @@
 #include "patch.h"
 #include "audio_backend.h"
 
-
-constinit double Pi = M_PI;
-constinit double Tau = M_PI * 2.0;
+constexpr double Pi = std::numbers::pi;
+constexpr double Tau = std::numbers::pi * 2.0;
 
 const double ImprobableMagnitude = 123456789.0;
 
@@ -45,47 +45,46 @@ double Roll()
 }
 
 
-constexpr double MidiNoteToHz(double Note)
+// NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
+/* constexpr */ double MidiNoteToHz(double Note)
 {
-    // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
     double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
     return Hz;
 }
 
 
-constexpr double HzToMidiNote(double Hz)
+// NOTE: std::log2 not constexpr until C++26, and Clang 2c doesn't have it yet
+/* constexpr */ double HzToMidiNote(double Hz)
 {
     if (Hz <= 0.0)
     {
         return 0.0;
     }
-    // NOTE: std::log2 not constexpr until C++26, and Clang 2c doesn't have it yet
     double Note = std::log2(Hz / 440.0) * 12.0 + 69.0;
     return Note;
 }
 
 
-constexpr double AmplitudeToDecibels(double Amplitude)
+// NOTE: std::log10 not constexpr until C++26, and Clang 2c doesn't have it yet
+/* constexpr */ double AmplitudeToDecibels(double Amplitude)
 {
     // https://stackoverflow.com/questions/2445756/how-can-i-calculate-audio-db-level/9812267#9812267
-    // NOTE: std::log10 not constexpr until C++26, and Clang 2c doesn't have it yet
     double dB = 20.0 * std::log10(Amplitude);
     return dB;
 }
 
 
-constexpr double DecibelsToAmplitude(double dB)
+// NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
+/* constexpr */ double DecibelsToAmplitude(double dB)
 {
-    // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
     double Amplitude = std::pow(10.0, dB / 20.0);
     return Amplitude;
 }
 
 
-constexpr double PerceptualAmplitudeCorrectionByMidiNoteInner(double Note)
+// NOTE: Not constexpr until required C++26 features land.  See above notes
+/* constexpr */ double PerceptualAmplitudeCorrectionByMidiNoteInner(double Note)
 {
-    // NOTE: Not constexpr until required C++26 features land.  See above notes
-
     // https://merveilles.town/@cancel/114848900879804284
     const double Peak = AmplitudeToDecibels(1.0);
     const double LowEdge = HzToMidiNote(2000.0) - 6.0;
@@ -104,17 +103,17 @@ constexpr double PerceptualAmplitudeCorrectionByMidiNoteInner(double Note)
     return DecibelsToAmplitude(dB);
 }
 
-
-constexpr double PerceptualAmplitudeCorrectionByMidiNote(double Note)
+// NOTE: Not constexpr until required C++26 features land.  See above notes
+/* constexpr */ double PerceptualAmplitudeCorrectionByMidiNote(double Note)
 {
-    // TODO: Make this constinit once the required C++26 features land
+    // TODO: Make this constexpr once the required C++26 features land
     static const double Scale = 1.0 / PerceptualAmplitudeCorrectionByMidiNoteInner(HzToMidiNote(50.0));
 
     return PerceptualAmplitudeCorrectionByMidiNoteInner(Note) * Scale;
 }
 
-
-constexpr double PerceptualAmplitudeCorrectionByHz(double Hz)
+// NOTE: Not constexpr until required C++26 features land.  See above notes
+/* constexpr */ double PerceptualAmplitudeCorrectionByHz(double Hz)
 {
     if (Hz <= 0.0)
     {
@@ -256,7 +255,7 @@ int GetClosureCount(OpCode Symbol)
 double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
 {
     double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
-    for (int Index = 1; Index < Inputs.size(); ++Index)
+    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
     {
         Result = Combiner(Result, Inputs[Index]->Get());
     }
@@ -948,7 +947,7 @@ struct BlankTape : public MagicTape
             }
             Alpha = std::min(std::max(Alpha, 0.0), 1.0);
             size_t Index = size_t(double(Samples.size() - 1) * Alpha);
-            return std::min(std::max(Index, 0ul), Samples.size());
+            return std::min(std::max(Index, 0zu), Samples.size());
         }
         else
         {
@@ -956,7 +955,7 @@ struct BlankTape : public MagicTape
         }
     }
 
-    virtual double ReadAndAdvance(size_t& Index) override
+    virtual double ReadAndAdvance(uint64_t& Index) override
     {
         if (Samples.size())
         {
@@ -969,7 +968,7 @@ struct BlankTape : public MagicTape
         }
     }
 
-    virtual void WriteAndAdvance(size_t& Index, double NewSample) override
+    virtual void WriteAndAdvance(uint64_t& Index, double NewSample) override
     {
         if (Samples.size() > 0)
         {
@@ -1010,8 +1009,8 @@ struct TapeLoopThunk : public InstructionThunk
 
         double Offset = Combine(CombinerAdd, InOffset, 0.0);
         double Seconds = Combine(CombinerAdd, InLength, 0.0);
-        size_t ReadIndex = std::bit_cast<size_t, double>(ReadHead->Get());
-        size_t WriteIndex = std::bit_cast<size_t, double>(WriteHead->Get());
+        uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead->Get());
+        uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead->Get());
 
         auto ResetOffset = [&]()
         {
@@ -1050,11 +1049,11 @@ struct TapeLoopThunk : public InstructionThunk
             LastReset->Set(Reset);
 
             Output->Set(Tape->ReadAndAdvance(ReadIndex));
-            ReadHead->Set(std::bit_cast<double, size_t>(ReadIndex));
+            ReadHead->Set(std::bit_cast<double, uint64_t>(ReadIndex));
 
             double Sample = Combine(CombinerAdd, InSample, 0.0);
             Tape->WriteAndAdvance(WriteIndex, Sample);
-            WriteHead->Set(std::bit_cast<double, size_t>(WriteIndex));
+            WriteHead->Set(std::bit_cast<double, uint64_t>(WriteIndex));
         }
     }
 
@@ -1288,10 +1287,10 @@ std::vector<PortHandle> Patch::GetTileInputPorts(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
-    int Count = SymbolInfoMap.InputNames[(int)Symbol].size();
+    size_t Count = SymbolInfoMap.InputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
     Handles.reserve(Count);
-    for (int PortIndex = 0; PortIndex < Count; ++PortIndex)
+    for (int PortIndex = 0; PortIndex < static_cast<int>(Count); ++PortIndex)
     {
         Handles.push_back(MakePortHandle(Tile, PortIndex));
     }
@@ -1303,10 +1302,10 @@ std::vector<PortHandle> Patch::GetTileOutputPorts(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
-    int Count = SymbolInfoMap.OutputNames[(int)Symbol].size();
+    size_t Count = SymbolInfoMap.OutputNames[(int)Symbol].size();
     std::vector<PortHandle> Handles;
     Handles.reserve(Count);
-    for (uint32_t PortIndex = 0; PortIndex < Count; ++PortIndex)
+    for (uint32_t PortIndex = 0; PortIndex < static_cast<uint32_t>(Count); ++PortIndex)
     {
         Handles.push_back(MakePortHandle(Tile, PortIndex));
     }
@@ -1486,11 +1485,11 @@ ScratchSharedPtr Patch::Compile()
             return nullptr;
         }
 
-        const int InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
-        const int OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+        const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
+        const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
 
         // Recurse first to populate everything sequentally.
-        for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
+        for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
         {
             PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
             for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
@@ -1513,10 +1512,7 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (ConnectedOutputs.size() == 1)
             {
-                for (PortHandle ConnectedOutput : ConnectedOutputs)
-                {
-                    return ActiveOutputs.at(ConnectedOutput);
-                }
+                return ActiveOutputs.at(*ConnectedOutputs.begin());
             }
             else
             {
@@ -1536,7 +1532,7 @@ ScratchSharedPtr Patch::Compile()
         else
         {
             std::vector<std::vector<RunningStateSharedPtr>> Inputs;
-            for (int PortIndex = 0; PortIndex < InputCount; ++PortIndex)
+            for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
             {
                 std::vector<RunningStateSharedPtr>& PortInputs = Inputs.emplace_back();
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
@@ -1547,7 +1543,7 @@ ScratchSharedPtr Patch::Compile()
             }
 
             std::vector<RunningStateSharedPtr> Outputs;
-            for (int PortIndex = 0; PortIndex < OutputCount; ++PortIndex)
+            for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
                 PortHandle OutputHandle = MakePortHandle(Tile, PortIndex);
                 Outputs.push_back(ActiveOutputs.at(OutputHandle));
@@ -1801,8 +1797,6 @@ ScratchSharedPtr Patch::Compile()
             }
             return nullptr;
         }
-
-        std::unreachable();
     };
 
     std::vector<TileHandle> Scopes;
@@ -1859,7 +1853,7 @@ void Patch::Recompile()
 {
     TRACEABLE_SCOPE;
     ScratchSharedPtr CurrentProgram = Compile();
-    AudioStream::Get()->ProgramChange(CurrentProgram);
+    Audio::GetStream()->ProgramChange(CurrentProgram);
 }
 
 

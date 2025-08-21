@@ -15,19 +15,34 @@
 
 #pragma once
 
-#include "midi.h"
+#include <cstdint>
+#include <vector>
 
-struct _snd_seq;    // Forward declares `typedef struct _snd_seq snd_seq_t` from <alsa/seq.h>.
-
-class AlsaMidiDriver final : public MidiDriver
+struct MidiHandler
 {
-    struct _snd_seq *SeqHandle = nullptr;
-    int MidiInPort = -1;
-    int MidiOutPort = -1;
-
-public:
-    AlsaMidiDriver();
-    virtual ~AlsaMidiDriver() override;
-
-    void ProcessEvents(MidiHandler* Handler) override;
+    virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
+    {
+    }
+    virtual void NoteOff(uint8_t Note, uint8_t Channel)
+    {
+        NoteOn(Note, 0, Channel);
+    }
+    virtual void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
+    {
+    }
 };
+
+
+struct MidiDriver
+{
+    virtual ~MidiDriver() {}
+    virtual void ProcessEvents(MidiHandler* Handler) = 0;
+};
+
+
+namespace Midi
+{
+    void ProcessEvents(MidiHandler* Handler);
+    void Init();
+    void Shutdown();
+}

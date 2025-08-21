@@ -14,6 +14,13 @@
 // limitations under the License.
 
 #include "audio_backend.h"
+#include "jack_stream.h"
+
+#include <memory>
+#include <print>
+
+
+static std::unique_ptr<AudioStream> Stream;
 
 
 void RealTimeAudioThread::ResetFramePressure()
@@ -100,7 +107,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 
     FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
     FramePressureIndex %= FramePressure.size();
-    if (Program && FramePressureCount == FramePressure.size())
+    if (Program && FramePressureCount == static_cast<int>(FramePressure.size()))
     {
         TemporalPressure = FramePressure[0];
         for (int Index = 1; Index < FramePressureCount; ++Index)
@@ -114,4 +121,50 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
         TemporalPressure = 0.0f;
     }
     LastFrameStart = FrameStart;
+}
+
+
+// This no-op stub is used if no AudioStream is available.
+// It's quite possible the program should just crash, instead. What use is an audio generator with no audio?
+struct StubStream final : AudioStream
+{
+    virtual float GetTemporalPressure() override { return 0.0f; }
+    virtual void ProgramChange(ScratchSharedPtr& NewProgram) override {}
+};
+
+
+AudioStream* Audio::GetStream()
+{
+    return Stream.get();
+}
+
+
+void Audio::Init(int SampleRate)
+{
+#ifdef ENABLE_JACK
+    Stream = std::make_unique<JackStream>(SampleRate);
+#else
+    std::println("No audio stream implementation is available.");
+    Stream = std::make_unique<StubStream>();
+#endif
+}
+
+
+void Audio::Shutdown()
+{
+    if(Stream)
+    {
+        Stream.reset();
+    }
+}
+
+
+float Audio::GetTemporalPressure()
+{
+    if(!Stream)
+    {
+        return 0.0f;
+    }
+    
+    return Stream->GetTemporalPressure();
 }

@@ -22,7 +22,15 @@
 
 // Requires package `boost-stacktrace` on Fedora
 // see also: https://www.boost.org/doc/libs/1_88_0/doc/html/stacktrace.html
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma clang diagnostic ignored "-Wnested-anon-types"
+#pragma warning(push)
+#pragma warning(disable : 4668 5039)
 #include <boost/stacktrace.hpp>
+#pragma warning(pop)
+#pragma clang diagnostic pop
 #endif
 
 

@@ -26,6 +26,11 @@
 #define GLM_FORCE_INTRINSICS
 #endif
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma clang diagnostic ignored "-Wnested-anon-types"
+#pragma warning(push)
+#pragma warning(disable : 4201 4464)
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
@@ -33,6 +38,8 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtx/extended_min_max.hpp>
 #include <glm/gtx/quaternion.hpp>
+#pragma warning(pop)
+#pragma clang diagnostic pop
 
 
 // These are to patch over some differences between glsl and glm.

@@ -40,7 +40,7 @@ struct AudioThreadShared
 
 struct FramePointers
 {
-    size_t SampleCount = 0;
+    int SampleCount = 0;
     float* OutLeft = nullptr;
     float* OutRight = nullptr;
     std::vector<std::tuple<float*, double*>> InPtrs;
@@ -62,6 +62,8 @@ protected:
     int FramePressureIndex = 0;
     int FramePressureCount = 0;
 
+    virtual ~RealTimeAudioThread() {}
+
     virtual void BeginFrame(FramePointers& Frame) = 0;
     virtual void EndFrame(FramePointers& Frame) {};
 
@@ -72,13 +74,18 @@ protected:
 
 struct AudioStream
 {
-    static AudioStream* Get();
-    static void Init(int SampleRate);
-    static void Shutdown();
-    static float GetTemporalPressure();
+    virtual ~AudioStream() {}
 
-    virtual float GetTemporalPressureInner() = 0;
+    virtual float GetTemporalPressure() = 0;
     virtual void ProgramChange(ScratchSharedPtr& NewProgram) = 0;
+};
 
-    virtual ~AudioStream() {};
+
+namespace Audio
+{
+    AudioStream* GetStream();
+
+    void Init(int SampleRate);
+    void Shutdown();
+    float GetTemporalPressure();
 };
