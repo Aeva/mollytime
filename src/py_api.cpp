@@ -51,7 +51,7 @@ static int ColorPointGetItem(ColorPoint& Color, int Index)
 		return std::min(std::max(int(Color.Channels[Index] * 255.0f), 0), 255);
 	}
 
-	throw std::out_of_range(std::format("Index out of range: {}\n", Index));
+	throw pybind11::index_error(std::format("Index out of range: {}\n", Index));
 }
 
 

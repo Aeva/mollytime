@@ -26,7 +26,7 @@ oklch = mollytime.oklch
 
 
 def lch_prism(color):
-    return mollytime.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH).channels
+    return mollytime.convert_color([color[i] / 255 for i in range(3)], ColorSpace.sRGB, ColorSpace.OkLCH).channels
 
 
 def lch_swizzle(LC_part, H_Part, swizzle):
