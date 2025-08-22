@@ -91,7 +91,7 @@ JackStream::JackStream(int SampleRate) :
     // First, open a Jack client.
     jack_status_t JackStatus;
     jack_options_t JackOptions = JackNoStartServer;
-    jack_client_t* JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
+    JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
     if (JackClient == nullptr)
     {
         throw std::runtime_error(std::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
@@ -158,7 +158,7 @@ JackStream::JackStream(int SampleRate) :
 
 JackStream::~JackStream()
 {
-    if(JackClient != nullptr)
+    if (JackClient != nullptr)
     {
         jack_client_close(JackClient);
         JackClient = nullptr;
