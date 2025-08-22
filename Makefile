@@ -29,7 +29,9 @@ INSTRUMENTATION := \
 	$(if $(ENABLE_STACK_TRACES),-DENABLE_STACK_TRACES,) \
 	$(if $(ENABLE_PERF),$(INCLUDE_TRACY) -DTRACY_ENABLE,)
 
-COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) $(if $(ENABLE_JACK),-DENABLE_JACK,) -DMIDI_ALSA
+COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) $(if $(ENABLE_JACK),-DENABLE_JACK,) -DMIDI_ALSA \
+	-Wall -Wextra -Wshadow -pedantic -Wno-unused-parameter -Wno-unknown-pragmas
+
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_JACK := $(shell pkg-config --cflags jack)

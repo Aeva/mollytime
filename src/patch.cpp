@@ -28,7 +28,6 @@
 #include "patch.h"
 #include "audio_backend.h"
 
-constexpr double Pi = std::numbers::pi;
 constexpr double Tau = std::numbers::pi * 2.0;
 
 const double ImprobableMagnitude = 123456789.0;
