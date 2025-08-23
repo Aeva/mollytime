@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <mollytime version="2025.07.13">
 	<patch>
+		<tile id="1" symbol="out" x="0" y="0"/>
 	</patch>
 </mollytime>
