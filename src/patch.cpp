@@ -24,6 +24,8 @@
 #include <cmath>
 #include <bit>
 
+#include <tptsv_filter.h>
+
 #include "errors.h"
 #include "patch.h"
 #include "audio_backend.h"
@@ -217,6 +219,7 @@ struct SymbolInfo
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
         Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "resonance"}, {"lowpass", "bandpass", "highpass"}, 2);
+        Set(OpCode::TPTSVF_LOWPASS, "tptsvf\nlowpass", {"sample", "cutoff", "resonance"}, {"lowpass"}, 2);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
@@ -812,6 +815,49 @@ struct DigitalStateVariableFilterThunk : public InstructionThunk
     }
 
     virtual ~DigitalStateVariableFilterThunk() {};
+};
+
+
+struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Sample;
+    std::vector<RunningStateSharedPtr> Cutoff;
+    std::vector<RunningStateSharedPtr> Resonance;
+    RunningStateSharedPtr Output = nullptr;
+    RunningStateSharedPtr LastCutoff = nullptr;
+    RunningStateSharedPtr LastResonance = nullptr;
+
+    // TODO: Aabsorb the internals of VAStateVariableFilter so intermediary values
+    // can persist between program generations.
+    bool Initialized = false;
+    TPTSVF::VAStateVariableFilter Wrapped;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
+
+        // https://mastodon.gamedev.place/@rygorous/115082511872070814
+        double Input = Combine(CombinerAdd, Sample, 0.0);
+        double Cut = Combine(CombinerAdd, Cutoff, 440.0);
+        double Res = Combine(CombinerAdd, Resonance, 0.0);
+        double LastCut = LastCutoff->Get();
+        double LastRes = LastResonance->Get();
+
+        if (!Initialized || Cut != LastCut || Res != LastRes)
+        {
+            Initialized = true;
+            LastCutoff->Set(Cut);
+            LastResonance->Set(Res);
+
+            Wrapped.setFilterType(TPTSVF::SVFLowpass);
+            Wrapped.setSampleRate(float(1.0 / SampleInterval));
+            Wrapped.setCutoffFreq(Cut);
+            Wrapped.setResonance(Res);
+        }
+        Output->Set(double(Wrapped.processAudioSample(float(Input), 0)));
+    }
+
+    virtual ~TopologyPreservingTransformStateVariableFilterThunk() {};
 };
 
 
@@ -1827,6 +1873,17 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->HighPass = Outputs[2];
                 Thunk->LastCut = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->LastInvQ = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::TPTSVF_LOWPASS)
+            {
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk>();
+                Thunk->Sample = Inputs[0];
+                Thunk->Cutoff = Inputs[1];
+                Thunk->Resonance = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::ADSR)

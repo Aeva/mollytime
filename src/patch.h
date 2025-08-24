@@ -73,6 +73,7 @@ enum class OpCode : uint32_t
     RNG,
     GRAD,
     DSVF,
+    TPTSVF_LOWPASS,
     ADSR,
     GATE,
     NOTE,

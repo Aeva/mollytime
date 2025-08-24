@@ -33,6 +33,7 @@ COMMON_ARGS := -std=c++2c -fPIC $(INSTRUMENTATION) $(if $(ENABLE_JACK),-DENABLE_
 	-Wall -Wextra -Wshadow -pedantic -Wno-unused-parameter -Wno-unknown-pragmas
 
 INCLUDE_GLM := -I "third_party/glm-0.9.9.8"
+INCLUDE_TPTSVF := -I "third_party/VAStateVariableFilter"
 INCLUDE_PYTHON := $(shell python -m pybind11 --includes)
 INCLUDE_JACK := $(shell pkg-config --cflags jack)
 INCLUDE_AUDIO := $(if $(ENABLE_JACK), $(INCLUDE_JACK),)
@@ -48,7 +49,7 @@ clean:
 
 $(OBJECT_FILES): $(SOURCE_FILES)
 	mkdir -p build
-	clang++ $(COMMON_ARGS) $(INCLUDE_GLM) $(INCLUDE_PYTHON) $(INCLUDE_AUDIO) -c $< -o $@
+	clang++ $(COMMON_ARGS) $(INCLUDE_GLM) $(INCLUDE_TPTSVF) $(INCLUDE_PYTHON) $(INCLUDE_AUDIO) -c $< -o $@
 
 $(TRACY_OBJECT): $(TRACY_SOURCE)
 	mkdir -p build
