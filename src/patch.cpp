@@ -216,7 +216,7 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
-        Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "resonance"}, {"lowpass", "bandpass", "highpass"});
+        Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "resonance"}, {"lowpass", "bandpass", "highpass"}, 2);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
@@ -775,6 +775,8 @@ struct DigitalStateVariableFilterThunk : public InstructionThunk
     RunningStateSharedPtr LowPass = nullptr;
     RunningStateSharedPtr BandPass = nullptr;
     RunningStateSharedPtr HighPass = nullptr;
+    RunningStateSharedPtr LastCut = nullptr;
+    RunningStateSharedPtr LastInvQ = nullptr;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -787,6 +789,15 @@ struct DigitalStateVariableFilterThunk : public InstructionThunk
         // "Resonance" maps to "Q" such that Q = 1.0 / (1.0 - min(max(Resonance, 0.0), 1.0))
         double InvQ = 1.0 - std::min(std::max(Combine(CombinerAdd, Resonance, 0.0), 0.0), 1.0);
         double Alpha = 2.0 * std::sin(std::numbers::pi * Cut * SampleInterval);
+
+        if (LastCut->Get() != Cut || LastInvQ->Get() != InvQ)
+        {
+            // Reset filter
+            LastCut->Set(Cut);
+            LastInvQ->Set(InvQ);
+            LowPass->Set(0.0);
+            BandPass->Set(0.0);
+        }
 
         double Low = LowPass->Get();
         double Band = BandPass->Get();
@@ -1814,6 +1825,8 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->LowPass = Outputs[0];
                 Thunk->BandPass = Outputs[1];
                 Thunk->HighPass = Outputs[2];
+                Thunk->LastCut = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastInvQ = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::ADSR)
