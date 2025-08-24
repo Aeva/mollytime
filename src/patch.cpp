@@ -781,13 +781,12 @@ struct DigitalStateVariableFilterThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("DigitalStateVariableFilterThunk");
 
         // https://mastodon.gamedev.place/@rygorous/115082511872070814
-        double SampleFrequency = 1.0 / double(SampleInterval);
         double Input = Combine(CombinerAdd, Sample, 0.0);
         double Cut = Combine(CombinerAdd, Cutoff, 440.0);
 
         // "Resonance" maps to "Q" such that Q = 1.0 / (1.0 - min(max(Resonance, 0.0), 1.0))
         double InvQ = 1.0 - std::min(std::max(Combine(CombinerAdd, Resonance, 0.0), 0.0), 1.0);
-        double Alpha = 2.0 * std::sin(std::numbers::pi * Cut / SampleFrequency);
+        double Alpha = 2.0 * std::sin(std::numbers::pi * Cut * SampleInterval);
 
         double Low = LowPass->Get();
         double Band = BandPass->Get();
