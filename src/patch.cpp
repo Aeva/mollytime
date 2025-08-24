@@ -219,7 +219,9 @@ struct SymbolInfo
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
         Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "resonance"}, {"lowpass", "bandpass", "highpass"}, 2);
-        Set(OpCode::TPTSVF_LOWPASS, "tptsvf\nlowpass", {"sample", "cutoff", "resonance"}, {"lowpass"}, 2);
+        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "resonance"}, {"lowpass"}, 2);
+        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "resonance"}, {"bandpass"}, 2);
+        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "resonance"}, {"highpass"}, 2);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
@@ -818,6 +820,7 @@ struct DigitalStateVariableFilterThunk : public InstructionThunk
 };
 
 
+template <int FilterMode>
 struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> Sample;
@@ -849,7 +852,7 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
             LastCutoff->Set(Cut);
             LastResonance->Set(Res);
 
-            Wrapped.setFilterType(TPTSVF::SVFLowpass);
+            Wrapped.setFilterType(FilterMode);
             Wrapped.setSampleRate(float(1.0 / SampleInterval));
             Wrapped.setCutoffFreq(Cut);
             Wrapped.setResonance(Res);
@@ -1877,7 +1880,29 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::TPTSVF_LOWPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk>();
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<TPTSVF::SVFLowpass>>();
+                Thunk->Sample = Inputs[0];
+                Thunk->Cutoff = Inputs[1];
+                Thunk->Resonance = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::TPTSVF_BANDPASS)
+            {
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<TPTSVF::SVFBandpass>>();
+                Thunk->Sample = Inputs[0];
+                Thunk->Cutoff = Inputs[1];
+                Thunk->Resonance = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::TPTSVF_HIGHPASS)
+            {
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<TPTSVF::SVFHighpass>>();
                 Thunk->Sample = Inputs[0];
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];

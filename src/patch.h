@@ -74,6 +74,8 @@ enum class OpCode : uint32_t
     GRAD,
     DSVF,
     TPTSVF_LOWPASS,
+    TPTSVF_BANDPASS,
+    TPTSVF_HIGHPASS,
     ADSR,
     GATE,
     NOTE,

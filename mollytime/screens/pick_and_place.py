@@ -73,9 +73,9 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.SIGN, OpCode.ABS],
             ]),
             (":y", [
-                [None, OpCode.DSVF],
                 [None, OpCode.TPTSVF_LOWPASS],
-                ["next", None],
+                [None, OpCode.TPTSVF_BANDPASS],
+                ["next", OpCode.TPTSVF_HIGHPASS],
                 [None, None],
                 [None, None],
             ]),
