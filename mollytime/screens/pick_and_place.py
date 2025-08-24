@@ -72,7 +72,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.ROUND, OpCode.FLD],
                 [OpCode.SIGN, OpCode.ABS],
             ]),
-            (":3", [
+            (":y", [
                 [None, OpCode.DSVF],
                 [None, None],
                 ["next", None],
