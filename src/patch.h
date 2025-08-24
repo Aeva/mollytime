@@ -72,6 +72,7 @@ enum class OpCode : uint32_t
     FLP,
     RNG,
     GRAD,
+    DSVF,
     ADSR,
     GATE,
     NOTE,

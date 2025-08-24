@@ -164,6 +164,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("FLP", OpCode::FLP)
 		.value("RNG", OpCode::RNG)
 		.value("GRAD", OpCode::GRAD)
+		.value("DSVF", OpCode::DSVF)
 		.value("ADSR", OpCode::ADSR)
 		.value("GATE", OpCode::GATE)
 		.value("NOTE", OpCode::NOTE)

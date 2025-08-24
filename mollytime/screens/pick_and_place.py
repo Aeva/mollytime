@@ -72,6 +72,13 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.ROUND, OpCode.FLD],
                 [OpCode.SIGN, OpCode.ABS],
             ]),
+            (":3", [
+                [None, OpCode.DSVF],
+                [None, None],
+                ["next", None],
+                [None, None],
+                [None, None],
+            ]),
         ]
         for name, shelf in pages:
             tile_span = (editor.grid_size * 2)
