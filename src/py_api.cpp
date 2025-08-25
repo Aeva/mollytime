@@ -164,7 +164,6 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("FLP", OpCode::FLP)
 		.value("RNG", OpCode::RNG)
 		.value("GRAD", OpCode::GRAD)
-		.value("DSVF", OpCode::DSVF)
 		.value("TPTSVF_LOWPASS", OpCode::TPTSVF_LOWPASS)
 		.value("TPTSVF_BANDPASS", OpCode::TPTSVF_BANDPASS)
 		.value("TPTSVF_HIGHPASS", OpCode::TPTSVF_HIGHPASS)

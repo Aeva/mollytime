@@ -72,7 +72,6 @@ enum class OpCode : uint32_t
     FLP,
     RNG,
     GRAD,
-    DSVF,
     TPTSVF_LOWPASS,
     TPTSVF_BANDPASS,
     TPTSVF_HIGHPASS,

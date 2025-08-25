@@ -216,7 +216,6 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
-        Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "res"}, {"lowpass", "bandpass", "highpass"}, 2);
         Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"}, 7);
         Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"}, 7);
         Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"}, 7);
@@ -769,54 +768,6 @@ struct GradualThunk : public InstructionThunk
     }
 
     virtual ~GradualThunk() {};
-};
-
-
-struct DigitalStateVariableFilterThunk : public InstructionThunk
-{
-    std::vector<RunningStateSharedPtr> Sample;
-    std::vector<RunningStateSharedPtr> Cutoff;
-    std::vector<RunningStateSharedPtr> Resonance;
-    RunningStateSharedPtr LowPass = nullptr;
-    RunningStateSharedPtr BandPass = nullptr;
-    RunningStateSharedPtr HighPass = nullptr;
-    RunningStateSharedPtr LastCut = nullptr;
-    RunningStateSharedPtr LastInvQ = nullptr;
-
-    virtual void Crank(double SampleInterval) override
-    {
-        TRACEABLE_NAMED_SCOPE("DigitalStateVariableFilterThunk");
-
-        // https://mastodon.gamedev.place/@rygorous/115082511872070814
-        double Input = Combine(CombinerAdd, Sample, 0.0);
-        double Cut = Combine(CombinerAdd, Cutoff, 440.0);
-
-        // "Resonance" maps to "Q" such that Q = 1.0 / (1.0 - min(max(Resonance, 0.0), 1.0))
-        double InvQ = 1.0 - std::min(std::max(Combine(CombinerAdd, Resonance, 0.0), 0.0), 1.0);
-        double Alpha = 2.0 * std::sin(std::numbers::pi * Cut * SampleInterval);
-
-        if (LastCut->Get() != Cut || LastInvQ->Get() != InvQ)
-        {
-            // Reset filter
-            LastCut->Set(Cut);
-            LastInvQ->Set(InvQ);
-            LowPass->Set(0.0);
-            BandPass->Set(0.0);
-        }
-
-        double Low = LowPass->Get();
-        double Band = BandPass->Get();
-        double High = Input - Low - InvQ * Band;
-
-        Band += Alpha * High;
-        Low += Alpha * Band;
-
-        LowPass->Set(Low);
-        BandPass->Set(Band);
-        HighPass->Set(High);
-    }
-
-    virtual ~DigitalStateVariableFilterThunk() {};
 };
 
 
@@ -1962,19 +1913,6 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->ValueInputs = Inputs[0];
                 Thunk->RateInputs = Inputs[1];
                 Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-            }
-            else if (Symbol == OpCode::DSVF)
-            {
-                auto Thunk = std::make_shared<DigitalStateVariableFilterThunk>();
-                Thunk->Sample = Inputs[0];
-                Thunk->Cutoff = Inputs[1];
-                Thunk->Resonance = Inputs[2];
-                Thunk->LowPass = Outputs[0];
-                Thunk->BandPass = Outputs[1];
-                Thunk->HighPass = Outputs[2];
-                Thunk->LastCut = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastInvQ = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::TPTSVF_LOWPASS)
