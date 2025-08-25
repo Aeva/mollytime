@@ -789,6 +789,7 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 {
     // Adapted from https://github.com/michaeldonovan/VAStateVariableFilter/
     // which in turn was adapted from https://github.com/JordanTHarris/VAStateVariableFilter/
+    // Additional useful information: https://mastodon.gamedev.place/@rygorous/115082511872070814
 
     std::vector<RunningStateSharedPtr> Sample;
     std::vector<RunningStateSharedPtr> Cutoff;
@@ -810,13 +811,13 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     {
         TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
 
-        // https://mastodon.gamedev.place/@rygorous/115082511872070814
         double Input = Combine(CombinerAdd, Sample, 0.0);
         double Cut = Combine(CombinerAdd, Cutoff, 1000.0);
         double Res = Combine(CombinerAdd, Resonance, 0.0);
         double LastCut = LastCutoff->Get();
         double LastRes = LastResonance->Get();
 
+        // TODO: Is this section actually worth the two extra RunningState vars and the branch?
         if (Cut != LastCut || Res != LastRes)
         {
             LastCutoff->Set(Cut);
