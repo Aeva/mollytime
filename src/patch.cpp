@@ -216,10 +216,12 @@ struct SymbolInfo
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
-        Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "resonance"}, {"lowpass", "bandpass", "highpass"}, 2);
-        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "resonance"}, {"lowpass"}, 7);
-        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "resonance"}, {"bandpass"}, 7);
-        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "resonance"}, {"highpass"}, 7);
+        Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "res"}, {"lowpass", "bandpass", "highpass"}, 2);
+        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"}, 7);
+        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"}, 7);
+        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"}, 7);
+        Set(OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"}, 7);
+        Set(OpCode::TPTSVF_ALLPASS, "all\npass", {"sample", "cutoff", "res"}, {"allpass"}, 7);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
@@ -847,6 +849,7 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 
     RunningStateSharedPtr Gain;
     RunningStateSharedPtr FeedbackDamping;
+    // TODO: ShelfGain can be factored out for most specializations of this class
     RunningStateSharedPtr ShelfGain;
     RunningStateSharedPtr StateVar_z1_A; // state variables (z^-1)
     RunningStateSharedPtr StateVar_z2_A;
@@ -872,7 +875,11 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
             double wd = Cut * Tau;
             double T = SampleInterval;
             double wa = (2.0 / T) * std::tan(wd * T / 2.0);
-            double Q = 1.0 / (2.0 * (1.0 - Res));
+
+            // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value of Q.
+            // This is the highest double precision value where integers can be exactly represented,
+            // which serves no other purpose than to be an improbably high value.
+            double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Res, 0.0), 1.0))), std::pow(2.0, 53.0));
 
             // Calculate g (gain element of integrator)
             Gain->Set(wa * T / 2.0);
@@ -1324,7 +1331,8 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         PortHandle Port = MakePortHandle(AllocatedHandle, 0);
         ActiveOutputs[Port]->Set(ImprobableMagnitude);
     }
-    else if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS)
+    else if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
+        || Symbol == OpCode::TPTSVF_NOTCH || Symbol <= OpCode::TPTSVF_ALLPASS)
     {
         // Gain and Feedback coefficients init to 1.
         // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
@@ -2004,6 +2012,38 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::TPTSVF_HIGHPASS)
             {
                 auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Highpass>>();
+                Thunk->Sample = Inputs[0];
+                Thunk->Cutoff = Inputs[1];
+                Thunk->Resonance = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
+                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
+                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::TPTSVF_NOTCH)
+            {
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Notch>>();
+                Thunk->Sample = Inputs[0];
+                Thunk->Cutoff = Inputs[1];
+                Thunk->Resonance = Inputs[2];
+                Thunk->Output = Outputs[0];
+                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
+                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
+                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::TPTSVF_ALLPASS)
+            {
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Allpass>>();
                 Thunk->Sample = Inputs[0];
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];

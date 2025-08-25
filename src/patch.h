@@ -76,6 +76,8 @@ enum class OpCode : uint32_t
     TPTSVF_LOWPASS,
     TPTSVF_BANDPASS,
     TPTSVF_HIGHPASS,
+    TPTSVF_NOTCH,
+    TPTSVF_ALLPASS,
     ADSR,
     GATE,
     NOTE,

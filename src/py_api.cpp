@@ -168,6 +168,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("TPTSVF_LOWPASS", OpCode::TPTSVF_LOWPASS)
 		.value("TPTSVF_BANDPASS", OpCode::TPTSVF_BANDPASS)
 		.value("TPTSVF_HIGHPASS", OpCode::TPTSVF_HIGHPASS)
+		.value("TPTSVF_NOTCH", OpCode::TPTSVF_NOTCH)
+		.value("TPTSVF_ALLPASS", OpCode::TPTSVF_ALLPASS)
 		.value("ADSR", OpCode::ADSR)
 		.value("GATE", OpCode::GATE)
 		.value("NOTE", OpCode::NOTE)

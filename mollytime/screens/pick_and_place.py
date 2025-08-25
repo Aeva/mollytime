@@ -76,8 +76,8 @@ class pick_and_place_screen(editor_screen):
                 [None, OpCode.TPTSVF_LOWPASS],
                 [None, OpCode.TPTSVF_BANDPASS],
                 ["next", OpCode.TPTSVF_HIGHPASS],
-                [None, None],
-                [None, None],
+                [None, OpCode.TPTSVF_NOTCH],
+                [None, OpCode.TPTSVF_ALLPASS],
             ]),
         ]
         for name, shelf in pages:
