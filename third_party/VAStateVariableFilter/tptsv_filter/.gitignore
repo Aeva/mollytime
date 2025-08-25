@@ -1,0 +1,114 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+
+# Visual Studio Debug files
+*.log
+*.tlog
+*.idb
+*.pdb
+*.res
+*.vst3
+
+# SQL Server Database file - VS
+*.sdf
+*.opensdf
+
+# Build/Debug Folders
+**/MacOSX/build
+**/iOS/build
+**/Linux/build
+**/VisualStudio2005/Debug
+**/VisualStudio2005/Release
+**/VisualStudio2008/Debug
+**/VisualStudio2008/Release
+**/VisualStudio2010/Debug
+**/VisualStudio2010/Release
+**/VisualStudio2012/Debug
+**/VisualStudio2012/Release
+**/VisualStudio2013/Debug
+**/VisualStudio2013/Release
+**/VisualStudio2015/Debug
+**/VisualStudio2015/Release
+**/Android/bin
+**/Android/libs
+**/Android/gen
+**/Android/obj
+**/CodeBlocks/bin
+**/CodeBlocks/obj
+**/CodeBlocks/*.depend
+**/CodeBlocks/*.layout
+
+
+# =========================
+# Operating System Files
+# =========================
+
+# OSX
+# =========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+# =========================
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
