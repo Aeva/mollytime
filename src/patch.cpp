@@ -24,8 +24,6 @@
 #include <cmath>
 #include <bit>
 
-#include <tptsv_filter.h>
-
 #include "errors.h"
 #include "patch.h"
 #include "audio_backend.h"
@@ -219,9 +217,9 @@ struct SymbolInfo
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
         Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
         Set(OpCode::DSVF, "dsv\nfilter", {"sample", "cutoff", "resonance"}, {"lowpass", "bandpass", "highpass"}, 2);
-        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "resonance"}, {"lowpass"}, 2);
-        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "resonance"}, {"bandpass"}, 2);
-        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "resonance"}, {"highpass"}, 2);
+        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "resonance"}, {"lowpass"}, 7);
+        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "resonance"}, {"bandpass"}, 7);
+        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "resonance"}, {"highpass"}, 7);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
         Set(OpCode::GATE, "gate", {}, {"gate"});
         Set(OpCode::NOTE, "note", {}, {"note"});
@@ -820,20 +818,39 @@ struct DigitalStateVariableFilterThunk : public InstructionThunk
 };
 
 
-template <int FilterMode>
+enum class FilterType
+{
+    Lowpass,
+    Bandpass,
+    Highpass,
+    UnitGainBandpass,
+    BandShelving,
+    Notch,
+    Allpass,
+    Peak
+};
+
+
+template <FilterType Mode>
 struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionThunk
 {
+    // Adapted from https://github.com/michaeldonovan/VAStateVariableFilter/
+    // which in turn was adapted from https://github.com/JordanTHarris/VAStateVariableFilter/
+
     std::vector<RunningStateSharedPtr> Sample;
     std::vector<RunningStateSharedPtr> Cutoff;
     std::vector<RunningStateSharedPtr> Resonance;
     RunningStateSharedPtr Output = nullptr;
+
     RunningStateSharedPtr LastCutoff = nullptr;
     RunningStateSharedPtr LastResonance = nullptr;
 
-    // TODO: Aabsorb the internals of VAStateVariableFilter so intermediary values
-    // can persist between program generations.
-    bool Initialized = false;
-    TPTSVF::VAStateVariableFilter Wrapped;
+    RunningStateSharedPtr Gain;
+    RunningStateSharedPtr FeedbackDamping;
+    RunningStateSharedPtr ShelfGain;
+    RunningStateSharedPtr StateVar_z1_A; // state variables (z^-1)
+    RunningStateSharedPtr StateVar_z2_A;
+
 
     virtual void Crank(double SampleInterval) override
     {
@@ -841,23 +858,90 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 
         // https://mastodon.gamedev.place/@rygorous/115082511872070814
         double Input = Combine(CombinerAdd, Sample, 0.0);
-        double Cut = Combine(CombinerAdd, Cutoff, 440.0);
+        double Cut = Combine(CombinerAdd, Cutoff, 1000.0);
         double Res = Combine(CombinerAdd, Resonance, 0.0);
         double LastCut = LastCutoff->Get();
         double LastRes = LastResonance->Get();
 
-        if (!Initialized || Cut != LastCut || Res != LastRes)
+        if (Cut != LastCut || Res != LastRes)
         {
-            Initialized = true;
             LastCutoff->Set(Cut);
             LastResonance->Set(Res);
 
-            Wrapped.setFilterType(FilterMode);
-            Wrapped.setSampleRate(float(1.0 / SampleInterval));
-            Wrapped.setCutoffFreq(Cut);
-            Wrapped.setResonance(Res);
+            // prewarp the cutoff (for bilinear-transform filters)
+            double wd = Cut * Tau;
+            double T = SampleInterval;
+            double wa = (2.0 / T) * std::tan(wd * T / 2.0);
+            double Q = 1.0 / (2.0 * (1.0 - Res));
+
+            // Calculate g (gain element of integrator)
+            Gain->Set(wa * T / 2.0);
+
+            // Calculate Zavalishin's R from Q (referred to as damping parameter)
+            FeedbackDamping->Set(1.0 / (2.0 * Q));
+
+            // Gain for BandShelving filter
+            //KCoeff = shelfGain;
         }
-        Output->Set(double(Wrapped.processAudioSample(float(Input), 0)));
+
+        double gCoeff = Gain->Get();
+        double RCoeff = FeedbackDamping->Get();
+        double KCoeff = ShelfGain->Get();
+        double z1_A = StateVar_z1_A->Get();
+        double z2_A = StateVar_z2_A->Get();
+
+        double HP = (Input - (2.0 * RCoeff + gCoeff) * z1_A - z2_A) /
+            (1.0 + (2.0 * RCoeff * gCoeff) + gCoeff * gCoeff);
+
+        double BP = HP * gCoeff + z1_A;
+
+        double LP = BP * gCoeff + z2_A;
+
+        double UBP = 2.0 * RCoeff * BP;
+
+        double BShelf = Input + UBP * KCoeff;
+
+        double Notch = Input - UBP;
+
+        double AP = Input - (4.0 * RCoeff * BP);
+
+        double Peak = LP - HP;
+
+        StateVar_z1_A->Set(gCoeff * HP + BP);
+        StateVar_z2_A->Set(gCoeff * BP + LP);
+
+        if (Mode == FilterType::Lowpass)
+        {
+            Output->Set(LP);
+        }
+        else if (Mode == FilterType::Bandpass)
+        {
+            Output->Set(BP);
+        }
+        else if (Mode == FilterType::Highpass)
+        {
+            Output->Set(HP);
+        }
+        else if (Mode == FilterType::UnitGainBandpass)
+        {
+            Output->Set(UBP);
+        }
+        else if (Mode == FilterType::BandShelving)
+        {
+            Output->Set(BShelf);
+        }
+        else if (Mode == FilterType::Notch)
+        {
+            Output->Set(Notch);
+        }
+        else if (Mode == FilterType::Allpass)
+        {
+            Output->Set(AP);
+        }
+        else if (Mode == FilterType::Peak)
+        {
+            Output->Set(Peak);
+        }
     }
 
     virtual ~TopologyPreservingTransformStateVariableFilterThunk() {};
@@ -1239,6 +1323,13 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     {
         PortHandle Port = MakePortHandle(AllocatedHandle, 0);
         ActiveOutputs[Port]->Set(ImprobableMagnitude);
+    }
+    else if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS)
+    {
+        // Gain and Feedback coefficients init to 1.
+        // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
+        ActiveOutputs[MakeClosureHandle(AllocatedHandle, 2)] = std::make_shared<RunningState>(1.0);
+        ActiveOutputs[MakeClosureHandle(AllocatedHandle, 3)] = std::make_shared<RunningState>(1.0);
     }
     else if (Symbol == OpCode::BOOP)
     {
@@ -1880,35 +1971,50 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::TPTSVF_LOWPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<TPTSVF::SVFLowpass>>();
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Lowpass>>();
                 Thunk->Sample = Inputs[0];
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
                 Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
+                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
+                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::TPTSVF_BANDPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<TPTSVF::SVFBandpass>>();
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Bandpass>>();
                 Thunk->Sample = Inputs[0];
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
                 Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
+                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
+                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::TPTSVF_HIGHPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<TPTSVF::SVFHighpass>>();
+                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Highpass>>();
                 Thunk->Sample = Inputs[0];
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
                 Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
                 Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
+                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
+                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::ADSR)
