@@ -128,7 +128,6 @@ endif
 # Ideally, we can grab Boost as a system-known dependency. (Meson has internal magic for this.)
 # If not -- i.e, on Windows -- we'll look for a fallback in the `third_party` directory.
 
-
 if get_option('boost_stacktrace').enabled()
     boost_stacktrace = dependency('boost', required : false)
     if boost_stacktrace.found()
@@ -177,6 +176,7 @@ source_files += [
 shared_library(
     'mollytime',
     source_files,
+    name_prefix : [],
     name_suffix : pybind_suffix,
     include_directories : include_dirs,
     link_args : library_dirs,
