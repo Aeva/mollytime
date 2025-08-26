@@ -176,7 +176,7 @@ source_files += [
 shared_library(
     'mollytime',
     source_files,
-    name_prefix : [],
+    name_prefix : '',
     name_suffix : pybind_suffix,
     include_directories : include_dirs,
     link_args : library_dirs,
