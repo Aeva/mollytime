@@ -52,6 +52,7 @@ enum class OpCode : uint32_t
     SIN,
     SQR,
     TRI,
+    SAW,
     NOI,
     ADD,
     MUL,

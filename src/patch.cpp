@@ -196,6 +196,7 @@ struct SymbolInfo
         Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
         Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
         Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
+        Set(OpCode::SAW, "saw", {"hz"}, {"amp"}, 1);
         Set(OpCode::NOI, "noise", {"hz"}, {"amp"}, 3);
         Set(OpCode::ADD, "add", {"+"}, {"="});
         Set(OpCode::MUL, "mul", {"*"}, {"="});
@@ -338,6 +339,36 @@ struct TriThunk : public InstructionThunk
     }
 
     virtual ~TriThunk() {};
+};
+
+
+struct SawThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InFrequencyHz;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr ActivePhase = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("SawThunk");
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
+        double Phase = ActivePhase->Get();
+        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+        ActivePhase->Set(Phase);
+        /*
+        double Sign = Phase < 0.5 ? 1.0 : -1.0;
+        double IntegerPart = 0.0;
+        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+        if (int(IntegerPart) % 2 == 1)
+        {
+            Alpha = 1.0 - Alpha;
+        }
+        OutAmplitude->Set(Alpha * Sign);
+        */
+        OutAmplitude->Set(Phase * 2.0 - 1.0);
+    }
+
+    virtual ~SawThunk() {};
 };
 
 
@@ -1757,6 +1788,15 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::TRI)
             {
                 auto Thunk = std::make_shared<TriThunk>();
+                Thunk->InFrequencyHz = Inputs[0];
+                Thunk->OutAmplitude = Outputs[0];
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return nullptr;
+            }
+            else if (Symbol == OpCode::SAW)
+            {
+                auto Thunk = std::make_shared<SawThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
