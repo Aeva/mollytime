@@ -18,7 +18,7 @@ yet have any audio backends implemented, so you won't be able to hear anything.
 
 # I want to use it anyway!
 
-Mollytime currently uses the [Meson](https://mesonbuild.com/) build system.
+Mollytime uses the [Meson](https://mesonbuild.com/) build system.
 
 Supported platforms, as in "we've tried these and it seems to work fine":
 - Linux, via Clang or GCC, using glibc
