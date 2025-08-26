@@ -17,6 +17,12 @@ library_dirs = []
 dependencies = []
 source_files = []
 
+# We'll need to link `dl` (dynamic linking) and `m` (math) on non-Windows.
+if build_machine.system() != 'windows'
+    dependencies += compiler.find_library('m')
+    dependencies += compiler.find_library('dl')
+endif
+
 # ---
 # Warning wrangling 🤠
 
@@ -81,7 +87,15 @@ foreach include : pybind_include_string.split(' ')
     message(f'Pybind11 include directory: "@include@"')
 endforeach
 
-pybind_suffix_command = run_command(python, '-m', 'pybind11', '--extension-suffix', check : true)
+# Windows doesn't (easily) provide `python3-config`, so pybind11 produces an equivalent for getting the `--extension-suffix`.
+# ...On Windows only. It omits this elsewhere, so we've got to change which one we're invoking depending on platform.
+if build_machine.system() == 'windows'
+    python_suffix_command_args = [ python, '-m', 'pybind11', '--extension-suffix' ]
+else
+    python_suffix_command_args = [ 'python3-config', '--extension-suffix' ]
+endif
+
+pybind_suffix_command = run_command(python_suffix_command_args, check : true)
 pybind_suffix = pybind_suffix_command.stdout().strip()
 
 # `pybind11 --extension-suffix` includes the leading `.`, but Meson wants to add this itself.
@@ -104,7 +118,7 @@ endif
 # MIDI backend
 
 if get_option('midi_backend') == 'alsa'
-    dependencies += dependency('asound', required : true)
+    dependencies += compiler.find_library('asound', required : true)
     add_project_arguments('-DMIDI_ALSA=1', language: 'cpp')
 endif
 
