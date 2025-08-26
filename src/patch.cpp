@@ -213,6 +213,7 @@ struct SymbolInfo
         Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
         Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
         Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
+        Set(OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"});
         Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
         Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
@@ -663,6 +664,27 @@ struct MixThunk : public InstructionThunk
     }
 
     virtual ~MixThunk() {};
+};
+
+
+struct StereoBalanceThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> Sample;
+    std::vector<RunningStateSharedPtr> Balance;
+    RunningStateSharedPtr Left = nullptr;
+    RunningStateSharedPtr Right = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
+        double Value = Combine(CombinerAdd, Sample, 0.0);
+        double Alpha = std::min(std::max(Combine(CombinerAdd, Balance, 0.0), -1.0), 1.0) * 0.5 + 0.5;
+        double InvA = 1.0 - Alpha;
+        Left->Set(Value * InvA);
+        Right->Set(Value * Alpha);
+    }
+
+    virtual ~StereoBalanceThunk() {};
 };
 
 
@@ -1921,6 +1943,15 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Right = Inputs[1];
                 Thunk->Balance = Inputs[2];
                 Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::BAL)
+            {
+                auto Thunk = std::make_shared<StereoBalanceThunk>();
+                Thunk->Sample = Inputs[0];
+                Thunk->Balance = Inputs[1];
+                Thunk->Left = Outputs[0];
+                Thunk->Right = Outputs[1];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::PLS)

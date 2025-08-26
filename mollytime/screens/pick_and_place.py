@@ -74,7 +74,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             (":y", [
                 [OpCode.SAW, OpCode.TPTSVF_LOWPASS],
-                [None, OpCode.TPTSVF_BANDPASS],
+                [OpCode.BAL, OpCode.TPTSVF_BANDPASS],
                 ["next", OpCode.TPTSVF_HIGHPASS],
                 [None, OpCode.TPTSVF_NOTCH],
                 [None, OpCode.TPTSVF_ALLPASS],
