@@ -34,6 +34,7 @@ first is supported and recommended.)
 
 Other dependencies you'll currently need to acquire yourself:
 - JACK, if building with the JACK audio backend.
+- Windows 11 SDK (10.0.22621.5040) or newer, if building with the WASAPI backend. (Don't worry, it also works with Windows 10.)
 - `boost_stacktrace`, if building with stacktrace support.
 
 Once you have determined the correct versions of each of these dependencies,
