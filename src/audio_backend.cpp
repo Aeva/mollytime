@@ -14,7 +14,12 @@
 // limitations under the License.
 
 #include "audio_backend.h"
+
+#ifdef ENABLE_JACK
 #include "jack_stream.h"
+#elifdef AUDIO_WASAPI
+#include "wasapi_stream.h"
+#endif
 
 #include <memory>
 #include <print>
@@ -143,6 +148,8 @@ void Audio::Init(int SampleRate)
 {
 #ifdef ENABLE_JACK
     Stream = std::make_unique<JackStream>(SampleRate);
+#elifdef AUDIO_WASAPI
+    Stream = std::make_unique<WasapiStream>(SampleRate);
 #else
     std::println("No audio stream implementation is available.");
     Stream = std::make_unique<StubStream>();

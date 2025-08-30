@@ -170,7 +170,8 @@ source_files += [
     'src/midi.cpp',
     'src/patch.cpp',
     'src/perf.cpp',
-    'src/py_api.cpp'
+    'src/py_api.cpp',
+    'src/wasapi_stream.cpp'
 ]
 
 shared_library(
