@@ -23,13 +23,13 @@
 #include <vector>
 
 #define WIN32_LEAN_AND_MEAN
-#define MSVC_EXTRA_LEAN
+#define VC_EXTRALEAN
 #define NOMINMAX
 #include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <winrt/base.h>
 #undef NOMINMAX
-#undef MSVC_EXTRA_LEAN
+#undef VC_EXTRALEAN
 #undef WIN32_LEAN_AND_MEAN
 
 
