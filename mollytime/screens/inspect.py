@@ -357,6 +357,13 @@ class inspect_screen(editor_screen):
             self.draw_touch_points(editor)
             pygame.display.flip()
         elif self.can_throttle:
-            # This is skipped when there is a boop instruction in the patch, as
-            # the UI has to be exceptionally responsive to input events.
             editor.clock.tick(60)
+        else:
+            # When there is a boop instruction in the patch, we throttle for a
+            # much shorter period.  This keeps the CPU usage low, but keeps the
+            # UI responsive.  This probably adds at most 4 milliseconds of
+            # quantization to processing mouse and touch input events.  MIDI
+            # input events are handled by the mollytime backend in a separate
+            # thread, and thus are not affected.
+            # This is probably overkill.
+            editor.clock.tick(240)
