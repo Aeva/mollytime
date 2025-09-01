@@ -73,6 +73,12 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
         snd_seq_event_input(SeqHandle, &Event);
     }
 
+    // Relevant API reference pages:
+    // union struct thing:
+    //  - https://www.alsa-project.org/alsa-doc/alsa-lib/unionsnd__seq__event__data__t.html
+    // event type enums etc:
+    //  - https://www.alsa-project.org/alsa-doc/alsa-lib/group___seq_events.html#gaef39e1f267006faf7abc91c3cb32ea40
+
     if (!Event)
     {
         return;
@@ -89,6 +95,14 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
     {
         Handler->NotePressure(Event->data.note.note, Event->data.note.velocity, Event->data.note.channel);
     }
+#if 0
+    else if (Event->type == SND_SEQ_EVENT_PGMCHANGE)
+    {
+        // NOTE: general midi uses channels to differentiate concurrent instrument events.  Program
+        // change events apparently can be sent per-channel and do not have to be interpreted globally.
+        std::print("Channel {} change program to {}\n", Event->data.control.channel, Event->data.control.value);
+    }
+#endif
 }
 
 #endif
