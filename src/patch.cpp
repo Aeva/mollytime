@@ -224,10 +224,10 @@ struct SymbolInfo
         Set(OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"}, 7);
         Set(OpCode::TPTSVF_ALLPASS, "all\npass", {"sample", "cutoff", "res"}, {"allpass"}, 7);
         Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
-        Set(OpCode::GATE, "gate", {}, {"gate"});
-        Set(OpCode::NOTE, "note", {}, {"note"});
-        Set(OpCode::VELO, "velocity", {}, {"velocity"});
-        Set(OpCode::PRES, "pressure", {}, {"pressure"});
+        Set(OpCode::GATE, "gate", {"channel"}, {"gate"});
+        Set(OpCode::NOTE, "note", {"channel"}, {"note"});
+        Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
+        Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
@@ -1048,13 +1048,19 @@ struct AdsrThunk : public InstructionThunk
 
 struct GateThunk : public InstructionThunk
 {
-    RunningStateSharedPtr MidiGate;
+    Scratch* Program;
+    std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GateThunk");
-        Output->Set(MidiGate->Get());
+        int Channel = int(Combine(CombinerAdd, Inputs, 0.0));
+        if (Channel >= 0 && Channel <= 15)
+        {
+            MidiChannelState& State = Program->MidiChannels[Channel];
+            Output->Set(State.Gate->Get());
+        }
     }
 
     virtual ~GateThunk() {};
@@ -1063,13 +1069,19 @@ struct GateThunk : public InstructionThunk
 
 struct NoteThunk : public InstructionThunk
 {
-    RunningStateSharedPtr MidiNote;
+    Scratch* Program;
+    std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoteThunk");
-        Output->Set(MidiNote->Get());
+        int Channel = int(Combine(CombinerAdd, Inputs, 0.0));
+        if (Channel >= 0 && Channel <= 15)
+        {
+            MidiChannelState& State = Program->MidiChannels[Channel];
+            Output->Set(State.Note->Get());
+        }
     }
 
     virtual ~NoteThunk() {};
@@ -1078,13 +1090,19 @@ struct NoteThunk : public InstructionThunk
 
 struct VelocityThunk : public InstructionThunk
 {
-    RunningStateSharedPtr MidiVelocity;
+    Scratch* Program;
+    std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("VelocityThunk");
-        Output->Set(MidiVelocity->Get());
+        int Channel = int(Combine(CombinerAdd, Inputs, 0.0));
+        if (Channel >= 0 && Channel <= 15)
+        {
+            MidiChannelState& State = Program->MidiChannels[Channel];
+            Output->Set(State.Velocity->Get());
+        }
     }
 
     virtual ~VelocityThunk() {};
@@ -1093,13 +1111,19 @@ struct VelocityThunk : public InstructionThunk
 
 struct PressureThunk : public InstructionThunk
 {
-    RunningStateSharedPtr MidiPressure;
+    Scratch* Program;
+    std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PressureThunk");
-        Output->Set(MidiPressure->Get());
+        int Channel = int(Combine(CombinerAdd, Inputs, 0.0));
+        if (Channel >= 0 && Channel <= 15)
+        {
+            MidiChannelState& State = Program->MidiChannels[Channel];
+            Output->Set(State.Pressure->Get());
+        }
     }
 
     virtual ~PressureThunk() {};
@@ -2080,28 +2104,32 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::GATE)
             {
                 auto Thunk = std::make_shared<GateThunk>();
-                Thunk->MidiGate = MidiChannels[0].Gate;
+                Thunk->Program = Program.get();
+                Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::NOTE)
             {
                 auto Thunk = std::make_shared<NoteThunk>();
-                Thunk->MidiNote = MidiChannels[0].Note;
+                Thunk->Program = Program.get();
+                Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::VELO)
             {
                 auto Thunk = std::make_shared<VelocityThunk>();
-                Thunk->MidiVelocity = MidiChannels[0].Velocity;
+                Thunk->Program = Program.get();
+                Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::PRES)
             {
                 auto Thunk = std::make_shared<PressureThunk>();
-                Thunk->MidiPressure = MidiChannels[0].Pressure;
+                Thunk->Program = Program.get();
+                Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
