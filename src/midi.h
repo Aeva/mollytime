@@ -17,19 +17,45 @@
 
 #include <cstdint>
 #include <vector>
+#include <mutex>
+
+#include "perf.h"
+
+
+enum class MidiMessageType : uint8_t
+{
+    Note,
+    PolyPress,
+};
+
+
+struct MidiMessage
+{
+    MidiMessageType Type;
+    uint8_t Channel;
+    double Param1;
+    double Param2;
+};
+
 
 struct MidiHandler
 {
-    virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
-    {
-    }
-    virtual void NoteOff(uint8_t Note, uint8_t Channel)
+    void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel);
+
+    void NoteOff(uint8_t Note, uint8_t Channel)
     {
         NoteOn(Note, 0, Channel);
     }
-    virtual void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
-    {
-    }
+
+    void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel);
+
+    void EnqueueMidiMessage(MidiMessage& Message);
+
+    void SwapMidiMessageQueue(std::vector<MidiMessage>& MessageQueue);
+
+private:
+    DECLARE_TRACEABLE_MUTEX(PendingMidiCrit);
+    std::vector<MidiMessage> PendingMidiMessages;
 };
 
 

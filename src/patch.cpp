@@ -1692,10 +1692,7 @@ ScratchSharedPtr Patch::Compile()
 
     std::set<TileHandle> BreadCrumbs;
     ScratchSharedPtr Program = std::make_shared<Scratch>();
-    Program->MidiGate = MidiGate;
-    Program->MidiNote = MidiNote;
-    Program->MidiVelocity = MidiVelocity;
-    Program->MidiPressure = MidiPressure;
+    Program->MidiChannels = MidiChannels;
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
 
@@ -2083,28 +2080,28 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::GATE)
             {
                 auto Thunk = std::make_shared<GateThunk>();
-                Thunk->MidiGate = MidiGate;
+                Thunk->MidiGate = MidiChannels[0].Gate;
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::NOTE)
             {
                 auto Thunk = std::make_shared<NoteThunk>();
-                Thunk->MidiNote = MidiNote;
+                Thunk->MidiNote = MidiChannels[0].Note;
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::VELO)
             {
                 auto Thunk = std::make_shared<VelocityThunk>();
-                Thunk->MidiVelocity = MidiVelocity;
+                Thunk->MidiVelocity = MidiChannels[0].Velocity;
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::PRES)
             {
                 auto Thunk = std::make_shared<PressureThunk>();
-                Thunk->MidiPressure = MidiPressure;
+                Thunk->MidiPressure = MidiChannels[0].Pressure;
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
@@ -2210,6 +2207,47 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
     {
+        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
+
+        // NOTE: SwapMidiMessageQueue leaves room for a potential perf optimization that we are
+        // not taking advantage of.  If you decide that array resizes triggered by midi events
+        // are problematic for performance, make local variable "MessageQueue" a member variable
+        // of Scratch and change nothing else.
+        std::vector<MidiMessage> MessageQueue;
+        SwapMidiMessageQueue(MessageQueue);
+
+        for (MidiMessage& Message : MessageQueue)
+        {
+            MidiChannelState& State = MidiChannels[Message.Channel];
+            if (Message.Type == MidiMessageType::Note)
+            {
+                double& Note = Message.Param1;
+                double& Velocity = Message.Param2;
+                if (Velocity > 0.0)
+                {
+                    State.Note->Set(Note);
+                    State.Gate->Set(1.0);
+                    State.Velocity->Set(Velocity);
+                }
+                else if (Note == State.Note->Get())
+                {
+                    State.Gate->Set(0.0);
+                    State.Velocity->Set(0.0);
+                    State.Pressure->Set(0.0);
+                }
+            }
+            else if (Message.Type == MidiMessageType::PolyPress)
+            {
+                double& Note = Message.Param1;
+                double& Pressure = Message.Param2;
+                if (Note == State.Note->Get())
+                {
+                    State.Pressure->Set(Pressure);
+                }
+            }
+        }
+    }
+    {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
         for (std::shared_ptr<InstructionThunk>& Thunk : Program)
         {
@@ -2257,33 +2295,4 @@ MagicTapeSharedPtr Scratch::FindTape(double WireValue)
         return Found->second;
     }
     return nullptr;
-}
-
-
-void Scratch::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
-{
-    TRACEABLE_SCOPE;
-    if (Velocity > 0)
-    {
-        MidiGate->Set(1.0);
-        MidiNote->Set(double(Note));
-        double V = double(Velocity) / 127.0;
-        MidiVelocity->Set(V);
-    }
-    else if (double(Note) == MidiNote->Get())
-    {
-        MidiGate->Set(0.0);
-        MidiVelocity->Set(0.0);
-        MidiPressure->Set(0.0);
-    }
-}
-
-
-void Scratch::NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
-{
-    TRACEABLE_SCOPE;
-    if (double(Note) == MidiNote->Get())
-    {
-        MidiPressure->Set(double(Pressure) / 127.0);
-    }
 }

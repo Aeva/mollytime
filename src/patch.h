@@ -23,6 +23,7 @@
 #include <set>
 #include <mutex>
 #include <atomic>
+#include <array>
 #include <vector>
 #include <string>
 #include <memory>
@@ -229,6 +230,15 @@ struct InstructionThunk
 };
 
 
+struct MidiChannelState
+{
+    RunningStateSharedPtr Gate = std::make_shared<RunningState>(0.0);
+    RunningStateSharedPtr Note = std::make_shared<RunningState>(50.0);
+    RunningStateSharedPtr Velocity = std::make_shared<RunningState>(0.0);
+    RunningStateSharedPtr Pressure = std::make_shared<RunningState>(0.0);
+};
+
+
 struct Scratch final : public MidiHandler
 {
     std::vector<std::shared_ptr<InstructionThunk>> Program;
@@ -241,16 +251,10 @@ struct Scratch final : public MidiHandler
     ProbeRunningStateSharedPtr OutputProbe;
     ProbeRunningStateSharedPtr ScopeProbe;
 
-    RunningStateSharedPtr MidiGate;
-    RunningStateSharedPtr MidiNote;
-    RunningStateSharedPtr MidiVelocity;
-    RunningStateSharedPtr MidiPressure;
+    std::array<MidiChannelState, 16> MidiChannels;
 
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
     MagicTapeSharedPtr FindTape(double WireValue);
-
-    virtual void NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel) override;
-    virtual void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel) override;
 };
 
 using ScratchSharedPtr = std::shared_ptr<Scratch>;
@@ -304,10 +308,7 @@ private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
     // These should only ever be set or read by the audio thread:
-    RunningStateSharedPtr MidiGate = std::make_shared<RunningState>(0.0);
-    RunningStateSharedPtr MidiNote = std::make_shared<RunningState>(50.0);
-    RunningStateSharedPtr MidiVelocity = std::make_shared<RunningState>(0.0);
-    RunningStateSharedPtr MidiPressure = std::make_shared<RunningState>(0.0);
+    std::array<MidiChannelState, 16> MidiChannels;
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
