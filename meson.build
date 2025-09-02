@@ -17,11 +17,9 @@ library_dirs = []
 dependencies = []
 source_files = []
 
-# We'll need to link `dl` (dynamic linking) and `m` (math) on non-Windows.
-if build_machine.system() != 'windows'
-    dependencies += compiler.find_library('m')
-    dependencies += compiler.find_library('dl')
-endif
+# We'll need to link `m` (math) `dl` (dynamic linking) on non-Windows.
+dependencies += compiler.find_library('m', required : false)
+dependencies += compiler.find_library('dl', required : false)
 
 # ---
 # Warning wrangling 🤠
