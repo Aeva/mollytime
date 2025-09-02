@@ -6,7 +6,6 @@ project('mollytime', 'cpp',
     ]
 )
 
-fs = import('fs')
 py = import('python')
 
 compiler = meson.get_compiler('cpp')
@@ -63,27 +62,7 @@ include_dirs += include_directories(glm_include)
 # ---
 # Pybind11
 
-pybind_includes_command = run_command(python, '-m', 'pybind11', '--includes', check : true)
-pybind_include_string = pybind_includes_command.stdout().strip()
-
-# `pybind11 --includes` returns whitespace-separated, GCC-style `-I` syntax.
-# We need to extract each path as a separate item, with no prefix.
-foreach include : pybind_include_string.split(' ')
-    include = include.strip()
-
-    # Remove -I prefix.
-    if include.startswith('-I')
-        include = include.substring(2)
-    endif
-
-    # Meson doesn't accept absolute paths that point inside the project directory.
-    # Make any such paths relative before including.
-    if include.startswith(project_dir)
-        include = fs.relative_to(include, project_dir)
-    endif
-    include_dirs += include_directories(include)
-    message(f'Pybind11 include directory: "@include@"')
-endforeach
+dependencies += dependency('pybind11')
 
 # Windows doesn't (easily) provide `python3-config`, so pybind11 produces an equivalent for getting the `--extension-suffix`.
 # ...On Windows only. It omits this elsewhere, so we've got to change which one we're invoking depending on platform.
@@ -96,7 +75,7 @@ endif
 pybind_suffix_command = run_command(python_suffix_command_args, check : true)
 pybind_suffix = pybind_suffix_command.stdout().strip()
 
-# `pybind11 --extension-suffix` includes the leading `.`, but Meson wants to add this itself.
+# This extension suffix includes the leading `.`, but Meson wants to add this itself.
 if pybind_suffix.startswith('.')
     pybind_suffix = pybind_suffix.substring(1)
 endif
