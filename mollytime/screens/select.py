@@ -22,9 +22,44 @@ class select_screen(editor_screen):
         self.cursor_pos = pygame.mouse.get_pos()
         self.press_start = None
         self.set_screen_label(editor, "inspect > select")
+        self.selected_output = None
+        self.selected_input = None
+
         self.repopulate_sidebar(editor)
 
+    def update_port_selections(self, editor):
+        lhs_tile = editor.lhs_selection()
+        new_port_selection = self.selected_output
+        if not lhs_tile:
+            new_port_selection = None
+        elif not self.selected_output or lhs_tile != decode_port_tile(self.selected_output):
+            if ports := editor.patch.get_tile_output_ports(lhs_tile):
+                new_port_selection = ports[0]
+            else:
+                new_port_selection = None
+
+        if self.selected_output != new_port_selection:
+            self.update_play_area = True
+            self.selected_output = new_port_selection
+
+        rhs_tile = editor.rhs_selection()
+        new_port_selection = self.selected_input
+        if not rhs_tile:
+            new_port_selection = None
+        elif not self.selected_input or rhs_tile != decode_port_tile(self.selected_input):
+            if ports := editor.patch.get_tile_input_ports(rhs_tile):
+                new_port_selection = ports[0]
+            else:
+                new_port_selection = None
+
+        if self.selected_input != new_port_selection:
+            self.update_play_area = True
+            self.selected_input = new_port_selection
+
+        print(f"selected: {self.selected_output}, {self.selected_input}")
+
     def repopulate_sidebar(self, editor):
+        self.update_port_selections(editor)
         self.update_sidebar = True
 
         goto_inspect_rect = pygame.Rect(
@@ -161,6 +196,31 @@ class select_screen(editor_screen):
                 rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
                 radius = max(1, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
+
+            viewport = editor.play_area.viewport
+            matte_color = parse_color("#FFF000")
+
+            # draw left select sidebar bg
+            start = (editor.grid_size * 4, 0)
+            stop = (editor.grid_size * 3, viewport.h)
+            points = [(0, 0), start, stop, (0, viewport.h)]
+            pygame.draw.polygon(frame, matte_color, points)
+            pygame.draw.aaline(frame, matte_color, start, stop)
+
+            # draw right select sidebar bg
+            start = (viewport.w - editor.grid_size * 3, 0)
+            stop = (viewport.w - editor.grid_size * 4, viewport.h)
+            points = [(viewport.w, viewport.h), stop, start, (viewport.w, 0)]
+            pygame.draw.polygon(frame, matte_color, points)
+            start = (start[0] - 1, start[1])
+            stop = (stop[0] - 1, stop[1])
+            pygame.draw.aaline(frame, matte_color, start, stop)
+
+            # draw left select sidebar tiles
+            if lhs_tile := editor.lhs_selection():
+                if ports := editor.patch.get_tile_output_ports(lhs_tile):
+                    # TODO
+                    pass
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
             editor.screen.blit(frame, editor.play_area.viewport)
