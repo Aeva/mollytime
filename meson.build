@@ -13,7 +13,6 @@ compiler = meson.get_compiler('cpp')
 project_dir = meson.project_source_root()
 
 include_dirs = []
-library_dirs = []
 dependencies = []
 source_files = []
 
@@ -45,15 +44,6 @@ endif
 python_install = py.find_installation()
 python = python_install.full_path()
 
-# On Windows, we need an explicit path to the Python static library directory, for pybind11.
-if build_machine.system() == 'windows'
-    base_prefix_command = run_command(python, '-c', 'import sys; print(sys.base_prefix)', check : true)
-    base_prefix = base_prefix_command.stdout().strip()
-    python_libs_path = base_prefix / 'libs'
-    library_dirs += f'-L@python_libs_path@'
-    message(f'Python `libs` directory: "@python_libs_path@"')
-endif
-
 # ---
 # GLM
 
@@ -64,22 +54,6 @@ include_dirs += include_directories(glm_include)
 # Pybind11
 
 dependencies += dependency('pybind11')
-
-# Windows doesn't (easily) provide `python3-config`, so pybind11 produces an equivalent for getting the `--extension-suffix`.
-# ...On Windows only. It omits this elsewhere, so we've got to change which one we're invoking depending on platform.
-if build_machine.system() == 'windows'
-    python_suffix_command_args = [ python, '-m', 'pybind11', '--extension-suffix' ]
-else
-    python_suffix_command_args = [ 'python3-config', '--extension-suffix' ]
-endif
-
-pybind_suffix_command = run_command(python_suffix_command_args, check : true)
-pybind_suffix = pybind_suffix_command.stdout().strip()
-
-# This extension suffix includes the leading `.`, but Meson wants to add this itself.
-if pybind_suffix.startswith('.')
-    pybind_suffix = pybind_suffix.substring(1)
-endif
 
 # ---
 # Audio backend
@@ -102,7 +76,6 @@ endif
 
 # ---
 # Stack trace
-
 
 use_boost_stacktraces = get_option('boost_stacktrace').enabled()
 if use_boost_stacktraces
@@ -158,14 +131,11 @@ source_files += [
     'src/wasapi_stream.cpp'
 ]
 
-shared_library(
+python_install.extension_module(
     'mollytime',
     source_files,
-    name_prefix : '',
-    name_suffix : pybind_suffix,
     include_directories : include_dirs,
-    link_args : library_dirs,
     dependencies : dependencies,
     install : true,
-    install_dir : project_dir / 'mollytime'
+    subdir : project_dir / 'mollytime'
 )
