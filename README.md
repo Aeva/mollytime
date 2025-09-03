@@ -13,9 +13,6 @@ and installation art.
 While Mollytime is already quite usable, it is still missing quite a bit of
 polish and several major features, and is not quite ready for prime time.
 
-In particular, even though a Windows build is currently provided, it doesn't
-yet have any audio backends implemented, so you won't be able to hear anything.
-
 # I want to use it anyway!
 
 Mollytime uses the [Meson](https://mesonbuild.com/) build system.
@@ -40,25 +37,12 @@ Other dependencies you'll currently need to acquire yourself:
 Once you have determined the correct versions of each of these dependencies,
 please let me know and I'll write them down here.
 
-Then, look at `meson.options` to see available build options. You'll probably
-want to select an `audio_backend`, at minimum. Be sure to reference Meson's
-[built-in options](https://mesonbuild.com/Builtin-options.html) for anything
-not covered here, like whether or not to emit optimized builds.
-
-> IMPORTANT: On Linux, you'll currently need to disable Meson's `b_asneeded` and
-`b_lundef` options, until we add a way to handle this kind of configuration for you.
-
-An example command sequence for building an optimized "release" build for Linux,
-using Clang:
+Some native environment config files are provided for the Meson build. You'll
+want to specify a build mode (`debug.ini`, `profiling.ini`, or `release.ini`,) 
+and a toolchain (`<os>-<tools>.ini`). Then, you can just `build` and `install`.
+Example:
 ```
-CXX=clang++ meson setup -Dbuildtype=release -Db_asneeded=false -Db_lundef=false -Daudio_backend=jack -Dmidi_backend=alsa build
-meson compile -C build
-meson install -C build
-```
-
-An example command sequence for building a "debug" build on Windows, using MSVC:
-```
-meson setup -Dbuildtype=debug -Daudio_backend=wasapi build
+meson setup --native-file build_native/win32-clang.ini --native-file build_native/debug.ini build
 meson compile -C build
 meson install -C build
 ```
@@ -66,3 +50,15 @@ meson install -C build
 If all goes well, you will then be able to run Mollytime like so:
 
  - `python mollytime`
+
+Note that any toolchain you request needs its binaries available on PATH,
+for both `setup` and `compile`.
+
+---
+
+If you want to configure manually instead, look at `meson.options` to see available
+build options. You'll probably want to select an `audio_backend`, at minimum.
+Be sure to reference Meson's [built-in options](https://mesonbuild.com/Builtin-options.html)
+for anything not covered here, like whether or not to emit optimized builds.
+
+> IMPORTANT: On Linux, you'll need to disable Meson's `b_asneeded` and `b_lundef` options.
