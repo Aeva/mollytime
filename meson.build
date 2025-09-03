@@ -6,6 +6,7 @@ project('mollytime', 'cpp',
     ]
 )
 
+fs = import('fs')
 py = import('python')
 
 compiler = meson.get_compiler('cpp')
@@ -102,19 +103,25 @@ endif
 # ---
 # Stack trace
 
-# Ideally, we can grab Boost as a system-known dependency. (Meson has internal magic for this.)
-# If not -- i.e, on Windows -- we'll look for a fallback in the `third_party` directory.
 
-if get_option('boost_stacktrace').enabled()
+use_boost_stacktraces = get_option('boost_stacktrace').enabled()
+if use_boost_stacktraces
+    # Ideally, we can grab Boost as a system-known dependency. (Meson has internal magic for this.)
     boost_stacktrace = dependency('boost', required : false)
-    if boost_stacktrace.found()
-        dependencies += boost_stacktrace
-    elif get_option('boost_stacktrace').enabled()
+    if not boost_stacktrace.found()
+        # If not -- i.e, on Windows -- we'll look for a fallback in the `third_party` directory.
         boost_stacktrace_dir = 'third_party' / 'boost-stacktrace-1.89.0'
-        include_dirs += include_directories(boost_stacktrace_dir / 'include')
-        message(f'boost_stacktrace: Fallback found: "@boost_stacktrace_dir@"')
+        if not fs.exists(boost_stacktrace_dir)
+            # If that's not there either, go ahead and let the build through; this isn't key functionality.
+            use_boost_stacktraces = false
+        else
+            include_dirs += include_directories(boost_stacktrace_dir / 'include')
+            message(f'boost_stacktrace: Fallback found: "@boost_stacktrace_dir@"')
+        endif
     endif
+endif
 
+if use_boost_stacktraces
     add_project_arguments('-DENABLE_STACK_TRACES=1', language : 'cpp')
     if build_machine.system() == 'windows'
         add_project_arguments('-DBOOST_STACKTRACE_USE_WINDBG=1', language: 'cpp')
