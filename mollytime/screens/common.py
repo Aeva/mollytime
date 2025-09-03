@@ -613,8 +613,37 @@ class editor_screen:
                 pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
                 self.touch_end(editor, key, pos, event)
 
+            elif event.type in (
+                pygame.ACTIVEEVENT,
+                pygame.VIDEORESIZE,
+                pygame.VIDEOEXPOSE,
+                pygame.RENDER_TARGETS_RESET,
+                pygame.RENDER_DEVICE_RESET,
+                pygame.WINDOWSHOWN,
+                pygame.WINDOWEXPOSED,
+                pygame.WINDOWMOVED,
+                pygame.WINDOWRESIZED,
+                pygame.WINDOWSIZECHANGED,
+                pygame.WINDOWMAXIMIZED,
+                pygame.WINDOWRESTORED,
+                pygame.WINDOWENTER,
+                pygame.WINDOWFOCUSGAINED,
+                pygame.WINDOWTAKEFOCUS,
+                pygame.WINDOWICCPROFCHANGED,
+                pygame.WINDOWDISPLAYCHANGED):
+                # redraw on various window damage events we aren't otherwise handling
+                self.force_redraw = True
+
             elif event.type == pygame.QUIT:
                 exit(0)
+
+            # else:
+            #     # attempt to determine what mystery events are
+            #     for attr in dir(pygame):
+            #         if attr.upper() == attr:
+            #             val = getattr(pygame, attr)
+            #             if val == event.type:
+            #                 print(f"{attr} ({event.type})")
 
     def draw(self, editor):
         pass
