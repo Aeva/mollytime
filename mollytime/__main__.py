@@ -33,6 +33,11 @@ from screens.inspect import inspect_screen
 
 operating_system = platform.system()
 
+if operating_system == "Windows":
+    import ctypes
+    # needed for highdpi to work correctly
+    ctypes.windll.user32.SetProcessDPIAware()
+
 mollytime.init_midi()
 mollytime.init_audio(48000)
 pygame.display.init()
@@ -65,7 +70,12 @@ if vertical_inches_arg is not None:
 scaled_display_size = sizes[display_index]
 unscaled_display_size = pygame.display.list_modes(display=display_index)[0]
 
-screen = pygame.display.set_mode(size=unscaled_display_size, display=display_index, flags=pygame.FULLSCREEN)
+window_flags = pygame.FULLSCREEN
+if operating_system == "Windows":
+    # opt into borderless fullscreen and prevent display mode setting:
+    window_flags |= pygame.SCALED
+
+screen = pygame.display.set_mode(size=unscaled_display_size, display=display_index, flags=window_flags)
 
 dpi = None
 
