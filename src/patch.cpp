@@ -922,35 +922,35 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
         StateVar_z1_A->Set(gCoeff * HP + BP);
         StateVar_z2_A->Set(gCoeff * BP + LP);
 
-        if (Mode == FilterType::Lowpass)
+        if constexpr (Mode == FilterType::Lowpass)
         {
             Output->Set(LP);
         }
-        else if (Mode == FilterType::Bandpass)
+        else if constexpr (Mode == FilterType::Bandpass)
         {
             Output->Set(BP);
         }
-        else if (Mode == FilterType::Highpass)
+        else if constexpr (Mode == FilterType::Highpass)
         {
             Output->Set(HP);
         }
-        else if (Mode == FilterType::UnitGainBandpass)
+        else if constexpr (Mode == FilterType::UnitGainBandpass)
         {
             Output->Set(UBP);
         }
-        else if (Mode == FilterType::BandShelving)
+        else if constexpr (Mode == FilterType::BandShelving)
         {
             Output->Set(BShelf);
         }
-        else if (Mode == FilterType::Notch)
+        else if constexpr (Mode == FilterType::Notch)
         {
             Output->Set(Notch);
         }
-        else if (Mode == FilterType::Allpass)
+        else if constexpr (Mode == FilterType::Allpass)
         {
             Output->Set(AP);
         }
-        else if (Mode == FilterType::Peak)
+        else if constexpr (Mode == FilterType::Peak)
         {
             Output->Set(Peak);
         }

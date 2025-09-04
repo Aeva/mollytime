@@ -107,8 +107,8 @@ void WasapiRealTimeThread::BeginFrame(FramePointers& Frame)
     assert(BufferState != nullptr);
 
     WasapiThreadShared& WasapiBufferState = static_cast<WasapiThreadShared &>(*BufferState);
-    assert(WasapiBufferState.OutputSamplesLeft.size() >= Frame.SampleCount);
-    assert(WasapiBufferState.OutputSamplesRight.size() >= Frame.SampleCount);
+    assert(std::ssize(WasapiBufferState.OutputSamplesLeft) >= Frame.SampleCount);
+    assert(std::ssize(WasapiBufferState.OutputSamplesRight) >= Frame.SampleCount);
 
     Frame.OutLeft = WasapiBufferState.OutputSamplesLeft.data();
     Frame.OutRight = WasapiBufferState.OutputSamplesRight.data();
