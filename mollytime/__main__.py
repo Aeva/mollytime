@@ -43,6 +43,14 @@ mollytime.init_audio(48000)
 pygame.display.init()
 pygame.font.init()
 
+# According to the docs, the program icon must be set before calling "pygame.display.set_mode".
+# However this does not seem to do anything on Linux, probably due to Wayland nonsense to add security.
+program_icon = plate_bg(16, parse_color("#dee5e8"), "moll-\nytime")
+assert(program_icon.surface.get_rect().w == 32)
+assert(program_icon.surface.get_rect().h == 32)
+pygame.display.set_icon(program_icon.surface)
+pygame.display.set_caption("mollytime")
+
 display_index_arg, vertical_inches_arg = (sys.argv[1:] + [None, None])[:2]
 display_index = 0
 vertical_inches = 7.5
