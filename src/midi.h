@@ -16,7 +16,7 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+#include <deque>
 #include <mutex>
 
 #include "perf.h"
@@ -51,11 +51,20 @@ struct MidiHandler
 
     void EnqueueMidiMessage(MidiMessage& Message);
 
-    void SwapMidiMessageQueue(std::vector<MidiMessage>& MessageQueue);
+    /* MIDI serial connections run at 31250 baud, which means there's a maximum throughput of
+     * almost exactly 1302 3-byte packets per second (e.g. note and CC events).  Since the audio
+     * thread currently drives all processing, and the audio thread runs at 48 khz, we can get
+     * away with processing exactly one midi packet per audio frame.  This prevents accidentally
+     * dropping note events and removes the need for explicit caching of values for things like
+     * CC codes.
+     *
+     * As such, PopMidiMessage is intended to only be called ONCE per audio frame.
+     */
+    bool PopMidiMessage(MidiMessage& Message);
 
 private:
     DECLARE_TRACEABLE_MUTEX(PendingMidiCrit);
-    std::vector<MidiMessage> PendingMidiMessages;
+    std::deque<MidiMessage> PendingMidiMessages;
 };
 
 

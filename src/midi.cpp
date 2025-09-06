@@ -54,26 +54,26 @@ void MidiHandler::EnqueueMidiMessage(MidiMessage& Message)
 
     TRACEABLE_LOCK_GUARD(PendingMidiCrit);
 
-    // See notes about reallocation in MidiHandler::SwapMidiMessageQueue.
     PendingMidiMessages.push_back(Message);
 }
 
 
-void MidiHandler::SwapMidiMessageQueue(std::vector<MidiMessage>& MessageQueue)
+bool MidiHandler::PopMidiMessage(MidiMessage& Message)
 {
     TRACEABLE_SCOPE;
 
     TRACEABLE_LOCK_GUARD(PendingMidiCrit);
 
-    // NOTE: This swap pattern *allows* for the frequency of implicit array resizes to be
-    // reduced.  Because std::vector::clear is not supposed to change the capacity of the
-    // vector, if the vectors being swapped are both persistent, then both vectors will
-    // eventually reach equilibrium at some high water mark capacity.  Doing so has the
-    // tradeoff that the memory is never or only rarely freed.  If the caller does a full
-    // reset or passes a new vector in every time, then over-allocation is not a concern,
-    // but MidiHandler::EnqueueMidiMessage becomes more expensive.
-    MessageQueue.clear();
-    std::swap(PendingMidiMessages, MessageQueue);
+    if (PendingMidiMessages.empty())
+    {
+        return false;
+    }
+    else
+    {
+        Message = PendingMidiMessages.front();
+        PendingMidiMessages.pop_front();
+        return true;
+    }
 }
 
 

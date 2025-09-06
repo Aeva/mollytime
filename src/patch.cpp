@@ -2220,14 +2220,8 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
     {
         TRACEABLE_NAMED_SCOPE("MIDI PHASE");
 
-        // NOTE: SwapMidiMessageQueue leaves room for a potential perf optimization that we are
-        // not taking advantage of.  If you decide that array resizes triggered by midi events
-        // are problematic for performance, make local variable "MessageQueue" a member variable
-        // of Scratch and change nothing else.
-        std::vector<MidiMessage> MessageQueue;
-        SwapMidiMessageQueue(MessageQueue);
-
-        for (MidiMessage& Message : MessageQueue)
+        MidiMessage Message;
+        if (PopMidiMessage(Message))
         {
             MidiChannelState& State = MidiChannels[Message.Channel];
             if (Message.Type == MidiMessageType::Note)
