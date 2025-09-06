@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pygame_setup
+from . import pygame_setup
 import pygame
 
-from fonts import *
-from colors import *
-from more_math import *
+from .fonts import *
+from .colors import *
+from .more_math import *
 
 
 class tile_viewport:

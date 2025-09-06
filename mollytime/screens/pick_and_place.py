@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mollytime import OpCode, get_symbol_name
+from ..mollytime import OpCode, get_symbol_name
 from .common import *
 
 

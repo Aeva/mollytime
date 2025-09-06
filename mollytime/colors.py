@@ -16,7 +16,7 @@
 import os
 import sys
 import glob
-import mollytime
+from . import mollytime
 
 
 ColorSpace = mollytime.ColorSpace
