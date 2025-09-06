@@ -41,7 +41,7 @@ endif
 # ---
 # Python
 
-python_install = py.find_installation()
+python_install = py.find_installation(pure : false)
 python = python_install.full_path()
 
 # ---
@@ -119,16 +119,16 @@ endif
 # mollytime library
 
 source_files += [
-    'src/alsa_midi.cpp',
-    'src/audio_backend.cpp',
-    'src/colors.cpp',
-    'src/errors.cpp',
-    'src/jack_stream.cpp',
-    'src/midi.cpp',
-    'src/patch.cpp',
-    'src/perf.cpp',
-    'src/py_api.cpp',
-    'src/wasapi_stream.cpp'
+    'src' / 'alsa_midi.cpp',
+    'src' / 'audio_backend.cpp',
+    'src' / 'colors.cpp',
+    'src' / 'errors.cpp',
+    'src' / 'jack_stream.cpp',
+    'src' / 'midi.cpp',
+    'src' / 'patch.cpp',
+    'src' / 'perf.cpp',
+    'src' / 'py_api.cpp',
+    'src' / 'wasapi_stream.cpp'
 ]
 
 python_install.extension_module(
@@ -137,5 +137,53 @@ python_install.extension_module(
     include_directories : include_dirs,
     dependencies : dependencies,
     install : true,
-    subdir : project_dir / 'mollytime'
+    subdir : 'mollytime'
+)
+
+python_install.install_sources(
+    [
+        'mollytime' / '__init__.py',
+        'mollytime' / '__main__.py',
+        'mollytime' / 'colors.py',
+        'mollytime' / 'fonts.py',
+        'mollytime' / 'more_math.py',
+        'mollytime' / 'patterns.py',
+        'mollytime' / 'perf.py',
+        'mollytime' / 'power.py',
+        'mollytime' / 'pygame_setup.py',
+        'mollytime' / 'media' / '__init__.py',
+        'mollytime' / 'screens' / '__init__.py',
+        'mollytime' / 'screens' / 'calc.py',
+        'mollytime' / 'screens' / 'common.py',
+        'mollytime' / 'screens' / 'connect.py',
+        'mollytime' / 'screens' / 'inspect.py',
+        'mollytime' / 'screens' / 'pick_and_place.py',
+        'mollytime' / 'screens' / 'scope.py',
+        'mollytime' / 'screens' / 'select.py'
+    ],
+    preserve_path : true
+)
+
+install_data(
+    [
+        'mollytime' / 'media' / 'afacad' / 'Afacad-Italic-VariableFont_wght.ttf',
+        'mollytime' / 'media' / 'afacad' / 'Afacad-VariableFont_wght.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Bold.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-BoldItalic.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Italic.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Medium.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-MediumItalic.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Regular.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-SemiBold.ttf',
+        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-SemiBoldItalic.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-Bold.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-ExtraBold.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-ExtraLight.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-Light.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-Medium.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-Regular.ttf',
+        'mollytime' / 'media' / 'national_park' / 'NationalPark-SemiBold.ttf',
+    ],
+    install_dir : python_install.get_install_dir(),
+    preserve_path : true
 )
