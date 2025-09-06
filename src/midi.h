@@ -26,6 +26,7 @@ enum class MidiMessageType : uint8_t
 {
     Note,
     PolyPress,
+    ControlChange,
 };
 
 
@@ -48,6 +49,14 @@ struct MidiHandler
     }
 
     void NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel);
+
+    /* Handles a regular 7-bit control change event.
+     */
+    void ControlChange7Bit(uint8_t Control, uint8_t Value, uint8_t Channel);
+
+    /* Handles a 14-bit control change event.
+     */
+    void ControlChange14Bit(uint8_t Control, uint16_t Value, uint8_t Channel);
 
     void EnqueueMidiMessage(MidiMessage& Message);
 

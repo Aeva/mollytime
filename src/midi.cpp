@@ -39,11 +39,41 @@ void MidiHandler::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
 
 void MidiHandler::NotePressure(uint8_t Note, uint8_t Pressure, uint8_t Channel)
 {
+    TRACEABLE_SCOPE;
+
     MidiMessage Event;
     Event.Type = MidiMessageType::PolyPress;
     Event.Channel = Channel;
     Event.Param1 = double(Note);
     Event.Param2 = double(Pressure) / 127.0;
+    EnqueueMidiMessage(Event);
+}
+
+
+void MidiHandler::ControlChange7Bit(uint8_t Control, uint8_t Value, uint8_t Channel)
+{
+    TRACEABLE_SCOPE;
+
+    MidiMessage Event;
+    Event.Type = MidiMessageType::ControlChange;
+    Event.Channel = Channel;
+    Event.Param1 = double(Control);
+    Event.Param2 = double(Value) / 127.0;
+    EnqueueMidiMessage(Event);
+
+    //std::print("Control Change: param {} -> value {} (channel {})\n", Control, Event.Param2, Channel);
+}
+
+
+void MidiHandler::ControlChange14Bit(uint8_t Control, uint16_t Value, uint8_t Channel)
+{
+    TRACEABLE_SCOPE;
+
+    MidiMessage Event;
+    Event.Type = MidiMessageType::ControlChange;
+    Event.Channel = Channel;
+    Event.Param1 = double(Control);
+    Event.Param2 = std::min(double(Value) / 16383.0, 1.0); // educated guess
     EnqueueMidiMessage(Event);
 }
 

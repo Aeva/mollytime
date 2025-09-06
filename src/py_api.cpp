@@ -175,6 +175,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("NOTE", OpCode::NOTE)
 		.value("VELO", OpCode::VELO)
 		.value("PRES", OpCode::PRES)
+		.value("CTRL", OpCode::CTRL)
 		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)
 		.value("BOOP", OpCode::BOOP)

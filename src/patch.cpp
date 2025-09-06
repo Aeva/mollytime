@@ -227,6 +227,7 @@ struct SymbolInfo
         Set(OpCode::NOTE, "note", {"channel"}, {"note"});
         Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
         Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
+        Set(OpCode::CTRL, "control\nchange", {"channel", "control"}, {"value"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
@@ -1126,6 +1127,33 @@ struct PressureThunk : public InstructionThunk
     }
 
     virtual ~PressureThunk() {};
+};
+
+
+struct ControlChangeThunk : public InstructionThunk
+{
+    Scratch* Program;
+    std::vector<RunningStateSharedPtr> Channel;
+    std::vector<RunningStateSharedPtr> Control;
+    RunningStateSharedPtr Output;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
+
+        int EventChannel = int(Combine(CombinerAdd, Channel, 0.0));
+        double EventParam = Combine(CombinerAdd, Control, 0.0);
+        if (EventChannel >= 0 && EventChannel <= 15)
+        {
+            MidiChannelState& State = Program->MidiChannels[EventChannel];
+            if (State.CtrlParam->Get() == EventParam)
+            {
+                Output->Set(State.CtrlValue->Get());
+            }
+        }
+    }
+
+    virtual ~ControlChangeThunk() {};
 };
 
 
@@ -2116,6 +2144,15 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
+            else if (Symbol == OpCode::CTRL)
+            {
+                auto Thunk = std::make_shared<ControlChangeThunk>();
+                Thunk->Program = Program.get();
+                Thunk->Channel = Inputs[0];
+                Thunk->Control = Inputs[1];
+                Thunk->Output = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
             else if (Symbol == OpCode::MIDI_HZ)
             {
                 auto Thunk = std::make_shared<MidiToHzThunk>();
@@ -2249,6 +2286,11 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                 {
                     State.Pressure->Set(Pressure);
                 }
+            }
+            else if (Message.Type == MidiMessageType::ControlChange)
+            {
+                State.CtrlParam->Set(Message.Param1);
+                State.CtrlValue->Set(Message.Param2);
             }
         }
     }

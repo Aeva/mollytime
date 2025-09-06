@@ -95,6 +95,14 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
     {
         Handler->NotePressure(Event->data.note.note, Event->data.note.velocity, Event->data.note.channel);
     }
+    else if (Event->type == SND_SEQ_EVENT_CONTROLLER)
+    {
+        Handler->ControlChange7Bit(Event->data.control.param, Event->data.control.value, Event->data.control.channel);
+    }
+    else if (Event->type == SND_SEQ_EVENT_CONTROL14)
+    {
+        Handler->ControlChange14Bit(Event->data.control.param, Event->data.control.value, Event->data.control.channel);
+    }
 #if 0
     else if (Event->type == SND_SEQ_EVENT_PGMCHANGE)
     {

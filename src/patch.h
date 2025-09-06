@@ -84,6 +84,7 @@ enum class OpCode : uint32_t
     NOTE,
     VELO,
     PRES,
+    CTRL,
     MIDI_HZ,
     LOUD_FUDGE,
     BOOP,
@@ -235,6 +236,9 @@ struct MidiChannelState
     RunningStateSharedPtr Note = std::make_shared<RunningState>(50.0);
     RunningStateSharedPtr Velocity = std::make_shared<RunningState>(0.0);
     RunningStateSharedPtr Pressure = std::make_shared<RunningState>(0.0);
+
+    RunningStateSharedPtr CtrlParam = std::make_shared<RunningState>(0.0);
+    RunningStateSharedPtr CtrlValue = std::make_shared<RunningState>(0.0);
 };
 
 
