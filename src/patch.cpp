@@ -227,7 +227,7 @@ struct SymbolInfo
         Set(OpCode::NOTE, "note", {"channel"}, {"note"});
         Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
         Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
-        Set(OpCode::CTRL, "control\nchange", {"channel", "control"}, {"value"});
+        Set(OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
@@ -1133,8 +1133,8 @@ struct PressureThunk : public InstructionThunk
 struct ControlChangeThunk : public InstructionThunk
 {
     Scratch* Program;
-    std::vector<RunningStateSharedPtr> Channel;
     std::vector<RunningStateSharedPtr> Control;
+    std::vector<RunningStateSharedPtr> Channel;
     RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
@@ -2148,8 +2148,8 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<ControlChangeThunk>();
                 Thunk->Program = Program.get();
-                Thunk->Channel = Inputs[0];
-                Thunk->Control = Inputs[1];
+                Thunk->Control = Inputs[0];
+                Thunk->Channel = Inputs[1];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
