@@ -116,7 +116,7 @@ if get_option('tracy').enabled()
 endif
 
 # ---
-# mollytime library
+# File lists
 
 source_files += [
     'src' / 'alsa_midi.cpp',
@@ -131,59 +131,92 @@ source_files += [
     'src' / 'wasapi_stream.cpp'
 ]
 
-python_install.extension_module(
-    'mollytime',
-    source_files,
-    include_directories : include_dirs,
-    dependencies : dependencies,
-    install : true,
-    subdir : 'mollytime'
-)
+python_files = [
+    'mollytime' / '__init__.py',
+    'mollytime' / '__main__.py',
+    'mollytime' / 'colors.py',
+    'mollytime' / 'fonts.py',
+    'mollytime' / 'more_math.py',
+    'mollytime' / 'patterns.py',
+    'mollytime' / 'perf.py',
+    'mollytime' / 'power.py',
+    'mollytime' / 'pygame_setup.py',
+    'mollytime' / 'media' / '__init__.py',
+    'mollytime' / 'screens' / '__init__.py',
+    'mollytime' / 'screens' / 'calc.py',
+    'mollytime' / 'screens' / 'common.py',
+    'mollytime' / 'screens' / 'connect.py',
+    'mollytime' / 'screens' / 'inspect.py',
+    'mollytime' / 'screens' / 'pick_and_place.py',
+    'mollytime' / 'screens' / 'scope.py',
+    'mollytime' / 'screens' / 'select.py'
+]
 
-python_install.install_sources(
-    [
-        'mollytime' / '__init__.py',
-        'mollytime' / '__main__.py',
-        'mollytime' / 'colors.py',
-        'mollytime' / 'fonts.py',
-        'mollytime' / 'more_math.py',
-        'mollytime' / 'patterns.py',
-        'mollytime' / 'perf.py',
-        'mollytime' / 'power.py',
-        'mollytime' / 'pygame_setup.py',
-        'mollytime' / 'media' / '__init__.py',
-        'mollytime' / 'screens' / '__init__.py',
-        'mollytime' / 'screens' / 'calc.py',
-        'mollytime' / 'screens' / 'common.py',
-        'mollytime' / 'screens' / 'connect.py',
-        'mollytime' / 'screens' / 'inspect.py',
-        'mollytime' / 'screens' / 'pick_and_place.py',
-        'mollytime' / 'screens' / 'scope.py',
-        'mollytime' / 'screens' / 'select.py'
-    ],
-    preserve_path : true
-)
+data_files = [
+    'mollytime' / 'media' / 'afacad' / 'Afacad-Italic-VariableFont_wght.ttf',
+    'mollytime' / 'media' / 'afacad' / 'Afacad-VariableFont_wght.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Bold.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-BoldItalic.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Italic.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Medium.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-MediumItalic.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Regular.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-SemiBold.ttf',
+    'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-SemiBoldItalic.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-Bold.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-ExtraBold.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-ExtraLight.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-Light.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-Medium.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-Regular.ttf',
+    'mollytime' / 'media' / 'national_park' / 'NationalPark-SemiBold.ttf',
+]
 
-install_data(
-    [
-        'mollytime' / 'media' / 'afacad' / 'Afacad-Italic-VariableFont_wght.ttf',
-        'mollytime' / 'media' / 'afacad' / 'Afacad-VariableFont_wght.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Bold.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-BoldItalic.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Italic.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Medium.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-MediumItalic.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Regular.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-SemiBold.ttf',
-        'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-SemiBoldItalic.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-Bold.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-ExtraBold.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-ExtraLight.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-Light.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-Medium.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-Regular.ttf',
-        'mollytime' / 'media' / 'national_park' / 'NationalPark-SemiBold.ttf',
-    ],
-    install_dir : python_install.get_install_dir(),
-    preserve_path : true
-)
+# ---
+# Final outputs
+
+# Development workflow. "I'm actively iterating on the project. I want you to compile the cpp module as
+# as fast as possible, and then put it right next to the Python source, where I can run and debug
+# without any additional fuss."
+if get_option('workflow') == 'development'
+    # Compile and install the extension module directly to `mollytime/`.
+    python_install.extension_module(
+        'mollytime',
+        source_files,
+        include_directories : include_dirs,
+        dependencies : dependencies,
+        install : true,
+        install_dir : project_dir / 'mollytime'
+    )
+
+# Packaging workflow. "I want to produce a clean, complete, release-mode sdist and wheel for
+# distributing the project. It can take as long as it needs."
+elif get_option('workflow') == 'packaging'
+    # Compile and install the extension module in `<packaging root>/mollytime/`.
+    python_install.extension_module(
+        'mollytime',
+        source_files,
+        include_directories : include_dirs,
+        dependencies : dependencies,
+        install : true,
+        subdir : 'mollytime'
+    )
+
+    # Install the Python source files in `<packaging root>/<source file path>`, preserving
+    # relative directories. This means that e.g. `mollytime/screens/calc.py` will map to
+    # `<packaging root>/mollytime/screens/calc.py`.
+    python_install.install_sources(
+        python_files,
+        preserve_path : true
+    )
+
+    # Install the data files in `<packaging root>/<source file path>`, preserving relative
+    # directories. This means that e.g. `mollytime/media/national_park/NationalPark-Bold.ttf`
+    # will map to `<packaging root>/mollytime/media/national_park/NationalPark-Bold.ttf`.
+    install_data(
+        data_files,
+        install_dir : python_install.get_install_dir(),
+        preserve_path : true
+    )
+
+endif
