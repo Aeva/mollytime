@@ -16,18 +16,22 @@
 #pragma once
 
 #include "midi.h"
+#include <vector>
+#include <cstdint>
+
 
 class MmeApiMidiDriver final : public MidiDriver
 {
-    /*struct _snd_seq *SeqHandle = nullptr;
-    int MidiInPort = -1;
-    int MidiOutPort = -1;
-	*/
+    std::vector<uint32_t> PendingPackets;
+    DECLARE_TRACEABLE_MUTEX(PendingPacketsCrit);
+
+    void CloseInputPort(int Port);
+    bool OpenInputPort(int Port);
 
 public:
     MmeApiMidiDriver();
     virtual ~MmeApiMidiDriver() override;
 
     void ProcessEvents(MidiHandler* Handler) override;
-
+    void NewMidiInputPacket(uint32_t Packet);
 };

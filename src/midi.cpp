@@ -14,7 +14,12 @@
 // limitations under the License.#include "midi.h"
 
 #include "midi.h"
+
+#ifdef MIDI_ALSA
 #include "alsa_midi.h"
+#elifdef MIDI_MMEAPI
+#include "mmeapi_midi.h"
+#endif
 
 #include <utility>
 #include <memory>
@@ -60,8 +65,6 @@ void MidiHandler::ControlChange7Bit(uint8_t Control, uint8_t Value, uint8_t Chan
     Event.Param1 = double(Control);
     Event.Param2 = double(Value) / 127.0;
     EnqueueMidiMessage(Event);
-
-    //std::print("Control Change: param {} -> value {} (channel {})\n", Control, Event.Param2, Channel);
 }
 
 
@@ -120,6 +123,8 @@ void Midi::Init()
 {
 #ifdef MIDI_ALSA
     Driver = std::make_unique<AlsaMidiDriver>();
+#elifdef MIDI_MMEAPI
+    Driver = std::make_unique<MmeApiMidiDriver>();
 #else
     std::println("No MIDI driver is available.");
 #endif
