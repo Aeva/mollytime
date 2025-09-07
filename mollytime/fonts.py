@@ -15,9 +15,9 @@
 
 import os
 
-import pygame_setup
+from . import pygame_setup
 import pygame
-from colors import *
+from .colors import *
 
 AFACAD_REGULAR = "afacad/static/Afacad-Regular.ttf"
 NATIONAL_PARK_LIGHT = "national_park/NationalPark-Light.ttf"

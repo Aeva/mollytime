@@ -1,3 +1,4 @@
+option('workflow', type : 'combo', choices: ['development', 'packaging'], value: 'development')
 option('audio_backend', type : 'combo', choices: ['none', 'jack', 'wasapi'])
 option('midi_backend', type : 'combo', choices: ['none', 'alsa'])
 option('boost_stacktrace', type : 'feature', value : 'auto')

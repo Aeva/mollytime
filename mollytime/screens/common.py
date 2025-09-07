@@ -17,16 +17,16 @@ import time
 import random
 from xml.etree import ElementTree
 
-import pygame_setup
+from .. import pygame_setup
 import pygame
 
-from fonts import *
-from colors import *
-from patterns import *
-from perf import profile_function
-from power import poll_battery
+from ..fonts import *
+from ..colors import *
+from ..patterns import *
+from ..perf import profile_function
+from ..power import poll_battery
 
-from mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
+from ..mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
 
 
 battery_level = None

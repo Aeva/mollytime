@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mollytime import profiling_enabled, profiling_scope
+from .mollytime import profiling_enabled, profiling_scope
 
 
 def profile_function(name):

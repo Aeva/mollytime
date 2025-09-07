@@ -20,16 +20,16 @@ import sys
 import platform
 import subprocess
 
-import pygame_setup
+from . import pygame_setup
 import pygame
 
-import mollytime
+from . import mollytime
 
-from fonts import *
-from colors import *
-from patterns import *
-from screens.common import program_card
-from screens.inspect import inspect_screen
+from .fonts import *
+from .colors import *
+from .patterns import *
+from .screens.common import program_card
+from .screens.inspect import inspect_screen
 
 operating_system = platform.system()
 
