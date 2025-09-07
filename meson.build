@@ -72,6 +72,9 @@ endif
 if get_option('midi_backend') == 'alsa'
     dependencies += compiler.find_library('asound', required : true)
     add_project_arguments('-DMIDI_ALSA=1', language: 'cpp')
+elif get_option('midi_backend') == 'mmeapi'
+    dependencies += compiler.find_library('RuntimeObject', required : true)
+    add_project_arguments('-DMIDI_MMEAPI=1', language : 'cpp')
 endif
 
 # ---
@@ -125,6 +128,7 @@ source_files += [
     'src/errors.cpp',
     'src/jack_stream.cpp',
     'src/midi.cpp',
+    'src/mmeapi_midi.cpp',
     'src/patch.cpp',
     'src/perf.cpp',
     'src/py_api.cpp',
