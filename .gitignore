@@ -1,4 +1,7 @@
 __pycache__/
 *.so
+*.lib
+*.pdb
+*.pyd
 *.kate-swp
 build/
