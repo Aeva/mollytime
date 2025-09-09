@@ -296,6 +296,10 @@ struct Patch
     std::string GetTileInputName(PortHandle Port);
     std::string GetTileOutputName(PortHandle Port);
 
+    void Freeze();
+    void Unfreeze();
+    bool GetFrozen();
+
     void Connect(PortHandle OutputPort, PortHandle InputPort);
     void Disconnect(PortHandle OutputPort, PortHandle InputPort);
     void ToggleConnection(PortHandle OutputPort, PortHandle InputPort);
@@ -322,4 +326,6 @@ private:
 
     void Recompile();
     ScratchSharedPtr Compile();
+
+    bool Frozen = false;
 };

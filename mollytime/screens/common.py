@@ -285,6 +285,15 @@ class program_card:
         tile_size = self.grid_size * 3
         return (int(rel[0] // tile_size), int(rel[1] // tile_size))
 
+    def freeze(self):
+        return self.patch.freeze()
+
+    def unfreeze(self):
+        return self.patch.unfreeze()
+
+    def is_frozen(self):
+        return self.patch.get_frozen()
+
     def toggle_connection(self, out_key, in_key):
         self.patch.toggle_connection(out_key, in_key)
 
@@ -374,11 +383,16 @@ class program_card:
         self.select_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
 
+        self.heat_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 1))
+
         self.inspect_target = plate_bg(self.grid_size, self.tile_color, "inspect")
         self.inspect_active = plate_bg(self.grid_size, self.select_color, "inspect")
 
         self.select_target = plate_bg(self.grid_size, self.tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
+
+        self.freeze_patch = plate_bg(self.grid_size, self.tile_color, "freeze\npatch")
+        self.unfreeze_patch = plate_bg(self.grid_size, self.heat_color, "thaw\npatch")
 
         self.move_target = plate_bg(self.grid_size, self.tile_color, "pick\n&\nplace")
         self.move_active = plate_bg(self.grid_size, self.select_color, "pick\n&\nplace")

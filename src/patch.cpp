@@ -1622,6 +1622,25 @@ std::string Patch::GetTileOutputName(PortHandle Port)
 }
 
 
+void Patch::Freeze()
+{
+    Frozen = true;
+}
+
+
+void Patch::Unfreeze()
+{
+    Frozen = false;
+    Recompile();
+}
+
+
+bool Patch::GetFrozen()
+{
+    return Frozen;
+}
+
+
 void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
 {
     TRACEABLE_SCOPE;
@@ -2246,8 +2265,11 @@ ScratchSharedPtr Patch::Compile()
 void Patch::Recompile()
 {
     TRACEABLE_SCOPE;
-    ScratchSharedPtr CurrentProgram = Compile();
-    Audio::GetStream()->ProgramChange(CurrentProgram);
+    if (!Frozen)
+    {
+        ScratchSharedPtr CurrentProgram = Compile();
+        Audio::GetStream()->ProgramChange(CurrentProgram);
+    }
 }
 
 

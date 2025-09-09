@@ -123,6 +123,7 @@ class inspect_screen(editor_screen):
 
     def goto_select_screen(self, editor):
         overlay = select_screen(editor)
+        editor.unfreeze()
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True
