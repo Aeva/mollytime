@@ -401,8 +401,9 @@ struct NoiThunk : public InstructionThunk
         int Before = int(Phase * 4.0);
         Phase += Hz * SampleInterval;
         int After = int(Phase * 4.0);
-        if (Before < After)
+        if ((Hz >= 0 && Before < After) || (Before > After))
         {
+            // TODO: the backwards case is not quite right?
             After %= 4;
             if (After == 1)
             {
