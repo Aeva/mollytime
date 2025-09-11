@@ -308,6 +308,10 @@ struct SqrThunk : public InstructionThunk
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
         double Sign = Phase < 0.5 ? 1.0 : -1.0;
         OutAmplitude->Set(Sign);
     }
@@ -329,6 +333,10 @@ struct TriThunk : public InstructionThunk
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
         double Sign = Phase < 0.5 ? 1.0 : -1.0;
         double IntegerPart = 0.0;
         double Alpha = std::modf(Phase * 4.0, &IntegerPart);
@@ -356,6 +364,10 @@ struct SawThunk : public InstructionThunk
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
         /*
         double Sign = Phase < 0.5 ? 1.0 : -1.0;
         double IntegerPart = 0.0;
