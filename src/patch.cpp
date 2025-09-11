@@ -1213,7 +1213,7 @@ struct BlankTape : public MagicTape
 
     void Reset(double InSeconds)
     {
-        Seconds = InSeconds;
+        Seconds = std::max(0.0, InSeconds);
         size_t SampleCount = size_t(Seconds * double(SampleRate));
         Samples.clear();
         Samples.resize(SampleCount, 0.0);
