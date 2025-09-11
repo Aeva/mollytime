@@ -27,6 +27,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <cmath>
 
 #include "perf.h"
 #include "alsa_midi.h"
@@ -195,7 +196,14 @@ struct ProbeRunningState
     {
         TRACEABLE_LOCK_GUARD(Crit);
         Reset = true;
-        return { SampleMin, SampleMax };
+        if (HandedNaN)
+        {
+            return { 1.0, -1.0 };
+        }
+        else
+        {
+            return { SampleMin, SampleMax };
+        }
     }
     void Set(double NewSample)
     {
@@ -203,11 +211,17 @@ struct ProbeRunningState
         if (Reset)
         {
             Reset = false;
+            HandedNaN = false;
             SampleMin = NewSample;
             SampleMax = NewSample;
         }
         else
         {
+            if (std::isnan(NewSample))
+            {
+                HandedNaN = true;
+            }
+
             SampleMin = std::min(SampleMin, NewSample);
             SampleMax = std::max(SampleMax, NewSample);
         }
@@ -217,6 +231,7 @@ private:
     double SampleMin;
     double SampleMax;
     double Reset = 0;
+    bool HandedNaN = false;
     DECLARE_TRACEABLE_MUTEX(Crit);
 };
 
