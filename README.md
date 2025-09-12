@@ -38,13 +38,12 @@ please let me know and I'll write them down here.
 
 ## "I want to work on / quickly try out the project!"
 
-Run these:
+Run this:
 - `python mollybuild.py setup <mode> <toolchain>`
-- `python mollybuild.py build`
 
-That's it. The C++ extension module will be placed directly alongside the Python
-source files, so you can just run `python -m mollytime` to test, and rerun `build`
-only when you change C++ source code.
+That's it! Now just run `python -m mollytime` to launch the project. When you do,
+the C++ extension module will be automatically recompiled if you've changed any
+source files since the last run..
 
 You can see supported `<mode>`s and `<toolchain>`s by checking command help:
 - `python mollybuild.py setup -h`
@@ -74,6 +73,7 @@ Mollytime uses the [Meson](https://mesonbuild.com/) build system, and leverages
 
 If you'd prefer to build "manually," you'll need to install these dependencies:
 - `pip install meson`
+- `pip install meson-python`
 - `pip install ninja`
 - `pip install pybind11`
 - `pip install pygame`
@@ -83,22 +83,26 @@ Native environment config files are provided for the Meson build, in `build_nati
 You'll want to specify a build mode (`mode-<mode>.ini`), and a toolchain
 (`toolchain-<os>-<tools>.ini`).
 
-For an iterative development workflow, specify `-Dworkflow=development` on `setup`.
-Then, you can just `compile` and `install` to place the extension module next to
-the project's Python source files. Example:
+For an iterative development workflow, run `pip install` for an editable wheel:
 ```
-meson setup -Dworkflow=development --native-file=build_native/win32-clang.ini --native-file=build_native/debug.ini build
-meson compile -C build
-meson install -C build
+pip install
+    -Ceditable-verbose=true
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<mode>.ini
+    --editable .
 ```
 
 If all goes well, you will then be able to run Mollytime like so:
  - `python -m mollytime`
 
 To package, run this lovely incantation, with your toolchain of choice:
-- `python -m build -Csetup-args=-Dworkflow=packaging -Csetup-args=--native-file=<absolute_path_to>/build_native/release.ini -Csetup-args=--native-file=<absolute_path_to>/build_native/<toolchain>.ini`
+```
+python -m build
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/release.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini`
+```
 
-Yes, you do need absolute paths.
+Yes, you do need absolute paths for both.
 
 ## "I don't even want to use the native .ini files! I'll configure it all myself!"
 
