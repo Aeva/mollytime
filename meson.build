@@ -173,50 +173,31 @@ data_files = [
 ]
 
 # ---
-# Final outputs
+# Targets
 
-# Development workflow. "I'm actively iterating on the project. I want you to compile the cpp module as
-# as fast as possible, and then put it right next to the Python source, where I can run and debug
-# without any additional fuss."
-if get_option('workflow') == 'development'
-    # Compile and install the extension module directly to `mollytime/`.
-    python_install.extension_module(
-        'mollytime',
-        source_files,
-        include_directories : include_dirs,
-        dependencies : dependencies,
-        install : true,
-        install_dir : project_dir / 'mollytime'
-    )
+# Compile and install the extension module in `<install root>/mollytime/`.
+python_install.extension_module(
+    'mollytime',
+    source_files,
+    include_directories : include_dirs,
+    dependencies : dependencies,
+    install : true,
+    subdir : 'mollytime'
+)
 
-# Packaging workflow. "I want to produce a clean, complete, release-mode sdist and wheel for
-# distributing the project. It can take as long as it needs."
-elif get_option('workflow') == 'packaging'
-    # Compile and install the extension module in `<packaging root>/mollytime/`.
-    python_install.extension_module(
-        'mollytime',
-        source_files,
-        include_directories : include_dirs,
-        dependencies : dependencies,
-        install : true,
-        subdir : 'mollytime'
-    )
+# Install the Python source files in `<install root>/<source file path>`, preserving
+# relative directories. This means that e.g. `mollytime/screens/calc.py` will map to
+# `<install root>/mollytime/screens/calc.py`.
+python_install.install_sources(
+    python_files,
+    preserve_path : true
+)
 
-    # Install the Python source files in `<packaging root>/<source file path>`, preserving
-    # relative directories. This means that e.g. `mollytime/screens/calc.py` will map to
-    # `<packaging root>/mollytime/screens/calc.py`.
-    python_install.install_sources(
-        python_files,
-        preserve_path : true
-    )
-
-    # Install the data files in `<packaging root>/<source file path>`, preserving relative
-    # directories. This means that e.g. `mollytime/media/national_park/NationalPark-Bold.ttf`
-    # will map to `<packaging root>/mollytime/media/national_park/NationalPark-Bold.ttf`.
-    install_data(
-        data_files,
-        install_dir : python_install.get_install_dir(),
-        preserve_path : true
-    )
-
-endif
+# Install the data files in `<install root>/<source file path>`, preserving relative
+# directories. This means that e.g. `mollytime/media/national_park/NationalPark-Bold.ttf`
+# will map to `<install root>/mollytime/media/national_park/NationalPark-Bold.ttf`.
+install_data(
+    data_files,
+    install_dir : python_install.get_install_dir(),
+    preserve_path : true
+)
