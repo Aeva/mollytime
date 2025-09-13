@@ -25,9 +25,9 @@ def _get_dependencies(dependencies: list[str]):
 # We have no recourse to prevent this. The meson-python CLI args are hardcoded.
 # See: `mesonpy/__init__.py`, `_configure()`
 # 
-# To work around this, see if our native files have any of the overriden values, and extract
+# To work around this, see if our native files have any of the overridden values, and extract
 # them to pass in as CLI overrides. The options we're interested in are close enough to .ini
-# format that CnofigParser will suffice; we just need to strip the '' quotes from values.
+# format that ConfigParser will suffice; we just need to strip the '' quotes from values.
 def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     args: list[str] = []
     mode_config = ConfigParser()
