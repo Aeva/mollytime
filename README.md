@@ -87,10 +87,16 @@ For an iterative development workflow, run `pip install` for an editable wheel:
 ```
 pip install
     -Ceditable-verbose=true
-    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini
-    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<mode>.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/toolchain-<toolchain>.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-<mode>.ini
+    -Cbuildtype=<mode>
     --editable .
 ```
+
+> Note that you have to manually specify the `buildtype`. This is due to an oversight in
+> meson-python: its [built-in option overrides](https://mesonbuild.com/meson-python/explanations/default-options.html)
+> are hardcoded as CLI args, meaning they always take priority over our native files.
+> We have to claim even-higher priority by passing in our own CLI override.
 
 If all goes well, you will then be able to run Mollytime like so:
  - `python -m mollytime`
@@ -98,7 +104,7 @@ If all goes well, you will then be able to run Mollytime like so:
 To package, run this lovely incantation, with your toolchain of choice:
 ```
 python -m build
-    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/release.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-release.ini
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini`
 ```
 

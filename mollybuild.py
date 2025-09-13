@@ -3,12 +3,47 @@ import subprocess
 import sys
 
 from argparse import ArgumentParser, Namespace
+from configparser import ConfigParser
 from pathlib import Path
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
     pip_result = subprocess.run(pip_args)
     return pip_result.returncode
+
+# HACK: UGH: So, meson-python "helpfully" overrides some built-in Meson options:
+# - `buildtype  = release`
+# - `b_ndebug   = if-release`
+# - `b_vscrt    = md`
+# 
+# See: https://mesonbuild.com/meson-python/explanations/default-options.html
+# 
+# These overrides are passed in via the CLI. While meson-python ensures that our `setup-args`
+# are passed in next, and thus theoretically given higher priority, that doesn't actually work
+# in all cases: we define our build options using native files, which are always lower-priority
+# than CLI args, regardless of their CLI position. That means our native file options are ignored.
+# We have no recourse to prevent this. The meson-python CLI args are hardcoded.
+# See: `mesonpy/__init__.py`, `_configure()`
+# 
+# To work around this, see if our native files have any of the overriden values, and extract
+# them to pass in as CLI overrides. The options we're interested in are close enough to .ini
+# format that CnofigParser will suffice; we just need to strip the '' quotes from values.
+def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
+    args: list[str] = []
+    mode_config = ConfigParser()
+    mode_config.read(native_file)
+
+    def _parse_arg(name: str):
+        arg = mode_config.get("built-in options", name, fallback = None)
+        if arg != None:
+            arg = arg.strip("'")
+            args.append(f"-Csetup-args=-D{name}={arg}")
+
+    _parse_arg("buildtype")
+    _parse_arg("b_ndebug")
+    _parse_arg("b_vscrt")
+    
+    return args
 
 def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
@@ -33,6 +68,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
         if mode_file != None:
             mode_arg = f"--native-file={mode_file.resolve()}"
             install_args += [ f"-Csetup-args={mode_arg}" ]
+            install_args += _HACK_extract_override_overrides(mode_file)
     
     # Gather toolchain config, if specified.
     toolchain_name = args_dict.get("toolchain", None)
@@ -41,6 +77,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
         if toolchain_file != None:
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             install_args += [ f"-Csetup-args={toolchain_arg}" ]
+            install_args += _HACK_extract_override_overrides(toolchain_file)
     
     # Go.
     install_args += [ "--editable", "." ]
