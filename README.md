@@ -89,7 +89,7 @@ pip install
     -Ceditable-verbose=true
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/toolchain-<toolchain>.ini
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-<mode>.ini
-    -Cbuildtype=<mode>
+    -Csetup-args=-Dbuildtype=<mode>
     --editable .
 ```
 
