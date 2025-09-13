@@ -12,41 +12,39 @@ def _get_dependencies(dependencies: list[str]):
 
 def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    pip_result = _get_dependencies([ "meson", "ninja", "pybind11", "pygame" ])
+    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pygame" ])
     if pip_result != 0:
         return pip_result
 
-    # Prepare to execute `meson setup`.
+    # Prepare to execute a local, editable `pip install`.
+    # This will have meson-python automatically run `meson setup`, and then add a launcher shim
+    # that automatically recompiles our extension module(s) when running the module locally.
     args_dict = vars(args)
-    setup_args = [ "meson", "setup", "-Dworkflow=development" ]
+    install_args = [ sys.executable, "-m", "pip", "install", "--no-build-isolation" ]
+
+    # This isn't that "verbose," it's just the normal `meson compile` output.
+    # We really need this, because it includes compile errors!
+    install_args += [ "-Ceditable-verbose=true" ]
     
     # Gather mode config, if specified.
     mode_name = args_dict.get("mode", None)
     if mode_name != None:
         mode_file = modes.get(mode_name, None)
         if mode_file != None:
-            setup_args += [ "--native-file", str(mode_file.resolve()) ]
+            mode_arg = f"--native-file={mode_file.resolve()}"
+            install_args += [ f"-Csetup-args={mode_arg}" ]
     
     # Gather toolchain config, if specified.
     toolchain_name = args_dict.get("toolchain", None)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
-            setup_args += [ "--native-file", str(toolchain_file.resolve()) ]
+            toolchain_arg = f"--native-file={toolchain_file.resolve()}"
+            install_args += [ f"-Csetup-args={toolchain_arg}" ]
     
     # Go.
-    setup_args += [ "build" ]
-    setup_result = subprocess.run(setup_args)
-    return setup_result.returncode
-
-def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
-    # Compile.
-    compile_result = subprocess.run([ "meson", "compile", "-C", "build" ])
-    if compile_result.returncode != 0:
-        return compile_result.returncode
-
-    # If successful, install.
-    install_result = subprocess.run([ "meson", "install", "--no-rebuild", "-C", "build" ])
+    install_args += [ "--editable", "." ]
+    install_result = subprocess.run(install_args)
     return install_result.returncode
 
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
@@ -102,14 +100,14 @@ if __name__ == "__main__":
         prog = "mollybuild",
         description = \
             "Concise build helper."
-            "\nFor an iterative 'development' workflow, run `setup`, then `build`."
+            "\nFor an iterative 'development' workflow, run `setup`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run."
             "\nWhen you're ready to distribute, run `package`.",
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
 
     # `setup` command
-    setup_parser = subparsers.add_parser("setup", help = "Development: Set up a development build environment.")
+    setup_parser = subparsers.add_parser("setup", help = "Development: Set up a development build environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
     setup_parser.set_defaults(command = setup)
     setup_parser.add_argument(
         "mode",
@@ -121,10 +119,6 @@ if __name__ == "__main__":
         help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
         choices = toolchains.keys()
     )
-
-    # `build` command
-    build_parser = subparsers.add_parser("build", help = "Development: Execute the build environment created by `setup`.")
-    build_parser.set_defaults(command = build)
 
     # `package` command
     package_parser = subparsers.add_parser("package", help = "Release: Build a distributable Python package (sdist and wheel).")
