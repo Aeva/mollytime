@@ -43,8 +43,6 @@ mollytime.init_audio(48000)
 pygame.display.init()
 pygame.font.init()
 
-print(sys.argv)
-
 dump_icon = False
 icon_size = 32
 if len(sys.argv) >= 2 and sys.argv[1] == "icon":
