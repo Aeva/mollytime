@@ -26,6 +26,7 @@
 
 #include "errors.h"
 #include "patch.h"
+#include "moon.h"
 #include "audio_backend.h"
 
 constexpr double Tau = std::numbers::pi * 2.0;
@@ -232,6 +233,7 @@ struct SymbolInfo
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
         Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
+        Set(OpCode::TIDE, "tide", {"time", "lat", "long"}, {"cos"});
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -258,16 +260,6 @@ int GetClosureCount(OpCode Symbol)
     return SymbolInfoMap.Closures[(int)Symbol];
 }
 
-
-double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
-{
-    double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
-    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
-    {
-        Result = Combiner(Result, Inputs[Index]->Get());
-    }
-    return Result;
-}
 
 static const auto CombinerAdd = [](double LHS, double RHS) -> double { return LHS +RHS; };
 static const auto CombinerMul = [](double LHS, double RHS) -> double { return LHS *RHS; };
@@ -2220,6 +2212,16 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->LastOffset = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
                 Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+            }
+            else if (Symbol == OpCode::TIDE)
+            {
+                auto Thunk = std::make_shared<TideThunk>();
+                Thunk->TimePoint = Inputs[0];
+                Thunk->Longitude = Inputs[1];
+                Thunk->Latitude = Inputs[2];
+                Thunk->OutCosine = Outputs[0];
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return nullptr;
             }
             return nullptr;
         }

@@ -125,6 +125,7 @@ source_files += [
     'src' / 'errors.cpp',
     'src' / 'jack_stream.cpp',
     'src' / 'midi.cpp',
+    'src' / 'moon.cpp',
     'src' / 'patch.cpp',
     'src' / 'perf.cpp',
     'src' / 'py_api.cpp',

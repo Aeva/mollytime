@@ -90,6 +90,7 @@ enum class OpCode : uint32_t
     LOUD_FUDGE,
     BOOP,
     TAPE_LOOP,
+    TIDE,
     Count
 };
 
@@ -236,6 +237,17 @@ private:
 };
 
 using ProbeRunningStateSharedPtr = std::shared_ptr<ProbeRunningState>;
+
+
+inline double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
+{
+    double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
+    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
+    {
+        Result = Combiner(Result, Inputs[Index]->Get());
+    }
+    return Result;
+}
 
 
 struct InstructionThunk
