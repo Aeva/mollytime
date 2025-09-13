@@ -194,6 +194,7 @@ struct SymbolInfo
         Set(OpCode::OUT, "out", {"out"}, {});
         Set(OpCode::AUX, "aux", {"out"}, {});
         Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
+        Set(OpCode::SIN_EX, "gold\nplated\nsin", {"hz"}, {"amp"}, 1);
         Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
         Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
         Set(OpCode::SAW, "saw", {"hz"}, {"amp"}, 1);
@@ -292,6 +293,39 @@ struct SinThunk : public InstructionThunk
     }
 
     virtual ~SinThunk() {};
+};
+
+
+struct GoldPlatedSinThunk : public InstructionThunk
+{
+    std::vector<RunningStateSharedPtr> InFrequencyHz;
+    RunningStateSharedPtr OutAmplitude = nullptr;
+    RunningStateSharedPtr ActivePhase = nullptr;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("GoldPlatedSinThunk");
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
+        double Phase = ActivePhase->Get();
+        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+        ActivePhase->Set(Phase);
+        {
+            // https://mastodon.gamedev.place/@jon_valdes/115196002317755747
+            // https://www.shadertoy.com/view/dtlyD8
+            double X = Phase * Tau;
+            double X2 = X * X;
+            double Result = 1.0;
+            double N = 30;
+            for(; N > 1.0; --N)
+            {
+                double D = (2.0 * N - 1.0) * (2.0 * N - 2.0);
+                Result = 1. - Result * X2 / D;
+            }
+            OutAmplitude->Set(X * Result);
+        }
+    }
+
+    virtual ~GoldPlatedSinThunk() {};
 };
 
 
@@ -1872,6 +1906,15 @@ ScratchSharedPtr Patch::Compile()
             if (Symbol == OpCode::SIN)
             {
                 auto Thunk = std::make_shared<SinThunk>();
+                Thunk->InFrequencyHz = Inputs[0];
+                Thunk->OutAmplitude = Outputs[0];
+                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return nullptr;
+            }
+            else if (Symbol == OpCode::SIN_EX)
+            {
+                auto Thunk = std::make_shared<GoldPlatedSinThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
                 Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));

@@ -52,6 +52,7 @@ enum class OpCode : uint32_t
     OUT,
     AUX,
     SIN,
+    SIN_EX,
     SQR,
     TRI,
     SAW,
