@@ -20,11 +20,7 @@
 #include "patch.h"
 #include "moon.h"
 
-
-// TODO: redundant to definition in patch.cpp
-static const auto CombinerAdd = [](double LHS, double RHS) -> double { return LHS +RHS; };
-
-
+#if 0
 static constexpr double ToRadians = std::numbers::pi / 180.0;
 static constexpr double ToDegrees = 180.0 / std::numbers::pi;
 
@@ -190,6 +186,23 @@ static void TruncatedElp(const double T, double& EclipticLongitude, double& Ecli
     // the book Astronomical Algorithms or is truncated from a more elaborate algorithm in that
     // book.
 
+    // Geocentric ecliptic coordinates, expressed in degrees.
+    // https://github.com/mourner/suncalc/blob/7ccde2118968e21e47db573e34757258275943ae/suncalc.js#L166
+    // suggests to me that these should be named "right ascension" and "declination", but further
+    // review of the source of https://www.celestialprogramming.com/meeus-elp82.html suggests that
+    // no, this is not the case, and an additional transform would be needed for this to be the case.
+
+    // Elsewhere on the celestialprogramming webpage is mention of a lower precision algorithm
+    // from the Astronomical Almanac.  The page makes no mention of license or public domain, so
+    // I will not be transcribing it.  However, it looks like a printed version of the almanac is
+    // available https://bookstore.gpo.gov/products/astronomical-almanac-year-2025 though it is
+    // unclear if that will make anything easier.
+
+    // It occurs to me that if I have topocentric(?) horizontal coordinates ("altitude h" and
+    // "azimuth alpha" mentioned at the start of http://www.geoastro.de/elevazmoon/basics/index.htm)
+    // then I can get something similar to what I wanted in the first place from just the altitude h.
+    // So, std::cos(DegreesToRadians(90 - AltitudeH))
+
     EclipticLongitude = 0.0;
     EclipticLatitude = 0.0;
     RadiusKm = 0.0;
@@ -267,12 +280,13 @@ static void TruncatedElp(const double T, double& EclipticLongitude, double& Ecli
     EclipticLatitude = (EclipticLatitude + aLat) / 1000000.0;
     RadiusKm = 385000.56 + RadiusKm / 1000.0;
 }
+#endif
 
 
 void TideThunk::Crank(double SampleInterval)
 {
     TRACEABLE_NAMED_SCOPE("TideThunk");
-
+#if 0
     /* TODO: Maybe it would be better to calculate the Julian date at program start, and corresponding
      * std::chrono::steady_clock time point, and just use that internally?  Can steady_clock be assumed
      * to be consistent between threads?  A date time node would have a more complex conversion.
@@ -306,6 +320,7 @@ void TideThunk::Crank(double SampleInterval)
      * TODO: Translate the ecliptic coordinates into a pair of vectors, normalize them, and then stuff
      * their dot product into the output register.
      */
+#endif
 
     OutCosine->Set(1.0);
 }

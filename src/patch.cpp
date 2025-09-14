@@ -261,12 +261,6 @@ int GetClosureCount(OpCode Symbol)
 }
 
 
-static const auto CombinerAdd = [](double LHS, double RHS) -> double { return LHS +RHS; };
-static const auto CombinerMul = [](double LHS, double RHS) -> double { return LHS *RHS; };
-static const auto CombinerMin = [](double LHS, double RHS) -> double { return std::min(LHS, RHS); };
-static const auto CombinerMax = [](double LHS, double RHS) -> double { return std::max(LHS, RHS); };
-
-
 struct SinThunk : public InstructionThunk
 {
     std::vector<RunningStateSharedPtr> InFrequencyHz;

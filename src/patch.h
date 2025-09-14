@@ -239,6 +239,30 @@ private:
 using ProbeRunningStateSharedPtr = std::shared_ptr<ProbeRunningState>;
 
 
+inline double CombinerAdd(double LHS, double RHS)
+{
+    return LHS + RHS;
+}
+
+
+inline double CombinerMul(double LHS, double RHS)
+{
+    return LHS * RHS;
+}
+
+
+inline double CombinerMin(double LHS, double RHS)
+{
+    return std::min(LHS, RHS);
+}
+
+
+inline double CombinerMax(double LHS, double RHS)
+{
+    return std::max(LHS, RHS);
+}
+
+
 inline double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
 {
     double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
