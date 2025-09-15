@@ -62,6 +62,7 @@ static double MoonPosition(double JulianDate, double ObserverLatitude, double Ob
     // The number of days since noon (UTC) January 1st, 2000.
     const double Days = JulianDate - J2000;
     const double Hours = Days / 24.0;
+    //const double Seconds = Hours / (60.0 * 60.0);
 
     // Obliquity of the ecliptic as of D == 0.0, in degrees:
     const double Epsilon = 23.4397;
@@ -104,8 +105,8 @@ static double MoonPosition(double JulianDate, double ObserverLatitude, double Ob
     // TODO: calculate sidereal time: https://aa.quae.nl/en/reken/hemelpositie.html#1_8
     // Apparently lower case "l" is the observer's geographic longitude, uppercase theta
     // is sidereal time at the prime meridian, and lowercase theta is local sidereal time.
-    const double EarthPie = 102.937; // Degrees
-    const double EarthM = 357.529; // Degrees
+    const double EarthPie = 102.937 * Days; // Degrees
+    const double EarthM = 357.529 * Days; // Degrees
     const double PrimeSiderealTime = std::fmod(EarthM + EarthPie + 15 * Hours, 360.0); // Degrees
     const double SiderealTime = std::fmod(PrimeSiderealTime - ObserverLongitude, 360.0); // Degrees
 
@@ -120,8 +121,8 @@ static double MoonPosition(double JulianDate, double ObserverLatitude, double Ob
     const double CosDeclination = std::cos(Declination * ToRadians);
     const double CosHourAngle = std::cos(HourAngle * ToRadians);
 
-    // Not degrees:
-    double AltitudeH = std::asin(SinObsLat * SinDeclination + CosObsLat * CosDeclination * CosHourAngle);
+    // Degrees
+    double AltitudeH = std::asin(SinObsLat * SinDeclination + CosObsLat * CosDeclination * CosHourAngle) * ToDegrees;
     return AltitudeH;
 }
 
@@ -161,5 +162,6 @@ void MoonThunk::Crank(double SampleInterval)
         CurrentDate += AccumulatedTime / 86400.0;
     }
 
-    Altitude->Set(MoonPosition(CurrentDate, ObserverLatitude, ObserverLongitude));
+    double AltitudeH = MoonPosition(CurrentDate, ObserverLatitude, ObserverLongitude);
+    Altitude->Set(AltitudeH / 90.0);
 }
