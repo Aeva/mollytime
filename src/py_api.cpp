@@ -180,7 +180,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)
 		.value("BOOP", OpCode::BOOP)
 		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
-		.value("TIDE", OpCode::TIDE)
+		.value("MOON", OpCode::MOON)
 		.value("Count", OpCode::Count);
 
 	m.def("make_port_handle", &MakePortHandle);

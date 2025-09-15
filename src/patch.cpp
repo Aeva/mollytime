@@ -233,7 +233,7 @@ struct SymbolInfo
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
         Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
-        Set(OpCode::TIDE, "tide", {"time", "lat", "long"}, {"cos"});
+        Set(OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"}, 2);
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -2207,13 +2207,16 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
-            else if (Symbol == OpCode::TIDE)
+            else if (Symbol == OpCode::MOON)
             {
-                auto Thunk = std::make_shared<TideThunk>();
-                Thunk->TimePoint = Inputs[0];
+                auto Thunk = std::make_shared<MoonThunk>();
+                Thunk->Latitude = Inputs[0];
                 Thunk->Longitude = Inputs[1];
-                Thunk->Latitude = Inputs[2];
-                Thunk->OutCosine = Outputs[0];
+                Thunk->JulianDate = Inputs[2];
+                Thunk->Speed = Inputs[3];
+                Thunk->Altitude = Outputs[0];
+                Thunk->OriginDate = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ElapsedSeconds = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }

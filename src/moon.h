@@ -18,14 +18,20 @@
 #include "patch.h"
 
 
-struct TideThunk : public InstructionThunk
+struct MoonThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> TimePoint;
-    std::vector<RunningStateSharedPtr> Longitude;
     std::vector<RunningStateSharedPtr> Latitude;
-    RunningStateSharedPtr OutCosine = nullptr;
+    std::vector<RunningStateSharedPtr> Longitude;
+    std::vector<RunningStateSharedPtr> JulianDate;
+    std::vector<RunningStateSharedPtr> Speed;
+    RunningStateSharedPtr Altitude = nullptr;
+
+    // If JulianDate was unset, then this will cache the current Julian Date
+    // at the time the tile was activated.
+    RunningStateSharedPtr OriginDate = nullptr;
+    RunningStateSharedPtr ElapsedSeconds = nullptr;
 
     virtual void Crank(double SampleInterval) override;
 
-    virtual ~TideThunk() {};
+    virtual ~MoonThunk() {};
 };

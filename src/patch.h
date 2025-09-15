@@ -90,7 +90,7 @@ enum class OpCode : uint32_t
     LOUD_FUDGE,
     BOOP,
     TAPE_LOOP,
-    TIDE,
+    MOON,
     Count
 };
 
