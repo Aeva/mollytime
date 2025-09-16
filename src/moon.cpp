@@ -150,6 +150,7 @@ void MoonThunk::Crank(double SampleInterval)
             // saved in the closure register.  You can express this date explicitly, in
             // which case the closure register is ignored.
             CurrentDate = GetCurrentJulianDate();
+            OriginDate->Set(CurrentDate);
         }
     }
     {
