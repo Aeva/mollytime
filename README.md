@@ -51,6 +51,14 @@ You can see supported `<mode>`s and `<toolchain>`s by checking command help:
 If you omit the toolchain, it'll detect your system "default." This might work
 even if your system default isn't on the supported list, but it might not.
 
+## "I want to build a 'exe'!"
+
+After `setup`, run this:
+- `python mollybuild.py exe`
+
+This uses [Pyinstaller](https://pyinstaller.org/) to bundle the project & its
+dependencies into a single-file executable, output to a `dist` subfolder.
+
 ## "I want to package the project for distribution!"
 
 Run this:
@@ -76,6 +84,7 @@ If you'd prefer to build "manually," you'll need to install these dependencies:
 - `pip install meson-python`
 - `pip install ninja`
 - `pip install pybind11`
+- `pip install pyinstaller`
 - `pip install pygame`
 - `pip install build`
 
@@ -90,6 +99,7 @@ pip install
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/toolchain-<toolchain>.ini
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-<mode>.ini
     -Csetup-args=-Dbuildtype=<mode>
+    -Ccompile-args=-mollytime<python-extension-suffix>
     --editable .
 ```
 
@@ -97,9 +107,17 @@ pip install
 > meson-python: its [built-in option overrides](https://mesonbuild.com/meson-python/explanations/default-options.html)
 > are hardcoded as CLI args, meaning they always take priority over our native files.
 > We have to claim even-higher priority by passing in our own CLI override.
+>
+> Further note the need for an extension suffix on the the `compiler-args`. Without this,
+> meson-python will unnecessarily build the Pyinstaller target, wasting a minute or more of
+> time. Getting that suffix is up to you; or just omit the args, if you don't mind the wait.
 
 If all goes well, you will then be able to run Mollytime like so:
  - `python -m mollytime`
+
+To build an executable, compile & install the target through the Meson project:
+- `meson compile -C <the build dir> mollytime-exe`
+- `meson install -C <the build dir> --tags=exe`
 
 To package, run this lovely incantation, with your toolchain of choice:
 ```
