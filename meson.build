@@ -108,7 +108,7 @@ if get_option('tracy').enabled()
     tracy_dir = 'third_party' / 'tracy-0.12.2' / 'public'
     add_project_arguments('-DTRACY_ENABLE', language: 'cpp')
     include_dirs += include_directories(tracy_dir)
-    source_files += tracy_dir / 'TracyClient.cpp'
+    source_files += files(tracy_dir / 'TracyClient.cpp')
 
     if build_machine.system() != 'windows'
         dependencies += dependency('threads')
@@ -118,7 +118,7 @@ endif
 # ---
 # File lists
 
-source_files += [
+source_files += files(
     'src' / 'alsa_midi.cpp',
     'src' / 'audio_backend.cpp',
     'src' / 'colors.cpp',
@@ -130,9 +130,9 @@ source_files += [
     'src' / 'perf.cpp',
     'src' / 'py_api.cpp',
     'src' / 'wasapi_stream.cpp'
-]
+)
 
-python_files = [
+python_files = files(
     'mollytime' / '__init__.py',
     'mollytime' / '__main__.py',
     'mollytime' / 'colors.py',
@@ -151,9 +151,9 @@ python_files = [
     'mollytime' / 'screens' / 'pick_and_place.py',
     'mollytime' / 'screens' / 'scope.py',
     'mollytime' / 'screens' / 'select.py'
-]
+)
 
-data_files = [
+data_files = files(
     'mollytime' / 'media' / 'afacad' / 'Afacad-Italic-VariableFont_wght.ttf',
     'mollytime' / 'media' / 'afacad' / 'Afacad-VariableFont_wght.ttf',
     'mollytime' / 'media' / 'afacad' / 'static' / 'Afacad-Bold.ttf',
@@ -171,7 +171,7 @@ data_files = [
     'mollytime' / 'media' / 'national_park' / 'NationalPark-Medium.ttf',
     'mollytime' / 'media' / 'national_park' / 'NationalPark-Regular.ttf',
     'mollytime' / 'media' / 'national_park' / 'NationalPark-SemiBold.ttf',
-]
+)
 
 # ---
 # Targets
