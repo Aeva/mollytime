@@ -6,3 +6,10 @@ __pycache__/
 *.pyd
 *.kate-swp
 build/
+dist/
+.mesonpy*/
+
+.venv/
+.vscode/
+.clinkscales/
+clinkbuild.bat
