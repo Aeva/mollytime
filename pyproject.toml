@@ -15,3 +15,6 @@ readme = "README.md"
 dependencies = [
     "pygame"
 ]
+
+[tool.meson-python.args]
+install = [ "--tags=package" ]

@@ -1,6 +1,8 @@
 import os
+import platform
 import subprocess
 import sys
+import sysconfig
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
@@ -47,7 +49,7 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
 
 def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pygame" ])
+    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller", "pygame" ])
     if pip_result != 0:
         return pip_result
 
@@ -79,8 +81,34 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
             install_args += [ f"-Csetup-args={toolchain_arg}" ]
             install_args += _HACK_extract_override_overrides(toolchain_file)
     
+    # Only compile targets that are useful for an editable install (i.e. not pyinstaller).
+    extension_module_suffix = sysconfig.get_config_var("EXT_SUFFIX")
+    editable_target_names = ( f"mollytime{extension_module_suffix}", )
+    
+    for target_name in editable_target_names:
+        install_args += [ f"-Ccompile-args={target_name}"]
+
     # Go.
-    install_args += [ "--editable", "." ]
+    install_args += [ "-v", "--editable", "." ]
+    install_result = subprocess.run(install_args)
+    return install_result.returncode
+
+def exe(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+    # Get the build directory. Meson-python will set this to './build/cpXX`,
+    # where XX is the Python major & minor version number, w/o decimal separators.
+    major, minor, _ = platform.python_version().split(".")
+    build_dir_local = Path("build") / f"cp{major}{minor}"
+
+    # If this doesn't exist, the user probably forgot to run `setup`.
+    this_dir = Path(__file__).parent
+    build_dir = this_dir / build_dir_local
+    if not build_dir.exists():
+        print(f"Error: I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
+        return 1
+    
+    # Invoke `meson install` on the pyinstaller target only. This will trigger
+    # a recompile, if needed.
+    install_args = [ "meson", "install", "--tags=exe", "-C", str(build_dir.resolve()) ]
     install_result = subprocess.run(install_args)
     return install_result.returncode
 
@@ -92,8 +120,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
-    workflow_arg = "-Dworkflow=packaging"
-    setup_args = [ sys.executable, "-m", "build", f"-Csetup-args={workflow_arg}" ]
+    setup_args = [ sys.executable, "-m", "build" ]
 
     # Always package in `release` mode.
     mode_file = modes["release"]
@@ -165,6 +192,10 @@ if __name__ == "__main__":
         help = "Toolchain to build with. If unspecified, uses your system default.",
         choices = toolchains.keys()
     )
+
+    # `exe` command
+    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `setup` first.")
+    exe_parser.set_defaults(command = exe)
 
     # Go
     args = parser.parse_args()

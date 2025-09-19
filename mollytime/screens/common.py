@@ -649,7 +649,7 @@ class editor_screen:
                 self.force_redraw = True
 
             elif event.type == pygame.QUIT:
-                exit(0)
+                sys.exit(0)
 
             # else:
             #     # attempt to determine what mystery events are
