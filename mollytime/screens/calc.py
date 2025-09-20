@@ -16,9 +16,9 @@
 import operator
 from .common import *
 
-from fonts import *
-from colors import *
-from patterns import *
+from ..fonts import *
+from ..colors import *
+from ..patterns import *
 
 
 class calculator_screen(editor_screen):

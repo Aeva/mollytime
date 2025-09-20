@@ -26,6 +26,7 @@
 
 #include "errors.h"
 #include "patch.h"
+#include "moon.h"
 #include "audio_backend.h"
 
 constexpr double Tau = std::numbers::pi * 2.0;
@@ -227,11 +228,12 @@ struct SymbolInfo
         Set(OpCode::NOTE, "note", {"channel"}, {"note"});
         Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
         Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
-        Set(OpCode::CTRL, "control\nchange", {"channel", "control"}, {"value"});
+        Set(OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"});
         Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
         Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
         Set(OpCode::BOOP, "boop", {}, {"gate"});
         Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
+        Set(OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"}, 2);
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -257,22 +259,6 @@ int GetClosureCount(OpCode Symbol)
 {
     return SymbolInfoMap.Closures[(int)Symbol];
 }
-
-
-double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
-{
-    double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
-    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
-    {
-        Result = Combiner(Result, Inputs[Index]->Get());
-    }
-    return Result;
-}
-
-static const auto CombinerAdd = [](double LHS, double RHS) -> double { return LHS +RHS; };
-static const auto CombinerMul = [](double LHS, double RHS) -> double { return LHS *RHS; };
-static const auto CombinerMin = [](double LHS, double RHS) -> double { return std::min(LHS, RHS); };
-static const auto CombinerMax = [](double LHS, double RHS) -> double { return std::max(LHS, RHS); };
 
 
 struct SinThunk : public InstructionThunk
@@ -308,6 +294,10 @@ struct SqrThunk : public InstructionThunk
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
         double Sign = Phase < 0.5 ? 1.0 : -1.0;
         OutAmplitude->Set(Sign);
     }
@@ -329,6 +319,10 @@ struct TriThunk : public InstructionThunk
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
         double Sign = Phase < 0.5 ? 1.0 : -1.0;
         double IntegerPart = 0.0;
         double Alpha = std::modf(Phase * 4.0, &IntegerPart);
@@ -356,6 +350,10 @@ struct SawThunk : public InstructionThunk
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         ActivePhase->Set(Phase);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
         /*
         double Sign = Phase < 0.5 ? 1.0 : -1.0;
         double IntegerPart = 0.0;
@@ -389,8 +387,9 @@ struct NoiThunk : public InstructionThunk
         int Before = int(Phase * 4.0);
         Phase += Hz * SampleInterval;
         int After = int(Phase * 4.0);
-        if (Before < After)
+        if ((Hz >= 0 && Before < After) || (Before > After))
         {
+            // TODO: the backwards case is not quite right?
             After %= 4;
             if (After == 1)
             {
@@ -1133,8 +1132,8 @@ struct PressureThunk : public InstructionThunk
 struct ControlChangeThunk : public InstructionThunk
 {
     Scratch* Program;
-    std::vector<RunningStateSharedPtr> Channel;
     std::vector<RunningStateSharedPtr> Control;
+    std::vector<RunningStateSharedPtr> Channel;
     RunningStateSharedPtr Output;
 
     virtual void Crank(double SampleInterval) override
@@ -1213,7 +1212,7 @@ struct BlankTape : public MagicTape
 
     void Reset(double InSeconds)
     {
-        Seconds = InSeconds;
+        Seconds = std::max(0.0, InSeconds);
         size_t SampleCount = size_t(Seconds * double(SampleRate));
         Samples.clear();
         Samples.resize(SampleCount, 0.0);
@@ -1501,7 +1500,14 @@ std::string Patch::GetTileName(TileHandle Tile)
     {
         return std::format("aux {}", Tile);
     }
-    else
+    else if (Symbol == OpCode::OUT)
+    {
+        auto Found = OutputTileNames.find(Tile);
+        if (Found != OutputTileNames.end())
+        {
+            return Found->second;
+        }
+    }
     {
         auto Found = TileNames.find(Tile);
         if (Found == TileNames.end())
@@ -1619,6 +1625,25 @@ std::string Patch::GetTileOutputName(PortHandle Port)
     OpCode Symbol = GetTileSymbol(PortHandleTilePart(Port));
     uint32_t PortIndex = PortHandlePortIndexPart(Port);
     return SymbolInfoMap.OutputNames[(int)Symbol][PortIndex];
+}
+
+
+void Patch::Freeze()
+{
+    Frozen = true;
+}
+
+
+void Patch::Unfreeze()
+{
+    Frozen = false;
+    Recompile();
+}
+
+
+bool Patch::GetFrozen()
+{
+    return Frozen;
 }
 
 
@@ -2148,8 +2173,8 @@ ScratchSharedPtr Patch::Compile()
             {
                 auto Thunk = std::make_shared<ControlChangeThunk>();
                 Thunk->Program = Program.get();
-                Thunk->Channel = Inputs[0];
-                Thunk->Control = Inputs[1];
+                Thunk->Control = Inputs[0];
+                Thunk->Channel = Inputs[1];
                 Thunk->Output = Outputs[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
@@ -2189,12 +2214,33 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
+            else if (Symbol == OpCode::MOON)
+            {
+                auto Thunk = std::make_shared<MoonThunk>();
+                Thunk->Latitude = Inputs[0];
+                Thunk->Longitude = Inputs[1];
+                Thunk->JulianDate = Inputs[2];
+                Thunk->Speed = Inputs[3];
+                Thunk->Altitude = Outputs[0];
+                Thunk->OriginDate = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ElapsedSeconds = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                return nullptr;
+            }
             return nullptr;
         }
     };
 
     std::vector<TileHandle> Scopes;
     Program->Outputs.clear();
+
+    // The graphs for output tiles are staged here so that they can be named and
+    // assigned to physical audio outputs deterministically.  The output with the
+    // lowest tile ID is assigned to the left channel (or the mono output if there
+    // is only one), the next lowest is the right channel, and the rest are
+    // ignored (and labeled accordingly).
+    std::map<TileHandle, RunningStateSharedPtr> AcceptedOutputs;
+
     for (const auto& [Tile, Symbol] : TileSymbols)
     {
         if (Symbol == OpCode::TAPE_LOOP)
@@ -2212,7 +2258,7 @@ ScratchSharedPtr Patch::Compile()
             RunningStateSharedPtr Output = Step(Tile);
             if (Output != nullptr)
             {
-                Program->Outputs.push_back(Output);
+                AcceptedOutputs[Tile] = Output;
             }
         }
         else if (Symbol == OpCode::AUX)
@@ -2228,6 +2274,10 @@ ScratchSharedPtr Patch::Compile()
             Scopes.push_back(Tile);
         }
     }
+    for (const auto& [Tile, Output] : AcceptedOutputs)
+    {
+        Program->Outputs.push_back(Output);
+    }
     for (const TileHandle& Tile : Scopes)
     {
         RunningStateSharedPtr Output = Step(Tile);
@@ -2239,6 +2289,28 @@ ScratchSharedPtr Patch::Compile()
         }
     }
 
+    OutputTileNames.clear();
+    if (AcceptedOutputs.size() >= 2)
+    {
+        int OutputIndex = 0;
+        for (const auto& [Tile, Output] : AcceptedOutputs)
+        {
+            if (OutputIndex == 0)
+            {
+                OutputTileNames[Tile] = "out\nleft";
+            }
+            else if (OutputIndex == 1)
+            {
+                OutputTileNames[Tile] = "out\nright";
+            }
+            else
+            {
+                OutputTileNames[Tile] = "ignored\nout";
+            }
+            ++OutputIndex;
+        }
+    }
+
     return Program;
 }
 
@@ -2246,8 +2318,11 @@ ScratchSharedPtr Patch::Compile()
 void Patch::Recompile()
 {
     TRACEABLE_SCOPE;
-    ScratchSharedPtr CurrentProgram = Compile();
-    Audio::GetStream()->ProgramChange(CurrentProgram);
+    if (!Frozen)
+    {
+        ScratchSharedPtr CurrentProgram = Compile();
+        Audio::GetStream()->ProgramChange(CurrentProgram);
+    }
 }
 
 

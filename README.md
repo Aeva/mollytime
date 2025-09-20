@@ -15,50 +15,124 @@ polish and several major features, and is not quite ready for prime time.
 
 # I want to use it anyway!
 
-Mollytime uses the [Meson](https://mesonbuild.com/) build system.
+Mollytime is a Python-based project, so you'll naturally need Python 3. Other Python
+package dependencies will be automatically acquired by the build system.
+These will go in your current environment, so setting up a `venv` is supported and
+recommended.
 
-Supported platforms, as in "we've tried these and it seems to work fine":
+You'll also need a C++ toolchain to build the core extension module. Supported
+platforms, as in "we've tried these and it seems to work fine":
 - Linux, via Clang or GCC, using glibc
 - Windows, via Clang or MSVC, using MSVC 2022
 
-Mollytime is a Python-based project, so you'll naturally need Python 3. Otherwise,
-most dependencies can be acquired via `pip`. (Setting up a virtual environment
-first is supported and recommended.)
-- `pip install meson`
-- `pip install ninja` (if using Meson's default Ninja backend)
-- `pip install pygame`
-- `pip install pybind11`
+Whatever you're using needs its binaries available on `PATH`.
 
 Other dependencies you'll currently need to acquire yourself:
 - JACK, if building with the JACK audio backend.
-- Windows 11 SDK (10.0.22621.5040) or newer, if building with the WASAPI backend. (Don't worry, it also works with Windows 10.)
+- Windows 11 SDK (10.0.22621.5040) or newer, if building with the WASAPI backend.
+  (Don't worry, it also works with Windows 10.)
 - `boost_stacktrace`, if building with stacktrace support.
 
 Once you have determined the correct versions of each of these dependencies,
 please let me know and I'll write them down here.
 
-Some native environment config files are provided for the Meson build. You'll
-want to specify a build mode (`debug.ini`, `profiling.ini`, or `release.ini`,) 
-and a toolchain (`<os>-<tools>.ini`). Then, you can just `build` and `install`.
-Example:
+## "I want to work on / quickly try out the project!"
+
+Run this:
+- `python mollybuild.py setup <mode> <toolchain>`
+
+That's it! Now just run `python -m mollytime` to launch the project. When you do,
+the C++ extension module will be automatically recompiled if you've changed any
+source files since the last run..
+
+You can see supported `<mode>`s and `<toolchain>`s by checking command help:
+- `python mollybuild.py setup -h`
+
+If you omit the toolchain, it'll detect your system "default." This might work
+even if your system default isn't on the supported list, but it might not.
+
+## "I want to build a 'exe'!"
+
+After `setup`, run this:
+- `python mollybuild.py exe`
+
+This uses [Pyinstaller](https://pyinstaller.org/) to bundle the project & its
+dependencies into a single-file executable, output to a `dist` subfolder.
+
+## "I want to package the project for distribution!"
+
+Run this:
+- `python mollybuild.py package <toolchain>`
+
+This executes [`build`](https://build.pypa.io/en/latest/) on the project, with all
+required settings pre-configured. An sdist and wheel will be output to a `dist`
+subfolder.
+
+You can see supported `<toolchain>`s by checking command help:
+- `python mollybuild.py package -h`
+
+If you omit the toolchain, it'll detect your system "default." This might work
+even if your system default isn't on the supported list, but it might not.
+
+# No, I want to build it all myself!
+
+Mollytime uses the [Meson](https://mesonbuild.com/) build system, and leverages
+[meson-python](https://mesonbuild.com/meson-python/) for packaging.
+
+If you'd prefer to build "manually," you'll need to install these dependencies:
+- `pip install meson`
+- `pip install meson-python`
+- `pip install ninja`
+- `pip install pybind11`
+- `pip install pyinstaller`
+- `pip install pygame`
+- `pip install build`
+
+Native environment config files are provided for the Meson build, in `build_native/`.
+You'll want to specify a build mode (`mode-<mode>.ini`), and a toolchain
+(`toolchain-<os>-<tools>.ini`).
+
+For an iterative development workflow, run `pip install` for an editable wheel:
 ```
-meson setup --native-file build_native/win32-clang.ini --native-file build_native/debug.ini build
-meson compile -C build
-meson install -C build
+pip install
+    -Ceditable-verbose=true
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/toolchain-<toolchain>.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-<mode>.ini
+    -Csetup-args=-Dbuildtype=<mode>
+    -Ccompile-args=-mollytime<python-extension-suffix>
+    --editable .
 ```
+
+> Note that you have to manually specify the `buildtype`. This is due to an oversight in
+> meson-python: its [built-in option overrides](https://mesonbuild.com/meson-python/explanations/default-options.html)
+> are hardcoded as CLI args, meaning they always take priority over our native files.
+> We have to claim even-higher priority by passing in our own CLI override.
+>
+> Further note the need for an extension suffix on the the `compiler-args`. Without this,
+> meson-python will unnecessarily build the Pyinstaller target, wasting a minute or more of
+> time. Getting that suffix is up to you; or just omit the args, if you don't mind the wait.
 
 If all goes well, you will then be able to run Mollytime like so:
+ - `python -m mollytime`
 
- - `python mollytime`
+To build an executable, compile & install the target through the Meson project:
+- `meson compile -C <the build dir> mollytime-exe`
+- `meson install -C <the build dir> --tags=exe`
 
-Note that any toolchain you request needs its binaries available on PATH,
-for both `setup` and `compile`.
+To package, run this lovely incantation, with your toolchain of choice:
+```
+python -m build
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-release.ini
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini`
+```
 
----
+Yes, you do need absolute paths for both.
 
-If you want to configure manually instead, look at `meson.options` to see available
-build options. You'll probably want to select an `audio_backend`, at minimum.
-Be sure to reference Meson's [built-in options](https://mesonbuild.com/Builtin-options.html)
-for anything not covered here, like whether or not to emit optimized builds.
+## "I don't even want to use the native .ini files! I'll configure it all myself!"
+
+Look at `meson.options` to see available build options. You'll probably want to
+select an `audio_backend`, at minimum. Be sure to reference Meson's
+[built-in options](https://mesonbuild.com/Builtin-options.html) for anything not
+covered here, like whether or not to emit optimized builds.
 
 > IMPORTANT: On Linux, you'll need to disable Meson's `b_asneeded` and `b_lundef` options.

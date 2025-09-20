@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mollytime import OpCode, get_symbol_name
+from ..mollytime import OpCode, get_symbol_name
 from .common import *
 
 
@@ -76,7 +76,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.SAW, OpCode.TPTSVF_LOWPASS],
                 [OpCode.BAL, OpCode.TPTSVF_BANDPASS],
                 ["next", OpCode.TPTSVF_HIGHPASS],
-                [None, OpCode.TPTSVF_NOTCH],
+                [OpCode.MOON, OpCode.TPTSVF_NOTCH],
                 [None, OpCode.CTRL],
             ]),
         ]

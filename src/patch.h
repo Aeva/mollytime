@@ -27,6 +27,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <cmath>
 
 #include "perf.h"
 #include "alsa_midi.h"
@@ -89,6 +90,7 @@ enum class OpCode : uint32_t
     LOUD_FUDGE,
     BOOP,
     TAPE_LOOP,
+    MOON,
     Count
 };
 
@@ -195,7 +197,14 @@ struct ProbeRunningState
     {
         TRACEABLE_LOCK_GUARD(Crit);
         Reset = true;
-        return { SampleMin, SampleMax };
+        if (HandedNaN)
+        {
+            return { 1.0, -1.0 };
+        }
+        else
+        {
+            return { SampleMin, SampleMax };
+        }
     }
     void Set(double NewSample)
     {
@@ -203,11 +212,17 @@ struct ProbeRunningState
         if (Reset)
         {
             Reset = false;
+            HandedNaN = false;
             SampleMin = NewSample;
             SampleMax = NewSample;
         }
         else
         {
+            if (std::isnan(NewSample))
+            {
+                HandedNaN = true;
+            }
+
             SampleMin = std::min(SampleMin, NewSample);
             SampleMax = std::max(SampleMax, NewSample);
         }
@@ -217,10 +232,46 @@ private:
     double SampleMin;
     double SampleMax;
     double Reset = 0;
+    bool HandedNaN = false;
     DECLARE_TRACEABLE_MUTEX(Crit);
 };
 
 using ProbeRunningStateSharedPtr = std::shared_ptr<ProbeRunningState>;
+
+
+inline double CombinerAdd(double LHS, double RHS)
+{
+    return LHS + RHS;
+}
+
+
+inline double CombinerMul(double LHS, double RHS)
+{
+    return LHS * RHS;
+}
+
+
+inline double CombinerMin(double LHS, double RHS)
+{
+    return std::min(LHS, RHS);
+}
+
+
+inline double CombinerMax(double LHS, double RHS)
+{
+    return std::max(LHS, RHS);
+}
+
+
+inline double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
+{
+    double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
+    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
+    {
+        Result = Combiner(Result, Inputs[Index]->Get());
+    }
+    return Result;
+}
 
 
 struct InstructionThunk
@@ -296,6 +347,10 @@ struct Patch
     std::string GetTileInputName(PortHandle Port);
     std::string GetTileOutputName(PortHandle Port);
 
+    void Freeze();
+    void Unfreeze();
+    bool GetFrozen();
+
     void Connect(PortHandle OutputPort, PortHandle InputPort);
     void Disconnect(PortHandle OutputPort, PortHandle InputPort);
     void ToggleConnection(PortHandle OutputPort, PortHandle InputPort);
@@ -313,6 +368,10 @@ private:
     // These should only ever be set or read by the audio thread:
     std::array<MidiChannelState, 16> MidiChannels;
 
+    // This is a cache of known output tiles for the purpose of labeling
+    // audio channels.  This is updated every time the program is compiled.
+    std::unordered_map<TileHandle, std::string> OutputTileNames;
+
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
     std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;
@@ -322,4 +381,6 @@ private:
 
     void Recompile();
     ScratchSharedPtr Compile();
+
+    bool Frozen = false;
 };

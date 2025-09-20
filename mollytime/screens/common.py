@@ -17,16 +17,16 @@ import time
 import random
 from xml.etree import ElementTree
 
-import pygame_setup
+from .. import pygame_setup
 import pygame
 
-from fonts import *
-from colors import *
-from patterns import *
-from perf import profile_function
-from power import poll_battery
+from ..fonts import *
+from ..colors import *
+from ..patterns import *
+from ..perf import profile_function
+from ..power import poll_battery
 
-from mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
+from ..mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
 
 
 battery_level = None
@@ -285,6 +285,15 @@ class program_card:
         tile_size = self.grid_size * 3
         return (int(rel[0] // tile_size), int(rel[1] // tile_size))
 
+    def freeze(self):
+        return self.patch.freeze()
+
+    def unfreeze(self):
+        return self.patch.unfreeze()
+
+    def is_frozen(self):
+        return self.patch.get_frozen()
+
     def toggle_connection(self, out_key, in_key):
         self.patch.toggle_connection(out_key, in_key)
 
@@ -374,11 +383,16 @@ class program_card:
         self.select_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
 
+        self.heat_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 1))
+
         self.inspect_target = plate_bg(self.grid_size, self.tile_color, "inspect")
         self.inspect_active = plate_bg(self.grid_size, self.select_color, "inspect")
 
         self.select_target = plate_bg(self.grid_size, self.tile_color, "select")
         self.select_active = plate_bg(self.grid_size, self.select_color, "select")
+
+        self.freeze_patch = plate_bg(self.grid_size, self.tile_color, "freeze\npatch")
+        self.unfreeze_patch = plate_bg(self.grid_size, self.heat_color, "thaw\npatch")
 
         self.move_target = plate_bg(self.grid_size, self.tile_color, "pick\n&\nplace")
         self.move_active = plate_bg(self.grid_size, self.select_color, "pick\n&\nplace")
@@ -635,7 +649,7 @@ class editor_screen:
                 self.force_redraw = True
 
             elif event.type == pygame.QUIT:
-                exit(0)
+                sys.exit(0)
 
             # else:
             #     # attempt to determine what mystery events are

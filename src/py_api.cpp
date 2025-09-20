@@ -180,6 +180,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)
 		.value("BOOP", OpCode::BOOP)
 		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
+		.value("MOON", OpCode::MOON)
 		.value("Count", OpCode::Count);
 
 	m.def("make_port_handle", &MakePortHandle);
@@ -210,6 +211,9 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("get_tile_output_ports", &Patch::GetTileOutputPorts)
 		.def("get_input_port_name", &Patch::GetTileInputName)
 		.def("get_output_port_name", &Patch::GetTileOutputName)
+		.def("freeze", &Patch::Freeze)
+		.def("unfreeze", &Patch::Unfreeze)
+		.def("get_frozen", &Patch::GetFrozen)
 		.def("connect_tiles", &Patch::Connect)
 		.def("disconnect_tiles", &Patch::Disconnect)
 		.def("toggle_connection", &Patch::ToggleConnection)

@@ -110,6 +110,10 @@ class scope_screen(editor_screen):
             draw_arrow(frame, self.wire_color, lhs_rect, rhs_rect, radius)
 
         min_sample, max_sample = editor.patch.read_scope_probe()
+        is_nan = min_sample == 1.0 and max_sample == -1.0
+        if is_nan:
+            min_sample, max_sample = max_sample, min_sample
+
         abs_sample = max(abs(min_sample), abs(max_sample))
 
         frame_start = time.time()
@@ -124,7 +128,12 @@ class scope_screen(editor_screen):
         beam_rect = pygame.rect.Rect((self.last_x, max_beam_y), (w, h))
         clear_rect = pygame.rect.Rect((self.last_x, 0), (w, editor.play_rect.h))
 
-        beam_color = self.beam_color if abs_sample <= 1.0 else (255, 0, 0)
+        beam_color = self.beam_color
+        if is_nan:
+            beam_color = (255, 0, 255)
+        elif abs_sample > 1.0:
+            beam_coolor = (255, 0, 0)
+
         pygame.draw.rect(frame, (0, 0, 0), clear_rect)
         pygame.draw.rect(frame, beam_color, beam_rect)
 

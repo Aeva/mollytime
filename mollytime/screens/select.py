@@ -41,14 +41,27 @@ class select_screen(editor_screen):
 
         active_icon = editor.select_active
 
+        toggle_frozen_rect = pygame.Rect(
+            editor.grid_size,
+            2 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        if editor.is_frozen():
+            toggle_frozen_icon = editor.unfreeze_patch
+            toggle_frozen = self.goto_unfrozen
+        else:
+            toggle_frozen_icon = editor.freeze_patch
+            toggle_frozen = self.goto_frozen
+
         self.side_bar_targets = [
             (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
-            (active_rect, active_icon, None)]
+            (active_rect, active_icon, None),
+            (toggle_frozen_rect, toggle_frozen_icon, toggle_frozen)]
 
         if editor.connectable_selection():
             connect_rect = pygame.Rect(
                 editor.grid_size,
-                2 * editor.grid_size * 3,
+                3 * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
 
             connect_icon = editor.connect_target
@@ -58,7 +71,7 @@ class select_screen(editor_screen):
             if implicit_wire := editor.implicit_wire_from_selection():
                 rect = pygame.Rect(
                     editor.grid_size,
-                    3 * editor.grid_size * 3,
+                    4 * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
                 icon = None
                 if implicit_wire not in editor.patch.wires:
@@ -66,6 +79,14 @@ class select_screen(editor_screen):
                 else:
                     icon = editor.auto_disconnect
                 self.side_bar_targets.append((rect, icon, self.toggle_implicit_connection))
+
+    def goto_frozen(self, editor):
+        editor.freeze()
+        self.repopulate_sidebar(editor)
+
+    def goto_unfrozen(self, editor):
+        editor.unfreeze()
+        self.repopulate_sidebar(editor)
 
     def goto_inspect_screen(self, editor):
         self.live = False
