@@ -368,6 +368,10 @@ private:
     // These should only ever be set or read by the audio thread:
     std::array<MidiChannelState, 16> MidiChannels;
 
+    // This is a cache of known output tiles for the purpose of labeling
+    // audio channels.  This is updated every time the program is compiled.
+    std::unordered_map<TileHandle, std::string> OutputTileNames;
+
     TileHandle LastAssignedTileHandle;
     std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
     std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;

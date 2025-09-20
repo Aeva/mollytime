@@ -1500,7 +1500,14 @@ std::string Patch::GetTileName(TileHandle Tile)
     {
         return std::format("aux {}", Tile);
     }
-    else
+    else if (Symbol == OpCode::OUT)
+    {
+        auto Found = OutputTileNames.find(Tile);
+        if (Found != OutputTileNames.end())
+        {
+            return Found->second;
+        }
+    }
     {
         auto Found = TileNames.find(Tile);
         if (Found == TileNames.end())
@@ -2226,6 +2233,14 @@ ScratchSharedPtr Patch::Compile()
 
     std::vector<TileHandle> Scopes;
     Program->Outputs.clear();
+
+    // The graphs for output tiles are staged here so that they can be named and
+    // assigned to physical audio outputs deterministically.  The output with the
+    // lowest tile ID is assigned to the left channel (or the mono output if there
+    // is only one), the next lowest is the right channel, and the rest are
+    // ignored (and labeled accordingly).
+    std::map<TileHandle, RunningStateSharedPtr> AcceptedOutputs;
+
     for (const auto& [Tile, Symbol] : TileSymbols)
     {
         if (Symbol == OpCode::TAPE_LOOP)
@@ -2243,7 +2258,7 @@ ScratchSharedPtr Patch::Compile()
             RunningStateSharedPtr Output = Step(Tile);
             if (Output != nullptr)
             {
-                Program->Outputs.push_back(Output);
+                AcceptedOutputs[Tile] = Output;
             }
         }
         else if (Symbol == OpCode::AUX)
@@ -2259,6 +2274,10 @@ ScratchSharedPtr Patch::Compile()
             Scopes.push_back(Tile);
         }
     }
+    for (const auto& [Tile, Output] : AcceptedOutputs)
+    {
+        Program->Outputs.push_back(Output);
+    }
     for (const TileHandle& Tile : Scopes)
     {
         RunningStateSharedPtr Output = Step(Tile);
@@ -2267,6 +2286,28 @@ ScratchSharedPtr Patch::Compile()
             // Only one probe may be connected at a time.
             Program->ProbeInput = Output;
             break;
+        }
+    }
+
+    OutputTileNames.clear();
+    if (AcceptedOutputs.size() >= 2)
+    {
+        int OutputIndex = 0;
+        for (const auto& [Tile, Output] : AcceptedOutputs)
+        {
+            if (OutputIndex == 0)
+            {
+                OutputTileNames[Tile] = "out\nleft";
+            }
+            else if (OutputIndex == 1)
+            {
+                OutputTileNames[Tile] = "out\nright";
+            }
+            else
+            {
+                OutputTileNames[Tile] = "ignored\nout";
+            }
+            ++OutputIndex;
         }
     }
 
