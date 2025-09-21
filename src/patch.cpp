@@ -120,7 +120,7 @@ double Roll()
         return 0.0;
     }
     const double Note = HzToMidiNote(Hz);
-    return PerceptualAmplitudeCorrectionByMidiNote(Note);
+    return std::min(PerceptualAmplitudeCorrectionByMidiNote(Note), 1.0);
 }
 
 
