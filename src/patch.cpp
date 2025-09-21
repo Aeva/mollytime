@@ -977,10 +977,10 @@ struct AdsrThunk : public InstructionThunk
         double Previous = LastTrigger->Get();
         LastTrigger->Set(Trig);
 
-        double Attack = Combine(CombinerAdd, AttackTime, 0.1);
-        double Decay = Combine(CombinerAdd, DecayTime, 0.1);
+        double Attack = std::max(Combine(CombinerAdd, AttackTime, 0.1), 0.0);
+        double Decay = std::max(Combine(CombinerAdd, DecayTime, 0.1), 0.0);
         double Sustain = std::min(std::max(Combine(CombinerAdd, SustainAmount, 1.0), 0.0), 1.0);
-        double Release = Combine(CombinerAdd, ReleaseTime, 1.0);
+        double Release = std::max(Combine(CombinerAdd, ReleaseTime, 1.0), 0.0);
 
         double Amplitude = OutAmplitude->Get();
 
@@ -1022,7 +1022,7 @@ struct AdsrThunk : public InstructionThunk
         }
         else
         {
-            if (Amplitude > Sustain && Decay > 0.0 && (Mode->Get() == 1.0 || Decay < Attack))
+            if (Amplitude > Sustain && (Mode->Get() == 1.0 || Decay < Attack))
             {
                 Amplitude = std::max(Sustain, Amplitude - (SampleInterval / Decay) * (1.0 - Sustain));
             }
