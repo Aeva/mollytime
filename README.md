@@ -136,3 +136,23 @@ select an `audio_backend`, at minimum. Be sure to reference Meson's
 covered here, like whether or not to emit optimized builds.
 
 > IMPORTANT: On Linux, you'll need to disable Meson's `b_asneeded` and `b_lundef` options.
+
+# Appendix A: Linux Dependencies
+## Fedora 42
+
+Fedora Linux players are recommended to use the [Fedora Cinnamon Spin](https://fedoraproject.org/spins/cinnamon),
+or failing that, they're recommended to use the Cinnamon desktop environment w/ their choice of xserver.
+Gnome and KDE both have hardcoded behavior that prevent multitouch programs from receiving more than 
+three simultaneous touch points, which is problematic for using Mollytime as a touch screen instrument.
+
+Regardless of their choice of window manager, Fedora Linux players will want to install the following
+packages before building mollytime:
+```
+sudo dnf install clang pipewire-jack-audio-connection-kit-devel alsa-lib-devel python3-devel python3-tkinter
+```
+
+After installing the required dependencies, Mollytime then can be build with the following command,
+as described in the sections above:
+```
+python mollybuild.py setup release linux-clang
+```
