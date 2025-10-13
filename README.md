@@ -148,7 +148,12 @@ three simultaneous touch points, which is problematic for using Mollytime as a t
 Regardless of their choice of window manager, Fedora Linux players will want to install the following
 packages before building mollytime:
 ```
-sudo dnf install clang pipewire-jack-audio-connection-kit-devel alsa-lib-devel python3-devel python3-tkinter
+sudo dnf install \
+  clang \
+  pipewire-jack-audio-connection-kit-devel \
+  alsa-lib-devel \
+  python3-devel \
+  python3-tkinter
 ```
 
 After installing the required dependencies, Mollytime then can be build with the following command,
