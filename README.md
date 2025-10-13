@@ -156,7 +156,7 @@ sudo dnf install \
   python3-tkinter
 ```
 
-After installing the required dependencies, Mollytime then can be build with the following command,
+After installing the required dependencies, Mollytime then can be setup with the following command,
 as described in the sections above:
 ```
 python mollybuild.py setup release linux-clang
