@@ -255,6 +255,7 @@ custom_target(
         '--distpath', '@OUTDIR@',
         '@INPUT@'
     ],
+    build_by_default : false,
     input : [ spec_file ],
     output : 'mollytime' + executable_suffix,
     depend_files : python_files + data_files,
