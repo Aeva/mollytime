@@ -91,10 +91,9 @@ def main():
     scaled_display_size = sizes[display_index]
     unscaled_display_size = pygame.display.list_modes(display=display_index)[0]
 
-    window_flags = pygame.FULLSCREEN
-    if operating_system == "Windows":
-        # opt into borderless fullscreen and prevent display mode setting:
-        window_flags |= pygame.SCALED
+    # The SCALED parameter is needed for borderless fullscreen and to prevent display mode setting
+    # on Windows and X11 Linux.  Wayland doesn't strictly need it, but it doesn't hurt.
+    window_flags = pygame.FULLSCREEN | pygame.SCALED
 
     screen = pygame.display.set_mode(size=unscaled_display_size, display=display_index, flags=window_flags)
 

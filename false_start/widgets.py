@@ -379,7 +379,7 @@ class Instrument:
         sizes = pygame.display.get_desktop_sizes()
         display_index = len(sizes) - 1
         display_size = sizes[display_index]
-        screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN)
+        screen = pygame.display.set_mode(size=display_size, display=display_index, flags=pygame.FULLSCREEN | pygame.SCALED)
 
         screen.fill((0, 0, 0))
         pygame.display.flip()
