@@ -23,6 +23,9 @@
 #include "errors.h"
 
 
+void SetGamma(float NewGamma);
+
+
 enum class ColorSpace : int
 {
 	sRGB = 0,

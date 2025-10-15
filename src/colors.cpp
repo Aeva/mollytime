@@ -24,6 +24,14 @@
 #include <string_view>
 
 
+static float Gamma = 2.4f;
+
+void SetGamma(float NewGamma)
+{
+	Gamma = NewGamma;
+}
+
+
 const std::array<std::pair<ColorSpace, std::string>, size_t(ColorSpace::Count) > EncodingNames = \
 {
 	std::pair<ColorSpace, std::string> { ColorSpace::sRGB, "sRGB" },
@@ -79,7 +87,7 @@ static glm::vec3 sRGB2Linear(glm::vec3 sRGB)
 		}
 		else
 		{
-			Linear[Channel] = glm::sign(Color) * (glm::pow((AbsColor + 0.055f) / 1.055f, 2.4f));
+			Linear[Channel] = glm::sign(Color) * (glm::pow((AbsColor + 0.055f) / 1.055f, Gamma));
 		}
 	}
 
@@ -101,7 +109,7 @@ static glm::vec3 Linear2sRGB(glm::vec3 Linear)
 
 		if (AbsColor > 0.0031308f)
 		{
-			sRGB[Channel] = glm::sign(Color) * (1.055f * glm::pow(AbsColor, 1.f/2.4f) - 0.055f);
+			sRGB[Channel] = glm::sign(Color) * (1.055f * glm::pow(AbsColor, 1.f/Gamma) - 0.055f);
 		}
 		else
 		{

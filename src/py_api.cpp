@@ -126,6 +126,7 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("parse_color", &PyParseColor, "CSS color parser");
 	m.def("oklab", &MakeOkLAB, "OkLAB color constructor");
 	m.def("oklch", &MakeOkLCH, "OkLCH color constructor");
+	m.def("set_gamma", &SetGamma, "Change the sRGB gamma exponent");
 
 	m.def("profiling_enabled", &IsProfilingEnabled);
 	m.def("profiling_scope", [](const char* Name, py::function Thunk) -> py::object
