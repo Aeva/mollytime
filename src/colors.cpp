@@ -420,6 +420,40 @@ void ColorPoint::MutateChannels(glm::vec3 NewChannels)
 }
 
 
+ColorPoint MixLCHAB(ColorPoint LHS, ColorPoint RHS, float Alpha, float ChromaWeight)
+{
+	// Inspired by "Luminance Preserving Tint" (Clinkscales-Prager 2024-2025, private correspondences).
+	// The original technique is a lighting method that separates luminance and tint by mixing the former
+	// in a LAB or LCH color space and the latter in linear RGB color, and the results are combined using
+	// a special blending parameter.
+
+	// The blending method below first performs an ordinary color interpolation in OkLAB space, which is
+	// also luminance preserving, but has different perceptual characteristics than Clinkscales & Prager's
+	// method, and lacks their control parameter.  The primaries and the results are then converted to LCH
+	// space, where a second chroma-only interpolation is used to replace the chroma of the first
+	// interpolation (with a new blending parameter to control the balance of the two results).  Thus,
+	// this method is also variably chroma preserving.
+
+	const ColorSpace OutputSpace = LHS.Encoding;
+	LHS.MutateEncoding(ColorSpace::OkLAB);
+	RHS.MutateEncoding(ColorSpace::OkLAB);
+	ColorPoint Palette = ColorPoint(ColorSpace::OkLAB, glm::vec3(0.0f, 0.0f, 0.0f));
+	for (int i = 0; i < 3; ++i)
+	{
+		Palette.Channels[i] = glm::mix(LHS.Channels[i], RHS.Channels[i], Alpha);
+	}
+	if (ChromaWeight > 0.0f)
+	{
+		LHS.MutateEncoding(ColorSpace::OkLCH);
+		RHS.MutateEncoding(ColorSpace::OkLCH);
+		Palette.MutateEncoding(ColorSpace::OkLCH);
+		Palette.Channels[1] = glm::mix(Palette.Channels[1], glm::mix(LHS.Channels[1], RHS.Channels[1], Alpha), ChromaWeight);
+	}
+	Palette.MutateEncoding(OutputSpace);
+	return Palette;
+}
+
+
 bool ColorPointCmp::operator()(const ColorPoint& LHS, const ColorPoint& RHS) const
 {
 	if (LHS.Encoding < RHS.Encoding)

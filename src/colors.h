@@ -146,6 +146,9 @@ struct ColorPoint
 };
 
 
+ColorPoint MixLCHAB(ColorPoint LHS, ColorPoint RHS, float Alpha, float ChromaWeight);
+
+
 struct ColorPointCmp
 {
 	bool operator()(const ColorPoint& LHS, const ColorPoint& RHS) const;
