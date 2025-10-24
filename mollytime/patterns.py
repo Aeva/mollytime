@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import pygame_setup
-import pygame
+from . import mollytime
 
 from .fonts import *
 from .colors import *
@@ -24,7 +23,7 @@ from .more_math import *
 class tile_viewport:
     def __init__(self, viewport, grid):
         self.grid = -1
-        self.viewport = pygame.Rect(0, 0, 0, 0)
+        self.viewport = mollytime.Rect(0, 0, 0, 0)
         self.resize(viewport, grid)
 
     def resize(self, viewport, grid):
@@ -32,7 +31,7 @@ class tile_viewport:
             return
         self.grid = grid
         self.viewport = viewport
-        self.surface = pygame.Surface(viewport.size)
+        self.surface = mollytime.draw.Texture(viewport.size)
         self.redraw()
 
     def redraw(self):
@@ -91,9 +90,9 @@ class tile_grid_bg(tile_viewport):
                 tile_y = crop_min_y // self.grid + view_tile_y
                 view_x = view_tile_x * self.grid + x_offset
                 view_y = view_tile_y * self.grid + y_offset
-                rect = pygame.Rect(view_x, view_y, self.grid, self.grid)
+                rect = mollytime.Rect(view_x, view_y, self.grid, self.grid)
                 color = self.bg_color(tile_x, tile_y, rect)
-                pygame.draw.rect(self.surface, color, rect)
+                mollytime.draw.rect(self.surface, color, rect)
 
         # coarse grid
         for view_tile_y in range(-1, y_count):
@@ -104,9 +103,9 @@ class tile_grid_bg(tile_viewport):
                     continue
                 view_x = view_tile_x * self.grid + x_offset
                 view_y = view_tile_y * self.grid + y_offset
-                rect = pygame.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
+                rect = mollytime.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
                 color = self.bg_color(tile_x, tile_y, rect)
-                pygame.draw.rect(self.surface, color, rect)
+                mollytime.draw.rect(self.surface, color, rect)
 
 
 class side_bar_bg(tile_viewport):
@@ -120,7 +119,7 @@ class side_bar_bg(tile_viewport):
         # ramp_b = (0.5, 0.15, 360)
 
         # sidebar color ramp
-        steps = self.viewport.w // 8
+        steps = int(self.viewport.w) // 8
         for i in range(steps):
             alpha = i / (steps - 1)
             inv_a = 1.0 - alpha
@@ -130,8 +129,8 @@ class side_bar_bg(tile_viewport):
             alpha = i / steps
             inv_a = 1.0 - alpha
 
-            rect = pygame.Rect(0, 0, self.viewport.w * inv_a, self.viewport.h)
-            pygame.draw.rect(self.surface, color, rect)
+            rect = mollytime.Rect(0, 0, self.viewport.w * inv_a, self.viewport.h)
+            mollytime.draw.rect(self.surface, color, rect)
 
 
 class plate_bg:
@@ -152,24 +151,24 @@ class plate_bg:
             return
         self.grid = grid
         self.size = grid * 2
-        self.surface = pygame.Surface((self.size, self.size))
+        self.surface = mollytime.draw.Texture((self.size, self.size))
         self.redraw()
 
     def redraw(self):
-        rect = pygame.Rect(0, 0, self.size, self.size)
+        rect = mollytime.Rect(0, 0, self.size, self.size)
         depth = max(round(self.size / 22.6), 1)
 
-        pygame.draw.rect(self.surface, self.color_base, rect)
-        pygame.draw.rect(self.surface, self.color_sides, rect, depth)
+        mollytime.draw.rect(self.surface, self.color_base, rect)
+        mollytime.draw.rect(self.surface, self.color_sides, rect, depth)
 
         for i in range(0, depth):
             a = (rect.topleft[0] + i, rect.topleft[1] + i)
             b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-            pygame.draw.line(self.surface, self.color_top, a, b, 1)
+            mollytime.draw.line(self.surface, self.color_top, a, b, 1)
 
             a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
             b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-            pygame.draw.line(self.surface, self.color_bottom, a, b, 1)
+            mollytime.draw.line(self.surface, self.color_bottom, a, b, 1)
 
         if self.text:
             self.draw_label(self.surface, rect, self.text)
@@ -188,7 +187,7 @@ class plate_bg:
             text_rect.top = y_offset
             rects.append(text_rect)
             y_offset += spacing
-        combined_rect = pygame.rect.Rect.unionall(rects[0], rects[1:])
+        combined_rect = rects[0].unionall(rects[1:])
 
         if len(lines) > 0 and lines[0].upper() == lines[0]:
             top = estimate_font_cap_line(font_path, size)
@@ -218,16 +217,16 @@ def draw_line(target, color, start, end, radius):
         vec_add(end, widdershins_by_90(offset)),
         vec_add(end, sunwise_by_90(offset)),
         vec_add(start, sunwise_by_90(offset))]
-    pygame.draw.polygon(target, color, points)
+    mollytime.draw.polygon(target, color, points)
 
 
 def draw_arrow(target, color, start, end, radius, inset=.5):
-    start_pt = start.center if type(start) == pygame.Rect else start
-    end_pt = end.center if type(end) == pygame.Rect else end
+    start_pt = start.center if type(start) == mollytime.Rect else start
+    end_pt = end.center if type(end) == mollytime.Rect else end
 
     inset = int(radius * inset)
 
-    if type(start) == pygame.Rect:
+    if type(start) == mollytime.Rect:
         start = start.copy()
         start.x += inset
         start.y += inset
@@ -236,7 +235,7 @@ def draw_arrow(target, color, start, end, radius, inset=.5):
         if line := start.clipline(start_pt, end_pt):
             start_pt = line[1]
 
-    if type(end) == pygame.Rect:
+    if type(end) == mollytime.Rect:
         end = end.copy()
         end.x += inset
         end.y += inset
@@ -246,14 +245,14 @@ def draw_arrow(target, color, start, end, radius, inset=.5):
             end_pt = line[0]
 
     draw_line(target, color, start_pt, end_pt, radius)
-    pygame.draw.circle(target, color, start_pt, radius)
-    pygame.draw.circle(target, color, end_pt, radius)
+    mollytime.draw.circle(target, color, start_pt, radius)
+    mollytime.draw.circle(target, color, end_pt, radius)
 
     point = vec_scale(normalize(vec_sub(start_pt, end_pt)), radius * 4)
     for angle in [-35, 35]:
         arrow_pt = vec_add(end_pt, rotate_point(point, angle))
         draw_line(target, color, end_pt, arrow_pt, radius)
-        pygame.draw.circle(target, color, arrow_pt, radius)
+        mollytime.draw.circle(target, color, arrow_pt, radius)
 
 
 class plate_outline(plate_bg):
@@ -263,20 +262,18 @@ class plate_outline(plate_bg):
         self.text_color = color
 
     def redraw(self):
-        self.surface = pygame.Surface((self.size, self.size), flags=pygame.SRCALPHA)
+        self.surface = mollytime.draw.Texture((self.size, self.size))
         line_radius = max(int(self.size / 67), 1)
         inset = line_radius * 2
-        rect = pygame.Rect(0, 0, self.size, self.size)
+        rect = mollytime.Rect(0, 0, self.size, self.size)
         corners = [
             vec_add(rect.topleft, (inset, inset)),
             vec_add(rect.topright, (-inset, inset)),
             vec_add(rect.bottomright, (-inset, -inset)),
             vec_add(rect.bottomleft, (inset, -inset))]
 
-        fill_color = pygame.Color(self.color_base)
-        fill_color.a = int(255 * .1)
-        fill_rect = pygame.Rect(inset, inset, self.size - inset * 2, self.size - inset * 2)
-        pygame.draw.rect(self.surface, fill_color, fill_rect)
+        fill_rect = mollytime.Rect(inset, inset, self.size - inset * 2, self.size - inset * 2)
+        mollytime.draw.rect(self.surface, self.color_base, fill_rect, alpha = .1)
 
         for edge in range(4):
             a = corners[edge]

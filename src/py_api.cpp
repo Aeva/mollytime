@@ -24,6 +24,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4191 4355 4371 4464 4686 4868 5039)
 #include <pybind11/pybind11.h>
+#include <pybind11/native_enum.h>
 #include <pybind11/stl.h>
 #pragma warning(pop)
 #pragma clang diagnostic pop
@@ -33,6 +34,7 @@
 #include "audio_backend.h"
 #include "alsa_midi.h"
 #include "perf.h"
+#include "sdl.h"
 
 namespace py = pybind11;
 
@@ -112,6 +114,8 @@ PYBIND11_MODULE(mollytime, m) {
 
 	py::class_<ColorPoint>(m, "ColorPoint")
 		.def(py::init<>())
+        .def(py::init<std::tuple<uint8_t, uint8_t, uint8_t>>())
+        .def(py::init<std::tuple<float, float, float>>())
 		.def("__len__", [](const ColorPoint& Self) -> int { return 3; })
 		.def("__getitem__", &ColorPointGetItem)
 		.def("__repr__", &ColorPointRepr)
@@ -229,4 +233,173 @@ PYBIND11_MODULE(mollytime, m) {
 
 	m.def("init_midi", &Midi::Init);
 	m.def("shutdown_midi", &Midi::Shutdown);
+
+    // ---
+    // Core types
+    
+    py::implicitly_convertible<std::tuple<uint8_t, uint8_t, uint8_t>, ColorPoint>();
+    py::implicitly_convertible<std::tuple<float, float, float>, ColorPoint>();
+
+    py::class_<Rect>(m, "Rect")
+        .def(py::init<float, float, float, float>())
+        .def(py::init<Point, Size>())
+        .def("copy", [](const Rect& rect) { return Rect(rect); })
+        .def_readwrite("x", &Rect::X)
+        .def_readwrite("y", &Rect::Y)
+        .def_readwrite("w", &Rect::Width)
+        .def_readwrite("width", &Rect::Width)
+        .def_readwrite("h", &Rect::Height)
+        .def_readwrite("height", &Rect::Height)
+        .def_property("size", &Rect::GetSize, &Rect::SetSize)
+        .def_property("left", &Rect::GetLeft, &Rect::SetLeft)
+        .def_property("right", &Rect::GetRight, &Rect::SetRight)
+        .def_property("top", &Rect::GetTop, &Rect::SetTop)
+        .def_property("bottom", &Rect::GetBottom, &Rect::SetBottom)
+        .def_property("topleft", &Rect::GetTopLeft, &Rect::SetTopLeft)
+        .def_property("topright", &Rect::GetTopRight, &Rect::SetTopRight)
+        .def_property("bottomleft", &Rect::GetBottomLeft, &Rect::SetBottomLeft)
+        .def_property("bottomright", &Rect::GetBottomRight, &Rect::SetBottomRight)
+        .def_property("centerx", &Rect::GetCenterX, &Rect::SetCenterX)
+        .def_property("centery", &Rect::GetCenterY, &Rect::SetCenterY)
+        .def_property("center", &Rect::GetCenter, &Rect::SetCenter)
+        .def("collidepoint", &Rect::ContainsPoint)
+        .def("clipline", &Rect::IntersectLine)
+        .def("union", &Rect::Union)
+        .def("unionall", &Rect::UnionAll);
+    
+    // ---
+    // Time
+
+    py::module_ time = m.def_submodule("time");
+    py::class_<Time::Clock>(time, "Clock")
+        .def(py::init<>())
+        .def("tick", &Time::Clock::Tick);
+    
+    // ---
+    // Events
+
+    py::module_ events = m.def_submodule("events");
+
+    py::native_enum<Events::EventType>(events, "Type", "enum.IntEnum")
+        .value("QUIT", Events::EventType::Quit)
+        .value("KEYDOWN", Events::EventType::KeyDown)
+        .value("KEYUP", Events::EventType::KeyUp)
+        .value("MOUSEMOTION", Events::EventType::MouseMotion)
+        .value("MOUSEBUTTONDOWN", Events::EventType::MouseButtonDown)
+        .value("MOUSEBUTTONUP", Events::EventType::MouseButtonUp)
+        .value("FINGERDOWN", Events::EventType::FingerDown)
+        .value("FINGERUP", Events::EventType::FingerUp)
+        .value("FINGERMOTION", Events::EventType::FingerMotion)
+        .export_values()
+        .finalize();
+    
+    py::native_enum<Events::KeyCode>(events, "KeyCode", "enum.IntFlag")
+        .value("K_ESCAPE", Events::KeyCode::Escape)
+        .export_values()
+        .finalize();
+    
+    py::native_enum<Events::MouseButton>(events, "MouseButton", "enum.IntFlag")
+        .value("BUTTON_LEFT", Events::MouseButton::Left)
+        .export_values()
+        .finalize();
+    
+    py::class_<Events::KeyboardEvent>(events, "KeyboardEvent")
+        .def_readonly("key", &Events::KeyboardEvent::Key);
+    
+    py::class_<Events::MouseMotionEvent>(events, "MouseMotionEvent")
+        .def_readonly("x", &Events::MouseMotionEvent::X)
+        .def_readonly("y", &Events::MouseMotionEvent::X)
+        .def_readonly("xrel", &Events::MouseMotionEvent::XRelative)
+        .def_readonly("yrel", &Events::MouseMotionEvent::YRelative)
+        .def_property_readonly("pos", &Events::MouseMotionEvent::GetPosition)
+        .def_property_readonly("rel", &Events::MouseMotionEvent::GetRelativePosition);
+    
+    py::class_<Events::MouseButtonEvent>(events, "MouseButtonEvent")
+        .def_readonly("x", &Events::MouseButtonEvent::X)
+        .def_readonly("y", &Events::MouseButtonEvent::Y)
+        .def_readonly("button", &Events::MouseButtonEvent::Button)
+        .def_readonly("touch", &Events::MouseButtonEvent::IsTouch)
+        .def_property_readonly("pos", &Events::MouseButtonEvent::GetPosition);
+    
+    py::class_<Events::TouchFingerEvent>(events, "TouchFingerEvent")
+        .def_readonly("x", &Events::TouchFingerEvent::X)
+        .def_readonly("y", &Events::TouchFingerEvent::X)
+        .def_readonly("touch_id", &Events::TouchFingerEvent::TouchID)
+        .def_readonly("finger_id", &Events::TouchFingerEvent::FingerID);
+    
+    py::class_<Events::Event>(events, "Event")
+        .def_readonly("type", &Events::Event::Type)
+        .def_readonly("key", &Events::Event::Key)
+        .def_readonly("motion", &Events::Event::Motion)
+        .def_readonly("button", &Events::Event::Button)
+        .def_readonly("tfinger", &Events::Event::Touch);
+    
+    events.def("get", &Events::Get);
+    
+    // ---
+    // Mouse
+
+    py::module_ mouse = m.def_submodule("mouse")
+        .def("get_pos", &Mouse::GetPosition);
+    
+    // ---
+    // Display
+
+    py::module_ display = m.def_submodule("display");
+
+    py::native_enum<Display::WindowFlags>(display, "WindowFlags", "enum.IntFlag")
+        .value("FULLSCREEN", Display::WindowFlags::Fullscreen)
+        .value("BORDERLESS", Display::WindowFlags::Borderless)
+        .export_values()
+        .finalize();
+    
+    display
+        .def("init", &Display::Init)
+        .def("get_desktop_sizes", &Display::GetDesktopSizes)
+        .def("list_modes", &Display::ListModes, py::arg("display"))
+        .def("set_caption", &Display::SetCaption)
+        .def("set_icon", &Display::SetIcon)
+        .def("set_mode", &Display::SetMode, py::arg("display"), py::arg("size"), py::arg("flags"));
+    
+    // ---
+    // Draw
+
+    py::module_ draw = m.def_submodule("draw");
+
+    using BlitRectFunc = void (Draw::Texture::*)(const Draw::Texture&, const Rect&);
+    using BlitPointFunc = void (Draw::Texture::*)(const Draw::Texture&, const Point&);
+
+    py::class_<Draw::Texture>(draw, "Texture")
+        .def(py::init<int, int>())
+        .def(py::init<const Size&>())
+        .def("get_width", &Draw::Texture::GetWidth)
+        .def("get_height", &Draw::Texture::GetHeight)
+        .def("get_rect", &Draw::Texture::GetRect)
+        .def("copy", &Draw::Texture::Copy)
+        .def("set_alpha", &Draw::Texture::SetAlpha)
+        .def("fill", &Draw::Texture::Fill)
+        .def("blit", static_cast<BlitRectFunc>(&Draw::Texture::Blit))
+        .def("blit", static_cast<BlitPointFunc>(&Draw::Texture::Blit));
+    
+    draw
+        .def("init", &Draw::Init)
+        .def("flip", &Draw::Flip)
+        .def("line", &Draw::DrawLine, py::arg("texture"), py::arg("color"), py::arg("start"), py::arg("end"), py::arg("width") = 1, py::arg("alpha") = 1.0f)
+        .def("aaline", &Draw::DrawLineAntiAliased, py::arg("texture"), py::arg("color"), py::arg("start"), py::arg("end"), py::arg("width") = 1, py::arg("alpha") = 1.0f)
+        .def("rect", &Draw::DrawRect, py::arg("texture"), py::arg("color"), py::arg("rect"), py::arg("depth") = 0, py::arg("alpha") = 1.0f)
+        .def("circle", &Draw::DrawCircle, py::arg("texture"), py::arg("color"), py::arg("center"), py::arg("radius"), py::arg("alpha") = 1.0f)
+        .def("polygon", &Draw::DrawPolygon, py::arg("texture"), py::arg("color"), py::arg("vertices"), py::arg("alpha") = 1.0f);
+
+    // ---
+    // Font
+
+    py::module_ font = m.def_submodule("font")
+        .def("init", &Font::Init);
+    
+    py::class_<Font> (font, "Font")
+        .def(py::init<const std::string_view&, float>())
+        .def("get_ascent", &Font::GetAscent)
+        .def("get_descent", &Font::GetDescent)
+        .def("estimate_glyph_height", &Font::EstimateGlyphHeight)
+        .def("render", &Font::Render);
 }

@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .. import mollytime
 from ..mollytime import OpCode, get_symbol_name
 from .common import *
 
 
 class pick_and_place_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
 
         self.prospective_tile = None
@@ -87,7 +88,7 @@ class pick_and_place_screen(editor_screen):
             span = (len(shelf) * 3 - 1) * editor.grid_size
             padding = (editor.play_area.viewport.height - span) // 2
 
-            self.shelf_rect = pygame.rect.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
+            self.shelf_rect = mollytime.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
 
             palette = {}
 
@@ -96,7 +97,7 @@ class pick_and_place_screen(editor_screen):
                 x = 0
                 for archetile in row:
                     if archetile is not None:
-                        rect = pygame.rect.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
+                        rect = mollytime.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
                         palette[archetile] = rect
                     x += 1
                 y += 1
@@ -109,14 +110,14 @@ class pick_and_place_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = pygame.Rect(
+        goto_inspect_rect = mollytime.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = pygame.Rect(
+        active_rect = mollytime.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -180,7 +181,7 @@ class pick_and_place_screen(editor_screen):
         elif editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = pygame.Rect(
+                rect = mollytime.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -276,7 +277,7 @@ class pick_and_place_screen(editor_screen):
                 radius = max(1, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-            pygame.draw.rect(frame, editor.select_color, self.shelf_rect)
+            mollytime.draw.rect(frame, editor.select_color, self.shelf_rect)
             for archetile, rect in self.tile_palette.items():
                 if archetile == "next":
                     label = self.palette_name
@@ -302,7 +303,7 @@ class pick_and_place_screen(editor_screen):
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):
-            rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+            rect = mollytime.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
             rect.center = self.cursor_pos
             if self.prospective_tile is not None:
                 if type(self.prospective_tile) in (int, float):
@@ -329,6 +330,6 @@ class pick_and_place_screen(editor_screen):
         if update_anything:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            pygame.display.flip()
+            mollytime.draw.flip()
         else:
             editor.clock.tick(60)

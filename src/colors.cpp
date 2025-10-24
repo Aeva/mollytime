@@ -319,7 +319,7 @@ static glm::vec3 sRGB2HSL(glm::vec3 sRGB)
 }
 
 
-ColorPoint ColorPoint::Encode(ColorSpace OutEncoding)
+ColorPoint ColorPoint::Encode(ColorSpace OutEncoding) const
 {
 	if (OutEncoding == Encoding)
 	{
@@ -382,7 +382,7 @@ ColorPoint ColorPoint::Encode(ColorSpace OutEncoding)
 }
 
 
-glm::vec3 ColorPoint::Eval(ColorSpace OutEncoding)
+glm::vec3 ColorPoint::Eval(ColorSpace OutEncoding) const
 {
 	if (OutEncoding == Encoding)
 	{
@@ -411,6 +411,18 @@ void ColorPoint::MutateChannels(glm::vec3 NewChannels)
 	Channels = NewChannels;
 }
 
+std::tuple<uint8_t, uint8_t, uint8_t> ColorPoint::To8BitRGB() const
+{
+    const ColorPoint RGBColor = Encoding == ColorSpace::sRGB ? *this : Encode(ColorSpace::sRGB);
+    auto To8Bit = [](float Channel) -> uint8_t { return std::min(std::max(int(Channel * 255.0f), 0), 255); };
+
+    return
+    {
+        To8Bit(RGBColor.Channels[0]),
+        To8Bit(RGBColor.Channels[1]),
+        To8Bit(RGBColor.Channels[2])
+    };
+}
 
 bool ColorPointCmp::operator()(const ColorPoint& LHS, const ColorPoint& RHS) const
 {

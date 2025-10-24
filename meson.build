@@ -149,6 +149,13 @@ source_files += files(
     'src' / 'patch.cpp',
     'src' / 'perf.cpp',
     'src' / 'py_api.cpp',
+    'src' / 'sdl_display.cpp',
+    'src' / 'sdl_draw.cpp',
+    'src' / 'sdl_events.cpp',
+    'src' / 'sdl_font.cpp',
+    'src' / 'sdl_mouse.cpp',
+    'src' / 'sdl_rect.cpp',
+    'src' / 'sdl_time.cpp',
     'src' / 'wasapi_stream.cpp'
 )
 

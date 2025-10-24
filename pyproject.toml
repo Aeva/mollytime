@@ -12,9 +12,7 @@ name = "mollytime"
 version = "0.0"
 license-files = [ "LICENSE.txt" ]
 readme = "README.md"
-dependencies = [
-    "pygame"
-]
+dependencies = []
 
 [tool.meson-python.args]
 install = [ "--tags=package" ]

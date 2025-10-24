@@ -49,7 +49,7 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
 
 def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller", "pygame" ])
+    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
     if pip_result != 0:
         return pip_result
 

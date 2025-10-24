@@ -16,10 +16,12 @@
 from .common import *
 from .connect import connect_screen
 
+from .. import mollytime
+
 
 class select_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
         self.set_screen_label(editor, "inspect > select")
         self.repopulate_sidebar(editor)
@@ -27,21 +29,21 @@ class select_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = pygame.Rect(
+        goto_inspect_rect = mollytime.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = pygame.Rect(
+        active_rect = mollytime.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         active_icon = editor.select_active
 
-        toggle_frozen_rect = pygame.Rect(
+        toggle_frozen_rect = mollytime.Rect(
             editor.grid_size,
             2 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -59,7 +61,7 @@ class select_screen(editor_screen):
             (toggle_frozen_rect, toggle_frozen_icon, toggle_frozen)]
 
         if editor.connectable_selection():
-            connect_rect = pygame.Rect(
+            connect_rect = mollytime.Rect(
                 editor.grid_size,
                 3 * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -69,7 +71,7 @@ class select_screen(editor_screen):
             self.side_bar_targets.append((connect_rect, connect_icon, self.goto_connect_screen))
 
             if implicit_wire := editor.implicit_wire_from_selection():
-                rect = pygame.Rect(
+                rect = mollytime.Rect(
                     editor.grid_size,
                     4 * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -127,7 +129,7 @@ class select_screen(editor_screen):
         if editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = pygame.Rect(
+                rect = mollytime.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -201,6 +203,6 @@ class select_screen(editor_screen):
         if update_anything:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            pygame.display.flip()
+            mollytime.draw.flip()
         else:
             editor.clock.tick(60)

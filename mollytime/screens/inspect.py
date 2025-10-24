@@ -24,6 +24,8 @@ from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
 from .scope import scope_screen
 
+from .. import mollytime
+
 
 def find_search_path():
     examples_dir = os.path.join(os.path.split(__file__)[0], "..", "..", "examples")
@@ -39,7 +41,7 @@ def find_search_path():
 
 class inspect_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
         self.set_screen_label(editor, "inspect")
         self.repopulate_sidebar(editor)
@@ -63,42 +65,42 @@ class inspect_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        active_rect = pygame.Rect(
+        active_rect = mollytime.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         active_icon = editor.inspect_active
 
-        goto_move_rect = pygame.Rect(
+        goto_move_rect = mollytime.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_move_icon = editor.move_target
 
-        goto_select_rect = pygame.Rect(
+        goto_select_rect = mollytime.Rect(
             editor.grid_size,
             2 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_select_icon = editor.select_target
 
-        goto_scope_rect = pygame.Rect(
+        goto_scope_rect = mollytime.Rect(
             editor.grid_size,
             3 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_scope_icon = editor.scope_target
 
-        goto_save_rect = pygame.Rect(
+        goto_save_rect = mollytime.Rect(
             editor.grid_size,
             4 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_save_icon = editor.save_target
 
-        goto_load_rect = pygame.Rect(
+        goto_load_rect = mollytime.Rect(
             editor.grid_size,
             5 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -232,7 +234,7 @@ class inspect_screen(editor_screen):
         if editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = pygame.Rect(
+                rect = mollytime.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -264,7 +266,7 @@ class inspect_screen(editor_screen):
 
     def on_release(self, editor, pos, event):
         self.press_start = None
-        if not event.touch:
+        if not event.button.touch:
             if tile_id := self.hold.get("m", None):
                 editor.patch.set_special_input(tile_id, 0.0)
                 del self.hold["m"]
@@ -272,7 +274,7 @@ class inspect_screen(editor_screen):
     def touch_start(self, editor, key, pos, event):
         super().touch_start(editor, key, pos, event)
         for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-            rect = pygame.Rect(
+            rect = mollytime.Rect(
                 editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                 editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -356,7 +358,7 @@ class inspect_screen(editor_screen):
             #font_debug_surface(editor.screen)
             self.force_redraw = False
             self.draw_touch_points(editor)
-            pygame.display.flip()
+            mollytime.draw.flip()
         elif self.can_throttle:
             editor.clock.tick(60)
         else:

@@ -56,6 +56,18 @@ struct ColorPoint
 	{
 	}
 
+    ColorPoint(const std::tuple<float, float, float>& RGBFloat)
+        : Encoding(ColorSpace::sRGB)
+        , Channels(std::get<0>(RGBFloat), std::get<1>(RGBFloat), std::get<2>(RGBFloat))
+    {
+    }
+
+    ColorPoint(const std::tuple<uint8_t, uint8_t, uint8_t>& RGB8Bit)
+        : Encoding(ColorSpace::sRGB)
+        , Channels(std::get<0>(RGB8Bit) / 255.0f, std::get<1>(RGB8Bit) / 255.0f, std::get<2>(RGB8Bit) / 255.0f)
+    {
+    }
+
 	ColorPoint(ColorSpace InEncoding, glm::vec3 InChannels)
 		: Encoding(InEncoding)
 		, Channels(InChannels)
@@ -133,13 +145,15 @@ struct ColorPoint
 	{
 	}
 
-	ColorPoint Encode(ColorSpace OutEncoding);
+	ColorPoint Encode(ColorSpace OutEncoding) const;
 
-	glm::vec3 Eval(ColorSpace OutEncoding);
+	glm::vec3 Eval(ColorSpace OutEncoding) const;
 
 	void MutateEncoding(ColorSpace NewEncoding);
 
 	void MutateChannels(glm::vec3 NewChannels);
+
+    std::tuple<uint8_t, uint8_t, uint8_t> To8BitRGB() const;
 };
 
 

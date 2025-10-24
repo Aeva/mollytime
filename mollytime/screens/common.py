@@ -17,8 +17,6 @@ import time
 import random
 from xml.etree import ElementTree
 
-from .. import pygame_setup
-import pygame
 
 from ..fonts import *
 from ..colors import *
@@ -26,6 +24,7 @@ from ..patterns import *
 from ..perf import profile_function
 from ..power import poll_battery
 
+from .. import mollytime
 from ..mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
 
 
@@ -95,7 +94,7 @@ class program_card:
 
         self.selected = []
 
-        self.clock = pygame.time.Clock()
+        self.clock = mollytime.time.Clock()
         self.resize(screen, dpi)
 
     def find_center_of_mass(self, quantized=False):
@@ -270,7 +269,7 @@ class program_card:
     def get_grid_rect(self, tile_xy):
         frame_x = self.play_rect.centerx - self.focus_x - self.grid_size + tile_xy[0] * self.grid_size * 3
         frame_y = self.play_rect.centery - self.focus_y - self.grid_size + tile_xy[1] * self.grid_size * 3
-        return pygame.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
+        return mollytime.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
 
     def get_tile_rect(self, tile_id):
         tile_xy = self.tile_positions[tile_id]
@@ -365,10 +364,10 @@ class program_card:
         side_bar_w = self.grid_size * 3
         side_bar_h = screen_h
 
-        self.play_rect = pygame.Rect(0, 0, screen_w - side_bar_w, screen_h)
+        self.play_rect = mollytime.Rect(0, 0, screen_w - side_bar_w, screen_h)
         self.play_area = tile_grid_bg(self.play_rect, self.grid_size)
 
-        self.side_bar_rect = pygame.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
+        self.side_bar_rect = mollytime.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
 
         self.tile_color = parse_color("#dee5e8")
@@ -507,7 +506,7 @@ class editor_screen:
         radius = editor.grid_size / 2
         for key, pos in editor_screen.touch_points.items():
             color = editor_screen.touch_colors[key]
-            pygame.draw.circle(editor.screen, color, pos, radius)
+            mollytime.draw.circle(editor.screen, color, pos, radius)
 
     def perf_check(self):
         global temporal_pressure, temporal_pressure_precent
@@ -590,74 +589,45 @@ class editor_screen:
 
     def purge_events(self):
         self.reset_touch_tracker()
-        for event in pygame.event.get():
-            if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+        for event in mollytime.events.get():
+            if (event.type == mollytime.events.KEYDOWN and event.key == mollytime.events.K_ESCAPE):
                 self.live = False
-            elif event.type == pygame.QUIT:
+            elif event.type == mollytime.events.QUIT:
                 exit(0)
 
     @profile_function("process_events")
     def process_events(self, editor):
-        for event in pygame.event.get():
-            if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                self.purge_events()
-                self.live = False
+        for event in mollytime.events.get():
+            if (event.type == mollytime.events.KEYDOWN and event.key.key == mollytime.events.K_ESCAPE):
+               self.purge_events()
+               self.live = False
 
-            elif event.type == pygame.MOUSEMOTION and (abs(event.rel[0]) > 0 or abs(event.rel[1]) > 0):
-                self.on_move(editor, event.pos, event)
+            if event.type == mollytime.events.MOUSEMOTION and (abs(event.motion.rel[0]) > 0 or abs(event.motion.rel[1]) > 0):
+                self.on_move(editor, event.motion.pos, event)
 
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
-                self.on_press(editor, event.pos, event)
+            elif event.type == mollytime.events.MOUSEBUTTONDOWN and event.button.button == mollytime.events.BUTTON_LEFT:
+                self.on_press(editor, event.button.pos, event)
 
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
-                self.on_release(editor, event.pos, event)
+            elif event.type == mollytime.events.MOUSEBUTTONUP and event.button.button == mollytime.events.BUTTON_LEFT:
+                self.on_release(editor, event.button.pos, event)
 
-            elif event.type == pygame.FINGERMOTION:
+            elif event.type == mollytime.events.FINGERMOTION:
                 key = (event.touch_id, event.finger_id)
                 pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
                 self.touch_update(editor, key, pos, event)
 
-            elif event.type == pygame.FINGERDOWN:
+            elif event.type == mollytime.events.FINGERDOWN:
                 key = (event.touch_id, event.finger_id)
                 pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
                 self.touch_start(editor, key, pos, event)
 
-            elif event.type == pygame.FINGERUP:
+            elif event.type == mollytime.events.FINGERUP:
                 key = (event.touch_id, event.finger_id)
                 pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
                 self.touch_end(editor, key, pos, event)
 
-            elif event.type in (
-                pygame.ACTIVEEVENT,
-                pygame.VIDEORESIZE,
-                pygame.VIDEOEXPOSE,
-                pygame.RENDER_TARGETS_RESET,
-                pygame.RENDER_DEVICE_RESET,
-                pygame.WINDOWSHOWN,
-                pygame.WINDOWEXPOSED,
-                pygame.WINDOWMOVED,
-                pygame.WINDOWRESIZED,
-                pygame.WINDOWSIZECHANGED,
-                pygame.WINDOWMAXIMIZED,
-                pygame.WINDOWRESTORED,
-                pygame.WINDOWENTER,
-                pygame.WINDOWFOCUSGAINED,
-                pygame.WINDOWTAKEFOCUS,
-                pygame.WINDOWICCPROFCHANGED,
-                pygame.WINDOWDISPLAYCHANGED):
-                # redraw on various window damage events we aren't otherwise handling
-                self.force_redraw = True
-
-            elif event.type == pygame.QUIT:
+            elif event.type == mollytime.events.QUIT:
                 sys.exit(0)
-
-            # else:
-            #     # attempt to determine what mystery events are
-            #     for attr in dir(pygame):
-            #         if attr.upper() == attr:
-            #             val = getattr(pygame, attr)
-            #             if val == event.type:
-            #                 print(f"{attr} ({event.type})")
 
     def draw(self, editor):
         pass

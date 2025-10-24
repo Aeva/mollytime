@@ -20,10 +20,11 @@ from ..fonts import *
 from ..colors import *
 from ..patterns import *
 
+from .. import mollytime
 
 class calculator_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
 
         self.editing_tile = editor.lhs_selection()
@@ -78,7 +79,7 @@ class calculator_screen(editor_screen):
                 x = x * editor.grid_size * 3 + x_start
                 if label is None:
                     continue
-                rect = pygame.Rect(x, y, editor.grid_size * 2, editor.grid_size * 2)
+                rect = mollytime.Rect(x, y, editor.grid_size * 2, editor.grid_size * 2)
                 icon = plate_bg(editor.grid_size, editor.tile_color, str(label)).surface
                 self.buttons.append((rect, icon, label))
 
@@ -165,12 +166,12 @@ class calculator_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_apply_rect = pygame.Rect(
+        goto_apply_rect = mollytime.Rect(
             editor.grid_size,
             3 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_cancel_rect = pygame.Rect(
+        goto_cancel_rect = mollytime.Rect(
             editor.grid_size,
             4 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -205,7 +206,7 @@ class calculator_screen(editor_screen):
 
         frame.set_alpha(int(0.25 * 255))
 
-        self.bg = pygame.Surface((frame.get_width(), frame.get_height()))
+        self.bg = mollytime.draw.Texture((frame.get_width(), frame.get_height()))
         self.bg.fill((0, 0, 0))
         self.bg.blit(frame, (0, 0))
 
@@ -314,6 +315,6 @@ class calculator_screen(editor_screen):
         if update_anything:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            pygame.display.flip()
+            mollytime.draw.flip()
         else:
             editor.clock.tick(60)
