@@ -61,6 +61,38 @@ glm_include = 'third_party' / 'glm-0.9.9.8'
 include_dirs += include_directories(glm_include)
 
 # ---
+# SDL3
+
+sdl_include = 'third_party' / 'SDL3-3.2.22' / 'include'
+sdl_libs = 'third_party' / 'SDL3-3.2.22' / 'lib' / 'x64'
+sdl_includes = include_directories(sdl_include)
+include_dirs += sdl_includes
+dependencies += compiler.find_library(
+    'SDL3',
+    dirs : project_dir / sdl_libs,
+    header_include_directories : sdl_includes,
+    required : true
+)
+
+fs.copyfile(sdl_libs / 'SDL3.dll')
+
+# ---
+# SDL3_ttf
+
+sdl_include = 'third_party' / 'SDL3_ttf-3.2.2' / 'include'
+sdl_libs = 'third_party' / 'SDL3_ttf-3.2.2' / 'lib' / 'x64'
+sdl_includes = include_directories(sdl_include)
+include_dirs += sdl_includes
+dependencies += compiler.find_library(
+    'SDL3_ttf',
+    dirs : project_dir / sdl_libs,
+    header_include_directories : sdl_includes,
+    required : true
+)
+
+fs.copyfile(sdl_libs / 'SDL3_ttf.dll')
+
+# ---
 # Pybind11
 
 dependencies += dependency('pybind11')
