@@ -331,12 +331,12 @@ class connect_screen(editor_screen):
                 radius = max(editor.grid_size // 4, 4)
                 mollytime.draw.circle(frame, line_color, self.press_start, radius)
                 mollytime.draw.circle(frame, line_color, self.press_stop, radius)
-                draw_line(frame, line_color, self.press_start, self.press_stop, radius)
+                mollytime.draw.line(frame, line_color, self.press_start, self.press_stop, radius * 2)
 
             elif self.cut_start and self.cut_stop:
                 line_color = (255, 0, 0)
                 radius = 2
-                draw_line(frame, line_color, self.cut_start, self.cut_stop, radius)
+                mollytime.draw.line(frame, line_color, self.cut_start, self.cut_stop, radius * 2)
 
             editor.screen.blit(frame, editor.play_area.viewport)
 

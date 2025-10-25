@@ -7,10 +7,32 @@
 #include <cassert>
 #include <format>
 #include <stdexcept>
-#include <print>
 
 namespace Draw
 {
+    static SDL_FPoint SDLPoint(glm::vec2 Pt)
+    {
+        return {Pt.x, Pt.y};
+    }
+
+    static glm::vec2 GLMPoint(Point Pt)
+    {
+        const auto [X, Y] = Pt;
+        return {X, Y};
+    }
+
+    static glm::vec2 SunwiseBy90(glm::vec2 In)
+    {
+        // Rotates a 2D vector around the origin by 90 degrees clockwise.
+        return glm::vec2(-In.y, In.x);
+    }
+
+    static glm::vec2 WiddershinsBy90(glm::vec2 In)
+    {
+        // Rotates a 2D vector around the origin by 90 degrees counterclockwise.
+        return glm::vec2(In.y, -In.x);
+    }
+
     Texture::Texture(SDL_Window* Window, int InWidth, int InHeight)
         : SDLTexture(nullptr)
         , Width(InWidth)
@@ -186,35 +208,62 @@ namespace Draw
         }
     }
     
-    void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, int Width, float Alpha)
+    void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha)
     {
         assert(Renderer != nullptr);
 
-        // TODO: Actually use Width
         const auto [R, G, B] = Color.To8BitRGB();
         const auto [X1, Y1] = Start;
         const auto [X2, Y2] = End;
 
-        if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+        if (Width > 1.0)
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
-        }
+            float Radius = Width * 0.5;
+            glm::vec2 PointA = GLMPoint(Start);
+            glm::vec2 PointB = GLMPoint(End);
+            glm::vec2 Offset = glm::normalize(PointB - PointA) * Radius;
+            glm::vec2 OffsetW = WiddershinsBy90(Offset);
+            glm::vec2 OffsetS = SunwiseBy90(Offset);
+            SDL_FPoint CornerAW = SDLPoint(PointA + OffsetW);
+            SDL_FPoint CornerBW = SDLPoint(PointB + OffsetW);
+            SDL_FPoint CornerBS = SDLPoint(PointB + OffsetS);
+            SDL_FPoint CornerAS = SDLPoint(PointA + OffsetS);
 
-        if (!SDL_SetRenderDrawColor(Renderer, R, G, B, 255))
+            SDL_Vertex Vertices[6];
+            Vertices[0].position = CornerAW;
+            Vertices[1].position = CornerBW;
+            Vertices[2].position = CornerBS;
+            Vertices[3].position = CornerBS;
+            Vertices[4].position = CornerAS;
+            Vertices[5].position = CornerAW;
+            for (SDL_Vertex& Vertex : Vertices)
+            {
+                Color.Eval(ColorSpace::sRGB, Vertex.color);
+                Vertex.color.a = 1.0f;
+            }
+
+            if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices, 6, nullptr, 0))
+            {
+                throw std::runtime_error(std::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
+            }
+        }
+        else
         {
-            throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
-        }
+            if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+            {
+                throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            }
 
-        if (!SDL_RenderLine(Renderer, static_cast<float>(X1), static_cast<float>(Y1), static_cast<float>(X2), static_cast<float>(Y2)))
-        {
-            throw std::runtime_error(std::format("Failed to render line. SDL error: {}", SDL_GetError()));
-        }
-    }
+            if (!SDL_SetRenderDrawColor(Renderer, R, G, B, 255))
+            {
+                throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
+            }
 
-    void DrawLineAntiAliased(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, int Width, float Alpha)
-    {
-        // TODO: Implement
-        DrawLine(Texture, Color, Start, End, Width);
+            if (!SDL_RenderLine(Renderer, static_cast<float>(X1), static_cast<float>(Y1), static_cast<float>(X2), static_cast<float>(Y2)))
+            {
+                throw std::runtime_error(std::format("Failed to render line. SDL error: {}", SDL_GetError()));
+            }
+        }
     }
 
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth, float Alpha)

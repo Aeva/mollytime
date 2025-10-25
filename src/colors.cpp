@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <string>
 #include <string_view>
+#include <SDL3/SDL_render.h>
 
 
 const std::array<std::pair<ColorSpace, std::string>, size_t(ColorSpace::Count) > EncodingNames = \
@@ -392,6 +393,22 @@ glm::vec3 ColorPoint::Eval(ColorSpace OutEncoding) const
 	{
 		ColorPoint Transcoded = Encode(OutEncoding);
 		return Transcoded.Channels;
+	}
+}
+
+
+void ColorPoint::Eval(ColorSpace OutEncoding, SDL_FColor& OutColor) const
+{
+	if (OutEncoding == Encoding)
+	{
+		OutColor.r = Channels.x;
+		OutColor.g = Channels.y;
+		OutColor.b = Channels.z;
+	}
+	else
+	{
+		ColorPoint Transcoded = Encode(OutEncoding);
+		Transcoded.Eval(OutEncoding, OutColor);
 	}
 }
 

@@ -210,16 +210,6 @@ class plate_bg:
             self.draw_label(target, rect, label)
 
 
-def draw_line(target, color, start, end, radius):
-    offset = vec_scale(normalize(vec_sub(end, start)), radius)
-    points = [
-        vec_add(start, widdershins_by_90(offset)),
-        vec_add(end, widdershins_by_90(offset)),
-        vec_add(end, sunwise_by_90(offset)),
-        vec_add(start, sunwise_by_90(offset))]
-    mollytime.draw.polygon(target, color, points)
-
-
 def draw_arrow(target, color, start, end, radius, inset=.5):
     start_pt = start.center if type(start) == mollytime.Rect else start
     end_pt = end.center if type(end) == mollytime.Rect else end
@@ -244,14 +234,14 @@ def draw_arrow(target, color, start, end, radius, inset=.5):
         if line := end.clipline(start_pt, end_pt):
             end_pt = line[0]
 
-    draw_line(target, color, start_pt, end_pt, radius)
+    mollytime.draw.line(target, color, start_pt, end_pt, radius * 2)
     mollytime.draw.circle(target, color, start_pt, radius)
     mollytime.draw.circle(target, color, end_pt, radius)
 
     point = vec_scale(normalize(vec_sub(start_pt, end_pt)), radius * 4)
     for angle in [-35, 35]:
         arrow_pt = vec_add(end_pt, rotate_point(point, angle))
-        draw_line(target, color, end_pt, arrow_pt, radius)
+        mollytime.draw.line(target, color, end_pt, arrow_pt, radius * 2)
         mollytime.draw.circle(target, color, arrow_pt, radius)
 
 
@@ -278,7 +268,7 @@ class plate_outline(plate_bg):
         for edge in range(4):
             a = corners[edge]
             b = corners[(edge + 1) % 4]
-            draw_line(self.surface, self.color_base, a, b, line_radius)
+            mollytime.draw.line(self.surface, self.color_base, a, b, line_radius * 2)
         if self.cross_out:
             inset = max(int(self.size / 3), 8)
             more_corners = [
@@ -289,4 +279,4 @@ class plate_outline(plate_bg):
             for edge in range(4):
                 a = corners[edge]
                 b = more_corners[edge]
-                draw_line(self.surface, self.color_base, a, b, line_radius)
+                mollytime.draw.line(self.surface, self.color_base, a, b, line_radius * 2)

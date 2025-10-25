@@ -149,6 +149,8 @@ struct ColorPoint
 
 	glm::vec3 Eval(ColorSpace OutEncoding) const;
 
+	void Eval(ColorSpace OutEncoding, struct SDL_FColor& OutColor) const;
+
 	void MutateEncoding(ColorSpace NewEncoding);
 
 	void MutateChannels(glm::vec3 NewChannels);

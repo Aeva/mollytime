@@ -208,8 +208,7 @@ namespace Draw
     void Init();
     void Flip();
     
-    void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, int Width, float Alpha = 1.0f);
-    void DrawLineAntiAliased(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, int Width, float Alpha = 1.0f);
+    void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth = 0, float Alpha = 1.0f); // Fills if BorderWidth <= 0
     void DrawCircle(Texture& Texture, const ColorPoint& Color, const Point& Center, int Radius, float Alpha = 1.0f);
     void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Vertices, float Alpha = 1.0f);
