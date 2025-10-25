@@ -247,6 +247,11 @@ namespace Draw
                 Vertex.color.a = 1.0f;
             }
 
+            if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+            {
+                throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            }
+
             if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices, 6, nullptr, 0))
             {
                 throw std::runtime_error(std::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
@@ -384,6 +389,8 @@ namespace Draw
 
     void DrawCircle(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Alpha)
     {
+        assert(Renderer != nullptr);
+
         static std::vector<Point> CircleTemplate = UnitCircle(8);
         std::vector<Point> Points;
         Points.reserve(CircleTemplate.size());
@@ -397,40 +404,33 @@ namespace Draw
         std::vector<int> Indices;
         PrepareConvexHull(Points, Color, Alpha, Vertices, Indices);
 
+        if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+        {
+            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+        }
+
         if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
             throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
     }
 
-    void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Vertices, float Alpha)
+    void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Points, float Alpha)
     {
         assert(Renderer != nullptr);
 
-        // TODO: Convert list of outer polygon Vertices into triangles & indices
-        return;
+        std::vector<SDL_Vertex> Vertices;
+        std::vector<int> Indices;
+        PrepareConvexHull(Points, Color, Alpha, Vertices, Indices);
 
-        const glm::vec3 ColorRGB = Color.Eval(ColorSpace::sRGB);
-
-        std::vector<SDL_Vertex> SDLVertices;
-        for (const Point& Vertex : Vertices)
-        {
-            const auto [X, Y] = Vertex;
-            SDLVertices.emplace_back(
-                SDL_FPoint { X, Y },
-                SDL_FColor { ColorRGB.r, ColorRGB.g, ColorRGB.b, Alpha },
-                SDL_FPoint {}
-            );
-        }
-        
         if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, nullptr, SDLVertices.data(), static_cast<int>(SDLVertices.size()), nullptr, 0))
+        if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
-            throw std::runtime_error(std::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
     }
 

@@ -387,7 +387,7 @@ PYBIND11_MODULE(mollytime, m) {
         .def("line", &Draw::DrawLine, py::arg("texture"), py::arg("color"), py::arg("start"), py::arg("end"), py::arg("width") = 1.0f, py::arg("alpha") = 1.0f)
         .def("rect", &Draw::DrawRect, py::arg("texture"), py::arg("color"), py::arg("rect"), py::arg("depth") = 0, py::arg("alpha") = 1.0f)
         .def("circle", &Draw::DrawCircle, py::arg("texture"), py::arg("color"), py::arg("center"), py::arg("radius"), py::arg("alpha") = 1.0f)
-        .def("polygon", &Draw::DrawPolygon, py::arg("texture"), py::arg("color"), py::arg("vertices"), py::arg("alpha") = 1.0f);
+        .def("polygon", &Draw::DrawPolygon, py::arg("texture"), py::arg("color"), py::arg("points"), py::arg("alpha") = 1.0f);
 
     // ---
     // Font
