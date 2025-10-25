@@ -358,6 +358,8 @@ class program_card:
 
         screen_w = screen.get_rect().width
         screen_h = screen.get_rect().height
+        assert(screen_w > 1)
+        assert(screen_h > 1)
 
         self.grid_size = dpi // 3
 

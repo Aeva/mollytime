@@ -184,7 +184,7 @@ namespace Draw
         int Width, Height;
         
     public:
-        explicit Texture(SDL_Window* Window);
+        explicit Texture(SDL_Window* Window, int Width, int Height);
         explicit Texture(SDL_Surface* Surface);
         explicit Texture(int Width, int Height);
         explicit Texture(const Size& Size);

@@ -7,17 +7,17 @@
 #include <cassert>
 #include <format>
 #include <stdexcept>
+#include <print>
 
 namespace Draw
 {
-    Texture::Texture(SDL_Window* Window)
+    Texture::Texture(SDL_Window* Window, int InWidth, int InHeight)
+        : SDLTexture(nullptr)
+        , Width(InWidth)
+        , Height(InHeight)
     {
-        SDLTexture = nullptr;
-
-        if (!SDL_GetWindowSize(Window, &Width, &Height))
-        {
-            throw std::runtime_error(std::format("Failed to get window size. SDL error: {}", SDL_GetError()));
-        }
+        // SDL_GetWindowSize is claiming the window size is (1, 1) on Linux for some reason,
+        // but we don't really need to call it since the window size is already known.
     }
 
     Texture::Texture(SDL_Surface* Surface)

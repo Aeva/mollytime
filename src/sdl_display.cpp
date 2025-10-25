@@ -159,7 +159,7 @@ namespace Display
                         throw std::runtime_error(std::format("Failed to set fullscreen mode. SDL error: {}", SDL_GetError()));
                     }
 
-                    return Draw::Texture(Window);
+                    return Draw::Texture(Window, Width, Height);
                 }
             }
 
@@ -187,8 +187,7 @@ namespace Display
             {
                 throw std::runtime_error(std::format("Failed to set window position. SDL error: {}", SDL_GetError()));
             }
-
-            return Draw::Texture(Window);
+            return Draw::Texture(Window, Width, Height);
         }
     }
 
