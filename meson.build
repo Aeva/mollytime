@@ -63,34 +63,48 @@ include_dirs += include_directories(glm_include)
 # ---
 # SDL3
 
-sdl_include = 'third_party' / 'SDL3-3.2.22' / 'include'
-sdl_libs = 'third_party' / 'SDL3-3.2.22' / 'lib' / 'x64'
-sdl_includes = include_directories(sdl_include)
-include_dirs += sdl_includes
-dependencies += compiler.find_library(
-    'SDL3',
-    dirs : project_dir / sdl_libs,
-    header_include_directories : sdl_includes,
-    required : true
-)
+if build_machine.system() == 'windows'
+    sdl_include = 'third_party' / 'SDL3-3.2.22' / 'include'
+    sdl_libs = 'third_party' / 'SDL3-3.2.22' / 'lib' / 'x64'
+    sdl_includes = include_directories(sdl_include)
+    include_dirs += sdl_includes
+    dependencies += compiler.find_library(
+        'SDL3',
+        dirs : project_dir / sdl_libs,
+        header_include_directories : sdl_includes,
+        required : true
+    )
 
-fs.copyfile(sdl_libs / 'SDL3.dll')
+    fs.copyfile(sdl_libs / 'SDL3.dll')
+else
+    dependencies += compiler.find_library(
+        'SDL3',
+        required : true
+    )
+endif
 
 # ---
 # SDL3_ttf
 
-sdl_include = 'third_party' / 'SDL3_ttf-3.2.2' / 'include'
-sdl_libs = 'third_party' / 'SDL3_ttf-3.2.2' / 'lib' / 'x64'
-sdl_includes = include_directories(sdl_include)
-include_dirs += sdl_includes
-dependencies += compiler.find_library(
-    'SDL3_ttf',
-    dirs : project_dir / sdl_libs,
-    header_include_directories : sdl_includes,
-    required : true
-)
+if build_machine.system() == 'windows'
+    sdl_include = 'third_party' / 'SDL3_ttf-3.2.2' / 'include'
+    sdl_libs = 'third_party' / 'SDL3_ttf-3.2.2' / 'lib' / 'x64'
+    sdl_includes = include_directories(sdl_include)
+    include_dirs += sdl_includes
+    dependencies += compiler.find_library(
+        'SDL3_ttf',
+        dirs : project_dir / sdl_libs,
+        header_include_directories : sdl_includes,
+        required : true
+    )
 
-fs.copyfile(sdl_libs / 'SDL3_ttf.dll')
+    fs.copyfile(sdl_libs / 'SDL3_ttf.dll')
+else
+    dependencies += compiler.find_library(
+        'SDL3_ttf',
+        required : true
+    )
+endif
 
 # ---
 # Pybind11
@@ -200,7 +214,6 @@ python_files = files(
     'mollytime' / 'patterns.py',
     'mollytime' / 'perf.py',
     'mollytime' / 'power.py',
-    'mollytime' / 'pygame_setup.py',
     'mollytime' / 'media' / '__init__.py',
     'mollytime' / 'screens' / '__init__.py',
     'mollytime' / 'screens' / 'calc.py',
