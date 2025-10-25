@@ -81,7 +81,6 @@ class connect_screen(editor_screen):
         stop = (viewport.centerx - editor.grid_size * 2, viewport.h)
         points = [(0, 0), start, stop, (0, viewport.h)]
         mollytime.draw.polygon(matte, matte_color, points)
-        mollytime.draw.aaline(matte, matte_color, start, stop)
 
         start = (viewport.centerx + editor.grid_size * 2, 0)
         stop = (viewport.centerx, viewport.h)
@@ -91,7 +90,6 @@ class connect_screen(editor_screen):
         mollytime.draw.polygon(matte, matte_color, points)
         start = (start[0] - 1, start[1])
         stop = (stop[0] - 1, stop[1])
-        mollytime.draw.aaline(matte, matte_color, start, stop)
 
         matte.set_alpha(int(0.8 * 255))
         self.bg.blit(matte, (0, 0))
