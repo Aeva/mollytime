@@ -305,7 +305,6 @@ namespace Draw
     {
         assert(Renderer != nullptr);
 
-        const auto [R, G, B] = Color.To8BitRGB();
         const SDL_FRect FloatRect
         {
             Rect.X,
@@ -319,7 +318,20 @@ namespace Draw
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_SetRenderDrawColor(Renderer, R, G, B, std::clamp(Alpha, 0.0f, 1.0f) * 255))
+        if (Alpha < 1.0f)
+        {
+            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_BLEND_PREMULTIPLIED);
+        }
+        else
+        {
+            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+        }
+
+        // TODO Blend mode suggests that we should be premultiplying alpha into the RGB channels, but
+        // if we actually do that the color is clearly wrong (seen in the pick and place mode).  Does that
+        // mean we *shouldn't* be doing that anywhere?
+        glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
+        if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
             throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
@@ -340,6 +352,8 @@ namespace Draw
                 throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
             }
         }
+
+        SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
     }
 
     static void PrepareConvexHull(
