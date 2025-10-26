@@ -181,7 +181,7 @@ namespace Draw
     void Texture::Blit(const Texture& Source, const Point& Offset)
     {
         const auto [X, Y] = Offset;
-        Blit(Source, { X, Y, Width - X, Height - Y });
+        Blit(Source, { X, Y, float(Source.Width), float(Source.Height) });
     }
 
     SDL_Texture& Texture::GetTexture()
