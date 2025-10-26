@@ -305,7 +305,7 @@ namespace Draw
     {
         assert(Renderer != nullptr);
 
-        const SDL_FRect FloatRect
+        SDL_FRect FloatRect
         {
             Rect.X,
             Rect.Y,
@@ -346,10 +346,16 @@ namespace Draw
         }
         else
         {
-            // TODO: Actually use BorderWidth
-            if (!SDL_RenderRect(Renderer, &FloatRect))
+            for (int Iteration = 0; Iteration < BorderWidth; ++Iteration)
             {
-                throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
+                if (!SDL_RenderRect(Renderer, &FloatRect))
+                {
+                    throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
+                }
+                FloatRect.x += 1.0f;
+                FloatRect.y += 1.0f;
+                FloatRect.w -= 2.0f;
+                FloatRect.h -= 2.0f;
             }
         }
 
