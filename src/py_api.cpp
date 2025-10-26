@@ -324,7 +324,7 @@ PYBIND11_MODULE(mollytime, m) {
     
     py::class_<Events::TouchFingerEvent>(events, "TouchFingerEvent")
         .def_readonly("x", &Events::TouchFingerEvent::X)
-        .def_readonly("y", &Events::TouchFingerEvent::X)
+        .def_readonly("y", &Events::TouchFingerEvent::Y)
         .def_readonly("touch_id", &Events::TouchFingerEvent::TouchID)
         .def_readonly("finger_id", &Events::TouchFingerEvent::FingerID);
     

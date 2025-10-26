@@ -614,18 +614,18 @@ class editor_screen:
                 self.on_release(editor, event.button.pos, event)
 
             elif event.type == mollytime.events.FINGERMOTION:
-                key = (event.touch_id, event.finger_id)
-                pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
+                key = (event.tfinger.touch_id, event.tfinger.finger_id)
+                pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_update(editor, key, pos, event)
 
             elif event.type == mollytime.events.FINGERDOWN:
-                key = (event.touch_id, event.finger_id)
-                pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
+                key = (event.tfinger.touch_id, event.tfinger.finger_id)
+                pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_start(editor, key, pos, event)
 
             elif event.type == mollytime.events.FINGERUP:
-                key = (event.touch_id, event.finger_id)
-                pos = (event.x * editor.screen.get_width(), event.y * editor.screen.get_height())
+                key = (event.tfinger.touch_id, event.tfinger.finger_id)
+                pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_end(editor, key, pos, event)
 
             elif event.type == mollytime.events.QUIT:
