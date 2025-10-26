@@ -9,6 +9,7 @@
 #include <cassert>
 #include <format>
 #include <stdexcept>
+#include <print>
 
 
 constexpr double Tau = std::numbers::pi * 2.0;
@@ -137,14 +138,14 @@ namespace Draw
 
     void Texture::Fill(ColorPoint& Color)
     {
-        const auto [R, G, B] = Color.To8BitRGB();
+        glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
 
         if (!SDL_SetRenderTarget(&Draw::GetRenderer(), GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_SetRenderDrawColor(&Draw::GetRenderer(), R, G, B, 255))
+        if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, 1.0f))
         {
             throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
@@ -233,6 +234,15 @@ namespace Draw
         const auto [X1, Y1] = Start;
         const auto [X2, Y2] = End;
 
+        if (Alpha < 1.0f)
+        {
+            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_BLEND_PREMULTIPLIED);
+        }
+        else
+        {
+            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+        }
+
         if (Width > 1.0)
         {
             float Radius = Width * 0.5;
@@ -245,6 +255,7 @@ namespace Draw
             SDL_FPoint CornerBW = SDLPoint(PointB + OffsetW);
             SDL_FPoint CornerBS = SDLPoint(PointB + OffsetS);
             SDL_FPoint CornerAS = SDLPoint(PointA + OffsetS);
+            glm::vec3 RGB = Color.Eval(ColorSpace::sRGB) * Alpha;
 
             SDL_Vertex Vertices[6];
             Vertices[0].position = CornerAW;
@@ -255,8 +266,7 @@ namespace Draw
             Vertices[5].position = CornerAW;
             for (SDL_Vertex& Vertex : Vertices)
             {
-                Color.Eval(ColorSpace::sRGB, Vertex.color);
-                Vertex.color.a = Alpha;
+                Vertex.color = {RGB.x, RGB.y, RGB.z, Alpha};
             }
 
             if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
@@ -264,7 +274,7 @@ namespace Draw
                 throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
             }
 
-            if (!SDL_RenderGeometry(Renderer, Texture.GetTexture(), Vertices, 6, nullptr, 0))
+            if (!SDL_RenderGeometry(Renderer, nullptr, Vertices, 6, nullptr, 0))
             {
                 throw std::runtime_error(std::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
             }
@@ -276,8 +286,8 @@ namespace Draw
                 throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
             }
 
-            const auto [R, G, B] = Color.To8BitRGB();
-            if (!SDL_SetRenderDrawColor(Renderer, R, G, B, 255))
+            glm::vec3 RGB = Color.Eval(ColorSpace::sRGB) * Alpha;
+            if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
             {
                 throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
             }
@@ -287,6 +297,8 @@ namespace Draw
                 throw std::runtime_error(std::format("Failed to render line. SDL error: {}", SDL_GetError()));
             }
         }
+
+        SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
     }
 
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth, float Alpha)
@@ -422,7 +434,7 @@ namespace Draw
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
+        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
             throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
@@ -441,7 +453,7 @@ namespace Draw
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
+        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
             throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
@@ -449,7 +461,7 @@ namespace Draw
 
     SDL_Renderer& GetRenderer()
     {
-        assert(Renderer != nullptr);        
+        assert(Renderer != nullptr);
         return *Renderer;
     }
 }
