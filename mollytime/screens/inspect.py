@@ -246,7 +246,7 @@ class inspect_screen(editor_screen):
                         self.goto_calculator(editor)
                         return
                     elif symbol == OpCode.BOOP:
-                        if not event.touch:
+                        if not event.button.touch:
                             self.hold["m"] = tile_id
                             editor.patch.set_special_input(tile_id, 1.0)
                         return
