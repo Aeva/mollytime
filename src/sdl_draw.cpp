@@ -38,9 +38,22 @@ namespace Draw
         return glm::vec2(In.y, -In.x);
     }
 
+    TextureCaddy::TextureCaddy(SDL_Texture* InSDLTexture)
+        : SDLTexture(InSDLTexture)
+    {
+    }
+
+    TextureCaddy::~TextureCaddy()
+    {
+        if (SDLTexture != nullptr)
+        {
+            SDL_DestroyTexture(SDLTexture);
+            SDLTexture = nullptr;
+        }
+    }
+
     Texture::Texture(SDL_Window* Window, int InWidth, int InHeight)
-        : SDLTexture(nullptr)
-        , Width(InWidth)
+        : Width(InWidth)
         , Height(InHeight)
     {
         // SDL_GetWindowSize is claiming the window size is (1, 1) on Linux for some reason,
@@ -51,14 +64,14 @@ namespace Draw
     {
         assert(Surface != nullptr);
 
-        SDLTexture = SDL_CreateTextureFromSurface(&GetRenderer(), Surface);
-        if(SDLTexture == nullptr)
+        Handle = std::make_shared<TextureCaddy>(SDL_CreateTextureFromSurface(&GetRenderer(), Surface));
+        if (!GetTexture())
         {
             throw std::runtime_error(std::format("Failed to create texture from surface. SDL error: {}", SDL_GetError()));
         }
 
         float WidthF, HeightF;
-        if (!SDL_GetTextureSize(SDLTexture, &WidthF, &HeightF))
+        if (!SDL_GetTextureSize(GetTexture(), &WidthF, &HeightF))
         {
             throw std::runtime_error(std::format("Failed to get texture size. SDL error: {}", SDL_GetError()));
         }
@@ -73,15 +86,15 @@ namespace Draw
     {
         assert(Width + Height >= 1);
 
-        SDLTexture = SDL_CreateTexture(
+        Handle = std::make_shared<TextureCaddy>(SDL_CreateTexture(
             &Draw::GetRenderer(),
             SDL_PIXELFORMAT_RGBA32,
             SDL_TEXTUREACCESS_TARGET,
             Width,
             Height
-        );
+        ));
 
-        if (SDLTexture == nullptr)
+        if (!GetTexture())
         {
             throw std::runtime_error(std::format("Failed to create texture. SDL error: {}", SDL_GetError()));
         }
@@ -90,13 +103,6 @@ namespace Draw
     Texture::Texture(const Size& Size) :
         Texture(std::get<0>(Size), std::get<1>(Size))
     { }
-    
-    Texture::~Texture()
-    {
-        // TODO: Debug why Textures are destroyed unexpectedly
-        // SDL_DestroyTexture(SDLTexture);
-        // SDLTexture = nullptr;
-    }
 
     float Texture::GetWidth() const
     {
@@ -123,7 +129,7 @@ namespace Draw
     
     void Texture::SetAlpha(int Alpha)
     {
-        if (!SDL_SetTextureAlphaMod(SDLTexture, static_cast<Uint8>(Alpha)))
+        if (!SDL_SetTextureAlphaMod(GetTexture(), static_cast<Uint8>(Alpha)))
         {
             throw std::runtime_error(std::format("Failed to set texture alpha. SDL error: {}", SDL_GetError()));
         }
@@ -133,7 +139,7 @@ namespace Draw
     {
         const auto [R, G, B] = Color.To8BitRGB();
 
-        if (!SDL_SetRenderTarget(&Draw::GetRenderer(), SDLTexture))
+        if (!SDL_SetRenderTarget(&Draw::GetRenderer(), GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
@@ -167,12 +173,12 @@ namespace Draw
             Region.Height
         };
 
-        if (!SDL_SetRenderTarget(&Draw::GetRenderer(), SDLTexture))
+        if (!SDL_SetRenderTarget(&Draw::GetRenderer(), GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
         
-        if (!SDL_RenderTexture(&Draw::GetRenderer(), Source.SDLTexture, &SourceRect, &DestRect))
+        if (!SDL_RenderTexture(&Draw::GetRenderer(), Source.GetTexture(), &SourceRect, &DestRect))
         {
             throw std::runtime_error(std::format("Failed to render texture. SDL error: {}", SDL_GetError()));
         }
@@ -184,9 +190,16 @@ namespace Draw
         Blit(Source, { X, Y, float(Source.Width), float(Source.Height) });
     }
 
-    SDL_Texture& Texture::GetTexture()
+    SDL_Texture* Texture::GetTexture() const
     {
-        return *SDLTexture;
+        if (Handle)
+        {
+            return Handle->SDLTexture;
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 }
 
@@ -217,7 +230,6 @@ namespace Draw
     {
         assert(Renderer != nullptr);
 
-        const auto [R, G, B] = Color.To8BitRGB();
         const auto [X1, Y1] = Start;
         const auto [X2, Y2] = End;
 
@@ -244,26 +256,27 @@ namespace Draw
             for (SDL_Vertex& Vertex : Vertices)
             {
                 Color.Eval(ColorSpace::sRGB, Vertex.color);
-                Vertex.color.a = 1.0f;
+                Vertex.color.a = Alpha;
             }
 
-            if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+            if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
             {
                 throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
             }
 
-            if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices, 6, nullptr, 0))
+            if (!SDL_RenderGeometry(Renderer, Texture.GetTexture(), Vertices, 6, nullptr, 0))
             {
                 throw std::runtime_error(std::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
             }
         }
         else
         {
-            if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+            if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
             {
                 throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
             }
 
+            const auto [R, G, B] = Color.To8BitRGB();
             if (!SDL_SetRenderDrawColor(Renderer, R, G, B, 255))
             {
                 throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
@@ -289,7 +302,7 @@ namespace Draw
             Rect.Height
         };
 
-        if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+        if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
@@ -404,12 +417,12 @@ namespace Draw
         std::vector<int> Indices;
         PrepareConvexHull(Points, Color, Alpha, Vertices, Indices);
 
-        if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+        if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
+        if (!SDL_RenderGeometry(Renderer, Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
             throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
@@ -423,12 +436,12 @@ namespace Draw
         std::vector<int> Indices;
         PrepareConvexHull(Points, Color, Alpha, Vertices, Indices);
 
-        if (!SDL_SetRenderTarget(Renderer, &Texture.GetTexture()))
+        if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, &Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
+        if (!SDL_RenderGeometry(Renderer, Texture.GetTexture(), Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
             throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }

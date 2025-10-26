@@ -120,7 +120,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("__getitem__", &ColorPointGetItem)
 		.def("__repr__", &ColorPointRepr)
 		.def_property_readonly("channels", &ColorPointGetChannels)
-		.def_readonly("encoding", &ColorPoint::Encoding);
+		.def_readonly("encoding", &ColorPoint::Encoding)
+		.def("encode", &ColorPoint::Encode);
 
 	py::class_<ColorRamp>(m, "ColorRamp")
 		.def(py::init<std::vector<ColorPoint> &>())

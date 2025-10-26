@@ -4,6 +4,7 @@
 #include <string_view>
 #include <tuple>
 #include <vector>
+#include <memory>
 
 struct ColorPoint;
 
@@ -178,19 +179,24 @@ namespace Mouse
 
 namespace Draw
 {
+    struct TextureCaddy
+    {
+        SDL_Texture* SDLTexture = nullptr;
+        TextureCaddy(SDL_Texture* InSDLTexture);
+        ~TextureCaddy();
+    };
+
     class Texture
     {
-        SDL_Texture* SDLTexture;
+        std::shared_ptr<TextureCaddy> Handle;
         int Width, Height;
         
     public:
-        explicit Texture(SDL_Window* Window, int Width, int Height);
-        explicit Texture(SDL_Surface* Surface);
-        explicit Texture(int Width, int Height);
-        explicit Texture(const Size& Size);
+        Texture(SDL_Window* Window, int Width, int Height);
+        Texture(SDL_Surface* Surface);
+        Texture(int Width, int Height);
+        Texture(const Size& Size);
         
-        ~Texture();
-
         float GetWidth() const;
         float GetHeight() const;
         Rect GetRect() const;
@@ -202,7 +208,7 @@ namespace Draw
         void Blit(const Texture& Source, const Point& Offset);
 
         // Internal
-        SDL_Texture& GetTexture();
+        SDL_Texture* GetTexture() const;
     };
 
     void Init();
