@@ -1,6 +1,7 @@
 #include "sdl.h"
 
 #include <SDL3/SDL_events.h>
+#include <print>
 
 namespace Events
 {
@@ -117,6 +118,69 @@ namespace Events
                         }
                     });
                     break;
+#if 1
+                case SDL_EVENT_PEN_DOWN:
+                case SDL_EVENT_PEN_UP:
+                    Events.push_back(
+                        {
+                            .Button =
+                            {
+                                Next.ptouch.down ? EventType::MouseButtonDown : EventType::MouseButtonUp,
+                                Next.ptouch.x,
+                                Next.ptouch.y,
+                                static_cast<MouseButton>(SDL_BUTTON_LEFT),
+                                false
+                            }
+                        });
+                    break;
+#endif
+#if 0
+                case SDL_EVENT_MOUSE_MOTION:
+                    Events.push_back(
+                        {
+                            .Motion =
+                            {
+                                EventType::MouseMotion,
+                                Next.motion.x,
+                                Next.motion.y,
+                                Next.motion.xrel,
+                                Next.motion.yrel
+                            }
+                        });
+                    break;
+#endif
+#if 0
+                case SDL_EVENT_PEN_DOWN:
+                case SDL_EVENT_PEN_UP:
+                    if (Next.ptouch.down)
+                    {
+                        std::print("pen down: {}, {}\n", Next.ptouch.x, Next.ptouch.y);
+                    }
+                    else
+                    {
+                        std::print("pen up: {}, {}\n", Next.ptouch.x, Next.ptouch.y);
+                    }
+                    break;
+                case SDL_EVENT_PEN_MOTION:
+                    // SDL pen_state flags also support five buttons and an eraser
+                    if ((Next.pmotion.pen_state & SDL_PEN_INPUT_DOWN) == SDL_PEN_INPUT_DOWN)
+                    {
+                        std::print("pen motion: {}, {}\n", Next.pmotion.x, Next.pmotion.y);
+                    }
+                    break;
+#endif
+#if 0
+                // nice-to-haves for future reference
+                case SDL_EVENT_PEN_BUTTON_DOWN:
+                    std::print("pen button down\n");
+                    break;
+                case SDL_EVENT_PEN_BUTTON_UP:
+                    std::print("pen button up\n");
+                    break;
+                case SDL_EVENT_PEN_AXIS:
+                    //std::print("pen axis\n");
+                    break;
+#endif
             }
         }
 
