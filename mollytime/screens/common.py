@@ -444,6 +444,7 @@ class editor_screen:
 
         while self.live:
             self.process_events(editor)
+            self.force_redraw = True # hack to work around double buffering problem
 
             now = time.time()
             delta = now - self.last_clip_check
@@ -490,7 +491,7 @@ class editor_screen:
 
     def touch_update(self, editor, key, pos, event):
         if key in editor_screen.touch_points:
-            force_redraw = True
+            self.force_redraw = True
             editor_screen.touch_points[key] = pos
 
     def touch_end(self, editor, key, pos, event):
