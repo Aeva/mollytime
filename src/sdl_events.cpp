@@ -40,43 +40,52 @@ namespace Events
                     });
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    Events.push_back(
+                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
                     {
-                        .Button =
+                        Events.push_back(
                         {
-                            EventType::MouseButtonDown,
-                            Next.button.x,
-                            Next.button.y,
-                            static_cast<MouseButton>(Next.button.button),
-                            Next.button.which == SDL_TOUCH_MOUSEID
-                        }
-                    });
+                            .Button =
+                            {
+                                EventType::MouseButtonDown,
+                                Next.button.x,
+                                Next.button.y,
+                                static_cast<MouseButton>(Next.button.button),
+                                Next.button.which == SDL_TOUCH_MOUSEID
+                            }
+                        });
+                    }
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
-                    Events.push_back(
+                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
                     {
-                        .Button =
+                        Events.push_back(
                         {
-                            EventType::MouseButtonUp,
-                            Next.button.x,
-                            Next.button.y,
-                            static_cast<MouseButton>(Next.button.button),
-                            Next.button.which == SDL_TOUCH_MOUSEID
-                        }
-                    });
+                            .Button =
+                            {
+                                EventType::MouseButtonUp,
+                                Next.button.x,
+                                Next.button.y,
+                                static_cast<MouseButton>(Next.button.button),
+                                Next.button.which == SDL_TOUCH_MOUSEID
+                            }
+                        });
+                    }
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
-                    Events.push_back(
+                    if (Next.motion.which != SDL_TOUCH_MOUSEID && Next.motion.which != SDL_PEN_MOUSEID)
                     {
-                        .Motion =
+                        Events.push_back(
                         {
-                            EventType::MouseMotion,
-                            Next.motion.x,
-                            Next.motion.y,
-                            Next.motion.xrel,
-                            Next.motion.yrel
-                        }
-                    });
+                            .Motion =
+                            {
+                                EventType::MouseMotion,
+                                Next.motion.x,
+                                Next.motion.y,
+                                Next.motion.xrel,
+                                Next.motion.yrel
+                            }
+                        });
+                    }
                     break;
                 case SDL_EVENT_FINGER_DOWN:
                     Events.push_back(
