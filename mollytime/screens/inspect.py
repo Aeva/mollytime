@@ -137,6 +137,7 @@ class inspect_screen(editor_screen):
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True
+        editor.play_area.redraw()
         editor.clear_selection()
 
     def goto_calculator(self, editor):
