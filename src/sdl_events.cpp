@@ -1,6 +1,21 @@
 #include "sdl.h"
 
 #include <SDL3/SDL_events.h>
+#include <chrono>
+
+
+using SteadyClock = std::chrono::steady_clock;
+static SteadyClock::time_point LastTouchOrPen = SteadyClock::time_point();
+static int LastPointerType = 0; // 0 = mouse, 1 = touch, 2 = pen
+
+
+static bool AllowMouseEvent()
+{
+    const SteadyClock::duration IgnoreThreshold = std::chrono::seconds(1);
+    static SteadyClock::time_point Now = SteadyClock::now();
+    return LastPointerType == 0 || (LastTouchOrPen - Now) > IgnoreThreshold;
+}
+
 
 namespace Events
 {
@@ -40,8 +55,9 @@ namespace Events
                     });
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
+                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID && AllowMouseEvent())
                     {
+                        LastPointerType = 0;
                         Events.push_back(
                         {
                             .Button =
@@ -56,8 +72,9 @@ namespace Events
                     }
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
-                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
+                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID && AllowMouseEvent())
                     {
+                        LastPointerType = 0;
                         Events.push_back(
                         {
                             .Button =
@@ -72,8 +89,9 @@ namespace Events
                     }
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
-                    if (Next.motion.which != SDL_TOUCH_MOUSEID && Next.motion.which != SDL_PEN_MOUSEID)
+                    if (Next.motion.which != SDL_TOUCH_MOUSEID && Next.motion.which != SDL_PEN_MOUSEID && AllowMouseEvent())
                     {
+                        LastPointerType = 0;
                         Events.push_back(
                         {
                             .Motion =
@@ -88,6 +106,8 @@ namespace Events
                     }
                     break;
                 case SDL_EVENT_FINGER_DOWN:
+                    LastPointerType = 1;
+                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                     {
                         .Touch =
@@ -101,6 +121,8 @@ namespace Events
                     });
                     break;
                 case SDL_EVENT_FINGER_UP:
+                    LastPointerType = 1;
+                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                     {
                         .Touch =
@@ -114,6 +136,8 @@ namespace Events
                     });
                     break;
                 case SDL_EVENT_FINGER_MOTION:
+                    LastPointerType = 1;
+                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                     {
                         .Touch =
@@ -128,6 +152,8 @@ namespace Events
                     break;
                 case SDL_EVENT_PEN_DOWN:
                 case SDL_EVENT_PEN_UP:
+                    LastPointerType = 2;
+                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                         {
                             .Button =
@@ -141,6 +167,8 @@ namespace Events
                         });
                     break;
                 case SDL_EVENT_PEN_MOTION:
+                    LastPointerType = 2;
+                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                         {
                             .Motion =

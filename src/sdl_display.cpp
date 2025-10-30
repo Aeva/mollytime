@@ -53,6 +53,12 @@ namespace Display
         SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
         SDL_SetHint(SDL_HINT_PEN_MOUSE_EVENTS, "0");
         SDL_SetHint(SDL_HINT_PEN_TOUCH_EVENTS, "0");
+        SDL_SetEventEnabled(SDL_EVENT_FINGER_DOWN, true);
+        SDL_SetEventEnabled(SDL_EVENT_FINGER_UP, true);
+        SDL_SetEventEnabled(SDL_EVENT_FINGER_MOTION, true);
+        SDL_SetEventEnabled(SDL_EVENT_PEN_DOWN, true);
+        SDL_SetEventEnabled(SDL_EVENT_PEN_UP, true);
+        SDL_SetEventEnabled(SDL_EVENT_PEN_MOTION, true);
 
         if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR))
         {
