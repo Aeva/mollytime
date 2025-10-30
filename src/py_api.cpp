@@ -378,7 +378,7 @@ PYBIND11_MODULE(mollytime, m) {
         .def("get_rect", &Draw::Texture::GetRect)
         .def("copy", &Draw::Texture::Copy)
         .def("set_alpha", &Draw::Texture::SetAlpha)
-        .def("fill", &Draw::Texture::Fill)
+        .def("fill", &Draw::Texture::Fill, py::arg("color"), py::arg("alpha") = 1.0f)
         .def("blit", static_cast<BlitRectFunc>(&Draw::Texture::Blit))
         .def("blit", static_cast<BlitPointFunc>(&Draw::Texture::Blit));
     
