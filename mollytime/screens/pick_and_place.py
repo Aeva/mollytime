@@ -247,7 +247,7 @@ class pick_and_place_screen(editor_screen):
             editor.play_area.focus_y = editor.focus_y
             editor.play_area.redraw()
 
-            frame = editor.play_area.surface.copy()
+            frame = editor.reset_play_area()
 
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
@@ -288,23 +288,31 @@ class pick_and_place_screen(editor_screen):
                 editor.tile_bg.draw(frame, rect, label)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
-            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
-            editor.screen.blit(frame, editor.side_bar.viewport)
 
+        drag_and_draw = None
         if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):
-            rect = mollytime.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
+            overlay_span = (editor.grid_size * 4)
+            overlay = mollytime.draw.Texture((overlay_span, overlay_span))
+            #overlay.fill((0, 0, 0))
+            #overlay.set_alpha(0)
+
+            rect = mollytime.Rect(0, 0, editor.grid_size * 4, editor.grid_size * 4)
             rect.center = self.cursor_pos
+            drag_and_draw = (overlay, rect)
+
+            rect = mollytime.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)
+
             if self.prospective_tile is not None:
                 if type(self.prospective_tile) in (int, float):
                     label = f"{self.prospective_tile}"
@@ -315,21 +323,21 @@ class pick_and_place_screen(editor_screen):
 
             if self.drop_deletes:
                 if self.prospective_tile is not None:
-                    editor.tile_bg.draw(editor.screen, rect, "drop\nto\ncancel")
+                    editor.tile_bg.draw(overlay, rect, "drop\nto\ncancel")
                 else:
                     symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
                     if symbol == OpCode.CONST and editor.patch.get_constant(self.grabbed_tile) == 1337:
-                        editor.tile_bg.draw(editor.screen, rect, "DROP\n&\nRUN")
+                        editor.tile_bg.draw(overlay, rect, "DROP\n&\nRUN")
                     else:
-                        editor.tile_bg.draw(editor.screen, rect, "drop\nto\ndelete")
+                        editor.tile_bg.draw(overlay, rect, "drop\nto\ndelete")
             elif self.last_valid_position == self.last_hover_position:
-                editor.tile_bg.draw(editor.screen, rect, label)
+                editor.tile_bg.draw(overlay, rect, label)
             else:
-                editor.invalid_placement.draw(editor.screen, rect, label)
+                editor.invalid_placement.draw(overlay, rect, label)
 
-        if update_anything:
+        if update_anything or drag_and_draw:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            mollytime.draw.flip()
+            editor.present(drag_and_draw)
         else:
             editor.clock.tick(60)

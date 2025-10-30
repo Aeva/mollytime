@@ -166,7 +166,7 @@ class select_screen(editor_screen):
             editor.play_area.focus_y = editor.focus_y
             editor.play_area.redraw()
 
-            frame = editor.play_area.surface.copy()
+            frame = editor.reset_play_area()
 
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
@@ -186,23 +186,21 @@ class select_screen(editor_screen):
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
-            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
-            editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            mollytime.draw.flip()
+            editor.present()
         else:
             editor.clock.tick(60)

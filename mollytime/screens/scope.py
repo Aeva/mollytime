@@ -97,7 +97,7 @@ class scope_screen(editor_screen):
         editor.play_area.focus_x = editor.focus_x
         editor.play_area.focus_y = editor.focus_y
 
-        frame = self.scope_surface#.copy()
+        frame = editor.replace_play_area(self.scope_surface)
 
         for tile_id, tile_xy in editor.tile_positions.items():
             rect = editor.get_tile_rect(tile_id)
@@ -146,14 +146,13 @@ class scope_screen(editor_screen):
             self.last_x = beam_x
 
         frame.blit(self.screen_label_surface, self.screen_label_rect)
-        editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
@@ -161,4 +160,4 @@ class scope_screen(editor_screen):
             editor.screen.blit(frame, editor.side_bar.viewport)
 
         self.draw_touch_points(editor)
-        mollytime.draw.flip()
+        editor.present()

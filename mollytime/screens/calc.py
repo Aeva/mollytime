@@ -262,7 +262,9 @@ class calculator_screen(editor_screen):
         if self.update_play_area or self.force_redraw:
             self.update_play_area = False
             update_anything = True
-            frame = self.bg.copy()
+
+            frame = editor.reset_play_area()
+            frame.blit(self.bg, (0, 0))
 
             for rect, icon, _ in self.buttons:
                 frame.blit(icon, rect)
@@ -298,23 +300,21 @@ class calculator_screen(editor_screen):
                 print_text(text, alpha)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
-            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
-            editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            mollytime.draw.flip()
+            editor.present()
         else:
             editor.clock.tick(60)

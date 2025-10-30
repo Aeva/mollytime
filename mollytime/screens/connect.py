@@ -298,7 +298,8 @@ class connect_screen(editor_screen):
             self.update_play_area = False
             update_anything = True
 
-            frame = self.bg.copy()
+            frame = editor.reset_play_area()
+            frame.blit(self.bg, (0, 0))
 
             line_color = (128, 255, 255)
             line_width = editor.grid_size // 4
@@ -336,14 +337,12 @@ class connect_screen(editor_screen):
                 radius = 2
                 mollytime.draw.line(frame, line_color, self.cut_start, self.cut_stop, radius * 2)
 
-            editor.screen.blit(frame, editor.play_area.viewport)
-
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
@@ -353,6 +352,6 @@ class connect_screen(editor_screen):
         if update_anything:
             self.force_redraw = False
             self.draw_touch_points(editor)
-            mollytime.draw.flip()
+            editor.present()
         else:
             editor.clock.tick(60)
