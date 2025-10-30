@@ -304,11 +304,10 @@ class pick_and_place_screen(editor_screen):
         if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):
             overlay_span = (editor.grid_size * 4)
             overlay = mollytime.draw.Texture((overlay_span, overlay_span))
-            #overlay.fill((0, 0, 0))
-            #overlay.set_alpha(0)
+            overlay.fill((0, 0, 0), 0)
 
             rect = mollytime.Rect(0, 0, editor.grid_size * 4, editor.grid_size * 4)
-            rect.center = self.cursor_pos
+            rect.center = [round(i) for i in self.cursor_pos]
             drag_and_draw = (overlay, rect)
 
             rect = mollytime.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)

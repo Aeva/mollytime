@@ -203,7 +203,7 @@ namespace Draw
         Texture Copy() const;
         
         void SetAlpha(int Alpha);
-        void Fill(ColorPoint& Color);
+        void Fill(ColorPoint& Color, float Alpha = 1.0f);
         void Blit(const Texture& Source, const Rect& Region);
         void Blit(const Texture& Source, const Point& Offset);
 

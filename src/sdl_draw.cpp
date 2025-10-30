@@ -136,7 +136,7 @@ namespace Draw
         }
     }
 
-    void Texture::Fill(ColorPoint& Color)
+    void Texture::Fill(ColorPoint& Color, float Alpha)
     {
         glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
 
@@ -145,7 +145,7 @@ namespace Draw
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, 1.0f))
+        if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
             throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
