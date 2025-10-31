@@ -364,11 +364,18 @@ class program_card:
         self._side_bar_surface = self.side_bar.surface.copy()
         return self._side_bar_surface
 
+    def draw_touch_points(self):
+        radius = self.grid_size / 2
+        for key, pos in editor_screen.touch_points.items():
+            color = editor_screen.touch_colors[key]
+            mollytime.draw.circle(self.screen, color, pos, radius)
+
     def present(self, overlay = None):
         self.screen.blit(self._play_area_surface, self.play_area.viewport)
         self.screen.blit(self._side_bar_surface, self.side_bar.viewport)
         if overlay:
             self.screen.blit(*overlay)
+        self.draw_touch_points()
         mollytime.draw.flip()
 
     def resize(self, screen, dpi):
@@ -524,12 +531,6 @@ class editor_screen:
         self.force_redraw = True
         editor_screen.touch_points = {}
         editor_screen.touch_colors = {}
-
-    def draw_touch_points(self, editor):
-        radius = editor.grid_size / 2
-        for key, pos in editor_screen.touch_points.items():
-            color = editor_screen.touch_colors[key]
-            mollytime.draw.circle(editor.screen, color, pos, radius)
 
     def perf_check(self):
         global temporal_pressure, temporal_pressure_precent

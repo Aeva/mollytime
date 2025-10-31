@@ -314,7 +314,6 @@ class calculator_screen(editor_screen):
 
         if update_anything:
             self.force_redraw = False
-            self.draw_touch_points(editor)
             editor.present()
         else:
             editor.clock.tick(60)

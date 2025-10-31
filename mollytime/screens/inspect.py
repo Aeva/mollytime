@@ -356,7 +356,6 @@ class inspect_screen(editor_screen):
         if update_anything:
             #font_debug_surface(editor.screen)
             self.force_redraw = False
-            self.draw_touch_points(editor)
             editor.present()
         elif self.can_throttle:
             editor.clock.tick(60)

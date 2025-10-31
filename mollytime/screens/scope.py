@@ -159,5 +159,4 @@ class scope_screen(editor_screen):
             self.draw_system_status(editor, frame)
             editor.screen.blit(frame, editor.side_bar.viewport)
 
-        self.draw_touch_points(editor)
         editor.present()

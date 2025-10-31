@@ -336,7 +336,6 @@ class pick_and_place_screen(editor_screen):
 
         if update_anything or drag_and_draw:
             self.force_redraw = False
-            self.draw_touch_points(editor)
             editor.present(drag_and_draw)
         else:
             editor.clock.tick(60)
