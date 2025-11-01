@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .. import mollytime
 from ..mollytime import OpCode, get_symbol_name
 from .common import *
 
 
 class pick_and_place_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
 
         self.prospective_tile = None
@@ -87,7 +88,7 @@ class pick_and_place_screen(editor_screen):
             span = (len(shelf) * 3 - 1) * editor.grid_size
             padding = (editor.play_area.viewport.height - span) // 2
 
-            self.shelf_rect = pygame.rect.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
+            self.shelf_rect = mollytime.Rect(0, padding - editor.grid_size, tile_stride * 2, span + tile_span)
 
             palette = {}
 
@@ -96,7 +97,7 @@ class pick_and_place_screen(editor_screen):
                 x = 0
                 for archetile in row:
                     if archetile is not None:
-                        rect = pygame.rect.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
+                        rect = mollytime.Rect(x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
                         palette[archetile] = rect
                     x += 1
                 y += 1
@@ -109,14 +110,14 @@ class pick_and_place_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = pygame.Rect(
+        goto_inspect_rect = mollytime.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = pygame.Rect(
+        active_rect = mollytime.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -180,7 +181,7 @@ class pick_and_place_screen(editor_screen):
         elif editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = pygame.Rect(
+                rect = mollytime.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -246,7 +247,7 @@ class pick_and_place_screen(editor_screen):
             editor.play_area.focus_y = editor.focus_y
             editor.play_area.redraw()
 
-            frame = editor.play_area.surface.copy()
+            frame = editor.reset_play_area()
 
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
@@ -276,7 +277,7 @@ class pick_and_place_screen(editor_screen):
                 radius = max(1, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-            pygame.draw.rect(frame, editor.select_color, self.shelf_rect)
+            mollytime.draw.rect(frame, editor.select_color, self.shelf_rect)
             for archetile, rect in self.tile_palette.items():
                 if archetile == "next":
                     label = self.palette_name
@@ -287,23 +288,30 @@ class pick_and_place_screen(editor_screen):
                 editor.tile_bg.draw(frame, rect, label)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
-            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
-            editor.screen.blit(frame, editor.side_bar.viewport)
 
+        drag_and_draw = None
         if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):
-            rect = pygame.rect.Rect(0, 0, editor.grid_size * 2, editor.grid_size * 2)
-            rect.center = self.cursor_pos
+            overlay_span = (editor.grid_size * 4)
+            overlay = mollytime.draw.Texture((overlay_span, overlay_span))
+            overlay.fill((0, 0, 0), 0)
+
+            rect = mollytime.Rect(0, 0, editor.grid_size * 4, editor.grid_size * 4)
+            rect.center = [round(i) for i in self.cursor_pos]
+            drag_and_draw = (overlay, rect)
+
+            rect = mollytime.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)
+
             if self.prospective_tile is not None:
                 if type(self.prospective_tile) in (int, float):
                     label = f"{self.prospective_tile}"
@@ -314,21 +322,20 @@ class pick_and_place_screen(editor_screen):
 
             if self.drop_deletes:
                 if self.prospective_tile is not None:
-                    editor.tile_bg.draw(editor.screen, rect, "drop\nto\ncancel")
+                    editor.tile_bg.draw(overlay, rect, "drop\nto\ncancel")
                 else:
                     symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
                     if symbol == OpCode.CONST and editor.patch.get_constant(self.grabbed_tile) == 1337:
-                        editor.tile_bg.draw(editor.screen, rect, "DROP\n&\nRUN")
+                        editor.tile_bg.draw(overlay, rect, "DROP\n&\nRUN")
                     else:
-                        editor.tile_bg.draw(editor.screen, rect, "drop\nto\ndelete")
+                        editor.tile_bg.draw(overlay, rect, "drop\nto\ndelete")
             elif self.last_valid_position == self.last_hover_position:
-                editor.tile_bg.draw(editor.screen, rect, label)
+                editor.tile_bg.draw(overlay, rect, label)
             else:
-                editor.invalid_placement.draw(editor.screen, rect, label)
+                editor.invalid_placement.draw(overlay, rect, label)
 
-        if update_anything:
+        if update_anything or drag_and_draw:
             self.force_redraw = False
-            self.draw_touch_points(editor)
-            pygame.display.flip()
+            editor.present(drag_and_draw)
         else:
             editor.clock.tick(60)

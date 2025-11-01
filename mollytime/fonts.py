@@ -15,8 +15,7 @@
 
 import os
 
-from . import pygame_setup
-import pygame
+from . import mollytime
 from .colors import *
 
 AFACAD_REGULAR = "afacad/static/Afacad-Regular.ttf"
@@ -36,7 +35,7 @@ def get_font(font_path, size):
     found = FONT_CACHE.get(key)
     if found:
         return found
-    font = pygame.font.Font(font_path, size)
+    font = mollytime.font.Font(font_path, size)
     FONT_CACHE[key] = font
     return font
 
@@ -49,14 +48,14 @@ def render_text(font_path, size, color, text):
     found = TEXT_SURFACE_CACHE.get(key)
     if found:
         return found
-    surface = get_font(font_path, size).render(text, True, color)
+    surface = get_font(font_path, size).render(text, color)
     TEXT_SURFACE_CACHE[key] = surface
     return surface
 
 
 def estimate_font_M_height(font_path, size):
     font = get_font(font_path, int(size))
-    min_x, max_x, min_y, max_y, advance = font.metrics("M")[0]
+    min_y, max_y = font.estimate_glyph_height("M")
     return abs(max_y - min_y)
 
 
@@ -69,7 +68,7 @@ def estimate_font_M_center(font_path, size):
 
 def estimate_font_x_height(font_path, size):
     font = get_font(font_path, int(size))
-    min_x, max_x, min_y, max_y, advance = font.metrics("x")[0]
+    min_y, max_y = font.estimate_glyph_height("x")
     return abs(max_y - min_y)
 
 
@@ -115,28 +114,28 @@ def font_debug_surface(screen, font_path = AFACAD_REGULAR, size = 100):
     font = get_font(font_path, size)
     font_surf = render_text(font_path, size, fg_color, "Mollytime Font Debug")
     font_rect = font_surf.get_rect()
-    pygame.draw.rect(screen, bg_color, font_rect)
+    mollytime.draw.rect(screen, bg_color, font_rect)
 
     asc_rect = font_rect.copy()
     asc_rect.top = 0
     asc_rect.height = font.get_ascent()
-    pygame.draw.rect(screen, asc_color, asc_rect)
+    mollytime.draw.rect(screen, asc_color, asc_rect)
 
     dsc_rect = font_rect.copy()
     dsc_rect.height = abs(font.get_descent())
     dsc_rect.top = font_rect.height - dsc_rect.height
     dsc_rect.left = 100
     dsc_rect.width -= 100
-    pygame.draw.rect(screen, dsc_color, dsc_rect)
+    mollytime.draw.rect(screen, dsc_color, dsc_rect)
 
     x_rect = font_rect.copy()
     x_rect.height = estimate_font_x_height(font_path, size)
     x_rect.width -= x_rect.height
     x_rect.left = x_rect.height
     x_rect.top = asc_rect.height - x_rect.height
-    pygame.draw.rect(screen, x_color, x_rect)
+    mollytime.draw.rect(screen, x_color, x_rect)
 
     screen.blit(font_surf, font_rect)
 
     x_center = estimate_font_x_center(font_path, size)
-    pygame.draw.line(screen, parse_color("#0F0"), (x_rect.x, x_center), (x_rect.x + x_rect.w, x_center))
+    mollytime.draw.line(screen, parse_color("#0F0"), (x_rect.x, x_center), (x_rect.x + x_rect.w, x_center))

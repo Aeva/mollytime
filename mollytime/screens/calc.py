@@ -20,10 +20,11 @@ from ..fonts import *
 from ..colors import *
 from ..patterns import *
 
+from .. import mollytime
 
 class calculator_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
 
         self.editing_tile = editor.lhs_selection()
@@ -78,7 +79,7 @@ class calculator_screen(editor_screen):
                 x = x * editor.grid_size * 3 + x_start
                 if label is None:
                     continue
-                rect = pygame.Rect(x, y, editor.grid_size * 2, editor.grid_size * 2)
+                rect = mollytime.Rect(x, y, editor.grid_size * 2, editor.grid_size * 2)
                 icon = plate_bg(editor.grid_size, editor.tile_color, str(label)).surface
                 self.buttons.append((rect, icon, label))
 
@@ -165,12 +166,12 @@ class calculator_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_apply_rect = pygame.Rect(
+        goto_apply_rect = mollytime.Rect(
             editor.grid_size,
             3 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_cancel_rect = pygame.Rect(
+        goto_cancel_rect = mollytime.Rect(
             editor.grid_size,
             4 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -205,7 +206,7 @@ class calculator_screen(editor_screen):
 
         frame.set_alpha(int(0.25 * 255))
 
-        self.bg = pygame.Surface((frame.get_width(), frame.get_height()))
+        self.bg = mollytime.draw.Texture((frame.get_width(), frame.get_height()))
         self.bg.fill((0, 0, 0))
         self.bg.blit(frame, (0, 0))
 
@@ -261,7 +262,9 @@ class calculator_screen(editor_screen):
         if self.update_play_area or self.force_redraw:
             self.update_play_area = False
             update_anything = True
-            frame = self.bg.copy()
+
+            frame = editor.reset_play_area()
+            frame.blit(self.bg, (0, 0))
 
             for rect, icon, _ in self.buttons:
                 frame.blit(icon, rect)
@@ -297,23 +300,20 @@ class calculator_screen(editor_screen):
                 print_text(text, alpha)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
-            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
-            editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
             self.force_redraw = False
-            self.draw_touch_points(editor)
-            pygame.display.flip()
+            editor.present()
         else:
             editor.clock.tick(60)

@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <string>
 #include <string_view>
+#include <SDL3/SDL_render.h>
 
 
 static float Gamma = 2.4f;
@@ -327,7 +328,7 @@ static glm::vec3 sRGB2HSL(glm::vec3 sRGB)
 }
 
 
-ColorPoint ColorPoint::Encode(ColorSpace OutEncoding)
+ColorPoint ColorPoint::Encode(ColorSpace OutEncoding) const
 {
 	if (OutEncoding == Encoding)
 	{
@@ -390,7 +391,7 @@ ColorPoint ColorPoint::Encode(ColorSpace OutEncoding)
 }
 
 
-glm::vec3 ColorPoint::Eval(ColorSpace OutEncoding)
+glm::vec3 ColorPoint::Eval(ColorSpace OutEncoding) const
 {
 	if (OutEncoding == Encoding)
 	{
@@ -400,6 +401,22 @@ glm::vec3 ColorPoint::Eval(ColorSpace OutEncoding)
 	{
 		ColorPoint Transcoded = Encode(OutEncoding);
 		return Transcoded.Channels;
+	}
+}
+
+
+void ColorPoint::Eval(ColorSpace OutEncoding, SDL_FColor& OutColor) const
+{
+	if (OutEncoding == Encoding)
+	{
+		OutColor.r = Channels.x;
+		OutColor.g = Channels.y;
+		OutColor.b = Channels.z;
+	}
+	else
+	{
+		ColorPoint Transcoded = Encode(OutEncoding);
+		Transcoded.Eval(OutEncoding, OutColor);
 	}
 }
 
@@ -419,6 +436,18 @@ void ColorPoint::MutateChannels(glm::vec3 NewChannels)
 	Channels = NewChannels;
 }
 
+std::tuple<uint8_t, uint8_t, uint8_t> ColorPoint::To8BitRGB() const
+{
+    const ColorPoint RGBColor = Encoding == ColorSpace::sRGB ? *this : Encode(ColorSpace::sRGB);
+    auto To8Bit = [](float Channel) -> uint8_t { return std::min(std::max(int(Channel * 255.0f), 0), 255); };
+
+    return
+    {
+        To8Bit(RGBColor.Channels[0]),
+        To8Bit(RGBColor.Channels[1]),
+        To8Bit(RGBColor.Channels[2])
+    };
+}
 
 ColorPoint MixLCHAB(ColorPoint LHS, ColorPoint RHS, float Alpha, float ChromaWeight)
 {

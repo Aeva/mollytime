@@ -49,7 +49,7 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
 
 def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller", "pygame" ])
+    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
     if pip_result != 0:
         return pip_result
 
@@ -80,13 +80,6 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             install_args += [ f"-Csetup-args={toolchain_arg}" ]
             install_args += _HACK_extract_override_overrides(toolchain_file)
-    
-    # Only compile targets that are useful for an editable install (i.e. not pyinstaller).
-    extension_module_suffix = sysconfig.get_config_var("EXT_SUFFIX")
-    editable_target_names = ( f"mollytime{extension_module_suffix}", )
-    
-    for target_name in editable_target_names:
-        install_args += [ f"-Ccompile-args={target_name}"]
 
     # Go.
     install_args += [ "-v", "--editable", "." ]
@@ -106,9 +99,14 @@ def exe(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
         print(f"Error: I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
         return 1
     
-    # Invoke `meson install` on the pyinstaller target only. This will trigger
-    # a recompile, if needed.
-    install_args = [ "meson", "install", "--tags=exe", "-C", str(build_dir.resolve()) ]
+    # `meson compile` the pyinstaller target.
+    compile_args = [ "meson", "compile", "-C", str(build_dir.resolve()), "mollytime-exe" ]
+    compile_result = subprocess.run(compile_args)
+    if compile_result.returncode != 0:
+        return compile_result.returncode
+
+    # Now, `meson install` it.
+    install_args = [ "meson", "install", "--no-rebuild", "--tags=exe", "-C", str(build_dir.resolve()) ]
     install_result = subprocess.run(install_args)
     return install_result.returncode
 

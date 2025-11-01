@@ -15,13 +15,14 @@
 
 from .common import *
 
+from .. import mollytime
 
 class connect_screen(editor_screen):
     def setup(self, editor):
         self.lhs_tile = editor.lhs_selection()
         self.rhs_tile = editor.rhs_selection() or self.lhs_tile
 
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
         self.press_stop = None
         self.cut_start = None
@@ -30,12 +31,12 @@ class connect_screen(editor_screen):
         screen_label_color = (255, 255, 255)
         self.set_screen_label(editor, "connect", screen_label_color, 1)
 
-        goto_apply_rect = pygame.Rect(
+        goto_apply_rect = mollytime.Rect(
             editor.grid_size,
             3 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_cancel_rect = pygame.Rect(
+        goto_cancel_rect = mollytime.Rect(
             editor.grid_size,
             4 * 3 * editor.grid_size,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -69,7 +70,7 @@ class connect_screen(editor_screen):
 
         matte_color = editor.select_color # parse_color("#b1b3b8") #editor.select_color
 
-        self.bg = pygame.Surface((node_graph.get_width(), node_graph.get_height()))
+        self.bg = mollytime.draw.Texture((node_graph.get_width(), node_graph.get_height()))
         self.bg.fill((0, 0, 0))
         self.bg.blit(node_graph, (0, 0))
 
@@ -79,18 +80,16 @@ class connect_screen(editor_screen):
         start = (viewport.centerx, 0)
         stop = (viewport.centerx - editor.grid_size * 2, viewport.h)
         points = [(0, 0), start, stop, (0, viewport.h)]
-        pygame.draw.polygon(matte, matte_color, points)
-        pygame.draw.aaline(matte, matte_color, start, stop)
+        mollytime.draw.polygon(matte, matte_color, points)
 
         start = (viewport.centerx + editor.grid_size * 2, 0)
         stop = (viewport.centerx, viewport.h)
         points = [
             (viewport.w, viewport.h), stop,
             start, (viewport.w, 0)]
-        pygame.draw.polygon(matte, matte_color, points)
+        mollytime.draw.polygon(matte, matte_color, points)
         start = (start[0] - 1, start[1])
         stop = (stop[0] - 1, stop[1])
-        pygame.draw.aaline(matte, matte_color, start, stop)
 
         matte.set_alpha(int(0.8 * 255))
         self.bg.blit(matte, (0, 0))
@@ -132,13 +131,13 @@ class connect_screen(editor_screen):
             index += 1
             pos = vec_lerp(start, stop, alpha)
             self.lhs_output_ports.append(port)
-            self.lhs_output_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+            self.lhs_output_rects[port] = mollytime.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
         for port in lhs_inputs:
             alpha = (index + 1) / (count + 1)
             index += 1
             pos = vec_lerp(start, stop, alpha)
             self.lhs_input_ports.append(port)
-            self.lhs_input_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+            self.lhs_input_rects[port] = mollytime.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
         self.rhs_output_ports = []
         self.rhs_output_rects = {}
@@ -155,13 +154,13 @@ class connect_screen(editor_screen):
             index += 1
             pos = vec_lerp(start, stop, alpha)
             self.rhs_input_ports.append(port)
-            self.rhs_input_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+            self.rhs_input_rects[port] = mollytime.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
         for port in rhs_outputs:
             alpha = (index + 1) / (count + 1)
             index += 1
             pos = vec_lerp(start, stop, alpha)
             self.rhs_output_ports.append(port)
-            self.rhs_output_rects[port] = pygame.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
+            self.rhs_output_rects[port] = mollytime.Rect(pos, (editor.grid_size * 2, editor.grid_size * 2))
 
         self.connections = set()
         for out_port, in_port in editor.patch.wires:
@@ -299,7 +298,8 @@ class connect_screen(editor_screen):
             self.update_play_area = False
             update_anything = True
 
-            frame = self.bg.copy()
+            frame = editor.reset_play_area()
+            frame.blit(self.bg, (0, 0))
 
             line_color = (128, 255, 255)
             line_width = editor.grid_size // 4
@@ -328,23 +328,21 @@ class connect_screen(editor_screen):
             if self.press_start and self.press_stop:
                 line_color = (0, 255, 0)
                 radius = max(editor.grid_size // 4, 4)
-                pygame.draw.circle(frame, line_color, self.press_start, radius)
-                pygame.draw.circle(frame, line_color, self.press_stop, radius)
-                draw_line(frame, line_color, self.press_start, self.press_stop, radius)
+                mollytime.draw.circle(frame, line_color, self.press_start, radius)
+                mollytime.draw.circle(frame, line_color, self.press_stop, radius)
+                mollytime.draw.line(frame, line_color, self.press_start, self.press_stop, radius * 2)
 
             elif self.cut_start and self.cut_stop:
                 line_color = (255, 0, 0)
                 radius = 2
-                draw_line(frame, line_color, self.cut_start, self.cut_stop, radius)
-
-            editor.screen.blit(frame, editor.play_area.viewport)
+                mollytime.draw.line(frame, line_color, self.cut_start, self.cut_stop, radius * 2)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
@@ -353,7 +351,6 @@ class connect_screen(editor_screen):
 
         if update_anything:
             self.force_redraw = False
-            self.draw_touch_points(editor)
-            pygame.display.flip()
+            editor.present()
         else:
             editor.clock.tick(60)

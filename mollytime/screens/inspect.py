@@ -24,6 +24,8 @@ from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
 from .scope import scope_screen
 
+from .. import mollytime
+
 
 def find_search_path():
     examples_dir = os.path.join(os.path.split(__file__)[0], "..", "..", "examples")
@@ -39,7 +41,7 @@ def find_search_path():
 
 class inspect_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
         self.set_screen_label(editor, "inspect")
         self.repopulate_sidebar(editor)
@@ -63,42 +65,42 @@ class inspect_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        active_rect = pygame.Rect(
+        active_rect = mollytime.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         active_icon = editor.inspect_active
 
-        goto_move_rect = pygame.Rect(
+        goto_move_rect = mollytime.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_move_icon = editor.move_target
 
-        goto_select_rect = pygame.Rect(
+        goto_select_rect = mollytime.Rect(
             editor.grid_size,
             2 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_select_icon = editor.select_target
 
-        goto_scope_rect = pygame.Rect(
+        goto_scope_rect = mollytime.Rect(
             editor.grid_size,
             3 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_scope_icon = editor.scope_target
 
-        goto_save_rect = pygame.Rect(
+        goto_save_rect = mollytime.Rect(
             editor.grid_size,
             4 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_save_icon = editor.save_target
 
-        goto_load_rect = pygame.Rect(
+        goto_load_rect = mollytime.Rect(
             editor.grid_size,
             5 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -135,6 +137,7 @@ class inspect_screen(editor_screen):
         self.purge_events()
         self.update_play_area = True
         self.update_sidebar = True
+        editor.play_area.redraw()
         editor.clear_selection()
 
     def goto_calculator(self, editor):
@@ -232,7 +235,7 @@ class inspect_screen(editor_screen):
         if editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = pygame.Rect(
+                rect = mollytime.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -244,7 +247,7 @@ class inspect_screen(editor_screen):
                         self.goto_calculator(editor)
                         return
                     elif symbol == OpCode.BOOP:
-                        if not event.touch:
+                        if not event.button.touch:
                             self.hold["m"] = tile_id
                             editor.patch.set_special_input(tile_id, 1.0)
                         return
@@ -264,7 +267,7 @@ class inspect_screen(editor_screen):
 
     def on_release(self, editor, pos, event):
         self.press_start = None
-        if not event.touch:
+        if not event.button.touch:
             if tile_id := self.hold.get("m", None):
                 editor.patch.set_special_input(tile_id, 0.0)
                 del self.hold["m"]
@@ -272,7 +275,7 @@ class inspect_screen(editor_screen):
     def touch_start(self, editor, key, pos, event):
         super().touch_start(editor, key, pos, event)
         for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-            rect = pygame.Rect(
+            rect = mollytime.Rect(
                 editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                 editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -321,7 +324,7 @@ class inspect_screen(editor_screen):
                 editor.play_area.focus_y = editor.focus_y
                 editor.play_area.redraw()
 
-            frame = editor.play_area.surface.copy()
+            frame = editor.reset_play_area()
 
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
@@ -338,25 +341,22 @@ class inspect_screen(editor_screen):
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
-            editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
-            editor.screen.blit(frame, editor.side_bar.viewport)
 
         if update_anything:
             #font_debug_surface(editor.screen)
             self.force_redraw = False
-            self.draw_touch_points(editor)
-            pygame.display.flip()
+            editor.present()
         elif self.can_throttle:
             editor.clock.tick(60)
         else:

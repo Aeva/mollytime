@@ -61,6 +61,52 @@ glm_include = 'third_party' / 'glm-0.9.9.8'
 include_dirs += include_directories(glm_include)
 
 # ---
+# SDL3
+
+if build_machine.system() == 'windows'
+    sdl_include = 'third_party' / 'SDL3-3.2.22' / 'include'
+    sdl_libs = 'third_party' / 'SDL3-3.2.22' / 'lib' / 'x64'
+    sdl_includes = include_directories(sdl_include)
+    include_dirs += sdl_includes
+    dependencies += compiler.find_library(
+        'SDL3',
+        dirs : project_dir / sdl_libs,
+        header_include_directories : sdl_includes,
+        required : true
+    )
+
+    fs.copyfile(sdl_libs / 'SDL3.dll')
+else
+    dependencies += compiler.find_library(
+        'SDL3',
+        required : true
+    )
+endif
+
+# ---
+# SDL3_ttf
+
+if build_machine.system() == 'windows'
+    sdl_include = 'third_party' / 'SDL3_ttf-3.2.2' / 'include'
+    sdl_libs = 'third_party' / 'SDL3_ttf-3.2.2' / 'lib' / 'x64'
+    sdl_includes = include_directories(sdl_include)
+    include_dirs += sdl_includes
+    dependencies += compiler.find_library(
+        'SDL3_ttf',
+        dirs : project_dir / sdl_libs,
+        header_include_directories : sdl_includes,
+        required : true
+    )
+
+    fs.copyfile(sdl_libs / 'SDL3_ttf.dll')
+else
+    dependencies += compiler.find_library(
+        'SDL3_ttf',
+        required : true
+    )
+endif
+
+# ---
 # Pybind11
 
 dependencies += dependency('pybind11')
@@ -149,6 +195,13 @@ source_files += files(
     'src' / 'patch.cpp',
     'src' / 'perf.cpp',
     'src' / 'py_api.cpp',
+    'src' / 'sdl_display.cpp',
+    'src' / 'sdl_draw.cpp',
+    'src' / 'sdl_events.cpp',
+    'src' / 'sdl_font.cpp',
+    'src' / 'sdl_mouse.cpp',
+    'src' / 'sdl_rect.cpp',
+    'src' / 'sdl_time.cpp',
     'src' / 'wasapi_stream.cpp'
 )
 
@@ -161,7 +214,6 @@ python_files = files(
     'mollytime' / 'patterns.py',
     'mollytime' / 'perf.py',
     'mollytime' / 'power.py',
-    'mollytime' / 'pygame_setup.py',
     'mollytime' / 'media' / '__init__.py',
     'mollytime' / 'screens' / '__init__.py',
     'mollytime' / 'screens' / 'calc.py',
@@ -255,6 +307,7 @@ custom_target(
         '--distpath', '@OUTDIR@',
         '@INPUT@'
     ],
+    build_by_default : false,
     input : [ spec_file ],
     output : 'mollytime' + executable_suffix,
     depend_files : python_files + data_files,

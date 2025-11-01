@@ -85,7 +85,6 @@ If you'd prefer to build "manually," you'll need to install these dependencies:
 - `pip install ninja`
 - `pip install pybind11`
 - `pip install pyinstaller`
-- `pip install pygame`
 - `pip install build`
 
 Native environment config files are provided for the Meson build, in `build_native/`.

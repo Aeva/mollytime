@@ -18,10 +18,11 @@ import time
 import random
 from .common import *
 
+from .. import mollytime
 
 class scope_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = pygame.mouse.get_pos()
+        self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
         self.set_screen_label(editor, "inspect > scope", parse_color("#333"))
         self.repopulate_sidebar(editor)
@@ -38,14 +39,14 @@ class scope_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = pygame.Rect(
+        goto_inspect_rect = mollytime.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = pygame.Rect(
+        active_rect = mollytime.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -96,7 +97,7 @@ class scope_screen(editor_screen):
         editor.play_area.focus_x = editor.focus_x
         editor.play_area.focus_y = editor.focus_y
 
-        frame = self.scope_surface#.copy()
+        frame = editor.replace_play_area(self.scope_surface)
 
         for tile_id, tile_xy in editor.tile_positions.items():
             rect = editor.get_tile_rect(tile_id)
@@ -125,8 +126,8 @@ class scope_screen(editor_screen):
         max_beam_y = center * -max_sample + center
         w = max(1, abs(beam_x - self.last_x))
         h = max(1, abs(max_beam_y - min_beam_y))
-        beam_rect = pygame.rect.Rect((self.last_x, max_beam_y), (w, h))
-        clear_rect = pygame.rect.Rect((self.last_x, 0), (w, editor.play_rect.h))
+        beam_rect = mollytime.Rect((self.last_x, max_beam_y), (w, h))
+        clear_rect = mollytime.Rect((self.last_x, 0), (w, editor.play_rect.h))
 
         beam_color = self.beam_color
         if is_nan:
@@ -134,8 +135,8 @@ class scope_screen(editor_screen):
         elif abs_sample > 1.0:
             beam_coolor = (255, 0, 0)
 
-        pygame.draw.rect(frame, (0, 0, 0), clear_rect)
-        pygame.draw.rect(frame, beam_color, beam_rect)
+        mollytime.draw.rect(frame, (0, 0, 0), clear_rect)
+        mollytime.draw.rect(frame, beam_color, beam_rect)
 
         if elapsed > 1:
             self.last_x = 0
@@ -145,19 +146,17 @@ class scope_screen(editor_screen):
             self.last_x = beam_x
 
         frame.blit(self.screen_label_surface, self.screen_label_rect)
-        editor.screen.blit(frame, editor.play_area.viewport)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
             self.update_sidebar = False
             update_anything = True
 
-            frame = editor.side_bar.surface.copy()
+            frame = editor.reset_side_bar()
             for rect, plate, action in self.side_bar_targets:
                 frame.blit(plate.surface, rect)
 
             self.draw_system_status(editor, frame)
             editor.screen.blit(frame, editor.side_bar.viewport)
 
-        self.draw_touch_points(editor)
-        pygame.display.flip()
+        editor.present()
