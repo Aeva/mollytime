@@ -17,7 +17,6 @@ import os
 import pathlib
 import threading
 import time
-from tkinter import filedialog
 from .common import *
 from .select import select_screen
 from .calc import calculator_screen
@@ -159,58 +158,32 @@ class inspect_screen(editor_screen):
         self.refresh_can_throttle(editor)
 
     def goto_save_patch(self, editor):
-        assert(self.pending_save is None)
-        assert(self.pending_load is None)
-
-        class SaveThread(threading.Thread):
-            def __init__(self, search_path):
-                self.search_path = search_path
-                self.save_path = None
-                super().__init__()
-                self.start()
-
-            def run(self):
-                file_types = (
-                    ('mollytime files', '*.beep'),
-                    ('all files', '*'))
-                if self.search_path and os.path.isdir(self.search_path):
-                    patch_dir = self.search_path
-                else:
-                    patch_dir = find_search_path()
-                found = filedialog.SaveAs(
-                    title = "Save Patch", initialdir = patch_dir, filetypes = file_types).show()
-                if found:
-                    self.save_path = found
+        assert(not self.pending_save)
+        assert(not self.pending_load)
 
         self.purge_events()
-        self.pending_save = SaveThread(self.search_path)
+        self.pending_save = True
+
+        if self.search_path and os.path.isdir(self.search_path):
+            patch_dir = self.search_path
+        else:
+            patch_dir = find_search_path()
+
+        mollytime.display.show_save_dialog(patch_dir)
 
     def goto_load_patch(self, editor):
-        assert(self.pending_save is None)
-        assert(self.pending_load is None)
-
-        class LoadThread(threading.Thread):
-            def __init__(self, search_path):
-                self.search_path = search_path
-                self.load_path = None
-                super().__init__()
-                self.start()
-
-            def run(self):
-                file_types = (
-                    ('mollytime files', '*.beep'),
-                    ('all files', '*'))
-                if self.search_path and os.path.isdir(self.search_path):
-                    patch_dir = self.search_path
-                else:
-                    patch_dir = find_search_path()
-                found = filedialog.Open(
-                    title = "Open Patch", initialdir = patch_dir, filetypes = file_types).show()
-                if found and os.path.isfile(found):
-                    self.load_path = found
+        assert(not self.pending_save)
+        assert(not self.pending_load)
 
         self.purge_events()
-        self.pending_load = LoadThread(self.search_path)
+        self.pending_load = True
+
+        if self.search_path and os.path.isdir(self.search_path):
+            patch_dir = self.search_path
+        else:
+            patch_dir = find_search_path()
+
+        mollytime.display.show_load_dialog(patch_dir)
 
     def on_move(self, editor, pos, event):
         self.cursor_pos = pos
@@ -296,21 +269,26 @@ class inspect_screen(editor_screen):
 
     @profile_function("inspect.draw")
     def draw(self, editor):
-        if self.pending_save is not None:
-            self.pending_save.join(timeout=0)
-            if not self.pending_save.is_alive():
-                self.save_path = self.pending_save.save_path
-                self.pending_save = None
-                if self.save_path:
-                    self.save_patch(editor)
+        if self.pending_save:
+            save_status, save_path = mollytime.display.get_save_dialog_result()
+            if save_status < 0:
+                self.pending_save = False
+            elif save_status > 0:
+                self.pending_save = False
+                if not save_path.endswith(".beep"):
+                    save_path += ".beep"
+                self.save_path = save_path
+                self.save_patch(editor)
 
-        if self.pending_load is not None:
-            self.pending_load.join(timeout=0)
-            if not self.pending_load.is_alive():
-                self.load_path = self.pending_load.load_path
-                self.pending_load = None
-                if self.load_path:
-                    self.load_patch(editor)
+        if self.pending_load:
+            load_status, load_path = mollytime.display.get_load_dialog_result()
+            if load_status < 0:
+                self.pending_load = False
+            elif load_status > 0:
+                self.pending_load = False
+                self.load_path = load_path
+                assert(os.path.isfile(self.load_path))
+                self.load_patch(editor)
 
         update_anything = False
 

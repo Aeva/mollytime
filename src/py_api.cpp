@@ -344,7 +344,7 @@ PYBIND11_MODULE(mollytime, m) {
 
     py::module_ mouse = m.def_submodule("mouse")
         .def("get_pos", &Mouse::GetPosition);
-    
+
     // ---
     // Display
 
@@ -362,7 +362,11 @@ PYBIND11_MODULE(mollytime, m) {
         .def("list_modes", &Display::ListModes, py::arg("display"))
         .def("set_caption", &Display::SetCaption)
         .def("set_icon", &Display::SetIcon)
-        .def("set_mode", &Display::SetMode, py::arg("display"), py::arg("size"), py::arg("flags"));
+        .def("set_mode", &Display::SetMode, py::arg("display"), py::arg("size"), py::arg("flags"))
+        .def("show_load_dialog", &Display::ShowLoadDialog)
+        .def("show_save_dialog", &Display::ShowSaveDialog)
+        .def("get_load_dialog_result", &Display::GetLoadDialogResult)
+        .def("get_save_dialog_result", &Display::GetSaveDialogResult);
     
     // ---
     // Draw

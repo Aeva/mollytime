@@ -244,6 +244,11 @@ namespace Display
     
     // Internal
     SDL_Window& GetWindow();
+
+    void ShowLoadDialog(const std::string_view& PatchDir);
+    void ShowSaveDialog(const std::string_view& PatchDir);
+    std::tuple<int, std::string_view> GetLoadDialogResult();
+    std::tuple<int, std::string_view> GetSaveDialogResult();
 }
 
 class Font

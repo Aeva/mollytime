@@ -151,8 +151,7 @@ sudo dnf install \
   clang \
   pipewire-jack-audio-connection-kit-devel \
   alsa-lib-devel \
-  python3-devel \
-  python3-tkinter
+  python3-devel
 ```
 
 After installing the required dependencies, Mollytime then can be setup with the following command,

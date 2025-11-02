@@ -3,11 +3,13 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_dialog.h>
 
 #include <cassert>
 #include <format>
 #include <span>
 #include <stdexcept>
+#include <string>
 
 namespace Display
 {
@@ -209,5 +211,77 @@ namespace Display
     {
         assert(Window != nullptr);
         return *Window;
+    }
+
+    static int LoadStatus = 0;
+    static std::string LoadPath = "";
+
+    static void LoadDialogCallback(void* UserData, const char* const* FileList, int Filter)
+    {
+        if (FileList == nullptr || *FileList == nullptr)
+        {
+            // An error happened, or the operator cancelled the request.
+            LoadStatus = -1;
+            LoadPath = "";
+        }
+        else
+        {
+            LoadStatus = 1;
+            LoadPath = (const char*)FileList[0];
+        }
+    }
+
+    static int SaveStatus = 0;
+    static std::string SavePath = "";
+
+    static void SaveDialogCallback(void* UserData, const char* const* FileList, int Filter)
+    {
+        if (FileList == nullptr || *FileList == nullptr)
+        {
+            // An error happened, or the operator cancelled the request.
+            SaveStatus = -1;
+            SavePath = "";
+        }
+        else
+        {
+            SaveStatus = 1;
+            SavePath = (const char*)FileList[0];
+        }
+    }
+
+    void ShowLoadDialog(const std::string_view& PatchDir)
+    {
+        LoadStatus = 0;
+        LoadPath = "";
+
+        const SDL_DialogFileFilter Filters[] = {
+            { "mollytime files", "beep"},
+            { "all files", "*"}
+        };
+
+        SDL_ShowOpenFileDialog(LoadDialogCallback, nullptr, Window, Filters, 2, PatchDir.data(), false);
+    }
+
+    void ShowSaveDialog(const std::string_view& PatchDir)
+    {
+        SaveStatus = 0;
+        SavePath = "";
+
+        const SDL_DialogFileFilter Filters[] = {
+            { "mollytime files", "beep"},
+            { "all files", "*"}
+        };
+
+        SDL_ShowSaveFileDialog(SaveDialogCallback, nullptr, Window, Filters, 2, PatchDir.data());
+    }
+
+    std::tuple<int, std::string_view> GetLoadDialogResult()
+    {
+        return { LoadStatus, LoadPath };
+    }
+
+    std::tuple<int, std::string_view> GetSaveDialogResult()
+    {
+        return { SaveStatus, SavePath };
     }
 }
