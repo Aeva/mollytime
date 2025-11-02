@@ -4,6 +4,7 @@
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_dialog.h>
+#include <SDL3/SDL_render.h>
 
 #include <cassert>
 #include <format>
@@ -132,7 +133,12 @@ namespace Display
 
     void SetIcon(const Draw::Texture& Texture)
     {
-        // TODO: SDL_SetWindowIcon() expects a Surface (CPU texture), but all we have is a Texture (GPU).
+        SDL_Texture* SDLTexture = Texture.GetTexture();
+        SDL_Renderer* Renderer = SDL_GetRendererFromTexture(SDLTexture);
+        SDL_Rect Rect = { 0, 0, (int)Texture.GetWidth(), (int)Texture.GetHeight() };
+        SDL_Surface* Surface = SDL_RenderReadPixels(Renderer, &Rect);
+        SDL_SetWindowIcon(Window, Surface);
+        SDL_DestroySurface(Surface);
     }
 
     Draw::Texture SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags)

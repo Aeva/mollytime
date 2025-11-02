@@ -45,7 +45,10 @@ def main():
     mollytime.font.init()
 
     dump_icon = False
-    icon_size = 32
+    if operating_system == "Windows":
+        icon_size = 32
+    else:
+        icon_size = 512
     if len(sys.argv) >= 2 and sys.argv[1] == "icon":
         icon_size = int((sys.argv[2:] + ["256"])[0])
         dump_icon = True
