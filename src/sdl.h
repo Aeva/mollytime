@@ -179,6 +179,17 @@ namespace Mouse
 
 namespace Draw
 {
+    enum class BlendModeType
+    {
+        None                    = 0x00000000u, // SDL_BLENDMODE_NONE
+        Alpha                   = 0x00000001u, // SDL_BLENDMODE_BLEND, default
+        PremultipliedAlpha      = 0x00000010u, // SDL_BLENDMODE_BLEND_PREMULTIPLIED
+        Additive                = 0x00000002u, // SDL_BLENDMODE_ADD
+        PremultipliedAdditive   = 0x00000020u, // SDL_BLENDMODE_BLEND_PREMULTIPLIED
+        Modulate                = 0x00000004u, // SDL_BLENDMODE_MOD
+        Multiply                = 0x00000008u  // SDL_BLENDMODE_MUL
+    };
+
     struct TextureCaddy
     {
         SDL_Texture* SDLTexture = nullptr;
@@ -203,6 +214,7 @@ namespace Draw
         Texture Copy() const;
         
         void SetAlpha(int Alpha);
+        void SetBlendMode(BlendModeType BlendMode = BlendModeType::Alpha);
         void Fill(ColorPoint& Color, float Alpha = 1.0f);
         void Blit(const Texture& Source, const Rect& Region);
         void Blit(const Texture& Source, const Point& Offset);

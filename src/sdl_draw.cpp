@@ -79,6 +79,8 @@ namespace Draw
 
         Width = static_cast<int>(WidthF);
         Height = static_cast<int>(HeightF);
+
+        SetBlendMode();
     }
 
     Texture::Texture(int Width, int Height) :
@@ -99,6 +101,8 @@ namespace Draw
         {
             throw std::runtime_error(std::format("Failed to create texture. SDL error: {}", SDL_GetError()));
         }
+
+        SetBlendMode();
     }
 
     Texture::Texture(const Size& Size) :
@@ -133,6 +137,14 @@ namespace Draw
         if (!SDL_SetTextureAlphaMod(GetTexture(), static_cast<Uint8>(Alpha)))
         {
             throw std::runtime_error(std::format("Failed to set texture alpha. SDL error: {}", SDL_GetError()));
+        }
+    }
+
+    void Texture::SetBlendMode(BlendModeType BlendMode)
+    {
+        if (!SDL_SetTextureBlendMode(GetTexture(), (Uint32)BlendMode))
+        {
+            throw std::runtime_error(std::format("Failed to set blend mode. SDL error: {}", SDL_GetError()));
         }
     }
 

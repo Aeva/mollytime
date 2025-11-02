@@ -376,6 +376,17 @@ PYBIND11_MODULE(mollytime, m) {
     using BlitRectFunc = void (Draw::Texture::*)(const Draw::Texture&, const Rect&);
     using BlitPointFunc = void (Draw::Texture::*)(const Draw::Texture&, const Point&);
 
+	py::native_enum<Draw::BlendModeType>(draw, "Type", "enum.IntEnum")
+		.value("none", Draw::BlendModeType::None)
+		.value("alpha", Draw::BlendModeType::Alpha)
+		.value("premultiplied_alpha", Draw::BlendModeType::PremultipliedAlpha)
+		.value("additive", Draw::BlendModeType::Additive)
+		.value("premultiplied_additive", Draw::BlendModeType::PremultipliedAdditive)
+		.value("modulate", Draw::BlendModeType::Modulate)
+		.value("multiply", Draw::BlendModeType::Multiply)
+		.export_values()
+		.finalize();
+
     py::class_<Draw::Texture>(draw, "Texture")
         .def(py::init<int, int>())
         .def(py::init<const Size&>())
@@ -384,6 +395,7 @@ PYBIND11_MODULE(mollytime, m) {
         .def("get_rect", &Draw::Texture::GetRect)
         .def("copy", &Draw::Texture::Copy)
         .def("set_alpha", &Draw::Texture::SetAlpha)
+		.def("set_blend_mode", &Draw::Texture::SetBlendMode)
         .def("fill", &Draw::Texture::Fill, py::arg("color"), py::arg("alpha") = 1.0f)
         .def("blit", static_cast<BlitRectFunc>(&Draw::Texture::Blit))
         .def("blit", static_cast<BlitPointFunc>(&Draw::Texture::Blit));
