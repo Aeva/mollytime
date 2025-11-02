@@ -65,7 +65,7 @@ namespace Draw
     {
         assert(Surface != nullptr);
 
-        Handle = std::make_shared<TextureCaddy>(SDL_CreateTextureFromSurface(&GetRenderer(), Surface));
+        Handle = std::make_shared<TextureCaddy>(SDL_CreateTextureFromSurface(GetRenderer(), Surface));
         if (!GetTexture())
         {
             throw std::runtime_error(std::format("Failed to create texture from surface. SDL error: {}", SDL_GetError()));
@@ -90,7 +90,7 @@ namespace Draw
         assert(Width + Height >= 1);
 
         Handle = std::make_shared<TextureCaddy>(SDL_CreateTexture(
-            &Draw::GetRenderer(),
+            Draw::GetRenderer(),
             SDL_PIXELFORMAT_RGBA32,
             SDL_TEXTUREACCESS_TARGET,
             Width,
@@ -152,17 +152,17 @@ namespace Draw
     {
         glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
 
-        if (!SDL_SetRenderTarget(&Draw::GetRenderer(), GetTexture()))
+        if (!SDL_SetRenderTarget(Draw::GetRenderer(), GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
+        if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
             throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderClear(&Draw::GetRenderer()))
+        if (!SDL_RenderClear(Draw::GetRenderer()))
         {
             throw std::runtime_error(std::format("Failed to fill texture. SDL error: {}", SDL_GetError()));
         }
@@ -186,12 +186,12 @@ namespace Draw
             Region.Height
         };
 
-        if (!SDL_SetRenderTarget(&Draw::GetRenderer(), GetTexture()))
+        if (!SDL_SetRenderTarget(Draw::GetRenderer(), GetTexture()))
         {
             throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
         
-        if (!SDL_RenderTexture(&Draw::GetRenderer(), Source.GetTexture(), &SourceRect, &DestRect))
+        if (!SDL_RenderTexture(Draw::GetRenderer(), Source.GetTexture(), &SourceRect, &DestRect))
         {
             throw std::runtime_error(std::format("Failed to render texture. SDL error: {}", SDL_GetError()));
         }
@@ -222,7 +222,7 @@ namespace Draw
 
     void Init()
     {
-        Renderer = SDL_CreateRenderer(&Display::GetWindow(), nullptr);
+        Renderer = SDL_CreateRenderer(Display::GetWindow(), nullptr);
         if (Renderer == nullptr)
         {
             throw std::runtime_error(std::format("Failed to initialize renderer. SDL error: {}", SDL_GetError()));
@@ -248,11 +248,11 @@ namespace Draw
 
         if (Alpha < 1.0f)
         {
-            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_BLEND_PREMULTIPLIED);
+            SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_BLEND_PREMULTIPLIED);
         }
         else
         {
-            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+            SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_NONE);
         }
 
         if (Width > 1.0)
@@ -299,7 +299,7 @@ namespace Draw
             }
 
             glm::vec3 RGB = Color.Eval(ColorSpace::sRGB) * Alpha;
-            if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
+            if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
             {
                 throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
             }
@@ -310,7 +310,7 @@ namespace Draw
             }
         }
 
-        SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+        SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_NONE);
     }
 
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth, float Alpha)
@@ -332,18 +332,18 @@ namespace Draw
 
         if (Alpha < 1.0f)
         {
-            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_BLEND_PREMULTIPLIED);
+            SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_BLEND_PREMULTIPLIED);
         }
         else
         {
-            SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+            SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_NONE);
         }
 
         // TODO Blend mode suggests that we should be premultiplying alpha into the RGB channels, but
         // if we actually do that the color is clearly wrong (seen in the pick and place mode).  Does that
         // mean we *shouldn't* be doing that anywhere?
         glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
-        if (!SDL_SetRenderDrawColorFloat(&Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
+        if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
             throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
@@ -371,7 +371,7 @@ namespace Draw
             }
         }
 
-        SDL_SetRenderDrawBlendMode(&Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+        SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_NONE);
     }
 
     static void PrepareConvexHull(
@@ -491,9 +491,9 @@ namespace Draw
         }
     }
 
-    SDL_Renderer& GetRenderer()
+    SDL_Renderer* GetRenderer()
     {
         assert(Renderer != nullptr);
-        return *Renderer;
+        return Renderer;
     }
 }

@@ -213,10 +213,10 @@ namespace Display
         }
     }
 
-    SDL_Window& GetWindow()
+    SDL_Window* GetWindow()
     {
         assert(Window != nullptr);
-        return *Window;
+        return Window;
     }
 
     static int LoadStatus = 0;

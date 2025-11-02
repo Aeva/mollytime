@@ -232,7 +232,7 @@ namespace Draw
     void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Points, float Alpha = 1.0f);
 
     // Internal
-    SDL_Renderer& GetRenderer();
+    SDL_Renderer* GetRenderer();
 }
 
 namespace Display
@@ -255,7 +255,7 @@ namespace Display
     Draw::Texture SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags);
     
     // Internal
-    SDL_Window& GetWindow();
+    SDL_Window* GetWindow();
 
     void ShowLoadDialog(const std::string_view& PatchDir);
     void ShowSaveDialog(const std::string_view& PatchDir);
