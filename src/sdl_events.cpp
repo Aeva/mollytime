@@ -1,27 +1,11 @@
 #include "sdl.h"
 
 #include <SDL3/SDL_events.h>
-#include <chrono>
 
 #define DEBUG_EVENTS 0
 #if DEBUG_EVENTS
 #include <print>
 #endif
-
-using SteadyClock = std::chrono::steady_clock;
-static SteadyClock::time_point LastTouchOrPen = SteadyClock::time_point();
-static int LastPointerType = 0; // 0 = mouse, 1 = touch, 2 = pen
-
-
-static bool AllowMouseEvent()
-{
-    /*
-    const SteadyClock::duration IgnoreThreshold = std::chrono::seconds(1);
-    static SteadyClock::time_point Now = SteadyClock::now();
-    return LastPointerType == 0 || (LastTouchOrPen - Now) > IgnoreThreshold;
-    */
-    return true;
-}
 
 
 namespace Events
@@ -76,9 +60,8 @@ namespace Events
                                Next.button.x,
                                Next.button.y);
 #endif
-                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID && AllowMouseEvent())
+                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
                     {
-                        LastPointerType = 0;
                         Events.push_back(
                         {
                             .Button =
@@ -101,9 +84,8 @@ namespace Events
                                Next.button.x,
                                Next.button.y);
 #endif
-                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID && AllowMouseEvent())
+                    if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
                     {
-                        LastPointerType = 0;
                         Events.push_back(
                         {
                             .Button =
@@ -126,9 +108,8 @@ namespace Events
                                Next.motion.x,
                                Next.motion.y);
 #endif
-                    if (Next.motion.which != SDL_TOUCH_MOUSEID && Next.motion.which != SDL_PEN_MOUSEID && AllowMouseEvent())
+                    if (Next.motion.which != SDL_TOUCH_MOUSEID && Next.motion.which != SDL_PEN_MOUSEID)
                     {
-                        LastPointerType = 0;
                         Events.push_back(
                         {
                             .Motion =
@@ -153,8 +134,6 @@ namespace Events
                                Next.tfinger.y * float(WindowH),
                                Next.tfinger.pressure);
 #endif
-                    LastPointerType = 1;
-                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                     {
                         .Touch =
@@ -178,8 +157,6 @@ namespace Events
                                Next.tfinger.y * float(WindowH),
                                Next.tfinger.pressure);
 #endif
-                    LastPointerType = 1;
-                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                     {
                         .Touch =
@@ -203,8 +180,6 @@ namespace Events
                                Next.tfinger.y * float(WindowH),
                                Next.tfinger.pressure);
 #endif
-                    LastPointerType = 1;
-                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                     {
                         .Touch =
@@ -226,8 +201,6 @@ namespace Events
                                Next.ptouch.x,
                                Next.ptouch.y);
 #endif
-                    LastPointerType = 2;
-                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                         {
                             .Button =
@@ -249,8 +222,6 @@ namespace Events
                                Next.ptouch.x,
                                Next.ptouch.y);
 #endif
-                    LastPointerType = 2;
-                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                         {
                             .Button =
@@ -272,8 +243,6 @@ namespace Events
                                Next.pmotion.x,
                                Next.pmotion.y);
 #endif
-                    LastPointerType = 2;
-                    LastTouchOrPen = SteadyClock::now();
                     Events.push_back(
                         {
                             .Motion =
