@@ -395,13 +395,13 @@ struct AddThunk : public InstructionThunk
 
 struct MulThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MUL, "mul", {"*"}, {"="} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MulThunk");
-        Output->Set(Combine(CombinerMul, Inputs, 0.0));
+        Registers.Output[0]->Set(Combine(CombinerMul, Registers.Input[0], 0.0));
     }
 
     virtual ~MulThunk() {};
@@ -410,16 +410,16 @@ struct MulThunk : public InstructionThunk
 
 struct RcpThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::RCP, "rcp", {"N"}, {"="} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RcpThunk");
-        double Divisor = Combine(CombinerMul, Inputs, 0.0);
+        double Divisor = Combine(CombinerMul, Registers.Input[0], 0.0);
         if (Divisor != 0.0)
         {
-            Output->Set(1.0 / Divisor);
+            Registers.Output[0]->Set(1.0 / Divisor);
         }
     }
 
@@ -429,13 +429,13 @@ struct RcpThunk : public InstructionThunk
 
 struct MinThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIN, "min", {"min"}, {"="} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MinThunk");
-        Output->Set(Combine(CombinerMin, Inputs, 0.0));
+        Registers.Output[0]->Set(Combine(CombinerMin, Registers.Input[0], 0.0));
     }
 
     virtual ~MinThunk() {};
@@ -444,13 +444,13 @@ struct MinThunk : public InstructionThunk
 
 struct MaxThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MAX, "max", {"max"}, {"="} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MaxThunk");
-        Output->Set(Combine(CombinerMax, Inputs, 0.0));
+        Registers.Output[0]->Set(Combine(CombinerMax, Registers.Input[0], 0.0));
     }
 
     virtual ~MaxThunk() {};
@@ -459,13 +459,13 @@ struct MaxThunk : public InstructionThunk
 
 struct FloorThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::FLOOR, "floor", {"#"}, {"floor"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("FloorThunk");
-        Output->Set(std::floor(Combine(CombinerAdd, Inputs, 0.0)));
+        Registers.Output[0]->Set(std::floor(Combine(CombinerAdd, Registers.Input[0], 0.0)));
     }
 
     virtual ~FloorThunk() {};
@@ -474,13 +474,13 @@ struct FloorThunk : public InstructionThunk
 
 struct CeilThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::CEIL, "ceil", {"#"}, {"ceil"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("CeilThunk");
-        Output->Set(std::ceil(Combine(CombinerAdd, Inputs, 0.0)));
+        Registers.Output[0]->Set(std::ceil(Combine(CombinerAdd, Registers.Input[0], 0.0)));
     }
 
     virtual ~CeilThunk() {};
@@ -489,13 +489,13 @@ struct CeilThunk : public InstructionThunk
 
 struct RoundThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ROUND, "round", {"#"}, {"rounded"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RoundThunk");
-        Output->Set(std::round(Combine(CombinerAdd, Inputs, 0.0)));
+        Registers.Output[0]->Set(std::round(Combine(CombinerAdd, Registers.Input[0], 0.0)));
     }
 
     virtual ~RoundThunk() {};
@@ -504,14 +504,14 @@ struct RoundThunk : public InstructionThunk
 
 struct SignThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::SIGN, "sign", {"#"}, {"sign"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SignThunk");
-        double Sign = Combine(CombinerAdd, Inputs, 0.0) < 0.0 ? -1.0 : 1.0;
-        Output->Set(Sign);
+        double Sign = Combine(CombinerAdd, Registers.Input[0], 0.0) < 0.0 ? -1.0 : 1.0;
+        Registers.Output[0]->Set(Sign);
     }
 
     virtual ~SignThunk() {};
@@ -520,13 +520,13 @@ struct SignThunk : public InstructionThunk
 
 struct AbsThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ABS, "abs", {"#"}, {"abs"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("AbsThunk");
-        Output->Set(std::abs(Combine(CombinerAdd, Inputs, 0.0)));
+        Registers.Output[0]->Set(std::abs(Combine(CombinerAdd, Registers.Input[0], 0.0)));
     }
 
     virtual ~AbsThunk() {};
@@ -535,14 +535,17 @@ struct AbsThunk : public InstructionThunk
 
 struct FoldThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InValue;
-    std::vector<RunningStateSharedPtr> InPositive;
-    std::vector<RunningStateSharedPtr> InNegative;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::FLD, "fold", {"v", "p", "n"}, {"w"} };
+    InstructionRegisters<3, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("FoldThunk");
+        std::vector<RunningStateSharedPtr>& InValue = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InPositive = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& InNegative = Registers.Input[2];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+
         double Val = Combine(CombinerAdd, InValue, 0.0);
         double Threshold = 1.0;
         if (Val < 0.0 && InNegative.size() > 0)
@@ -1336,16 +1339,16 @@ struct SymbolInfo
         Set<SawThunk>();
         Set<NoiThunk>();
         Set<AddThunk>();
-        Set(OpCode::MUL, "mul", {"*"}, {"="});
-        Set(OpCode::RCP, "rcp", {"*"}, {"="});
-        Set(OpCode::MIN, "min", {"min"}, {"="});
-        Set(OpCode::MAX, "max", {"max"}, {"="});
-        Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
-        Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
-        Set(OpCode::ROUND, "round", {"#"}, {"rounded"});
-        Set(OpCode::SIGN, "sign", {"#"}, {"sign"});
-        Set(OpCode::ABS, "abs", {"#"}, {"abs"});
-        Set(OpCode::FLD, "fold", {"v", "p", "n"}, {"w"});
+        Set<MulThunk>();
+        Set<RcpThunk>();
+        Set<MinThunk>();
+        Set<MaxThunk>();
+        Set<FloorThunk>();
+        Set<CeilThunk>();
+        Set<RoundThunk>();
+        Set<SignThunk>();
+        Set<AbsThunk>();
+        Set<FoldThunk>();
         Set(OpCode::INV, "invert", {"#"}, {"#"});
         Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
         Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
@@ -1981,75 +1984,44 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::MUL)
             {
-                auto Thunk = std::make_shared<MulThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<MulThunk>(Inputs, Outputs, Closures));
+                return nullptr;
             }
             else if (Symbol == OpCode::RCP)
             {
-                auto Thunk = std::make_shared<RcpThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<RcpThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::MIN)
             {
-                auto Thunk = std::make_shared<MinThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<MinThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::MAX)
             {
-                auto Thunk = std::make_shared<MaxThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<MaxThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::FLOOR)
             {
-                auto Thunk = std::make_shared<FloorThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<FloorThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::CEIL)
             {
-                auto Thunk = std::make_shared<CeilThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<CeilThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::ROUND)
             {
-                auto Thunk = std::make_shared<RoundThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<RoundThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::SIGN)
             {
-                auto Thunk = std::make_shared<SignThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<SignThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::ABS)
             {
-                auto Thunk = std::make_shared<AbsThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<AbsThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::FLD)
             {
-                auto Thunk = std::make_shared<FoldThunk>();
-                Thunk->InValue = Inputs[0];
-                Thunk->InPositive = Inputs[1];
-                Thunk->InNegative = Inputs[2];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<FoldThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::INV)
             {
