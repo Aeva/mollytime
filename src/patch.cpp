@@ -338,15 +338,18 @@ struct SawThunk : public InstructionThunk
 
 struct NoiThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr OutAmplitude = nullptr;
-    RunningStateSharedPtr ActivePhase = nullptr;
-    RunningStateSharedPtr HighAmp = nullptr;
-    RunningStateSharedPtr LowAmp = nullptr;
+    static constexpr InstructionInfo<1, 1, 3> Info = { OpCode::NOI, "noise", {"hz"}, {"amp"} };
+    InstructionRegisters<1, 1, 3> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoiThunk");
+        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+        RunningStateSharedPtr& HighAmp = Registers.Closure[1];
+        RunningStateSharedPtr& LowAmp = Registers.Closure[2];
+
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         int Before = int(Phase * 4.0);
@@ -377,13 +380,13 @@ struct NoiThunk : public InstructionThunk
 
 struct AddThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD, "add", {"+"}, {"="} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("AddThunk");
-        Output->Set(Combine(CombinerAdd, Inputs, 0.0));
+        Registers.Output[0]->Set(Combine(CombinerAdd, Registers.Input[0], 0.0));
     }
 
     virtual ~AddThunk() {};
@@ -1331,8 +1334,8 @@ struct SymbolInfo
         Set<SqrThunk>();
         Set<TriThunk>();
         Set<SawThunk>();
-        Set(OpCode::NOI, "noise", {"hz"}, {"amp"}, 3);
-        Set(OpCode::ADD, "add", {"+"}, {"="});
+        Set<NoiThunk>();
+        Set<AddThunk>();
         Set(OpCode::MUL, "mul", {"*"}, {"="});
         Set(OpCode::RCP, "rcp", {"*"}, {"="});
         Set(OpCode::MIN, "min", {"min"}, {"="});
@@ -1907,17 +1910,17 @@ ScratchSharedPtr Patch::Compile()
             }
             else
             {
-                std::vector<RunningStateSharedPtr> Inputs;
+                std::vector<RunningStateSharedPtr> Input0;
                 for (PortHandle ConnectedOutput : ConnectedOutputs)
                 {
-                    Inputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                    Input0.push_back(ActiveOutputs.at(ConnectedOutput));
                 }
 
-                auto Thunk = std::make_shared<AddThunk>();
-                Thunk->Inputs = Inputs;
-                Thunk->Output = std::make_shared<RunningState>(0.0);
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                return Thunk->Output;
+                std::vector<std::vector<RunningStateSharedPtr>> Inputs = { Input0 };
+                std::vector<RunningStateSharedPtr> Outputs = { std::make_shared<RunningState>(0.0) };
+                std::vector<RunningStateSharedPtr> Closures;
+                Program->Program.push_back(CreateAndConnectThunk<AddThunk>(Inputs, Outputs, Closures));
+                return Outputs[0];
             }
         }
         else
@@ -1968,21 +1971,13 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::NOI)
             {
-                auto Thunk = std::make_shared<NoiThunk>();
-                Thunk->InFrequencyHz = Inputs[0];
-                Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = Closures[0];
-                Thunk->HighAmp = Closures[1];
-                Thunk->LowAmp = Closures[2];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<NoiThunk>(Inputs, Outputs, Closures));
                 return nullptr;
             }
             else if (Symbol == OpCode::ADD)
             {
-                auto Thunk = std::make_shared<AddThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<AddThunk>(Inputs, Outputs, Closures));
+                return nullptr;
             }
             else if (Symbol == OpCode::MUL)
             {
