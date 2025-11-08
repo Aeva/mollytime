@@ -643,14 +643,17 @@ struct MixThunk : public InstructionThunk
 
 struct StereoBalanceThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Sample;
-    std::vector<RunningStateSharedPtr> Balance;
-    RunningStateSharedPtr Left = nullptr;
-    RunningStateSharedPtr Right = nullptr;
+    static constexpr InstructionInfo<2, 2, 0> Info = { OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"} };
+    InstructionRegisters<2, 2, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
+        std::vector<RunningStateSharedPtr>& Sample = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& Balance = Registers.Input[1];
+        RunningStateSharedPtr& Left = Registers.Output[0];
+        RunningStateSharedPtr& Right = Registers.Output[1];
+
         double Value = Combine(CombinerAdd, Sample, 0.0);
         double Alpha = std::min(std::max(Combine(CombinerAdd, Balance, 0.0), -1.0), 1.0) * 0.5 + 0.5;
         double InvA = 1.0 - Alpha;
@@ -664,13 +667,16 @@ struct StereoBalanceThunk : public InstructionThunk
 
 struct PulseThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
-    RunningStateSharedPtr Latch = nullptr;
+    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::PLS, "pulse", {"clock"}, {"pulse"} };
+    InstructionRegisters<1, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PulseThunk");
+        std::vector<RunningStateSharedPtr>& Inputs = Registers.Input[0];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+        RunningStateSharedPtr& Latch = Registers.Closure[0];
+
         if (Inputs.size() > 0)
         {
             double Clock = Combine(CombinerAdd, Inputs, 0.0);
@@ -699,14 +705,17 @@ struct PulseThunk : public InstructionThunk
 
 struct FlipFlopThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr EvenOutput = nullptr;
-    RunningStateSharedPtr OddOutput = nullptr;
-    RunningStateSharedPtr LastInput = nullptr;
+    static constexpr InstructionInfo<1, 2, 1> Info = { OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"} };
+    InstructionRegisters<1, 2, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
+        std::vector<RunningStateSharedPtr>& Inputs = Registers.Input[0];
+        RunningStateSharedPtr& EvenOutput = Registers.Output[0];
+        RunningStateSharedPtr& OddOutput = Registers.Output[1];
+        RunningStateSharedPtr& LastInput = Registers.Closure[0];
+
         double LastEven = EvenOutput->Get();
         double LastOdd = OddOutput->Get();
         if (LastEven == LastOdd)
@@ -743,13 +752,16 @@ struct FlipFlopThunk : public InstructionThunk
 
 struct RandomThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
-    RunningStateSharedPtr LastInput = nullptr;
+    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::RNG, "rng", {"clock"}, {"#"} };
+    InstructionRegisters<1, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RandomThunk");
+        std::vector<RunningStateSharedPtr>& Inputs = Registers.Input[0];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+        RunningStateSharedPtr& LastInput = Registers.Closure[0];
+
         if (Inputs.size() > 0)
         {
             double Clock = Combine(CombinerAdd, Inputs, 0.0);
@@ -769,14 +781,16 @@ struct RandomThunk : public InstructionThunk
 
 struct GradualThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> ValueInputs;
-    std::vector<RunningStateSharedPtr> RateInputs;
-    RunningStateSharedPtr Output = nullptr;
-    RunningStateSharedPtr Weight = nullptr;
+    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::GRAD, "grad", {"#", "rate"}, {"#"} };
+    InstructionRegisters<2, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GradualThunk");
+        std::vector<RunningStateSharedPtr>& ValueInputs = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& RateInputs = Registers.Input[1];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+
         double Value = Combine(CombinerAdd, ValueInputs, 0.0);
         double Rate = Combine(CombinerAdd, RateInputs, 0.0) * SampleInterval;
         double Pos = Output->Get();
@@ -936,18 +950,21 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 
 struct AdsrThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Trigger;
-    std::vector<RunningStateSharedPtr> AttackTime;
-    std::vector<RunningStateSharedPtr> DecayTime;
-    std::vector<RunningStateSharedPtr> SustainAmount;
-    std::vector<RunningStateSharedPtr> ReleaseTime;
-    RunningStateSharedPtr OutAmplitude = nullptr;
-    RunningStateSharedPtr LastTrigger = nullptr;
-    RunningStateSharedPtr Mode = nullptr;
+    static constexpr InstructionInfo<5, 1, 2> Info = { OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"} };
+    InstructionRegisters<5, 1, 2> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("AdsrThunk");
+        std::vector<RunningStateSharedPtr>& Trigger = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& AttackTime = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& DecayTime = Registers.Input[2];
+        std::vector<RunningStateSharedPtr>& SustainAmount = Registers.Input[3];
+        std::vector<RunningStateSharedPtr>& ReleaseTime = Registers.Input[4];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& LastTrigger = Registers.Closure[0];
+        RunningStateSharedPtr& Mode = Registers.Closure[1];
+
         double Trig = Combine(CombinerAdd, Trigger, 0.0);
         double Previous = LastTrigger->Get();
         LastTrigger->Set(Trig);
@@ -1133,14 +1150,17 @@ struct ControlChangeThunk : public InstructionThunk
 
 struct MidiToHzThunk : public InstructionThunk
 {
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"} };
+    InstructionRegisters<1, 1, 0> Registers;
+
     std::vector<RunningStateSharedPtr> Inputs;
     RunningStateSharedPtr Output = nullptr;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
-        double Note = Combine(CombinerAdd, Inputs, 0.0);
-        Output->Set(MidiNoteToHz(Note));
+        double Note = Combine(CombinerAdd, Registers.Input[0], 0.0);
+        Registers.Output[0]->Set(MidiNoteToHz(Note));
     }
 
     virtual ~MidiToHzThunk() {};
@@ -1149,14 +1169,14 @@ struct MidiToHzThunk : public InstructionThunk
 
 struct LoudnessFudgeThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
-        double Hz = Combine(CombinerAdd, Inputs, 0.0);
-        Output->Set(PerceptualAmplitudeCorrectionByHz(Hz));
+        double Hz = Combine(CombinerAdd, Registers.Input[0], 0.0);
+        Registers.Output[0]->Set(PerceptualAmplitudeCorrectionByHz(Hz));
     }
 
     virtual ~LoudnessFudgeThunk() {};
@@ -1357,23 +1377,23 @@ struct SymbolInfo
         Set<ToUnipolarThunk>();
         Set<ToBipolarThunk>();
         Set<MixThunk>();
-        Set(OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"});
-        Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
-        Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
-        Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
-        Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
+        Set<StereoBalanceThunk>();
+        Set<PulseThunk>();
+        Set<FlipFlopThunk>();
+        Set<RandomThunk>();
+        Set<GradualThunk>();
         Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"}, 7);
         Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"}, 7);
         Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"}, 7);
         Set(OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"}, 7);
-        Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
+        Set<AdsrThunk>();
         Set(OpCode::GATE, "gate", {"channel"}, {"gate"});
         Set(OpCode::NOTE, "note", {"channel"}, {"note"});
         Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
         Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
         Set(OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"});
-        Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
-        Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
+        Set<MidiToHzThunk>();
+        Set<LoudnessFudgeThunk>();
         Set(OpCode::BOOP, "boop", {}, {"gate"});
         Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
         Set(OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"}, 2);
@@ -1959,37 +1979,30 @@ ScratchSharedPtr Patch::Compile()
             if (Symbol == OpCode::SIN)
             {
                 Program->Program.push_back(CreateAndConnectThunk<SinThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::SQR)
             {
                 Program->Program.push_back(CreateAndConnectThunk<SqrThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::TRI)
             {
                 Program->Program.push_back(CreateAndConnectThunk<TriThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::SAW)
             {
                 Program->Program.push_back(CreateAndConnectThunk<SawThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::NOI)
             {
                 Program->Program.push_back(CreateAndConnectThunk<NoiThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::ADD)
             {
                 Program->Program.push_back(CreateAndConnectThunk<AddThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::MUL)
             {
                 Program->Program.push_back(CreateAndConnectThunk<MulThunk>(Inputs, Outputs, Closures));
-                return nullptr;
             }
             else if (Symbol == OpCode::RCP)
             {
@@ -2045,45 +2058,23 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::BAL)
             {
-                auto Thunk = std::make_shared<StereoBalanceThunk>();
-                Thunk->Sample = Inputs[0];
-                Thunk->Balance = Inputs[1];
-                Thunk->Left = Outputs[0];
-                Thunk->Right = Outputs[1];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<StereoBalanceThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::PLS)
             {
-                auto Thunk = std::make_shared<PulseThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Thunk->Latch = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<PulseThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::FLP)
             {
-                auto Thunk = std::make_shared<FlipFlopThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->EvenOutput = Outputs[0];
-                Thunk->OddOutput = Outputs[1];
-                Thunk->LastInput = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<FlipFlopThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::RNG)
             {
-                auto Thunk = std::make_shared<RandomThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Thunk->LastInput = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<RandomThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::GRAD)
             {
-                auto Thunk = std::make_shared<GradualThunk>();
-                Thunk->ValueInputs = Inputs[0];
-                Thunk->RateInputs = Inputs[1];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<GradualThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::TPTSVF_LOWPASS)
             {
@@ -2151,16 +2142,7 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::ADSR)
             {
-                auto Thunk = std::make_shared<AdsrThunk>();
-                Thunk->Trigger = Inputs[0];
-                Thunk->AttackTime = Inputs[1];
-                Thunk->DecayTime = Inputs[2];
-                Thunk->SustainAmount = Inputs[3];
-                Thunk->ReleaseTime = Inputs[4];
-                Thunk->OutAmplitude = Outputs[0];
-                Thunk->LastTrigger = Closures[0];
-                Thunk->Mode = Closures[1];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<AdsrThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::GATE)
             {
@@ -2205,17 +2187,11 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::MIDI_HZ)
             {
-                auto Thunk = std::make_shared<MidiToHzThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<MidiToHzThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::LOUD_FUDGE)
             {
-                auto Thunk = std::make_shared<LoudnessFudgeThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<LoudnessFudgeThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::BOOP)
             {
