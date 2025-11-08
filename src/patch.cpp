@@ -1800,6 +1800,7 @@ ScratchSharedPtr Patch::Compile()
 
         const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
         const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+        const size_t ClosureCount = SymbolInfoMap.Closures[(int)Symbol];
 
         // Recurse first to populate everything sequentally.
         for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -1862,12 +1863,18 @@ ScratchSharedPtr Patch::Compile()
                 Outputs.push_back(ActiveOutputs.at(OutputHandle));
             }
 
+            std::vector<RunningStateSharedPtr> Closures;
+            for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
+            {
+                Closures.push_back(ActiveOutputs.at(MakeClosureHandle(Tile, ClosureIndex)));
+            }
+
             if (Symbol == OpCode::SIN)
             {
                 auto Thunk = std::make_shared<SinThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ActivePhase = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -1876,7 +1883,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Thunk = std::make_shared<SqrThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ActivePhase = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -1885,7 +1892,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Thunk = std::make_shared<TriThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ActivePhase = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -1894,7 +1901,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Thunk = std::make_shared<SawThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->ActivePhase = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -1903,9 +1910,9 @@ ScratchSharedPtr Patch::Compile()
                 auto Thunk = std::make_shared<NoiThunk>();
                 Thunk->InFrequencyHz = Inputs[0];
                 Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->HighAmp = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->LowAmp = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
+                Thunk->ActivePhase = Closures[0];
+                Thunk->HighAmp = Closures[1];
+                Thunk->LowAmp = Closures[2];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
@@ -2032,7 +2039,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Thunk = std::make_shared<PulseThunk>();
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
-                Thunk->Latch = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->Latch = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::FLP)
@@ -2041,7 +2048,7 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Inputs = Inputs[0];
                 Thunk->EvenOutput = Outputs[0];
                 Thunk->OddOutput = Outputs[1];
-                Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastInput = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::RNG)
@@ -2049,7 +2056,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Thunk = std::make_shared<RandomThunk>();
                 Thunk->Inputs = Inputs[0];
                 Thunk->Output = Outputs[0];
-                Thunk->LastInput = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
+                Thunk->LastInput = Closures[0];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::GRAD)
@@ -2067,13 +2074,13 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
-                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
-                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
-                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
-                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
+                Thunk->LastCutoff = Closures[0];
+                Thunk->LastResonance = Closures[1];
+                Thunk->Gain = Closures[2];
+                Thunk->FeedbackDamping = Closures[3];
+                Thunk->ShelfGain = Closures[4];
+                Thunk->StateVar_z1_A = Closures[5];
+                Thunk->StateVar_z2_A = Closures[6];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::TPTSVF_BANDPASS)
@@ -2083,13 +2090,13 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
-                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
-                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
-                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
-                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
+                Thunk->LastCutoff = Closures[0];
+                Thunk->LastResonance = Closures[1];
+                Thunk->Gain = Closures[2];
+                Thunk->FeedbackDamping = Closures[3];
+                Thunk->ShelfGain = Closures[4];
+                Thunk->StateVar_z1_A = Closures[5];
+                Thunk->StateVar_z2_A = Closures[6];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::TPTSVF_HIGHPASS)
@@ -2099,13 +2106,13 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
-                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
-                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
-                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
-                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
+                Thunk->LastCutoff = Closures[0];
+                Thunk->LastResonance = Closures[1];
+                Thunk->Gain = Closures[2];
+                Thunk->FeedbackDamping = Closures[3];
+                Thunk->ShelfGain = Closures[4];
+                Thunk->StateVar_z1_A = Closures[5];
+                Thunk->StateVar_z2_A = Closures[6];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::TPTSVF_NOTCH)
@@ -2115,13 +2122,13 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->Cutoff = Inputs[1];
                 Thunk->Resonance = Inputs[2];
                 Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->LastResonance = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->Gain = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
-                Thunk->FeedbackDamping = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
-                Thunk->ShelfGain = ActiveOutputs.at(MakeClosureHandle(Tile, 4));
-                Thunk->StateVar_z1_A = ActiveOutputs.at(MakeClosureHandle(Tile, 5));
-                Thunk->StateVar_z2_A = ActiveOutputs.at(MakeClosureHandle(Tile, 6));
+                Thunk->LastCutoff = Closures[0];
+                Thunk->LastResonance = Closures[1];
+                Thunk->Gain = Closures[2];
+                Thunk->FeedbackDamping = Closures[3];
+                Thunk->ShelfGain = Closures[4];
+                Thunk->StateVar_z1_A = Closures[5];
+                Thunk->StateVar_z2_A = Closures[6];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::ADSR)
@@ -2133,8 +2140,8 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->SustainAmount = Inputs[3];
                 Thunk->ReleaseTime = Inputs[4];
                 Thunk->OutAmplitude = Outputs[0];
-                Thunk->LastTrigger = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->Mode = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->LastTrigger = Closures[0];
+                Thunk->Mode = Closures[1];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
             else if (Symbol == OpCode::GATE)
@@ -2207,10 +2214,10 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->InLength = Inputs[2];
                 Thunk->InReset = Inputs[3];
                 Thunk->Output = Outputs[0];
-                Thunk->ReadHead = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->WriteHead = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
-                Thunk->LastReset = ActiveOutputs.at(MakeClosureHandle(Tile, 2));
-                Thunk->LastOffset = ActiveOutputs.at(MakeClosureHandle(Tile, 3));
+                Thunk->ReadHead = Closures[0];
+                Thunk->WriteHead = Closures[1];
+                Thunk->LastReset = Closures[2];
+                Thunk->LastOffset = Closures[3];
                 Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
             }
@@ -2222,8 +2229,8 @@ ScratchSharedPtr Patch::Compile()
                 Thunk->JulianDate = Inputs[2];
                 Thunk->Speed = Inputs[3];
                 Thunk->Altitude = Outputs[0];
-                Thunk->OriginDate = ActiveOutputs.at(MakeClosureHandle(Tile, 0));
-                Thunk->ElapsedSeconds = ActiveOutputs.at(MakeClosureHandle(Tile, 1));
+                Thunk->OriginDate = Closures[0];
+                Thunk->ElapsedSeconds = Closures[1];
                 Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
                 return nullptr;
             }
