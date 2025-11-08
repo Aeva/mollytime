@@ -410,7 +410,7 @@ struct MulThunk : public InstructionThunk
 
 struct RcpThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::RCP, "rcp", {"N"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::RCP, "rcp", {"#"}, {"="} };
     InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
