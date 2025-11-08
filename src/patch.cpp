@@ -175,101 +175,57 @@ uint32_t DecodeSampleHandle(double WireValue)
 }
 
 
-struct SymbolInfo
+template<int InputCount, int OutputCount, int ClosureCount_>
+struct InstructionInfo
 {
-    std::vector<std::string> DefaultNames;
-    std::vector<std::vector<std::string>> InputNames;
-    std::vector<std::vector<std::string>> OutputNames;
-    std::vector<int> Closures;
-
-    SymbolInfo()
-    {
-        DefaultNames.resize((int)OpCode::Count);
-        InputNames.resize((int)OpCode::Count);
-        OutputNames.resize((int)OpCode::Count);
-        Closures.resize((int)OpCode::Count);
-
-        Set(OpCode::CONST, "const", {}, {"#"});
-        Set(OpCode::SCOPE, "scope", {"out"}, {});
-        Set(OpCode::IN, "in", {}, {"in"});
-        Set(OpCode::OUT, "out", {"out"}, {});
-        Set(OpCode::AUX, "aux", {"out"}, {});
-        Set(OpCode::SIN, "sin", {"hz"}, {"amp"}, 1);
-        Set(OpCode::SQR, "sqr", {"hz"}, {"amp"}, 1);
-        Set(OpCode::TRI, "tri", {"hz"}, {"amp"}, 1);
-        Set(OpCode::SAW, "saw", {"hz"}, {"amp"}, 1);
-        Set(OpCode::NOI, "noise", {"hz"}, {"amp"}, 3);
-        Set(OpCode::ADD, "add", {"+"}, {"="});
-        Set(OpCode::MUL, "mul", {"*"}, {"="});
-        Set(OpCode::RCP, "rcp", {"*"}, {"="});
-        Set(OpCode::MIN, "min", {"min"}, {"="});
-        Set(OpCode::MAX, "max", {"max"}, {"="});
-        Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
-        Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
-        Set(OpCode::ROUND, "round", {"#"}, {"rounded"});
-        Set(OpCode::SIGN, "sign", {"#"}, {"sign"});
-        Set(OpCode::ABS, "abs", {"#"}, {"abs"});
-        Set(OpCode::FLD, "fold", {"v", "p", "n"}, {"w"});
-        Set(OpCode::INV, "invert", {"#"}, {"#"});
-        Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
-        Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
-        Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
-        Set(OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"});
-        Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
-        Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
-        Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
-        Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
-        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"}, 7);
-        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"}, 7);
-        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"}, 7);
-        Set(OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"}, 7);
-        Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
-        Set(OpCode::GATE, "gate", {"channel"}, {"gate"});
-        Set(OpCode::NOTE, "note", {"channel"}, {"note"});
-        Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
-        Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
-        Set(OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"});
-        Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
-        Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
-        Set(OpCode::BOOP, "boop", {}, {"gate"});
-        Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
-        Set(OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"}, 2);
-    }
-
-    void Set(OpCode Symbol, std::string Name,
-             std::vector<std::string> Inputs, std::vector<std::string> Outputs, int HiddenOutputs = 0)
-    {
-        DefaultNames[(int)Symbol] = Name;
-        InputNames[(int)Symbol] = Inputs;
-        OutputNames[(int)Symbol] = Outputs;
-        Closures[(int)Symbol] = HiddenOutputs;
-    }
+    OpCode Symbol;
+    std::string Name;
+    std::array<std::string, InputCount> InputNames;
+    std::array<std::string, OutputCount> OutputNames;
+    int ClosureCount = ClosureCount_;
 };
 
-const SymbolInfo SymbolInfoMap;
 
-
-std::string GetDefaultName(OpCode Symbol)
+template<int InputCount, int OutputCount, int ClosureCount>
+struct InstructionRegisters
 {
-    return SymbolInfoMap.DefaultNames[(int)Symbol];
-}
+    std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
+    std::array<RunningStateSharedPtr, OutputCount> Output;
+    std::array<RunningStateSharedPtr, ClosureCount> Closure;
 
-
-int GetClosureCount(OpCode Symbol)
-{
-    return SymbolInfoMap.Closures[(int)Symbol];
-}
+    void Connect(
+        std::vector<std::vector<RunningStateSharedPtr>>& AssignedInputs,
+        std::vector<RunningStateSharedPtr>& AssignedOutputs,
+        std::vector<RunningStateSharedPtr>& AssignedClosures)
+    {
+        for (int Index = 0; Index < InputCount; ++Index)
+        {
+            Input[Index] = AssignedInputs[Index];
+        }
+        for (int Index = 0; Index < OutputCount; ++Index)
+        {
+            Output[Index] = AssignedOutputs[Index];
+        }
+        for (int Index = 0; Index < ClosureCount; ++Index)
+        {
+            Closure[Index] = AssignedClosures[Index];
+        }
+    }
+};
 
 
 struct SinThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr OutAmplitude = nullptr;
-    RunningStateSharedPtr ActivePhase = nullptr;
+    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SIN, "sin", {"hz"}, {"amp"} };
+    InstructionRegisters<1, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SinThunk");
+        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
@@ -283,13 +239,16 @@ struct SinThunk : public InstructionThunk
 
 struct SqrThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr OutAmplitude = nullptr;
-    RunningStateSharedPtr ActivePhase = nullptr;
+    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SQR, "sqr", {"hz"}, {"amp"} };
+    InstructionRegisters<1, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SqrThunk");
+        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
@@ -308,13 +267,16 @@ struct SqrThunk : public InstructionThunk
 
 struct TriThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr OutAmplitude = nullptr;
-    RunningStateSharedPtr ActivePhase = nullptr;
+    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::TRI, "tri", {"hz"}, {"amp"} };
+    InstructionRegisters<1, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TriThunk");
+        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
@@ -339,13 +301,16 @@ struct TriThunk : public InstructionThunk
 
 struct SawThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InFrequencyHz;
-    RunningStateSharedPtr OutAmplitude = nullptr;
-    RunningStateSharedPtr ActivePhase = nullptr;
+    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SAW, "saw", {"hz"}, {"amp"} };
+    InstructionRegisters<1, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SawThunk");
+        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+
         double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
         double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
@@ -1343,6 +1308,106 @@ struct TapeLoopThunk : public InstructionThunk
 };
 
 
+struct SymbolInfo
+{
+    std::vector<std::string> DefaultNames;
+    std::vector<std::vector<std::string>> InputNames;
+    std::vector<std::vector<std::string>> OutputNames;
+    std::vector<int> Closures;
+
+    SymbolInfo()
+    {
+        DefaultNames.resize((int)OpCode::Count);
+        InputNames.resize((int)OpCode::Count);
+        OutputNames.resize((int)OpCode::Count);
+        Closures.resize((int)OpCode::Count);
+
+        Set(OpCode::CONST, "const", {}, {"#"});
+        Set(OpCode::SCOPE, "scope", {"out"}, {});
+        Set(OpCode::IN, "in", {}, {"in"});
+        Set(OpCode::OUT, "out", {"out"}, {});
+        Set(OpCode::AUX, "aux", {"out"}, {});
+        Set<SinThunk>();
+        Set<SqrThunk>();
+        Set<TriThunk>();
+        Set<SawThunk>();
+        Set(OpCode::NOI, "noise", {"hz"}, {"amp"}, 3);
+        Set(OpCode::ADD, "add", {"+"}, {"="});
+        Set(OpCode::MUL, "mul", {"*"}, {"="});
+        Set(OpCode::RCP, "rcp", {"*"}, {"="});
+        Set(OpCode::MIN, "min", {"min"}, {"="});
+        Set(OpCode::MAX, "max", {"max"}, {"="});
+        Set(OpCode::FLOOR, "floor", {"#"}, {"floor"});
+        Set(OpCode::CEIL, "ceil", {"#"}, {"ceil"});
+        Set(OpCode::ROUND, "round", {"#"}, {"rounded"});
+        Set(OpCode::SIGN, "sign", {"#"}, {"sign"});
+        Set(OpCode::ABS, "abs", {"#"}, {"abs"});
+        Set(OpCode::FLD, "fold", {"v", "p", "n"}, {"w"});
+        Set(OpCode::INV, "invert", {"#"}, {"#"});
+        Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
+        Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
+        Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
+        Set(OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"});
+        Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
+        Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
+        Set(OpCode::RNG, "rng", {"clock"}, {"#"}, 1);
+        Set(OpCode::GRAD, "grad", {"#", "rate"}, {"#"});
+        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"}, 7);
+        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"}, 7);
+        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"}, 7);
+        Set(OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"}, 7);
+        Set(OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"}, 2);
+        Set(OpCode::GATE, "gate", {"channel"}, {"gate"});
+        Set(OpCode::NOTE, "note", {"channel"}, {"note"});
+        Set(OpCode::VELO, "velocity", {"channel"}, {"velocity"});
+        Set(OpCode::PRES, "pressure", {"channel"}, {"pressure"});
+        Set(OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"});
+        Set(OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"});
+        Set(OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"});
+        Set(OpCode::BOOP, "boop", {}, {"gate"});
+        Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
+        Set(OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"}, 2);
+    }
+
+    void Set(OpCode Symbol, std::string Name,
+             std::vector<std::string> Inputs, std::vector<std::string> Outputs, int HiddenOutputs = 0)
+    {
+        DefaultNames[(int)Symbol] = Name;
+        InputNames[(int)Symbol] = Inputs;
+        OutputNames[(int)Symbol] = Outputs;
+        Closures[(int)Symbol] = HiddenOutputs;
+    }
+
+    template<typename ThunkT>
+    void Set()
+    {
+        DefaultNames[(int)ThunkT::Info.Symbol] = ThunkT::Info.Name;
+        InputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.InputNames.begin(), ThunkT::Info.InputNames.end());
+        OutputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
+        Closures[(int)ThunkT::Info.Symbol] = ThunkT::Info.ClosureCount;
+        // DefaultNames[(int)ThunkT::Symbol] = ThunkT::Name;
+        // InputNames[(int)ThunkT::Symbol] = std::vector<std::string>(ThunkT::InputNames.begin(), ThunkT::InputNames.end());
+        // OutputNames[(int)ThunkT::Symbol] = std::vector<std::string>(ThunkT::OutputNames.begin(), ThunkT::OutputNames.end());
+        // Closures[(int)ThunkT::Symbol] = ThunkT::ClosureCount;
+    }
+};
+
+
+const SymbolInfo SymbolInfoMap;
+
+
+std::string GetDefaultName(OpCode Symbol)
+{
+    return SymbolInfoMap.DefaultNames[(int)Symbol];
+}
+
+
+int GetClosureCount(OpCode Symbol)
+{
+    return SymbolInfoMap.Closures[(int)Symbol];
+}
+
+
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
@@ -1762,6 +1827,18 @@ void Patch::SetSpecialInput(TileHandle Tile, double Value)
 }
 
 
+template<typename ThunkT>
+static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
+    std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
+    std::vector<RunningStateSharedPtr>& Outputs,
+    std::vector<RunningStateSharedPtr>& Closures)
+{
+    auto Thunk = std::make_shared<ThunkT>();
+    Thunk->Registers.Connect(Inputs, Outputs, Closures);
+    return std::static_pointer_cast<InstructionThunk>(Thunk);
+}
+
+
 ScratchSharedPtr Patch::Compile()
 {
     TRACEABLE_SCOPE;
@@ -1871,38 +1948,22 @@ ScratchSharedPtr Patch::Compile()
 
             if (Symbol == OpCode::SIN)
             {
-                auto Thunk = std::make_shared<SinThunk>();
-                Thunk->InFrequencyHz = Inputs[0];
-                Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<SinThunk>(Inputs, Outputs, Closures));
                 return nullptr;
             }
             else if (Symbol == OpCode::SQR)
             {
-                auto Thunk = std::make_shared<SqrThunk>();
-                Thunk->InFrequencyHz = Inputs[0];
-                Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<SqrThunk>(Inputs, Outputs, Closures));
                 return nullptr;
             }
             else if (Symbol == OpCode::TRI)
             {
-                auto Thunk = std::make_shared<TriThunk>();
-                Thunk->InFrequencyHz = Inputs[0];
-                Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<TriThunk>(Inputs, Outputs, Closures));
                 return nullptr;
             }
             else if (Symbol == OpCode::SAW)
             {
-                auto Thunk = std::make_shared<SawThunk>();
-                Thunk->InFrequencyHz = Inputs[0];
-                Thunk->OutAmplitude = Outputs[0];
-                Thunk->ActivePhase = Closures[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<SawThunk>(Inputs, Outputs, Closures));
                 return nullptr;
             }
             else if (Symbol == OpCode::NOI)
