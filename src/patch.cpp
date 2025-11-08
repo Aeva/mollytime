@@ -1415,10 +1415,6 @@ struct SymbolInfo
         InputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.InputNames.begin(), ThunkT::Info.InputNames.end());
         OutputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
         Closures[(int)ThunkT::Info.Symbol] = ThunkT::Info.ClosureCount;
-        // DefaultNames[(int)ThunkT::Symbol] = ThunkT::Name;
-        // InputNames[(int)ThunkT::Symbol] = std::vector<std::string>(ThunkT::InputNames.begin(), ThunkT::InputNames.end());
-        // OutputNames[(int)ThunkT::Symbol] = std::vector<std::string>(ThunkT::OutputNames.begin(), ThunkT::OutputNames.end());
-        // Closures[(int)ThunkT::Symbol] = ThunkT::ClosureCount;
     }
 };
 
