@@ -17,6 +17,7 @@
 #include <random>
 #include <format>
 #include <print>
+#include <string_view>
 #include <functional>
 #include <limits>
 #include <numbers>
@@ -179,9 +180,9 @@ template<int InputCount, int OutputCount, int ClosureCount_>
 struct InstructionInfo
 {
     OpCode Symbol;
-    std::string Name;
-    std::array<std::string, InputCount> InputNames;
-    std::array<std::string, OutputCount> OutputNames;
+    std::string_view Name;
+    std::array<std::string_view, InputCount> InputNames;
+    std::array<std::string_view, OutputCount> OutputNames;
     int ClosureCount = ClosureCount_;
 };
 
@@ -572,15 +573,15 @@ struct FoldThunk : public InstructionThunk
 
 struct InvertThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::INV, "invert", {"#"}, {"#"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("InvertThunk");
-        double Value = Combine(CombinerAdd, Inputs, 0.0);
+        double Value = Combine(CombinerAdd, Registers.Input[0], 0.0);
         double Sign = Value < 0.0 ? -1.0 : 1.0;
-        Output->Set((1.0 - std::abs(Value)) * Sign);
+        Registers.Output[0]->Set((1.0 - std::abs(Value)) * Sign);
     }
 
     virtual ~InvertThunk() {};
@@ -589,13 +590,13 @@ struct InvertThunk : public InstructionThunk
 
 struct ToUnipolarThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
-        Output->Set(Combine(CombinerAdd, Inputs, 0.0) * 0.5 + 0.5);
+        Registers.Output[0]->Set(Combine(CombinerAdd, Registers.Input[0], 0.0) * 0.5 + 0.5);
     }
 
     virtual ~ToUnipolarThunk() {};
@@ -604,13 +605,13 @@ struct ToUnipolarThunk : public InstructionThunk
 
 struct ToBipolarThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"} };
+    InstructionRegisters<1, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
-        Output->Set(Combine(CombinerAdd, Inputs, 0.0) * 2.0 - 1.0);
+        Registers.Output[0]->Set(Combine(CombinerAdd, Registers.Input[0], 0.0) * 2.0 - 1.0);
     }
 
     virtual ~ToBipolarThunk() {};
@@ -619,14 +620,17 @@ struct ToBipolarThunk : public InstructionThunk
 
 struct MixThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> Left;
-    std::vector<RunningStateSharedPtr> Right;
-    std::vector<RunningStateSharedPtr> Balance;
-    RunningStateSharedPtr Output = nullptr;
+    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::MIX, "mix", {"L", "R", "balance"}, {"="} };
+    InstructionRegisters<3, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MixThunk");
+        std::vector<RunningStateSharedPtr>& Left = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& Right = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& Balance = Registers.Input[2];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+
         double X = Combine(CombinerAdd, Left, 0.0);
         double Y = Combine(CombinerAdd, Right, 0.0);
         double Alpha = Combine(CombinerAdd, Balance, 0.5);
@@ -1349,10 +1353,10 @@ struct SymbolInfo
         Set<SignThunk>();
         Set<AbsThunk>();
         Set<FoldThunk>();
-        Set(OpCode::INV, "invert", {"#"}, {"#"});
-        Set(OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"});
-        Set(OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"});
-        Set(OpCode::MIX, "mix", {"L", "R", "balance"}, {"="});
+        Set<InvertThunk>();
+        Set<ToUnipolarThunk>();
+        Set<ToBipolarThunk>();
+        Set<MixThunk>();
         Set(OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"});
         Set(OpCode::PLS, "pulse", {"clock"}, {"pulse"}, 1);
         Set(OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"}, 1);
@@ -2025,33 +2029,19 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::INV)
             {
-                auto Thunk = std::make_shared<InvertThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<InvertThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::STU)
             {
-                auto Thunk = std::make_shared<ToUnipolarThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<ToUnipolarThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::UTS)
             {
-                auto Thunk = std::make_shared<ToBipolarThunk>();
-                Thunk->Inputs = Inputs[0];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<ToBipolarThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::MIX)
             {
-                auto Thunk = std::make_shared<MixThunk>();
-                Thunk->Left = Inputs[0];
-                Thunk->Right = Inputs[1];
-                Thunk->Balance = Inputs[2];
-                Thunk->Output = Outputs[0];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<MixThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::BAL)
             {
