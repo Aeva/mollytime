@@ -1258,20 +1258,22 @@ using BlankTapeSharedPtr = std::shared_ptr<BlankTape>;
 
 struct TapeLoopThunk : public InstructionThunk
 {
-    std::vector<RunningStateSharedPtr> InSample;
-    std::vector<RunningStateSharedPtr> InOffset;
-    std::vector<RunningStateSharedPtr> InLength;
-    std::vector<RunningStateSharedPtr> InReset;
-    RunningStateSharedPtr Output = nullptr;
-    RunningStateSharedPtr ReadHead = nullptr;
-    RunningStateSharedPtr WriteHead = nullptr;
-    RunningStateSharedPtr LastReset = nullptr;
-    RunningStateSharedPtr LastOffset = nullptr;
+    static constexpr InstructionInfo<4, 1, 4> Info = { OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"} };
+    InstructionRegisters<4, 1, 4> Registers;
     BlankTapeSharedPtr Tape;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
+        std::vector<RunningStateSharedPtr>& InSample = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InOffset = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& InLength = Registers.Input[2];
+        std::vector<RunningStateSharedPtr>& InReset = Registers.Input[3];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+        RunningStateSharedPtr& ReadHead = Registers.Closure[0];
+        RunningStateSharedPtr& WriteHead = Registers.Closure[1];
+        RunningStateSharedPtr& LastReset = Registers.Closure[2];
+        RunningStateSharedPtr& LastOffset = Registers.Closure[3];
 
         double Offset = Combine(CombinerAdd, InOffset, 0.0);
         double Seconds = Combine(CombinerAdd, InLength, 0.0);
@@ -1384,7 +1386,7 @@ struct SymbolInfo
         Set<MidiToHzThunk>();
         Set<LoudnessFudgeThunk>();
         Set<BoopThunk>();
-        Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
+        Set<TapeLoopThunk>();
         Set<MoonThunk>();
     }
 
@@ -1874,6 +1876,21 @@ static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
     std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
     std::vector<RunningStateSharedPtr>& Outputs,
     std::vector<RunningStateSharedPtr>& Closures,
+    MagicTapeSharedPtr& Tape)
+{
+    // This is a special form for Tape thunks.
+    auto Thunk = std::make_shared<ThunkT>();
+    Thunk->Registers.Connect(Inputs, Outputs, Closures);
+    Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
+    return std::static_pointer_cast<InstructionThunk>(Thunk);
+}
+
+
+template<typename ThunkT>
+static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
+    std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
+    std::vector<RunningStateSharedPtr>& Outputs,
+    std::vector<RunningStateSharedPtr>& Closures,
     Scratch* Program)
 {
     // This is a special form for the various MIDI thunks.
@@ -2145,18 +2162,7 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::TAPE_LOOP)
             {
-                auto Thunk = std::make_shared<TapeLoopThunk>();
-                Thunk->InSample = Inputs[0];
-                Thunk->InOffset = Inputs[1];
-                Thunk->InLength = Inputs[2];
-                Thunk->InReset = Inputs[3];
-                Thunk->Output = Outputs[0];
-                Thunk->ReadHead = Closures[0];
-                Thunk->WriteHead = Closures[1];
-                Thunk->LastReset = Closures[2];
-                Thunk->LastOffset = Closures[3];
-                Thunk->Tape = std::static_pointer_cast<BlankTape>(TapeCollection.at(Tile));
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<TapeLoopThunk>(Inputs, Outputs, Closures, TapeCollection.at(Tile)));
             }
             else if (Symbol == OpCode::MOON)
             {
