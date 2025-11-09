@@ -828,29 +828,30 @@ enum class FilterType
 template <FilterType Mode>
 struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionThunk
 {
+    InstructionRegisters<3, 1, 7> Registers;
+
     // Adapted from https://github.com/michaeldonovan/VAStateVariableFilter/
     // which in turn was adapted from https://github.com/JordanTHarris/VAStateVariableFilter/
     // Additional useful information: https://mastodon.gamedev.place/@rygorous/115082511872070814
 
-    std::vector<RunningStateSharedPtr> Sample;
-    std::vector<RunningStateSharedPtr> Cutoff;
-    std::vector<RunningStateSharedPtr> Resonance;
-    RunningStateSharedPtr Output = nullptr;
-
-    RunningStateSharedPtr LastCutoff = nullptr;
-    RunningStateSharedPtr LastResonance = nullptr;
-
-    RunningStateSharedPtr Gain;
-    RunningStateSharedPtr FeedbackDamping;
-    // TODO: ShelfGain can be factored out for most specializations of this class
-    RunningStateSharedPtr ShelfGain;
-    RunningStateSharedPtr StateVar_z1_A; // state variables (z^-1)
-    RunningStateSharedPtr StateVar_z2_A;
-
-
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
+
+        std::vector<RunningStateSharedPtr>& Sample = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& Cutoff = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& Resonance = Registers.Input[2];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+
+        RunningStateSharedPtr& LastCutoff = Registers.Closure[0];
+        RunningStateSharedPtr& LastResonance = Registers.Closure[1];
+
+        RunningStateSharedPtr& Gain = Registers.Closure[2];
+        RunningStateSharedPtr& FeedbackDamping = Registers.Closure[3];
+        // TODO: ShelfGain can be factored out for most specializations of this class
+        RunningStateSharedPtr& ShelfGain = Registers.Closure[4];
+        RunningStateSharedPtr& StateVar_z1_A = Registers.Closure[5]; // state variables (z^-1)
+        RunningStateSharedPtr& StateVar_z2_A = Registers.Closure[6];
 
         double Input = Combine(CombinerAdd, Sample, 0.0);
         double Cut = Combine(CombinerAdd, Cutoff, 1000.0);
@@ -945,6 +946,30 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     }
 
     virtual ~TopologyPreservingTransformStateVariableFilterThunk() {};
+};
+
+
+struct LowpassThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Lowpass>
+{
+    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"} };
+};
+
+
+struct BandpassThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Bandpass>
+{
+    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"} };
+};
+
+
+struct HighpassThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Highpass>
+{
+    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"} };
+};
+
+
+struct NotchThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Notch>
+{
+    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"} };
 };
 
 
@@ -1382,10 +1407,10 @@ struct SymbolInfo
         Set<FlipFlopThunk>();
         Set<RandomThunk>();
         Set<GradualThunk>();
-        Set(OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"}, 7);
-        Set(OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"}, 7);
-        Set(OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"}, 7);
-        Set(OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"}, 7);
+        Set<LowpassThunk>();
+        Set<BandpassThunk>();
+        Set<HighpassThunk>();
+        Set<NotchThunk>();
         Set<AdsrThunk>();
         Set(OpCode::GATE, "gate", {"channel"}, {"gate"});
         Set(OpCode::NOTE, "note", {"channel"}, {"note"});
@@ -2074,67 +2099,19 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::TPTSVF_LOWPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Lowpass>>();
-                Thunk->Sample = Inputs[0];
-                Thunk->Cutoff = Inputs[1];
-                Thunk->Resonance = Inputs[2];
-                Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = Closures[0];
-                Thunk->LastResonance = Closures[1];
-                Thunk->Gain = Closures[2];
-                Thunk->FeedbackDamping = Closures[3];
-                Thunk->ShelfGain = Closures[4];
-                Thunk->StateVar_z1_A = Closures[5];
-                Thunk->StateVar_z2_A = Closures[6];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<LowpassThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::TPTSVF_BANDPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Bandpass>>();
-                Thunk->Sample = Inputs[0];
-                Thunk->Cutoff = Inputs[1];
-                Thunk->Resonance = Inputs[2];
-                Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = Closures[0];
-                Thunk->LastResonance = Closures[1];
-                Thunk->Gain = Closures[2];
-                Thunk->FeedbackDamping = Closures[3];
-                Thunk->ShelfGain = Closures[4];
-                Thunk->StateVar_z1_A = Closures[5];
-                Thunk->StateVar_z2_A = Closures[6];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<BandpassThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::TPTSVF_HIGHPASS)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Highpass>>();
-                Thunk->Sample = Inputs[0];
-                Thunk->Cutoff = Inputs[1];
-                Thunk->Resonance = Inputs[2];
-                Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = Closures[0];
-                Thunk->LastResonance = Closures[1];
-                Thunk->Gain = Closures[2];
-                Thunk->FeedbackDamping = Closures[3];
-                Thunk->ShelfGain = Closures[4];
-                Thunk->StateVar_z1_A = Closures[5];
-                Thunk->StateVar_z2_A = Closures[6];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<HighpassThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::TPTSVF_NOTCH)
             {
-                auto Thunk = std::make_shared<TopologyPreservingTransformStateVariableFilterThunk<FilterType::Notch>>();
-                Thunk->Sample = Inputs[0];
-                Thunk->Cutoff = Inputs[1];
-                Thunk->Resonance = Inputs[2];
-                Thunk->Output = Outputs[0];
-                Thunk->LastCutoff = Closures[0];
-                Thunk->LastResonance = Closures[1];
-                Thunk->Gain = Closures[2];
-                Thunk->FeedbackDamping = Closures[3];
-                Thunk->ShelfGain = Closures[4];
-                Thunk->StateVar_z1_A = Closures[5];
-                Thunk->StateVar_z2_A = Closures[6];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
+                Program->Program.push_back(CreateAndConnectThunk<NotchThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::ADSR)
             {
