@@ -284,7 +284,7 @@ class inspect_screen(editor_screen):
             load_status, load_path = mollytime.display.get_load_dialog_result()
             if load_status < 0:
                 self.pending_load = False
-            elif load_status > 0:
+            elif load_status > 0 and load_path:
                 self.pending_load = False
                 self.load_path = load_path
                 assert(os.path.isfile(self.load_path))
