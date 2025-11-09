@@ -169,6 +169,10 @@ class inspect_screen(editor_screen):
         else:
             patch_dir = find_search_path()
 
+        # hack fix for SDL_ShowSaveFileDialog on Windows interpreting patch_dir as
+        # the directory below if the last character is not the directory delimiter.
+        patch_dir = os.path.join(patch_dir, "")
+
         mollytime.display.show_save_dialog(patch_dir)
 
     def goto_load_patch(self, editor):
@@ -182,6 +186,10 @@ class inspect_screen(editor_screen):
             patch_dir = self.search_path
         else:
             patch_dir = find_search_path()
+
+        # hack fix for SDL_ShowOpenFileDialog on Windows interpreting patch_dir as
+        # the directory below if the last character is not the directory delimiter.
+        patch_dir = os.path.join(patch_dir, "")
 
         mollytime.display.show_load_dialog(patch_dir)
 
