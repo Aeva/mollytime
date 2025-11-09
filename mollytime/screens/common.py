@@ -315,6 +315,7 @@ class program_card:
 
     def clear_selection(self):
         self.selected = []
+        self.force_redraw = True
 
     def is_selected(self, tile):
         return tile in self.selected

@@ -37,6 +37,8 @@ class pick_and_place_screen(editor_screen):
         self.all_palettes = []
         self.palette_names = []
 
+        self.extra_draws = 0
+
         pages = [
             (":D", [
                 [OpCode.OUT, OpCode.SIN],
@@ -106,6 +108,13 @@ class pick_and_place_screen(editor_screen):
 
         self.tile_palette = self.all_palettes[self.current_palette]
         self.palette_name = self.palette_names[self.current_palette]
+
+    def request_extra_draws(self):
+        # This is used to request a full redraw some number of frames after dropping a tile.
+        # The interval of 64 frames was chosen arbitrarily.  The number of frames needed to
+        # flush the stale frame seems to vary significantly on Windows, though in most of the
+        # time a low number greater than one is sufficient.
+        self.extra_draws = 64
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
@@ -237,6 +246,9 @@ class pick_and_place_screen(editor_screen):
 
     def draw(self, editor):
         update_anything = False
+        if self.extra_draws > 0:
+            self.extra_draws -= 1
+            self.force_redraw = True
 
         # draw the play area
         if self.update_play_area or self.force_redraw:
@@ -310,6 +322,7 @@ class pick_and_place_screen(editor_screen):
             rect = mollytime.Rect(0, 0, editor.grid_size * 4, editor.grid_size * 4)
             rect.center = [round(i) for i in self.cursor_pos]
             drag_and_draw = (overlay, rect)
+            self.request_extra_draws()
 
             rect = mollytime.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)
 
