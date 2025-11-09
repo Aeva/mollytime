@@ -176,45 +176,6 @@ uint32_t DecodeSampleHandle(double WireValue)
 }
 
 
-template<int InputCount, int OutputCount, int ClosureCount_>
-struct InstructionInfo
-{
-    OpCode Symbol;
-    std::string_view Name;
-    std::array<std::string_view, InputCount> InputNames;
-    std::array<std::string_view, OutputCount> OutputNames;
-    int ClosureCount = ClosureCount_;
-};
-
-
-template<int InputCount, int OutputCount, int ClosureCount>
-struct InstructionRegisters
-{
-    std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
-    std::array<RunningStateSharedPtr, OutputCount> Output;
-    std::array<RunningStateSharedPtr, ClosureCount> Closure;
-
-    void Connect(
-        std::vector<std::vector<RunningStateSharedPtr>>& AssignedInputs,
-        std::vector<RunningStateSharedPtr>& AssignedOutputs,
-        std::vector<RunningStateSharedPtr>& AssignedClosures)
-    {
-        for (int Index = 0; Index < InputCount; ++Index)
-        {
-            Input[Index] = AssignedInputs[Index];
-        }
-        for (int Index = 0; Index < OutputCount; ++Index)
-        {
-            Output[Index] = AssignedOutputs[Index];
-        }
-        for (int Index = 0; Index < ClosureCount; ++Index)
-        {
-            Closure[Index] = AssignedClosures[Index];
-        }
-    }
-};
-
-
 struct SinThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SIN, "sin", {"hz"}, {"amp"} };
@@ -1421,7 +1382,7 @@ struct SymbolInfo
         Set<LoudnessFudgeThunk>();
         Set(OpCode::BOOP, "boop", {}, {"gate"});
         Set(OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"}, 4);
-        Set(OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"}, 2);
+        Set<MoonThunk>();
     }
 
     void Set(OpCode Symbol, std::string Name,
@@ -2190,16 +2151,7 @@ ScratchSharedPtr Patch::Compile()
             }
             else if (Symbol == OpCode::MOON)
             {
-                auto Thunk = std::make_shared<MoonThunk>();
-                Thunk->Latitude = Inputs[0];
-                Thunk->Longitude = Inputs[1];
-                Thunk->JulianDate = Inputs[2];
-                Thunk->Speed = Inputs[3];
-                Thunk->Altitude = Outputs[0];
-                Thunk->OriginDate = Closures[0];
-                Thunk->ElapsedSeconds = Closures[1];
-                Program->Program.push_back(std::static_pointer_cast<InstructionThunk>(Thunk));
-                return nullptr;
+                Program->Program.push_back(CreateAndConnectThunk<MoonThunk>(Inputs, Outputs, Closures));
             }
             return nullptr;
         }

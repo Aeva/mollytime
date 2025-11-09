@@ -130,6 +130,16 @@ static double MoonPosition(double JulianDate, double ObserverLatitude, double Ob
 void MoonThunk::Crank(double SampleInterval)
 {
     TRACEABLE_NAMED_SCOPE("MoonThunk");
+    std::vector<RunningStateSharedPtr> Latitude = Registers.Input[0];
+    std::vector<RunningStateSharedPtr> Longitude = Registers.Input[1];
+    std::vector<RunningStateSharedPtr> JulianDate = Registers.Input[2];
+    std::vector<RunningStateSharedPtr> Speed = Registers.Input[3];
+    RunningStateSharedPtr Altitude = Registers.Output[0];
+
+    // If JulianDate was unset, then this will cache the current Julian Date
+    // at the time the tile was activated.
+    RunningStateSharedPtr OriginDate = Registers.Closure[0];
+    RunningStateSharedPtr ElapsedSeconds = Registers.Closure[1];
 
     double ObserverLatitude = Combine(CombinerAdd, Latitude, 41.881944);
     double ObserverLongitude = Combine(CombinerAdd, Longitude, -87.627778);

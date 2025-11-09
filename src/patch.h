@@ -274,6 +274,45 @@ inline double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs
 }
 
 
+template<int InputCount, int OutputCount, int ClosureCount_>
+struct InstructionInfo
+{
+    OpCode Symbol;
+    std::string_view Name;
+    std::array<std::string_view, InputCount> InputNames;
+    std::array<std::string_view, OutputCount> OutputNames;
+    int ClosureCount = ClosureCount_;
+};
+
+
+template<int InputCount, int OutputCount, int ClosureCount>
+struct InstructionRegisters
+{
+    std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
+    std::array<RunningStateSharedPtr, OutputCount> Output;
+    std::array<RunningStateSharedPtr, ClosureCount> Closure;
+
+    void Connect(
+        std::vector<std::vector<RunningStateSharedPtr>>& AssignedInputs,
+        std::vector<RunningStateSharedPtr>& AssignedOutputs,
+        std::vector<RunningStateSharedPtr>& AssignedClosures)
+    {
+        for (int Index = 0; Index < InputCount; ++Index)
+        {
+            Input[Index] = AssignedInputs[Index];
+        }
+        for (int Index = 0; Index < OutputCount; ++Index)
+        {
+            Output[Index] = AssignedOutputs[Index];
+        }
+        for (int Index = 0; Index < ClosureCount; ++Index)
+        {
+            Closure[Index] = AssignedClosures[Index];
+        }
+    }
+};
+
+
 struct InstructionThunk
 {
     virtual void Crank(double SampleInterval) = 0;
