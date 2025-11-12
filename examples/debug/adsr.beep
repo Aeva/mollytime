@@ -10,8 +10,8 @@
 		<tile id="7" symbol="stu" x="-3" y="0"/>
 		<tile id="8" symbol="adsr" x="0" y="0"/>
 		<tile id="9" symbol="const" x="-1" y="2" value="1.0"/>
-		<tile id="10" symbol="const" x="0" y="2" value="0.25"/>
-		<tile id="11" symbol="const" x="2" y="2" value="0.25"/>
+		<tile id="10" symbol="const" x="0" y="2" value="1.0"/>
+		<tile id="11" symbol="const" x="2" y="2" value="4.0"/>
 		<tile id="12" symbol="const" x="1" y="2" value="0.5"/>
 		<tile id="13" symbol="pls" x="2" y="-2"/>
 		<tile id="14" symbol="sqr" x="3" y="-2"/>
