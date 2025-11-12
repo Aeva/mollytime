@@ -321,7 +321,7 @@ class select_screen(editor_screen):
             frame.blit(self.lhs_selectbar_bg, self.lhs_selectbar_rect)
             frame.blit(self.rhs_selectbar_bg, self.rhs_selectbar_rect)
             for start, stop in self.connections:
-                draw_arrow(frame, parse_color("#0F0"), start, stop, 8)
+                draw_arrow(frame, parse_color("#fff000"), start, stop, 8)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
 
