@@ -936,8 +936,8 @@ struct NotchThunk : public TopologyPreservingTransformStateVariableFilterThunk<F
 
 struct AdsrThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<5, 1, 2> Info = { OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"} };
-    InstructionRegisters<5, 1, 2> Registers;
+    static constexpr InstructionInfo<5, 1, 3> Info = { OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"} };
+    InstructionRegisters<5, 1, 3> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -950,73 +950,109 @@ struct AdsrThunk : public InstructionThunk
         RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
         RunningStateSharedPtr& LastTrigger = Registers.Closure[0];
         RunningStateSharedPtr& Mode = Registers.Closure[1];
+        RunningStateSharedPtr& Rate = Registers.Closure[2];
 
         double Trig = Combine(CombinerAdd, Trigger, 0.0);
         double Previous = LastTrigger->Get();
         LastTrigger->Set(Trig);
 
-        double Attack = std::max(Combine(CombinerAdd, AttackTime, 0.1), 0.0);
-        double Decay = std::max(Combine(CombinerAdd, DecayTime, 0.1), 0.0);
-        double Sustain = std::min(std::max(Combine(CombinerAdd, SustainAmount, 1.0), 0.0), 1.0);
-        double Release = std::max(Combine(CombinerAdd, ReleaseTime, 1.0), 0.0);
+        const double Attack = std::max(Combine(CombinerAdd, AttackTime, 0.1), 0.0);
+        const double Decay = std::max(Combine(CombinerAdd, DecayTime, 0.1), 0.0);
+        const double Sustain = std::min(std::max(Combine(CombinerAdd, SustainAmount, 1.0), 0.0), 1.0);
+        const double Release = std::max(Combine(CombinerAdd, ReleaseTime, 1.0), 0.0);
 
         double Amplitude = OutAmplitude->Get();
 
+        // abs(Rise / Run), where Rise is amplitude, and Run is seconds
+        const double AttackRate = 1.0 / Attack;
+        const double DecayRate = (1.0 - Sustain) / Decay;
+        const double ReleaseRate = Sustain / Release;
+
+        auto BeginAttack = [&]()
+        {
+            Mode->Set(3.0);
+            Rate->Set(AttackRate);
+        };
+
+        auto BeginDecayToSustain = [&]()
+        {
+            Mode->Set(2.0);
+            Rate->Set(DecayRate);
+        };
+
+        auto BeginDecayToRelease = [&]()
+        {
+            Mode->Set(1.0);
+            Rate->Set(DecayRate);
+        };
+
+        auto BeginRelease = [&]()
+        {
+            Mode->Set(0.0);
+            Rate->Set(ReleaseRate);
+        };
+
         if (Trig >= 1.0 && Previous <= 0.0)
         {
-            if (Attack > 0.0)
-            {
-                // Begin attack.
-                Mode->Set(2.0);
-            }
-            else
-            {
-                // Immediatly decay / sustain.
-                Mode->Set(1.0);
-                Amplitude = 1.0;
-            }
+            BeginAttack();
         }
         else if (Trig <= 0.0 && Previous >= 1.0)
         {
-            // Begin release.
-            Mode->Set(0.0);
-        }
-
-        if (Mode->Get() == 2.0)
-        {
-            if (Attack > 0.0)
+            // Note this is comparing divisors, so larger Rate values are faster:
+            if (Amplitude > Sustain && DecayRate > ReleaseRate)
             {
-                Amplitude = std::min(1.0, Amplitude + (SampleInterval / Attack));
-                OutAmplitude->Set(Amplitude);
-                if (Amplitude == 1.0)
-                {
-                    Mode->Set(1.0);
-                }
+                // If Amplitude is above the Sustain threshold, and the decay rate is faster
+                // than the release rate, use the decay rate until the Amplitude is no longer
+                // above the Sustain threshold.
+                BeginDecayToRelease();
             }
             else
             {
-                Mode->Set(1.0);
+                // Begin release.  Amplitude is assumed to be below the sustain threshold, or
+                // it doesn't matter because the Release's rate is faster than decay's.
+                BeginRelease();
             }
+        }
+
+        if (Mode->Get() == 3.0 && Attack == 0.0)
+        {
+            // If Attack is zero, then Amplitude rises to one immediately.
+            Amplitude = 1.0;
+        }
+        else if ((Mode->Get() == 1.0 || Mode->Get() == 2.0) && (Decay == 0.0 || Sustain == 1.0))
+        {
+            // If Decay is zero, then Amplitude drops to Sustain immediately.
+            // If Sustain is one, then Decay is not applied.
+            Amplitude = std::min(Amplitude, Sustain);
+        }
+        else if (Mode->Get() == 0.0 && (Release == 0.0 || Sustain == 0.0))
+        {
+            // If Release is zero, then Amplitude drops to zero immediately.
+            // If Sustain is zero, then Amplitude is assumed to have decayed to zero by the time
+            // the release transition occurs.
+            Amplitude = 0.0;
         }
         else
         {
-            if (Amplitude > Sustain && (Mode->Get() == 1.0 || Decay < Attack))
-            {
-                Amplitude = std::max(Sustain, Amplitude - (SampleInterval / Decay) * (1.0 - Sustain));
-            }
-            else if (Amplitude > 0.0 && Mode->Get() == 0.0)
-            {
-                if (Release > 0.0)
-                {
-                    Amplitude = std::max(0.0, Amplitude - (SampleInterval / Release) * Sustain);
-                }
-                else
-                {
-                    Amplitude = 0.0;
-                }
-            }
-            OutAmplitude->Set(Amplitude);
+            // Apply the rate of change appropriate for the current phase.
+            const double Direction = (Mode->Get() == 3.0) ? 1.0 : -1.0;
+            Amplitude = std::min(std::max(Rate->Get() * SampleInterval * Direction + Amplitude, 0.0), 1.0);
         }
+
+        if (Mode->Get() == 3.0 && Amplitude == 1.0)
+        {
+            BeginDecayToSustain();
+        }
+        else if (Mode->Get() == 2.0 && Amplitude < Sustain)
+        {
+            Amplitude = Sustain;
+        }
+        else if (Mode->Get() == 1.0 && Amplitude <= Sustain)
+        {
+            BeginRelease();
+        }
+
+        OutAmplitude->Set(Amplitude);
     }
 
     virtual ~AdsrThunk() {};
