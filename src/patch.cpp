@@ -962,22 +962,13 @@ struct AdsrThunk : public InstructionThunk
 
         double Amplitude = OutAmplitude->Get();
 
-        // abs(Rise / Run), where Rise is amplitude, and Run is seconds
-        const double AttackRate = 1.0 / Attack;
-#if 1
         // Use simple rates of change for attack, decay, and release.  These
         // input parameters are the number of seconds it takes to transit one
-        // unit of amplitude.
+        // unit of amplitude.  Effectively `abs(Rise / Run)`, where Rise is
+        // amplitude, and Run is seconds.
+        const double AttackRate = 1.0 / Attack;
         const double DecayRate = 1.0 / Decay;
         const double ReleaseRate = 1.0 / Release;
-#else
-        // This method of calculating the decay and release rates is easier
-        // to be precise with in some situations, but in practice this means
-        // that you can't tune decay, sustain, and release independently.
-        // I'm retaining this until I'm sure this is not The Way.
-        const double DecayRate = (1.0 - Sustain) / Decay;
-        const double ReleaseRate = Sustain / Release;
-#endif
 
         auto BeginAttack = [&]()
         {
@@ -1032,10 +1023,9 @@ struct AdsrThunk : public InstructionThunk
             // If Sustain is one, then Decay is not applied.
             Amplitude = std::min(Amplitude, Sustain);
         }
-        else if (Mode->Get() == 0.0 && (Release == 0.0 || Sustain == 0.0))
+        else if (Mode->Get() == 0.0 && Release == 0.0)
         {
             // If Release is zero, then Amplitude drops to zero immediately.
-            // If Sustain is zero, then Amplitude is assumed to have decayed to zero by the time
             // the release transition occurs.
             Amplitude = 0.0;
         }
