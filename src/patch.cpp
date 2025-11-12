@@ -936,8 +936,8 @@ struct NotchThunk : public TopologyPreservingTransformStateVariableFilterThunk<F
 
 struct AdsrThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<5, 1, 3> Info = { OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"} };
-    InstructionRegisters<5, 1, 3> Registers;
+    static constexpr InstructionInfo<5, 1, 2> Info = { OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"} };
+    InstructionRegisters<5, 1, 2> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -950,7 +950,6 @@ struct AdsrThunk : public InstructionThunk
         RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
         RunningStateSharedPtr& LastTrigger = Registers.Closure[0];
         RunningStateSharedPtr& Mode = Registers.Closure[1];
-        RunningStateSharedPtr& Rate = Registers.Closure[2];
 
         double Trig = Combine(CombinerAdd, Trigger, 0.0);
         double Previous = LastTrigger->Get();
@@ -983,25 +982,21 @@ struct AdsrThunk : public InstructionThunk
         auto BeginAttack = [&]()
         {
             Mode->Set(3.0);
-            Rate->Set(AttackRate);
         };
 
         auto BeginDecayToSustain = [&]()
         {
             Mode->Set(2.0);
-            Rate->Set(DecayRate);
         };
 
         auto BeginDecayToRelease = [&]()
         {
             Mode->Set(1.0);
-            Rate->Set(DecayRate);
         };
 
         auto BeginRelease = [&]()
         {
             Mode->Set(0.0);
-            Rate->Set(ReleaseRate);
         };
 
         if (Trig >= 1.0 && Previous <= 0.0)
@@ -1046,9 +1041,24 @@ struct AdsrThunk : public InstructionThunk
         }
         else
         {
+            double Rate;
+            switch (int(Mode->Get()))
+            {
+            case 3:
+                Rate = AttackRate;
+                break;
+            case 2:
+            case 1:
+                Rate = DecayRate;
+                break;
+            case 0:
+            default:
+                Rate = ReleaseRate;
+            }
+
             // Apply the rate of change appropriate for the current phase.
             const double Direction = (Mode->Get() == 3.0) ? 1.0 : -1.0;
-            Amplitude = std::min(std::max(Rate->Get() * SampleInterval * Direction + Amplitude, 0.0), 1.0);
+            Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
         }
 
         if (Mode->Get() == 3.0 && Amplitude == 1.0)
