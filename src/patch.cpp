@@ -965,8 +965,20 @@ struct AdsrThunk : public InstructionThunk
 
         // abs(Rise / Run), where Rise is amplitude, and Run is seconds
         const double AttackRate = 1.0 / Attack;
+#if 1
+        // Use simple rates of change for attack, decay, and release.  These
+        // input parameters are the number of seconds it takes to transit one
+        // unit of amplitude.
+        const double DecayRate = 1.0 / Decay;
+        const double ReleaseRate = 1.0 / Release;
+#else
+        // This method of calculating the decay and release rates is easier
+        // to be precise with in some situations, but in practice this means
+        // that you can't tune decay, sustain, and release independently.
+        // I'm retaining this until I'm sure this is not The Way.
         const double DecayRate = (1.0 - Sustain) / Decay;
         const double ReleaseRate = Sustain / Release;
+#endif
 
         auto BeginAttack = [&]()
         {
