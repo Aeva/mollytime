@@ -67,6 +67,14 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
         EvalStart = Clock::now();
         for (int SampleIndex = 0; SampleIndex < Frame.SampleCount; ++SampleIndex)
         {
+#if MIDI_ALSA
+            // Pump MIDI events.  For some reason, ALSA gets backed up without this, but mmeapi doesn't?
+            {
+                TRACEABLE_NAMED_SCOPE("MIDI PHASE");
+                Midi::ProcessEvents(Program.get());
+            }
+#endif
+
             // Copy the applicable input samples into the patch's input registers:
             for (auto [ReadPtr, WritePtr] : Frame.InPtrs)
             {
