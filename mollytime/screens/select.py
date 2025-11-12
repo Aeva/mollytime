@@ -197,21 +197,15 @@ class select_screen(editor_screen):
                 3 * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
 
-            connect_icon = editor.connect_target
+            self.side_bar_targets.append((connect_rect, editor.clear_selection_target, self.goto_clear_selection))
 
-            self.side_bar_targets.append((connect_rect, connect_icon, self.goto_connect_screen))
-
-            if implicit_wire := editor.implicit_wire_from_selection():
+            if editor.rhs_selection():
                 rect = mollytime.Rect(
                     editor.grid_size,
                     4 * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
-                icon = None
-                if implicit_wire not in editor.patch.wires:
-                    icon = editor.auto_connect
-                else:
-                    icon = editor.auto_disconnect
-                self.side_bar_targets.append((rect, icon, self.toggle_implicit_connection))
+
+                self.side_bar_targets.append((rect, editor.swap_sides_target, self.goto_swap_sides))
 
     def goto_frozen(self, editor):
         editor.freeze()
@@ -224,21 +218,14 @@ class select_screen(editor_screen):
     def goto_inspect_screen(self, editor):
         self.live = False
 
-    def goto_connect_screen(self, editor):
-        if editor.connectable_selection():
-            overlay = connect_screen(editor)
-            self.purge_events()
-            self.update_play_area = True
-            self.update_sidebar = True
-            editor.clear_selection()
-            self.repopulate_sidebar(editor)
+    def goto_clear_selection(self, editor):
+        editor.clear_selection()
+        self.update_play_area = True
+        self.repopulate_sidebar(editor)
 
-    def toggle_implicit_connection(self, editor):
-        if wire := editor.implicit_wire_from_selection():
-            editor.toggle_connection(*wire)
-            editor.clear_selection()
-            self.update_play_area = True
-            self.repopulate_sidebar(editor)
+    def goto_swap_sides(self, editor):
+        editor.reverse_selection()
+        self.repopulate_sidebar(editor)
 
     def on_move(self, editor, pos, event):
         self.cursor_pos = pos

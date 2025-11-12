@@ -317,6 +317,10 @@ class program_card:
         self.selected = []
         self.force_redraw = True
 
+    def reverse_selection(self):
+        self.selected = self.selected[::-1]
+        self.force_redraw = True
+
     def is_selected(self, tile):
         return tile in self.selected
 
@@ -439,8 +443,8 @@ class program_card:
         self.scope_target = plate_bg(self.grid_size, self.tile_color, "scope")
         self.scope_active = plate_bg(self.grid_size, self.select_color, "scope")
 
-        self.connect_target = plate_bg(self.grid_size, self.tile_color, "manual\nconnect")
-        self.connect_active = plate_bg(self.grid_size, self.select_color, "full\nconnect")
+        self.clear_selection_target = plate_bg(self.grid_size, self.tile_color, "deselect")
+        self.swap_sides_target = plate_bg(self.grid_size, self.tile_color, "swap\nsides")
 
         self.auto_connect = plate_bg(self.grid_size, self.tile_color, "connect")
         self.auto_disconnect = plate_bg(self.grid_size, self.tile_color, "detach")
