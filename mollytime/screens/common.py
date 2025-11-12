@@ -417,6 +417,9 @@ class program_card:
         self.select_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 0))
         self.selected_tile_bg = plate_bg(self.grid_size, self.select_color)
 
+        self.select_color2 = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, .3))
+        self.selected_tile_bg2 = plate_bg(self.grid_size, self.select_color2)
+
         self.heat_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 1))
 
         self.inspect_target = plate_bg(self.grid_size, self.tile_color, "inspect")

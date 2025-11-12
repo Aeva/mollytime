@@ -19,15 +19,6 @@ from .connect import connect_screen
 from .. import mollytime
 
 
-def blank_selectbar_bg(editor):
-    w = editor.grid_size * 3
-    h = editor.play_rect.height
-
-    surface = mollytime.draw.Texture((w, h))
-    surface.fill(editor.select_color, 0.8)
-    return surface
-
-
 class select_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = mollytime.mouse.get_pos()
@@ -43,8 +34,8 @@ class select_screen(editor_screen):
         self.rhs_selectbar_rect = mollytime.Rect(editor.play_rect.width - w, 0, w, h)
         self.screen_label_rect.left += w
 
-        self.lhs_selectbar_bg = blank_selectbar_bg(editor)
-        self.rhs_selectbar_bg = blank_selectbar_bg(editor)
+        self.lhs_selectbar_bg = mollytime.draw.Texture((w, h))
+        self.rhs_selectbar_bg = mollytime.draw.Texture((w, h))
 
         self.lhs_targets = []
         self.lhs_selection = None
@@ -62,8 +53,8 @@ class select_screen(editor_screen):
         screen_label_color = (255, 255, 255)
         font_path, size = AFACAD_REGULAR, editor.grid_size
 
-        self.lhs_selectbar_bg = blank_selectbar_bg(editor)
-        self.rhs_selectbar_bg = blank_selectbar_bg(editor)
+        self.lhs_selectbar_bg.fill(editor.select_color, 0.8)
+        self.rhs_selectbar_bg.fill(editor.select_color2, 0.8)
 
         tile_size = editor.grid_size * 2
         radius = editor.grid_size
@@ -314,7 +305,7 @@ class select_screen(editor_screen):
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
                 if editor.is_selected(tile_id):
-                    pattern = editor.selected_tile_bg
+                    pattern = editor.selected_tile_bg if tile_id == editor.lhs_selection() else editor.selected_tile_bg2
                 elif self.draw_clip and editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
                     pattern = editor.clip_tile
                 else:
