@@ -210,6 +210,21 @@ class plate_bg:
             self.draw_label(target, rect, label)
 
 
+def draw_outline(target, rect, color, radius, inset=0):
+    inset = radius * inset + -radius * (1.0 - inset)
+    corners = [
+        vec_add(rect.topleft, (inset, inset)),
+        vec_add(rect.topright, (-inset, inset)),
+        vec_add(rect.bottomright, (-inset, -inset)),
+        vec_add(rect.bottomleft, (inset, -inset))]
+
+    for edge in range(4):
+        a = corners[edge]
+        b = corners[(edge + 1) % 4]
+        mollytime.draw.circle(target, color, a, radius)
+        mollytime.draw.line(target, color, a, b, radius * 2)
+
+
 def draw_arrow(target, color, start, end, radius, inset=.5):
     start_pt = start.center if type(start) == mollytime.Rect else start
     end_pt = end.center if type(end) == mollytime.Rect else end
