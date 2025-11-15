@@ -225,7 +225,28 @@ namespace Draw
         Renderer = SDL_CreateRenderer(Display::GetWindow(), nullptr);
         if (Renderer == nullptr)
         {
-            throw std::runtime_error(std::format("Failed to initialize renderer. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(std::format("Failed to initialize renderer. SDL error: {}\n", SDL_GetError()));
+        }
+
+        int VsyncMode = 1;
+        if (!SDL_SetRenderVSync(Renderer, VsyncMode))
+        {
+            std::print("Vsync mode possibly unsupported.  SDL error: {}\n", SDL_GetError());
+        }
+        else
+        {
+            SDL_GetRenderVSync(Renderer, &VsyncMode);
+            switch (VsyncMode)
+            {
+            case SDL_RENDERER_VSYNC_DISABLED:
+                std::print("Vsync is not available on this system.\n");
+                break;
+            case SDL_RENDERER_VSYNC_ADAPTIVE:
+                std::print("Adaptive vsync is enabled.  Late frames will tear.\n");
+                break;
+            default:
+                break;
+            }
         }
     }
 
