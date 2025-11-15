@@ -389,6 +389,31 @@ struct RcpThunk : public InstructionThunk
 };
 
 
+struct PowThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::POW, "pow", {"n", "^"}, {"="} };
+    InstructionRegisters<2, 1, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("PowThunk");
+        std::vector<RunningStateSharedPtr>& InValue = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InExponent = Registers.Input[1];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+
+        double Base = Combine(CombinerMin, InValue, 0.0);
+        double Exponent = Combine(CombinerMin, InExponent, 0.0);
+        double Result = std::pow(Base, Exponent);
+        if (std::isfinite(Result))
+        {
+            Output->Set(Result);
+        }
+    }
+
+    virtual ~PowThunk() {};
+};
+
+
 struct MinThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIN, "min", {"min"}, {"="} };
@@ -1404,6 +1429,7 @@ struct SymbolInfo
         Set<AddThunk>();
         Set<MulThunk>();
         Set<RcpThunk>();
+        Set<PowThunk>();
         Set<MinThunk>();
         Set<MaxThunk>();
         Set<FloorThunk>();
@@ -2087,6 +2113,10 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::RCP)
             {
                 Program->Program.push_back(CreateAndConnectThunk<RcpThunk>(Inputs, Outputs, Closures));
+            }
+            else if (Symbol == OpCode::POW)
+            {
+                Program->Program.push_back(CreateAndConnectThunk<PowThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::MIN)
             {

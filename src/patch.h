@@ -59,6 +59,7 @@ enum class OpCode : uint32_t
     ADD,
     MUL,
     RCP,
+    POW,
     MIN,
     MAX,
     FLOOR,

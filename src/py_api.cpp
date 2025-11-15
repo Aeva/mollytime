@@ -156,6 +156,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("ADD", OpCode::ADD)
 		.value("MUL", OpCode::MUL)
 		.value("RCP", OpCode::RCP)
+		.value("POW", OpCode::POW)
 		.value("MIN", OpCode::MIN)
 		.value("MAX", OpCode::MAX)
 		.value("FLOOR", OpCode::FLOOR)
