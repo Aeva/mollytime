@@ -36,7 +36,6 @@ WasapiRealTimeThread::WasapiRealTimeThread(WasapiThreadShared* WasapiBufferState
     assert(SampleRate != 0);
 
     BufferState = WasapiBufferState;
-    SampleInterval = 1.0 / double(SampleRate);
     ResetFramePressure();
 
     // Entering the "COM zone."
@@ -81,6 +80,14 @@ WasapiRealTimeThread::WasapiRealTimeThread(WasapiThreadShared* WasapiBufferState
 
     // Set up a render client (output interface to the IAudioClient stream).
     RenderClient.capture(AudioClient, &IAudioClient::GetService);
+
+    // Set up the audio clock.
+    AudioClock.capture(AudioClient, &IAudioClient::GetService);
+
+    // Calculate the sample interval from the reported clock frequency.
+    uint64_t ClockFrequency;
+    CheckHResult(AudioClock->GetFrequency(&ClockFrequency)); // bytes per second
+    SampleInterval = double(sizeof(double)) / double(ClockFrequency);
 
     // Ready to go! Start streaming in separate thread.
     AudioClient->Start();

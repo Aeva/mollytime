@@ -49,6 +49,7 @@ class WasapiRealTimeThread final : public RealTimeAudioThread
     ComPtr<IMMDevice> Device;
     ComPtr<IAudioClient> AudioClient;
     ComPtr<IAudioRenderClient> RenderClient;
+    ComPtr<IAudioClock> AudioClock;
     UINT32 BufferSize;
     HANDLE EventHandle = nullptr;
 
