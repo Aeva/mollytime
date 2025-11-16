@@ -471,6 +471,9 @@ class editor_screen:
         self.update_play_area = True
         self.update_sidebar = True
         self.force_redraw = True
+        self.last_time_update = 0
+        self.current_time = None
+        self.day_progress = 0
 
         self.setup(editor)
 
@@ -503,6 +506,20 @@ class editor_screen:
                 self.last_status_check = now
                 self.perf_check()
                 self.battery_check()
+
+            delta = now - self.last_time_update
+            if delta > 1:
+                self.last_time_update = now
+
+                hours_part = str(int(time.strftime("%I"))) # lose the trailing zero
+                minutes_part = time.strftime("%M")
+                meridiem_part = time.strftime("%p")
+                current_time = f"{hours_part}:{minutes_part} {meridiem_part}"
+
+                if self.current_time != current_time:
+                    self.day_progress = (float(minutes_part) / 60.0 + float(time.strftime("%H"))) / 24.0
+                    self.current_time = current_time
+                    self.update_sidebar = True
 
             self.draw(editor)
 
@@ -618,6 +635,11 @@ class editor_screen:
                 color = ramp.sample(min(float(battery_level - 20) / 79.0, 1.0))
             text = f"BAT: {battery_level}%"
             draw_label(text, color)
+
+        if self.current_time:
+            # TODO do something interesting with {self.day_progress}
+            color = parse_color("#88F")
+            draw_label(f"{self.current_time}", color)
 
     def purge_events(self):
         self.reset_touch_tracker()
