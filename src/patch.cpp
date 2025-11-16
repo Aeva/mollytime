@@ -88,18 +88,21 @@ double Roll()
 {
     // https://merveilles.town/@cancel/114848900879804284
     const double Peak = AmplitudeToDecibels(1.0);
-    const double LowEdge = HzToMidiNote(2000.0) - 6.0;
-    const double HighEdge = LowEdge + 6.0;
+    const double CutCenter = 95.0; // HzToMidiNote(2000.0), approximately
+    const double LowEdge = CutCenter - 6.0;
+    const double HighEdge = CutCenter + 6.0;
     double dB = Peak;
+    double NearestEdge = (Note < CutCenter) ? LowEdge : HighEdge;
+    double EdgeDistance = std::abs(Note - NearestEdge);
     if (Note >= LowEdge && Note <= HighEdge)
     {
-        dB -= 3.0;
+        double Offset = std::min(EdgeDistance, 1.0);
+        dB -= 3.0 * Offset;
     }
     else
     {
-        double NearestEdge = (Note < LowEdge) ? LowEdge : HighEdge;
-        double Offset = std::abs(Note - NearestEdge) / 12.0;
-        dB += Offset * 4.5;
+        double Offset = EdgeDistance / 12.0;
+        dB += 4.5 * Offset;
     }
     return DecibelsToAmplitude(dB);
 }
