@@ -343,6 +343,149 @@ struct NoiThunk : public InstructionThunk
 };
 
 
+struct PhaseThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::PHASE, "phase", {"hz"}, {"phase"} };
+    InstructionRegisters<1, 1, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("PhaseThunk");
+        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
+        RunningStateSharedPtr& OutPhase = Registers.Output[0];
+
+        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
+        double Phase = OutPhase->Get();
+        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
+        OutPhase->Set(Phase);
+    }
+
+    virtual ~PhaseThunk() {};
+};
+
+
+struct SinTrainThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::SIN_TRAIN, "sin\ntrain", {"phase"}, {"amp", "phase"} };
+    InstructionRegisters<1, 2, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("SinTrainThunk");
+        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+
+        double Phase = Combine(CombinerAdd, InPhase, 0.0);
+        Phase = std::fmod(Phase, 1.0);
+        OutAmplitude->Set(std::sin(Phase * Tau));
+        OutPhase->Set(Phase);
+    }
+
+    virtual ~SinTrainThunk() {};
+};
+
+
+struct SqrTrainThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::SQR_TRAIN, "sqr\ntrain", {"phase"}, {"amp", "phase"} };
+    InstructionRegisters<1, 2, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
+        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+
+        double Phase = Combine(CombinerAdd, InPhase, 0.0);
+        Phase = std::fmod(Phase, 1.0);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
+        double Sign = Phase < 0.5 ? 1.0 : -1.0;
+        OutAmplitude->Set(Sign);
+        OutPhase->Set(Phase);
+    }
+
+    virtual ~SqrTrainThunk() {};
+};
+
+
+struct TriTrainThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::TRI_TRAIN, "tri\ntrain", {"phase"}, {"amp", "phase"} };
+    InstructionRegisters<1, 2, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("TriTrainThunk");
+        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+
+        double Phase = Combine(CombinerAdd, InPhase, 0.0);
+        Phase = std::fmod(Phase, 1.0);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
+        double Sign = Phase < 0.5 ? 1.0 : -1.0;
+        double IntegerPart = 0.0;
+        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+        if (int(IntegerPart) % 2 == 1)
+        {
+            Alpha = 1.0 - Alpha;
+        }
+        OutAmplitude->Set(Alpha * Sign);
+        OutPhase->Set(Phase);
+    }
+
+    virtual ~TriTrainThunk() {};
+};
+
+
+struct SawTrainThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::SAW_TRAIN, "saw\ntrain", {"phase"}, {"amp", "phase"} };
+    InstructionRegisters<1, 2, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("SawTrainThunk");
+        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
+        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
+        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+
+        double Phase = Combine(CombinerAdd, InPhase, 0.0);
+        Phase = std::fmod(Phase, 1.0);
+        if (Phase < 0.0)
+        {
+            Phase += 1.0;
+        }
+        /*
+        double Sign = Phase < 0.5 ? 1.0 : -1.0;
+        double IntegerPart = 0.0;
+        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+        if (int(IntegerPart) % 2 == 1)
+        {
+            Alpha = 1.0 - Alpha;
+        }
+        OutAmplitude->Set(Alpha * Sign);
+        */
+        OutAmplitude->Set(Phase * 2.0 - 1.0);
+        OutPhase->Set(Phase);
+    }
+
+    virtual ~SawTrainThunk() {};
+};
+
+
 struct AddThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD, "add", {"+"}, {"="} };
@@ -1429,6 +1572,11 @@ struct SymbolInfo
         Set<TriThunk>();
         Set<SawThunk>();
         Set<NoiThunk>();
+        Set<PhaseThunk>();
+        Set<SinTrainThunk>();
+        Set<SqrTrainThunk>();
+        Set<TriTrainThunk>();
+        Set<SawTrainThunk>();
         Set<AddThunk>();
         Set<MulThunk>();
         Set<RcpThunk>();
@@ -2104,6 +2252,26 @@ ScratchSharedPtr Patch::Compile()
             else if (Symbol == OpCode::NOI)
             {
                 Program->Program.push_back(CreateAndConnectThunk<NoiThunk>(Inputs, Outputs, Closures));
+            }
+            else if (Symbol == OpCode::PHASE)
+            {
+                Program->Program.push_back(CreateAndConnectThunk<PhaseThunk>(Inputs, Outputs, Closures));
+            }
+            else if (Symbol == OpCode::SIN_TRAIN)
+            {
+                Program->Program.push_back(CreateAndConnectThunk<SinTrainThunk>(Inputs, Outputs, Closures));
+            }
+            else if (Symbol == OpCode::SQR_TRAIN)
+            {
+                Program->Program.push_back(CreateAndConnectThunk<SqrTrainThunk>(Inputs, Outputs, Closures));
+            }
+            else if (Symbol == OpCode::TRI_TRAIN)
+            {
+                Program->Program.push_back(CreateAndConnectThunk<TriTrainThunk>(Inputs, Outputs, Closures));
+            }
+            else if (Symbol == OpCode::SAW_TRAIN)
+            {
+                Program->Program.push_back(CreateAndConnectThunk<SawTrainThunk>(Inputs, Outputs, Closures));
             }
             else if (Symbol == OpCode::ADD)
             {

@@ -82,6 +82,13 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.MOON, OpCode.TPTSVF_NOTCH],
                 [OpCode.POW, OpCode.CTRL],
             ]),
+            (":y", [
+                [OpCode.PHASE, OpCode.SIN_TRAIN],
+                [None, OpCode.TRI_TRAIN],
+                ["next", OpCode.SQR_TRAIN],
+                [None, OpCode.SAW_TRAIN],
+                [None, None],
+            ]),
         ]
         for name, shelf in pages:
             tile_span = (editor.grid_size * 2)
