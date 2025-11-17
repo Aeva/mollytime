@@ -1548,12 +1548,45 @@ struct TapeLoopThunk : public InstructionThunk
 };
 
 
+using BasicCreateAndConnectFn = std::function<
+    std::shared_ptr<InstructionThunk>(
+        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
+        std::vector<RunningStateSharedPtr>& Outputs,
+        std::vector<RunningStateSharedPtr>& Closures)>;
+
+using WidgetCreateAndConnectFn = std::function<
+    std::shared_ptr<InstructionThunk>(
+        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
+        std::vector<RunningStateSharedPtr>& Outputs,
+        std::vector<RunningStateSharedPtr>& Closures,
+        AtomicRunningStateSharedPtr& SpecialInput)>;
+
+using MidiCreateAndConnectFn = std::function<
+    std::shared_ptr<InstructionThunk>(
+        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
+        std::vector<RunningStateSharedPtr>& Outputs,
+        std::vector<RunningStateSharedPtr>& Closures,
+        Scratch* Program)>;
+
+using TapeCreateAndConnectFn = std::function<
+    std::shared_ptr<InstructionThunk>(
+        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
+        std::vector<RunningStateSharedPtr>& Outputs,
+        std::vector<RunningStateSharedPtr>& Closures,
+        MagicTapeSharedPtr& Tape)>;
+
+
 struct SymbolInfo
 {
     std::vector<std::string> DefaultNames;
     std::vector<std::vector<std::string>> InputNames;
     std::vector<std::vector<std::string>> OutputNames;
     std::vector<int> Closures;
+
+    std::map<int, BasicCreateAndConnectFn> BasicCreateAndConnect;
+    std::map<int, WidgetCreateAndConnectFn> WidgetCreateAndConnect;
+    std::map<int, MidiCreateAndConnectFn> MidiCreateAndConnect;
+    std::map<int, TapeCreateAndConnectFn> TapeCreateAndConnect;
 
     SymbolInfo()
     {
@@ -1567,54 +1600,59 @@ struct SymbolInfo
         Set(OpCode::IN, "in", {}, {"in"});
         Set(OpCode::OUT, "out", {"out"}, {});
         Set(OpCode::AUX, "aux", {"out"}, {});
-        Set<SinThunk>();
-        Set<SqrThunk>();
-        Set<TriThunk>();
-        Set<SawThunk>();
-        Set<NoiThunk>();
-        Set<PhaseThunk>();
-        Set<SinTrainThunk>();
-        Set<SqrTrainThunk>();
-        Set<TriTrainThunk>();
-        Set<SawTrainThunk>();
-        Set<AddThunk>();
-        Set<MulThunk>();
-        Set<RcpThunk>();
-        Set<PowThunk>();
-        Set<MinThunk>();
-        Set<MaxThunk>();
-        Set<FloorThunk>();
-        Set<CeilThunk>();
-        Set<RoundThunk>();
-        Set<SignThunk>();
-        Set<AbsThunk>();
-        Set<FoldThunk>();
-        Set<InvertThunk>();
-        Set<ToUnipolarThunk>();
-        Set<ToBipolarThunk>();
-        Set<MixThunk>();
-        Set<StereoBalanceThunk>();
-        Set<PulseThunk>();
-        Set<FlipFlopThunk>();
-        Set<RandomThunk>();
-        Set<GradualThunk>();
-        Set<LowpassThunk>();
-        Set<BandpassThunk>();
-        Set<HighpassThunk>();
-        Set<NotchThunk>();
-        Set<AdsrThunk>();
-        Set<GateThunk>();
-        Set<NoteThunk>();
-        Set<VelocityThunk>();
-        Set<PressureThunk>();
-        Set<ControlChangeThunk>();
-        Set<MidiToHzThunk>();
-        Set<LoudnessFudgeThunk>();
-        Set<BoopThunk>();
-        Set<TapeLoopThunk>();
-        Set<MoonThunk>();
+
+        SetBasic<SinThunk>();
+        SetBasic<SqrThunk>();
+        SetBasic<TriThunk>();
+        SetBasic<SawThunk>();
+        SetBasic<NoiThunk>();
+        SetBasic<PhaseThunk>();
+        SetBasic<SinTrainThunk>();
+        SetBasic<SqrTrainThunk>();
+        SetBasic<TriTrainThunk>();
+        SetBasic<SawTrainThunk>();
+        SetBasic<AddThunk>();
+        SetBasic<MulThunk>();
+        SetBasic<RcpThunk>();
+        SetBasic<PowThunk>();
+        SetBasic<MinThunk>();
+        SetBasic<MaxThunk>();
+        SetBasic<FloorThunk>();
+        SetBasic<CeilThunk>();
+        SetBasic<RoundThunk>();
+        SetBasic<SignThunk>();
+        SetBasic<AbsThunk>();
+        SetBasic<FoldThunk>();
+        SetBasic<InvertThunk>();
+        SetBasic<ToUnipolarThunk>();
+        SetBasic<ToBipolarThunk>();
+        SetBasic<MixThunk>();
+        SetBasic<StereoBalanceThunk>();
+        SetBasic<PulseThunk>();
+        SetBasic<FlipFlopThunk>();
+        SetBasic<RandomThunk>();
+        SetBasic<GradualThunk>();
+        SetBasic<LowpassThunk>();
+        SetBasic<BandpassThunk>();
+        SetBasic<HighpassThunk>();
+        SetBasic<NotchThunk>();
+        SetBasic<AdsrThunk>();
+        SetBasic<MidiToHzThunk>();
+        SetBasic<LoudnessFudgeThunk>();
+        SetBasic<MoonThunk>();
+
+        SetWidget<BoopThunk>();
+
+        SetMidi<GateThunk>();
+        SetMidi<NoteThunk>();
+        SetMidi<VelocityThunk>();
+        SetMidi<PressureThunk>();
+        SetMidi<ControlChangeThunk>();
+
+        SetTape<TapeLoopThunk>();
     }
 
+private:
     void Set(OpCode Symbol, std::string Name,
              std::vector<std::string> Inputs, std::vector<std::string> Outputs, int HiddenOutputs = 0)
     {
@@ -1625,12 +1663,63 @@ struct SymbolInfo
     }
 
     template<typename ThunkT>
-    void Set()
+    void SetCommon()
     {
         DefaultNames[(int)ThunkT::Info.Symbol] = ThunkT::Info.Name;
         InputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.InputNames.begin(), ThunkT::Info.InputNames.end());
         OutputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
         Closures[(int)ThunkT::Info.Symbol] = ThunkT::Info.ClosureCount;
+    }
+
+    template<typename ThunkT>
+    void SetBasic()
+    {
+        SetCommon<ThunkT>();
+        BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures)
+        {
+            auto Thunk = std::make_shared<ThunkT>();
+            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            return std::static_pointer_cast<InstructionThunk>(Thunk);
+        };
+    }
+
+    template<typename ThunkT>
+    void SetMidi()
+    {
+        SetCommon<ThunkT>();
+        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures, Scratch* Program)
+        {
+            auto Thunk = std::make_shared<ThunkT>();
+            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            Thunk->Program = Program;
+            return std::static_pointer_cast<InstructionThunk>(Thunk);
+        };
+    }
+
+    template<typename ThunkT>
+    void SetWidget()
+    {
+        SetCommon<ThunkT>();
+        WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
+        {
+            auto Thunk = std::make_shared<ThunkT>();
+            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            Thunk->Input = SpecialInput;
+            return std::static_pointer_cast<InstructionThunk>(Thunk);
+        };
+    }
+
+    template<typename ThunkT>
+    void SetTape()
+    {
+        SetCommon<ThunkT>();
+        TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures, auto& Tape)
+        {
+            auto Thunk = std::make_shared<ThunkT>();
+            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
+            return std::static_pointer_cast<InstructionThunk>(Thunk);
+        };
     }
 };
 
@@ -2069,63 +2158,6 @@ void Patch::SetSpecialInput(TileHandle Tile, double Value)
 }
 
 
-template<typename ThunkT>
-static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
-    std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-    std::vector<RunningStateSharedPtr>& Outputs,
-    std::vector<RunningStateSharedPtr>& Closures)
-{
-    auto Thunk = std::make_shared<ThunkT>();
-    Thunk->Registers.Connect(Inputs, Outputs, Closures);
-    return std::static_pointer_cast<InstructionThunk>(Thunk);
-}
-
-
-template<typename ThunkT>
-static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
-    std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-    std::vector<RunningStateSharedPtr>& Outputs,
-    std::vector<RunningStateSharedPtr>& Closures,
-    AtomicRunningStateSharedPtr& SpecialInput)
-{
-    // This is a special form for BoopThunk
-    auto Thunk = std::make_shared<ThunkT>();
-    Thunk->Registers.Connect(Inputs, Outputs, Closures);
-    Thunk->Input = SpecialInput;
-    return std::static_pointer_cast<InstructionThunk>(Thunk);
-}
-
-
-template<typename ThunkT>
-static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
-    std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-    std::vector<RunningStateSharedPtr>& Outputs,
-    std::vector<RunningStateSharedPtr>& Closures,
-    MagicTapeSharedPtr& Tape)
-{
-    // This is a special form for Tape thunks.
-    auto Thunk = std::make_shared<ThunkT>();
-    Thunk->Registers.Connect(Inputs, Outputs, Closures);
-    Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
-    return std::static_pointer_cast<InstructionThunk>(Thunk);
-}
-
-
-template<typename ThunkT>
-static std::shared_ptr<InstructionThunk> CreateAndConnectThunk(
-    std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-    std::vector<RunningStateSharedPtr>& Outputs,
-    std::vector<RunningStateSharedPtr>& Closures,
-    Scratch* Program)
-{
-    // This is a special form for the various MIDI thunks.
-    auto Thunk = std::make_shared<ThunkT>();
-    Thunk->Registers.Connect(Inputs, Outputs, Closures);
-    Thunk->Program = Program;
-    return std::static_pointer_cast<InstructionThunk>(Thunk);
-}
-
-
 ScratchSharedPtr Patch::Compile()
 {
     TRACEABLE_SCOPE;
@@ -2203,7 +2235,8 @@ ScratchSharedPtr Patch::Compile()
                 std::vector<std::vector<RunningStateSharedPtr>> Inputs = { Input0 };
                 std::vector<RunningStateSharedPtr> Outputs = { std::make_shared<RunningState>(0.0) };
                 std::vector<RunningStateSharedPtr> Closures;
-                Program->Program.push_back(CreateAndConnectThunk<AddThunk>(Inputs, Outputs, Closures));
+                static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
+                Program->Program.push_back(AddCreateAndConnect(Inputs, Outputs, Closures));
                 return Outputs[0];
             }
         }
@@ -2233,192 +2266,42 @@ ScratchSharedPtr Patch::Compile()
                 Closures.push_back(ActiveOutputs.at(MakeClosureHandle(Tile, ClosureIndex)));
             }
 
-            if (Symbol == OpCode::SIN)
             {
-                Program->Program.push_back(CreateAndConnectThunk<SinThunk>(Inputs, Outputs, Closures));
+                auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
+                if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
+                {
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures));
+                    return nullptr;
+                }
             }
-            else if (Symbol == OpCode::SQR)
             {
-                Program->Program.push_back(CreateAndConnectThunk<SqrThunk>(Inputs, Outputs, Closures));
+                auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
+                if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
+                {
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, SpecialInputs[Tile]));
+                    return nullptr;
+                }
             }
-            else if (Symbol == OpCode::TRI)
             {
-                Program->Program.push_back(CreateAndConnectThunk<TriThunk>(Inputs, Outputs, Closures));
+                auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
+                if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
+                {
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, Program.get()));
+                    return nullptr;
+                }
             }
-            else if (Symbol == OpCode::SAW)
             {
-                Program->Program.push_back(CreateAndConnectThunk<SawThunk>(Inputs, Outputs, Closures));
+                auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
+                if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
+                {
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, TapeCollection.at(Tile)));
+                    return nullptr;
+                }
             }
-            else if (Symbol == OpCode::NOI)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<NoiThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::PHASE)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<PhaseThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::SIN_TRAIN)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<SinTrainThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::SQR_TRAIN)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<SqrTrainThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::TRI_TRAIN)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<TriTrainThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::SAW_TRAIN)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<SawTrainThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::ADD)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<AddThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::MUL)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<MulThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::RCP)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<RcpThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::POW)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<PowThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::MIN)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<MinThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::MAX)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<MaxThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::FLOOR)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<FloorThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::CEIL)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<CeilThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::ROUND)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<RoundThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::SIGN)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<SignThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::ABS)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<AbsThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::FLD)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<FoldThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::INV)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<InvertThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::STU)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<ToUnipolarThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::UTS)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<ToBipolarThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::MIX)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<MixThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::BAL)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<StereoBalanceThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::PLS)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<PulseThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::FLP)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<FlipFlopThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::RNG)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<RandomThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::GRAD)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<GradualThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::TPTSVF_LOWPASS)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<LowpassThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::TPTSVF_BANDPASS)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<BandpassThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::TPTSVF_HIGHPASS)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<HighpassThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::TPTSVF_NOTCH)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<NotchThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::ADSR)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<AdsrThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::GATE)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<GateThunk>(Inputs, Outputs, Closures, Program.get()));
-            }
-            else if (Symbol == OpCode::NOTE)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<NoteThunk>(Inputs, Outputs, Closures, Program.get()));
-            }
-            else if (Symbol == OpCode::VELO)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<VelocityThunk>(Inputs, Outputs, Closures, Program.get()));
-            }
-            else if (Symbol == OpCode::PRES)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<PressureThunk>(Inputs, Outputs, Closures, Program.get()));
-            }
-            else if (Symbol == OpCode::CTRL)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<ControlChangeThunk>(Inputs, Outputs, Closures, Program.get()));
-            }
-            else if (Symbol == OpCode::MIDI_HZ)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<MidiToHzThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::LOUD_FUDGE)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<LoudnessFudgeThunk>(Inputs, Outputs, Closures));
-            }
-            else if (Symbol == OpCode::BOOP)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<BoopThunk>(Inputs, Outputs, Closures, SpecialInputs[Tile]));
-            }
-            else if (Symbol == OpCode::TAPE_LOOP)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<TapeLoopThunk>(Inputs, Outputs, Closures, TapeCollection.at(Tile)));
-            }
-            else if (Symbol == OpCode::MOON)
-            {
-                Program->Program.push_back(CreateAndConnectThunk<MoonThunk>(Inputs, Outputs, Closures));
-            }
-            return nullptr;
         }
+
+        // TODO should this be considered unreachable?
+        return nullptr;
     };
 
     std::vector<TileHandle> Scopes;
