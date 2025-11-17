@@ -474,6 +474,7 @@ class editor_screen:
         self.last_time_update = 0
         self.current_time = None
         self.day_progress = 0
+        self.up_late = False
 
         self.setup(editor)
 
@@ -516,8 +517,21 @@ class editor_screen:
                 meridiem_part = time.strftime("%p")
                 current_time = f"{hours_part}:{minutes_part} {meridiem_part}"
 
-                if self.current_time != current_time:
-                    self.day_progress = (float(minutes_part) / 60.0 + float(time.strftime("%H"))) / 24.0
+                self.day_progress = (float(minutes_part) / 60.0 + float(time.strftime("%H")))
+
+                # this only works if the times are in the same day
+                up_late_start = 1.0 # 1 am
+                up_late_end = 8.0   # 8 am
+
+                if not self.up_late and self.day_progress >= up_late_start and self.day_progress < up_late_end:
+                    self.up_late = True
+                    self.update_sidebar = True
+
+                if self.up_late and self.day_progress >= up_late_end:
+                    self.up_late = False
+                    self.update_sidebar = True
+
+                if self.current_time != current_time or self.up_late:
                     self.current_time = current_time
                     self.update_sidebar = True
 
@@ -637,8 +651,19 @@ class editor_screen:
             draw_label(text, color)
 
         if self.current_time:
-            # TODO do something interesting with {self.day_progress}
-            color = parse_color("#88F")
+            if self.up_late:
+                if int(time.time()) % 2 == 0:
+                    color = parse_color("#F00")
+                else:
+                    color = parse_color("#800")
+            else:
+                if self.day_progress >= 12.0 + 5.0: # 5 pm
+                    # current approximate time of dusk
+                    color = parse_color("#66A")
+                else:
+                    # day light, probably!
+                    color = parse_color("#88F")
+
             draw_label(f"{self.current_time}", color)
 
     def purge_events(self):
