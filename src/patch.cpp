@@ -1242,6 +1242,87 @@ struct AdsrThunk : public InstructionThunk
 };
 
 
+struct QuantizeThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::QNTZ, "quantize", {"note", "root", "scale"}, {"note"} };
+    InstructionRegisters<3, 1, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        std::vector<RunningStateSharedPtr>& InNote = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InRoot = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& InScale = Registers.Input[2];
+        RunningStateSharedPtr& OutNote = Registers.Output[0];
+
+        if (InNote.size() > 0 && InScale.size() > 1)
+        {
+            // TODO it sure would be great to cache this somewhere *nervous laughter*
+            std::vector<double> Scale = std::vector<double>(InScale.size());
+            double Low = InScale[0]->Get();
+            double High = InScale[0]->Get();
+            Scale[0] = Low;
+            for (int Index = 1; Index < int(InScale.size()); ++Index)
+            {
+                double Rel = InScale[Index]->Get();
+                Low = std::min(Low, Rel);
+                High = std::max(High, Rel);
+                Scale[Index] = Rel;
+            }
+            const double Stride = High - Low;
+
+            double Root = Combine(CombinerAdd, InRoot, 60.0); // defaults to Middle C
+            for (double& Rel : Scale)
+            {
+                Rel = Rel - Low + Root;
+            }
+
+            Low = Root;
+            High = Low + Stride;
+            double Shift = 0.0;
+            double Note = Combine(CombinerAdd, InNote, 0.0);
+            if (Note < Low)
+            {
+                while (Note < Low)
+                {
+                    --Shift;
+                    Note += Stride;
+                }
+            }
+            else
+            {
+                while (Note > High)
+                {
+                    ++Shift;
+                    Note -= Stride;
+                }
+            }
+
+            double NearestRel = Scale[0];
+            double NearestDist = std::abs(Note - Scale[0]);
+            for (int Index = 1; Index < int(InScale.size()); ++Index)
+            {
+                double TestDist = std::abs(Note - Scale[Index]);
+                if (TestDist < NearestDist)
+                {
+                    NearestDist = TestDist;
+                    NearestRel = Scale[Index];
+                }
+            }
+
+            Note = Shift * Stride + NearestRel;
+            OutNote->Set(Note);
+        }
+        else
+        {
+            double Note = Combine(CombinerAdd, InNote, 0.0);
+            OutNote->Set(Note);
+        }
+    }
+
+    virtual ~QuantizeThunk() {};
+};
+
+
 struct GateThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::GATE, "gate", {"channel"}, {"gate"} };
@@ -1637,6 +1718,7 @@ struct SymbolInfo
         SetBasic<HighpassThunk>();
         SetBasic<NotchThunk>();
         SetBasic<AdsrThunk>();
+        SetBasic<QuantizeThunk>();
         SetBasic<MidiToHzThunk>();
         SetBasic<LoudnessFudgeThunk>();
         SetBasic<MoonThunk>();

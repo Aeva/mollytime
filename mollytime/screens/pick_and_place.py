@@ -87,7 +87,7 @@ class pick_and_place_screen(editor_screen):
                 [None, OpCode.TRI_TRAIN],
                 ["next", OpCode.SQR_TRAIN],
                 [None, OpCode.SAW_TRAIN],
-                [None, None],
+                [OpCode.QNTZ, None],
             ]),
         ]
         for name, shelf in pages:

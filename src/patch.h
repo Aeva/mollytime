@@ -87,6 +87,7 @@ enum class OpCode : uint32_t
     TPTSVF_HIGHPASS,
     TPTSVF_NOTCH,
     ADSR,
+    QNTZ,
     GATE,
     NOTE,
     VELO,
