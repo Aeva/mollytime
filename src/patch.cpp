@@ -1326,7 +1326,7 @@ struct QuantizeThunk : public InstructionThunk
 
 struct RandomSequenceThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 4> Info = { OpCode::RSQN, "rng\nseq", {"clock", "period", "seed"}, {"#"} };
+    static constexpr InstructionInfo<3, 1, 4> Info = { OpCode::RSQN, "seed\nseq", {"clock", "period", "seed"}, {"#"} };
     InstructionRegisters<3, 1, 4> Registers;
 
     std::vector<double> Cache;
