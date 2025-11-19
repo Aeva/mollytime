@@ -1249,6 +1249,7 @@ struct QuantizeThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
+        TRACEABLE_NAMED_SCOPE("QuantizeThunk");
         std::vector<RunningStateSharedPtr>& InNote = Registers.Input[0];
         std::vector<RunningStateSharedPtr>& InRoot = Registers.Input[1];
         std::vector<RunningStateSharedPtr>& InScale = Registers.Input[2];
@@ -1320,6 +1321,65 @@ struct QuantizeThunk : public InstructionThunk
     }
 
     virtual ~QuantizeThunk() {};
+};
+
+
+struct RandomSequenceThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<3, 1, 4> Info = { OpCode::RSQN, "rng\nseq", {"clock", "period", "seed"}, {"#"} };
+    InstructionRegisters<3, 1, 4> Registers;
+
+    std::vector<double> Cache;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("RandomSequenceThunk");
+        std::vector<RunningStateSharedPtr>& InClock = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InPeriod = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& InSeed = Registers.Input[2];
+        RunningStateSharedPtr& LastClock = Registers.Closure[0];
+        RunningStateSharedPtr& LastPeriod = Registers.Closure[1];
+        RunningStateSharedPtr& LastSeed = Registers.Closure[2];
+        RunningStateSharedPtr& Cursor = Registers.Closure[3];
+        RunningStateSharedPtr& OutValue = Registers.Output[0];
+
+        double Clock = Combine(CombinerAdd, InClock, 0.0);
+        double Previous = LastClock->Get();
+        LastClock->Set(Clock);
+
+        if (Previous <= 0.0 && Clock >= 1.0)
+        {
+            double Seed = Combine(CombinerAdd, InSeed, 0.0);
+            int Period = std::max(int(Combine(CombinerAdd, InPeriod, 4.0)), 1);
+
+            const bool Reset = Period != int(LastPeriod->Get()) || Seed != LastSeed->Get();
+            if (Reset || int(Cache.size()) != Period)
+            {
+                LastSeed->Set(Seed);
+                LastPeriod->Set(double(Period));
+                if (Reset)
+                {
+                    Cursor->Set(0.0);
+                }
+                Cache.resize(Period);
+                std::mt19937 Generator;
+                Generator.seed(Seed);
+                double Low = Generator.min();
+                double Scale = 1.0 / (Generator.max() - Low);
+                for (double& Sample : Cache)
+                {
+                    Sample = (Generator() - Low) * Scale;
+                }
+            }
+
+            int Index = int(Cursor->Get());
+            OutValue->Set(Cache[Index]);
+            Index = (Index + 1) % Period;
+            Cursor->Set(double(Index));
+        }
+    }
+
+    virtual ~RandomSequenceThunk() {};
 };
 
 
@@ -1719,6 +1779,7 @@ struct SymbolInfo
         SetBasic<NotchThunk>();
         SetBasic<AdsrThunk>();
         SetBasic<QuantizeThunk>();
+        SetBasic<RandomSequenceThunk>();
         SetBasic<MidiToHzThunk>();
         SetBasic<LoudnessFudgeThunk>();
         SetBasic<MoonThunk>();

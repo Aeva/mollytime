@@ -86,7 +86,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.PHASE, OpCode.SIN_TRAIN],
                 [None, OpCode.TRI_TRAIN],
                 ["next", OpCode.SQR_TRAIN],
-                [None, OpCode.SAW_TRAIN],
+                [OpCode.RSQN, OpCode.SAW_TRAIN],
                 [OpCode.QNTZ, None],
             ]),
         ]
