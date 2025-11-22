@@ -618,15 +618,15 @@ struct MaxThunk : public InstructionThunk
 
 struct ClampThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::CLAMP, "clamp", {"#", "low", "high"}, {"="} };
+    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::CLAMP, "clamp", {"#", "high", "low"}, {"="} };
     InstructionRegisters<3, 1, 0> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ClampThunk");
         double Sample = Combine(CombinerAdd, Registers.Input[0], 0.0);
-        Sample = std::max(Sample, Combine(CombinerMin, Registers.Input[1], -1.0));
-        Sample = std::min(Sample, Combine(CombinerMax, Registers.Input[2], 1.0));
+        Sample = std::min(Sample, Combine(CombinerMax, Registers.Input[1], 1.0));
+        Sample = std::max(Sample, Combine(CombinerMin, Registers.Input[2], -1.0));
         Registers.Output[0]->Set(Sample);
     }
 
