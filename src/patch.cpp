@@ -548,7 +548,7 @@ struct PowThunk : public InstructionThunk
         RunningStateSharedPtr& Output = Registers.Output[0];
 
         double Base = Combine(CombinerMin, InValue, 0.0);
-        double Exponent = Combine(CombinerMin, InExponent, 0.0);
+        double Exponent = Combine(CombinerMin, InExponent, 2.0);
         double Result = std::pow(Base, Exponent);
         if (std::isfinite(Result))
         {
@@ -557,6 +557,32 @@ struct PowThunk : public InstructionThunk
     }
 
     virtual ~PowThunk() {};
+};
+
+
+struct SignPreservingPowThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::SPOW, "spow", {"n", "^"}, {"="} };
+    InstructionRegisters<2, 1, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
+        std::vector<RunningStateSharedPtr>& InValue = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InExponent = Registers.Input[1];
+        RunningStateSharedPtr& Output = Registers.Output[0];
+
+        double Base = Combine(CombinerMin, InValue, 0.0);
+        double Sign = Base >= 0.0 ? 1.0 : -1.0;
+        double Exponent = Combine(CombinerMin, InExponent, 2.0);
+        double Result = std::pow(std::abs(Base), Exponent);
+        if (std::isfinite(Result))
+        {
+            Output->Set(Result * Sign);
+        }
+    }
+
+    virtual ~SignPreservingPowThunk() {};
 };
 
 
@@ -587,6 +613,24 @@ struct MaxThunk : public InstructionThunk
     }
 
     virtual ~MaxThunk() {};
+};
+
+
+struct ClampThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::CLAMP, "clamp", {"#", "low", "high"}, {"="} };
+    InstructionRegisters<3, 1, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("ClampThunk");
+        double Sample = Combine(CombinerAdd, Registers.Input[0], 0.0);
+        Sample = std::max(Sample, Combine(CombinerMin, Registers.Input[1], -1.0));
+        Sample = std::min(Sample, Combine(CombinerMax, Registers.Input[2], 1.0));
+        Registers.Output[0]->Set(Sample);
+    }
+
+    virtual ~ClampThunk() {};
 };
 
 
@@ -1756,8 +1800,10 @@ struct SymbolInfo
         SetBasic<MulThunk>();
         SetBasic<RcpThunk>();
         SetBasic<PowThunk>();
+        SetBasic<SignPreservingPowThunk>();
         SetBasic<MinThunk>();
         SetBasic<MaxThunk>();
+        SetBasic<ClampThunk>();
         SetBasic<FloorThunk>();
         SetBasic<CeilThunk>();
         SetBasic<RoundThunk>();

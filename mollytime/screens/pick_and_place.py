@@ -84,10 +84,10 @@ class pick_and_place_screen(editor_screen):
             ]),
             (":y", [
                 [OpCode.PHASE, OpCode.SIN_TRAIN],
-                [None, OpCode.TRI_TRAIN],
+                [OpCode.SPOW, OpCode.TRI_TRAIN],
                 ["next", OpCode.SQR_TRAIN],
                 [OpCode.RSQN, OpCode.SAW_TRAIN],
-                [OpCode.QNTZ, None],
+                [OpCode.QNTZ, OpCode.CLAMP],
             ]),
         ]
         for name, shelf in pages:
