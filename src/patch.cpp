@@ -1370,8 +1370,8 @@ struct QuantizeThunk : public InstructionThunk
 
 struct RandomSequenceThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 4> Info = { OpCode::RSQN, "seed\nseq", {"clock", "period", "seed"}, {"#"} };
-    InstructionRegisters<3, 1, 4> Registers;
+    static constexpr InstructionInfo<3, 2, 4> Info = { OpCode::RSQN, "seed\nseq", {"clock", "period", "seed"}, {"#", "complete"} };
+    InstructionRegisters<3, 2, 4> Registers;
 
     std::vector<double> Cache;
 
@@ -1386,6 +1386,7 @@ struct RandomSequenceThunk : public InstructionThunk
         RunningStateSharedPtr& LastSeed = Registers.Closure[2];
         RunningStateSharedPtr& Cursor = Registers.Closure[3];
         RunningStateSharedPtr& OutValue = Registers.Output[0];
+        RunningStateSharedPtr& OutComplete = Registers.Output[1];
 
         double Clock = Combine(CombinerAdd, InClock, 0.0);
         double Previous = LastClock->Get();
@@ -1418,8 +1419,23 @@ struct RandomSequenceThunk : public InstructionThunk
 
             int Index = int(Cursor->Get());
             OutValue->Set(Cache[Index]);
+
+            // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
+            // Patches that use this signal to switch between sequences will want to add an extra
+            // step to each sequence using this signal.  Generally this extra note will never be
+            // heard if this pulse triggers a flip flop to switch to another sequence, because even
+            // if you pause the clock on this sequence, it'll usually pulse again when you switch
+            // back to this sequence.  In other words, the way of constructing a patch that chains
+            // sequences that was most obvious to me always skips the last note in each sequence.
+            // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
+            OutComplete->Set(Index == Period - 1);
+
             Index = (Index + 1) % Period;
             Cursor->Set(double(Index));
+        }
+        else
+        {
+            OutComplete->Set(0.0);
         }
     }
 
