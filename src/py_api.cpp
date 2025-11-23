@@ -105,12 +105,13 @@ static ColorPoint MakeOkLCH(float L, float C, float H)
 PYBIND11_MODULE(mollytime, m) {
 	m.doc() = "mollytime c++ internals";
 
-	py::enum_<ColorSpace>(m, "ColorSpace")
+	py::native_enum<ColorSpace>(m, "ColorSpace", "enum.Enum")
 		.value("sRGB", ColorSpace::sRGB)
 		.value("LinearRGB", ColorSpace::LinearRGB)
 		.value("OkLAB", ColorSpace::OkLAB)
 		.value("OkLCH", ColorSpace::OkLCH)
-		.value("HSL", ColorSpace::HSL);
+		.value("HSL", ColorSpace::HSL)
+		.finalize();
 
 	py::class_<ColorPoint>(m, "ColorPoint")
 		.def(py::init<>())
@@ -142,7 +143,7 @@ PYBIND11_MODULE(mollytime, m) {
 		return Result;
 	});
 
-	py::enum_<OpCode>(m, "OpCode")
+	py::native_enum<OpCode>(m, "OpCode", "enum.IntEnum")
 		.value("CONST", OpCode::CONST)
 		.value("SCOPE", OpCode::SCOPE)
 		.value("IN", OpCode::IN)
@@ -198,7 +199,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("BOOP", OpCode::BOOP)
 		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
 		.value("MOON", OpCode::MOON)
-		.value("Count", OpCode::Count);
+		.value("Count", OpCode::Count)
+		.finalize();
 
 	m.def("make_port_handle", &MakePortHandle);
 	m.def("decode_port_tile", &PortHandleTilePart);
