@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 from .. import mollytime
 from ..mollytime import OpCode, get_symbol_name
 from .common import *
@@ -33,11 +34,15 @@ class pick_and_place_screen(editor_screen):
         self.set_screen_label(editor, "inspect > pick & place")
         self.repopulate_sidebar(editor)
 
-        self.current_palette = 0
         self.all_palettes = []
         self.palette_names = []
 
         self.extra_draws = 0
+
+        # these are set in on_press
+        self.current_palette = -1
+        self.tile_palette = None # active entry from self.all_palettes
+        self.palette_name = None # active entry from self.palette_names
 
         pages = [
             (":D", [
@@ -82,7 +87,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.MOON, OpCode.TPTSVF_NOTCH],
                 [OpCode.POW, OpCode.CTRL],
             ]),
-            (":y", [
+            (":?", [
                 [OpCode.PHASE, OpCode.SIN_TRAIN],
                 [OpCode.SPOW, OpCode.TRI_TRAIN],
                 ["next", OpCode.SQR_TRAIN],
@@ -113,8 +118,45 @@ class pick_and_place_screen(editor_screen):
             self.all_palettes.append(palette)
             self.palette_names.append(name)
 
-        self.tile_palette = self.all_palettes[self.current_palette]
-        self.palette_name = self.palette_names[self.current_palette]
+        self.redraw_catalog_index(editor)
+
+    def redraw_catalog_index(self, editor):
+        columns = min(editor.play_rect.width // (editor.grid_size * 3), len(self.palette_names))
+        rows = math.ceil(len(self.palette_names) / columns)
+        index_w = columns * editor.grid_size * 3 + editor.grid_size
+        index_h = rows * editor.grid_size * 3
+
+        draw_x = 0
+        if index_w <= editor.play_rect.width:
+            draw_x = (editor.play_rect.width - index_w) // 2
+            align_x = editor.grid_size
+        else:
+            index_w = editor.play_rect.width
+            align_x = 0
+
+        self.catalog_index_rect = mollytime.Rect(
+            draw_x, 0, index_w, index_h)
+        self.catalog_index_surface = mollytime.draw.Texture((index_w, index_h))
+        self.catalog_index_surface.fill(editor.select_color, 0.8)
+
+        self.catalog_index_targets = []
+        for index, name in enumerate(self.palette_names):
+            x = index % columns
+            y = index // columns
+            draw_rect = mollytime.Rect(
+                x * editor.grid_size * 3 + align_x,
+                y * editor.grid_size * 3,
+                editor.grid_size * 2, editor.grid_size * 2)
+            hit_rect = mollytime.Rect(
+                x * editor.grid_size * 3 + align_x + draw_x,
+                y * editor.grid_size * 3,
+                editor.grid_size * 2, editor.grid_size * 2)
+
+            if index == self.current_palette:
+                editor.selected_tile_bg.draw(self.catalog_index_surface, draw_rect, name)
+            else:
+                editor.tile_bg.draw(self.catalog_index_surface, draw_rect, name)
+            self.catalog_index_targets.append((hit_rect, name))
 
     def request_extra_draws(self):
         # This is used to request a full redraw some number of frames after dropping a tile.
@@ -181,7 +223,24 @@ class pick_and_place_screen(editor_screen):
     def on_press(self, editor, pos, event):
         self.cursor_pos = pos
 
-        if self.shelf_rect.collidepoint(pos):
+        if self.catalog_index_rect.collidepoint(pos):
+            for rect, name in self.catalog_index_targets:
+                if rect.collidepoint(pos):
+                    index = self.palette_names.index(name)
+                    assert(index > -1)
+                    if self.current_palette == index:
+                        self.tile_palette = None
+                        self.palette_name = None
+                        self.current_palette = -1
+                    else:
+                        self.tile_palette = self.all_palettes[index]
+                        self.palette_name = self.palette_names[index]
+                        self.current_palette = index
+                    self.redraw_catalog_index(editor)
+                    self.update_play_area = True
+            return
+
+        if self.current_palette > -1 and self.shelf_rect.collidepoint(pos):
             for archetile, rect in self.tile_palette.items():
                 if rect.collidepoint(pos):
                     assert(self.prospective_tile is None)
@@ -296,17 +355,19 @@ class pick_and_place_screen(editor_screen):
                 radius = max(1, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-            mollytime.draw.rect(frame, editor.select_color, self.shelf_rect)
-            for archetile, rect in self.tile_palette.items():
-                if archetile == "next":
-                    label = self.palette_name
-                elif type(archetile) in (int, float):
-                    label = f"{archetile}"
-                else:
-                    label = get_symbol_name(archetile)
-                editor.tile_bg.draw(frame, rect, label)
+            if self.current_palette > -1:
+                mollytime.draw.rect(frame, editor.select_color, self.shelf_rect)
+                for archetile, rect in self.tile_palette.items():
+                    if archetile == "next":
+                        label = self.palette_name
+                    elif type(archetile) in (int, float):
+                        label = f"{archetile}"
+                    else:
+                        label = get_symbol_name(archetile)
+                    editor.tile_bg.draw(frame, rect, label)
 
-            frame.blit(self.screen_label_surface, self.screen_label_rect)
+            frame.blit(self.screen_label_surface, self.screen_label_rect) # TODO probably just get rid of this
+            frame.blit(self.catalog_index_surface, self.catalog_index_rect)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
