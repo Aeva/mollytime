@@ -65,11 +65,11 @@ class pick_and_place_screen(editor_screen):
             ]),
             (":3", [
                 [OpCode.POW, OpCode.SPOW, None, OpCode.FLD, OpCode.GRAD, OpCode.ABS],
-                [OpCode.TAPE_LOOP, OpCode.RNG, OpCode.RSQN, OpCode.QNTZ, None, OpCode.SIGN],
+                [OpCode.TAPE_LOOP, OpCode.RNG, OpCode.RSQN, OpCode.QNTZ, OpCode.BAL, OpCode.SIGN],
             ]),
             (":y", [
-                [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None, OpCode.BAL],
-                [OpCode.PHASE, OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN, OpCode.MOON],
+                [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None, OpCode.MOON],
+                [OpCode.PHASE, OpCode.PWM, OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN],
             ]),
         ]
 

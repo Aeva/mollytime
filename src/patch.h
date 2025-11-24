@@ -61,6 +61,7 @@ enum class OpCode : uint32_t
     SQR_TRAIN,
     TRI_TRAIN,
     SAW_TRAIN,
+    PWM,
     ADD,
     MUL,
     RCP,

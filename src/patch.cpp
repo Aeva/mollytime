@@ -486,6 +486,42 @@ struct SawTrainThunk : public InstructionThunk
 };
 
 
+struct PhaseWidthModulationThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::PWM, "pwm", {"phase", "bal"}, {"phase"} };
+    InstructionRegisters<2, 1, 0> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
+        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InBalance = Registers.Input[1];
+        RunningStateSharedPtr& OutPhase = Registers.Output[0];
+
+        const double Balance = Combine(CombinerAdd, InBalance, 0.0);
+        const double Pivot = (Balance * 0.5 + 0.5);
+
+        double Phase = Combine(CombinerAdd, InPhase, 0.0);
+        Phase = std::fmod(Phase, 1.0);
+
+        if (Phase <= Pivot && Pivot > 0.0)
+        {
+            const double Alpha = Phase / Pivot;
+            Phase = Alpha * 0.5;
+        }
+        else if (Phase >= Pivot && Pivot < 1.0)
+        {
+            const double Alpha = (Phase - Pivot) / (1.0 - Pivot);
+            Phase = 0.5 + Alpha * 0.5;
+        }
+
+        OutPhase->Set(Phase);
+    }
+
+    virtual ~PhaseWidthModulationThunk() {};
+};
+
+
 struct AddThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD, "add", {"+"}, {"="} };
@@ -1812,6 +1848,7 @@ struct SymbolInfo
         SetBasic<SqrTrainThunk>();
         SetBasic<TriTrainThunk>();
         SetBasic<SawTrainThunk>();
+        SetBasic<PhaseWidthModulationThunk>();
         SetBasic<AddThunk>();
         SetBasic<MulThunk>();
         SetBasic<RcpThunk>();

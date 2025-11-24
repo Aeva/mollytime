@@ -159,6 +159,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("TRI_TRAIN", OpCode::TRI_TRAIN)
 		.value("SQR_TRAIN", OpCode::SQR_TRAIN)
 		.value("SAW_TRAIN", OpCode::SAW_TRAIN)
+		.value("PWM", OpCode::PWM)
 		.value("ADD", OpCode::ADD)
 		.value("MUL", OpCode::MUL)
 		.value("RCP", OpCode::RCP)
