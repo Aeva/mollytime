@@ -166,6 +166,8 @@ class pick_and_place_screen(editor_screen):
         self.catalog_index_surface = mollytime.draw.Texture((index_w, index_h))
         self.catalog_index_surface.fill(editor.select_color, 0.8)
 
+        align_x += editor.grid_size
+
         self.catalog_index_targets = []
         for index, name in enumerate(self.palette_names):
             x = index % columns
