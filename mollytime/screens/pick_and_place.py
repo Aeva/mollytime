@@ -48,8 +48,8 @@ class pick_and_place_screen(editor_screen):
 
         pages = [
             (":D", [
-                [OpCode.SIN, OpCode.SQR, OpCode.TRI, OpCode.SAW, OpCode.NOI],
-                [OpCode.MIN, OpCode.MAX, OpCode.OUT, OpCode.ADD, OpCode.MUL],
+                [OpCode.SIN, OpCode.SQR, OpCode.TRI, OpCode.SAW, OpCode.NOI, OpCode.OUT],
+                [OpCode.MIN, OpCode.MAX, OpCode.CLAMP, OpCode.ADD, OpCode.MUL, OpCode.SCOPE],
             ]),
             ("8)", [
                 [OpCode.FLP, OpCode.ADSR, OpCode.MIX, OpCode.NOTE, OpCode.GATE],
@@ -61,7 +61,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             (":O", [
                 [OpCode.RCP, OpCode.FLOOR, OpCode.BOOP, OpCode.PLS, OpCode.GRAD],
-                [OpCode.SCOPE, OpCode.CEIL, None, OpCode.STU, OpCode.UTS],
+                [None, OpCode.CEIL, None, OpCode.STU, OpCode.UTS],
             ]),
             (":3", [
                 [OpCode.TAPE_LOOP, OpCode.AUX, OpCode.RNG, OpCode.FLD, OpCode.ABS],
@@ -72,8 +72,8 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.BAL, OpCode.MOON, None, OpCode.POW, OpCode.SPOW],
             ]),
             ("XD", [
-                [OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN, OpCode.CLAMP],
-                [OpCode.PHASE, None, None, OpCode.RSQN, OpCode.QNTZ],
+                [OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN, OpCode.PHASE],
+                [OpCode.RSQN, OpCode.QNTZ, None, None, None],
             ]),
         ]
 
