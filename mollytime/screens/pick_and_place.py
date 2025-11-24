@@ -96,7 +96,7 @@ class pick_and_place_screen(editor_screen):
             palette_rect = mollytime.Rect(align_x, align_y, width, height)
 
             palette_surface = mollytime.draw.Texture((width, height))
-            palette_surface.fill(editor.select_color, 0.8)
+            palette_surface.fill(editor.select_color, 0.95)
 
             align_x += padding // 2
             align_y += padding
@@ -160,7 +160,7 @@ class pick_and_place_screen(editor_screen):
         self.catalog_index_rect = mollytime.Rect(
             0, 0, index_w, index_h)
         self.catalog_index_surface = mollytime.draw.Texture((index_w, index_h))
-        self.catalog_index_surface.fill(editor.select_color, 0.8)
+        self.catalog_index_surface.fill(editor.select_color, 0.95)
 
         align_x += editor.grid_size
 

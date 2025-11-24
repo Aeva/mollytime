@@ -53,8 +53,8 @@ class select_screen(editor_screen):
         screen_label_color = (255, 255, 255)
         font_path, size = AFACAD_REGULAR, editor.grid_size
 
-        self.lhs_selectbar_bg.fill(editor.select_color, 0.8)
-        self.rhs_selectbar_bg.fill(editor.select_color2, 0.8)
+        self.lhs_selectbar_bg.fill(editor.select_color, 0.95)
+        self.rhs_selectbar_bg.fill(editor.select_color2, 0.95)
 
         tile_size = editor.grid_size * 2
         radius = editor.grid_size
