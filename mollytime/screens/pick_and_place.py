@@ -52,48 +52,33 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.MIN, OpCode.MAX, OpCode.OUT, OpCode.ADD, OpCode.MUL],
             ]),
             ("8)", [
-                [OpCode.MIX, OpCode.FLP],
-                [OpCode.LOUD_FUDGE, OpCode.ADSR],
-                [None, OpCode.MIDI_HZ],
-                [OpCode.GATE, OpCode.NOTE],
-                [OpCode.PRES, OpCode.VELO],
+                [OpCode.FLP, OpCode.ADSR, OpCode.MIX, OpCode.NOTE, OpCode.GATE],
+                [OpCode.MIDI_HZ, OpCode.LOUD_FUDGE, OpCode.CTRL, OpCode.VELO, OpCode.PRES],
             ]),
             (":#", [
-                [440, 0],
-                [-2, 2],
-                [-1, 1],
-                [-.5, .5],
-                [-.25, .25],
+                [0, .1, .25, .5, 1, 2],
+                [440, -.1, -.25, -.5, -1, -2],
             ]),
             (":O", [
-                [OpCode.SCOPE, OpCode.RCP],
-                [OpCode.CEIL, OpCode.FLOOR],
-                [None, OpCode.BOOP],
-                [OpCode.STU, OpCode.PLS],
-                [OpCode.UTS, OpCode.GRAD],
+                [OpCode.RCP, OpCode.FLOOR, OpCode.BOOP, OpCode.PLS, OpCode.GRAD],
+                [OpCode.SCOPE, OpCode.CEIL, None, OpCode.STU, OpCode.UTS],
             ]),
             (":3", [
-                [OpCode.INV, OpCode.TAPE_LOOP],
-                [OpCode.IN, OpCode.AUX],
-                [None, OpCode.RNG],
-                [OpCode.ROUND, OpCode.FLD],
-                [OpCode.SIGN, OpCode.ABS],
+                [OpCode.TAPE_LOOP, OpCode.AUX, OpCode.RNG, OpCode.FLD, OpCode.ABS],
+                [OpCode.INV, OpCode.IN, None, OpCode.ROUND, OpCode.SIGN],
             ]),
             (":y", [
-                [OpCode.SAW, OpCode.TPTSVF_LOWPASS],
-                [OpCode.BAL, OpCode.TPTSVF_BANDPASS],
-                [None, OpCode.TPTSVF_HIGHPASS],
-                [OpCode.MOON, OpCode.TPTSVF_NOTCH],
-                [OpCode.POW, OpCode.CTRL],
+                [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None],
+                [OpCode.BAL, OpCode.MOON, None, OpCode.POW, OpCode.SPOW],
             ]),
-            (":?", [
-                [OpCode.PHASE, OpCode.SIN_TRAIN],
-                [OpCode.SPOW, OpCode.TRI_TRAIN],
-                [None, OpCode.SQR_TRAIN],
-                [OpCode.RSQN, OpCode.SAW_TRAIN],
-                [OpCode.QNTZ, OpCode.CLAMP],
+            ("XD", [
+                [OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN, OpCode.CLAMP],
+                [OpCode.PHASE, None, None, OpCode.RSQN, OpCode.QNTZ],
             ]),
         ]
+
+        coverage = set()
+
         for name, shelf in pages:
             tile_span = (editor.grid_size * 2)
             tile_stride = (editor.grid_size * 3)
@@ -117,7 +102,7 @@ class pick_and_place_screen(editor_screen):
             palette_surface = mollytime.draw.Texture((width, height))
             palette_surface.fill(editor.select_color, 0.8)
 
-            align_x += padding
+            align_x += padding // 2
             align_y += padding
 
             palette = {}
@@ -132,8 +117,10 @@ class pick_and_place_screen(editor_screen):
 
                         if type(archetile) in (int, float):
                             label = f"{archetile}"
+                            coverage.add(OpCode.CONST)
                         else:
                             label = get_symbol_name(archetile)
+                            coverage.add(archetile)
                         draw_rect = mollytime.Rect(padding + x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
                         editor.tile_bg.draw(palette_surface, draw_rect, label)
                     x += 1
@@ -143,6 +130,11 @@ class pick_and_place_screen(editor_screen):
             self.palette_names.append(name)
             self.palette_surfaces.append(palette_surface)
             self.palette_rects.append(palette_rect)
+
+        ignore = [OpCode.Count]
+        for e in OpCode:
+            if e not in ignore:
+                assert e in coverage, f"pick and place screen does not expose OpCode.{e.name}!"
 
     def set_catalog_page(self, page):
         if page > -1:
