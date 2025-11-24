@@ -48,32 +48,28 @@ class pick_and_place_screen(editor_screen):
 
         pages = [
             (":D", [
-                [OpCode.SIN, OpCode.SQR, OpCode.TRI, OpCode.SAW, OpCode.NOI, OpCode.OUT],
-                [OpCode.MIN, OpCode.MAX, OpCode.CLAMP, OpCode.ADD, OpCode.MUL, OpCode.SCOPE],
+                [OpCode.TRI, OpCode.SIN, OpCode.SQR, OpCode.MUL, OpCode.ADD, OpCode.OUT],
+                [OpCode.SAW, OpCode.NOI, OpCode.MIN, OpCode.MAX, OpCode.CLAMP, OpCode.RCP],
             ]),
             ("8)", [
-                [OpCode.FLP, OpCode.ADSR, OpCode.MIX, OpCode.NOTE, OpCode.GATE],
-                [OpCode.MIDI_HZ, OpCode.LOUD_FUDGE, OpCode.CTRL, OpCode.VELO, OpCode.PRES],
+                [OpCode.STU, OpCode.MIX, OpCode.ADSR, OpCode.CEIL, OpCode.ROUND, OpCode.SCOPE],
+                [OpCode.UTS, OpCode.INV, OpCode.BOOP, OpCode.FLOOR, OpCode.FLP, OpCode.PLS],
             ]),
-            (":#", [
+            ("%)", [
                 [0, .1, .25, .5, 1, 2],
                 [440, -.1, -.25, -.5, -1, -2],
             ]),
             (":O", [
-                [OpCode.RCP, OpCode.FLOOR, OpCode.BOOP, OpCode.PLS, OpCode.GRAD],
-                [None, OpCode.CEIL, None, OpCode.STU, OpCode.UTS],
+                [OpCode.IN, None, OpCode.MIDI_HZ, OpCode.NOTE, OpCode.GATE, None],
+                [OpCode.AUX, None, OpCode.LOUD_FUDGE, OpCode.VELO, OpCode.PRES, OpCode.CTRL],
             ]),
             (":3", [
-                [OpCode.TAPE_LOOP, OpCode.AUX, OpCode.RNG, OpCode.FLD, OpCode.ABS],
-                [OpCode.INV, OpCode.IN, None, OpCode.ROUND, OpCode.SIGN],
+                [OpCode.POW, OpCode.SPOW, None, OpCode.FLD, OpCode.GRAD, OpCode.ABS],
+                [OpCode.TAPE_LOOP, OpCode.RNG, OpCode.RSQN, OpCode.QNTZ, None, OpCode.SIGN],
             ]),
             (":y", [
-                [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None],
-                [OpCode.BAL, OpCode.MOON, None, OpCode.POW, OpCode.SPOW],
-            ]),
-            ("XD", [
-                [OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN, OpCode.PHASE],
-                [OpCode.RSQN, OpCode.QNTZ, None, None, None],
+                [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None, OpCode.BAL],
+                [OpCode.PHASE, OpCode.SIN_TRAIN, OpCode.TRI_TRAIN, OpCode.SQR_TRAIN, OpCode.SAW_TRAIN, OpCode.MOON],
             ]),
         ]
 
