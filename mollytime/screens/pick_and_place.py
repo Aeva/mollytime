@@ -227,7 +227,9 @@ class pick_and_place_screen(editor_screen):
 
         elif self.grabbed_tile or self.prospective_tile is not None:
             self.force_redraw = True
-            self.drop_deletes = editor.side_bar_rect.collidepoint(pos) or (self.palette_rect and self.palette_rect.collidepoint(pos))
+            self.drop_deletes = editor.side_bar_rect.collidepoint(pos) or \
+                (self.palette_rect and self.palette_rect.collidepoint(pos)) or \
+                self.catalog_index_rect.collidepoint(pos)
 
             hover_xy = editor.cursor_to_grid(pos)
             hover_rect = editor.get_grid_rect(hover_xy)
