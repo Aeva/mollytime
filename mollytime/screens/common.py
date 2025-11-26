@@ -420,6 +420,13 @@ class program_card:
         self.select_color2 = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, .3))
         self.selected_tile_bg2 = plate_bg(self.grid_size, self.select_color2)
 
+        lch = list(self.select_color.encode(ColorSpace.OkLCH).channels)
+        lch[0] *= 0.25
+        lch[1] *= 0.5
+        self.scope_bg_color = mollytime.oklch(*lch)
+
+        self.scope_tile_highlight = plate_outline(self.grid_size, parse_color("#211a17"))
+
         self.heat_color = lch_swizzle(self.tile_color, parse_color("#880000"), (.5, .75, 1))
 
         self.inspect_target = plate_bg(self.grid_size, self.tile_color, "inspect")

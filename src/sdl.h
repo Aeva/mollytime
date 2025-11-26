@@ -216,6 +216,7 @@ namespace Draw
         void SetAlpha(int Alpha);
         void SetBlendMode(BlendModeType BlendMode = BlendModeType::Alpha);
         void Fill(ColorPoint& Color, float Alpha = 1.0f);
+        void FillRect(ColorPoint& Color, const Rect& Region, float Alpha = 1.0f);
         void Blit(const Texture& Source, const Rect& Region);
         void Blit(const Texture& Source, const Point& Offset);
 

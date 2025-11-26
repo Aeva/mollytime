@@ -102,6 +102,12 @@ static ColorPoint MakeOkLCH(float L, float C, float H)
 }
 
 
+static ColorPoint MakeHSL(float H, float S, float L)
+{
+	return ColorPoint(ColorSpace::HSL, glm::vec3(H, S, L));
+}
+
+
 PYBIND11_MODULE(mollytime, m) {
 	m.doc() = "mollytime c++ internals";
 
@@ -132,6 +138,7 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("parse_color", &PyParseColor, "CSS color parser");
 	m.def("oklab", &MakeOkLAB, "OkLAB color constructor");
 	m.def("oklch", &MakeOkLCH, "OkLCH color constructor");
+	m.def("hsl", &MakeHSL, "HSL color constructor");
 	m.def("set_gamma", &SetGamma, "Change the sRGB gamma exponent");
 	m.def("mix_lchab", &MixLCHAB, "Color blending in both OkLCH and OkLAB space");
 
@@ -408,8 +415,9 @@ PYBIND11_MODULE(mollytime, m) {
         .def("get_rect", &Draw::Texture::GetRect)
         .def("copy", &Draw::Texture::Copy)
         .def("set_alpha", &Draw::Texture::SetAlpha)
-		.def("set_blend_mode", &Draw::Texture::SetBlendMode)
+        .def("set_blend_mode", &Draw::Texture::SetBlendMode)
         .def("fill", &Draw::Texture::Fill, py::arg("color"), py::arg("alpha") = 1.0f)
+        .def("fill_rect", &Draw::Texture::FillRect, py::arg("color"), py::arg("rect"), py::arg("alpha") = 1.0f)
         .def("blit", static_cast<BlitRectFunc>(&Draw::Texture::Blit))
         .def("blit", static_cast<BlitPointFunc>(&Draw::Texture::Blit));
     

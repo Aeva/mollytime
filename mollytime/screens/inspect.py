@@ -53,6 +53,27 @@ class inspect_screen(editor_screen):
         self.hold = {}
         self.can_throttle = True
 
+        self.scope_target = None
+        self.scope_target_changed = True
+        self.scope_overlay = None
+        self.scope_start = time.time()
+        self.last_x = 0
+        self.beam_hue = random.randint(0, 360)
+        self.advance_scope_color()
+
+    def toggle_scope(self, tile_id):
+        if self.scope_target == tile_id:
+            self.scope_target = None
+        else:
+            self.scope_target_changed = True
+            self.scope_target = tile_id
+        self.update_play_area = True
+
+    def advance_scope_color(self):
+        margin = 40
+        self.beam_hue = (self.beam_hue + random.randint(margin, 360 - margin)) % 360
+        self.beam_color = mollytime.hsl(self.beam_hue, 1.0, 0.5)
+
     def refresh_can_throttle(self, editor):
         for tile_id in editor.tile_positions.keys():
             symbol = editor.patch.get_tile_symbol(tile_id)
@@ -117,6 +138,7 @@ class inspect_screen(editor_screen):
     def goto_pick_and_place_screen(self, editor):
         overlay = pick_and_place_screen(editor)
         self.purge_events()
+        self.toggle_scope(None)
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
@@ -126,6 +148,7 @@ class inspect_screen(editor_screen):
         overlay = select_screen(editor)
         editor.unfreeze()
         self.purge_events()
+        self.toggle_scope(None)
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
@@ -142,6 +165,7 @@ class inspect_screen(editor_screen):
     def goto_calculator(self, editor):
         overlay = calculator_screen(editor)
         self.purge_events()
+        self.scope_target_changed = True
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
@@ -154,6 +178,7 @@ class inspect_screen(editor_screen):
         assert(os.path.isfile(self.load_path))
         self.search_path = os.path.split(self.load_path)[0]
         editor.load_patch(self.load_path)
+        self.toggle_scope(None)
         self.force_redraw = True
         self.refresh_can_throttle(editor)
 
@@ -232,6 +257,9 @@ class inspect_screen(editor_screen):
                             self.hold["m"] = tile_id
                             editor.patch.set_special_input(tile_id, 1.0)
                         return
+                    elif symbol in (OpCode.OUT, OpCode.SCOPE):
+                        self.toggle_scope(tile_id)
+                        return
                     break
 
             if not something_happened:
@@ -265,6 +293,8 @@ class inspect_screen(editor_screen):
                 if symbol == OpCode.BOOP:
                     self.hold[key] = tile_id
                     editor.patch.set_special_input(tile_id, 1.0)
+                elif symbol in (OpCode.OUT, OpCode.SCOPE):
+                    self.toggle_scope(tile_id)
 
     def touch_update(self, editor, key, pos, event):
         super().touch_update(editor, key, pos, event)
@@ -339,7 +369,73 @@ class inspect_screen(editor_screen):
 
             self.draw_system_status(editor, frame)
 
-        if update_anything:
+        if self.scope_target:
+            self.force_redraw = False
+            if not self.scope_overlay:
+                self.scope_overlay = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
+                self.scope_overlay.set_blend_mode(mollytime.draw.premultiplied_alpha)
+                self.scope_history = self.scope_overlay.copy()
+                self.scope_history.fill(parse_color("#000"), 0.0)
+                self.scope_history.set_blend_mode(mollytime.draw.premultiplied_alpha)
+
+            self.scope_overlay.fill(editor.scope_bg_color, 0.8)
+
+            # highlight the active scope target
+            rect = editor.get_tile_rect(self.scope_target)
+            label = editor.patch.get_tile_label(self.scope_target)
+            editor.tile_bg.draw(self.scope_overlay, rect)
+            outline_rect = mollytime.Rect(rect.x + 4, rect.y + 4, rect.width - 8, rect.height - 8)
+            draw_outline(self.scope_overlay, outline_rect, parse_color("#777"), 8)
+
+            # draw the beam
+            min_sample, max_sample = editor.patch.read_scope_probe()
+            is_nan = min_sample == 1.0 and max_sample == -1.0
+            if is_nan:
+                min_sample, max_sample = max_sample, min_sample
+
+            abs_sample = max(abs(min_sample), abs(max_sample))
+
+            frame_start = time.time()
+            elapsed = (frame_start - self.scope_start) / 5
+
+            beam_x = int(editor.play_rect.w * elapsed)
+            center = editor.play_rect.h // 2 -1
+            min_beam_y = center * -min_sample + center
+            max_beam_y = center * -max_sample + center
+            w = max(1, abs(beam_x - self.last_x))
+            h = max(1, abs(max_beam_y - min_beam_y))
+            beam_rect = mollytime.Rect((self.last_x, max_beam_y), (w, h))
+            clear_rect = mollytime.Rect((self.last_x, 0), (w, editor.play_rect.h))
+
+            beam_color = self.beam_color
+            if is_nan:
+                beam_color = (0, 0, 0)
+            elif abs_sample > 1.0:
+                beam_color = (255, 255, 255)
+
+            if self.scope_target_changed:
+                self.scope_target_changed = False
+                self.scope_history.fill((0, 0, 0), 0.0)
+                elapsed = 2
+            else:
+                self.scope_history.fill_rect((0, 0, 0), clear_rect, alpha=0.0)
+                mollytime.draw.rect(self.scope_history, beam_color, beam_rect, alpha=0.8)
+
+            if elapsed > 1:
+                self.last_x = 0
+                self.scope_start = frame_start
+                self.advance_scope_color()
+            else:
+                self.last_x = beam_x
+            self.scope_overlay.blit(self.scope_history, (0, 0))
+
+            # highlight the active scope target
+            editor.scope_tile_highlight.draw(self.scope_overlay, rect, label)
+
+            # present w/ the scope overlay
+            editor.present((self.scope_overlay, (0, 0)))
+
+        elif update_anything:
             #font_debug_surface(editor.screen)
             self.force_redraw = False
             editor.present()

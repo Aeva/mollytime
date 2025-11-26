@@ -168,6 +168,51 @@ namespace Draw
         }
     }
 
+    void Texture::FillRect(ColorPoint& Color, const Rect& Region, float Alpha)
+    {
+        assert(Draw::GetRenderer() != nullptr);
+
+        SDL_FRect FloatRect
+        {
+            Region.X,
+            Region.Y,
+            Region.Width,
+            Region.Height
+        };
+
+        if (!SDL_SetRenderTarget(Draw::GetRenderer(), GetTexture()))
+        {
+            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+        }
+
+        // we intentionally set this blend mode in hopes of overriding the current pixel colors
+        SDL_SetRenderDrawBlendMode(Draw::GetRenderer(), SDL_BLENDMODE_NONE);
+
+        glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
+        SDL_BlendMode TextureBlendMode;
+        if (!SDL_GetTextureBlendMode(GetTexture(), &TextureBlendMode))
+        {
+            throw std::runtime_error(std::format("Failed to access texture blend mode. SDL error: {}", SDL_GetError()));
+        }
+        if (TextureBlendMode == SDL_BLENDMODE_BLEND_PREMULTIPLIED)
+        {
+            // Premultiply the RGB channels we're about to write if the texture's blend mode expects it.
+            RGB.x *= Alpha;
+            RGB.y *= Alpha;
+            RGB.z *= Alpha;
+        }
+
+        if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
+        {
+            throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
+        }
+
+        if (!SDL_RenderFillRect(Draw::GetRenderer(), &FloatRect))
+        {
+            throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
+        }
+    }
+
     void Texture::Blit(const Texture& Source, const Rect& Region)
     {
         const SDL_FRect SourceRect
