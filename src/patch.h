@@ -410,6 +410,8 @@ struct Patch
 
     std::tuple<double, double> ReadOutputProbe();
     std::tuple<double, double> ReadScopeProbe();
+    void SetActiveProbe(TileHandle Tile);
+    void ClearActiveProbe();
     void SetSpecialInput(TileHandle Tile, double Value);
 
 private:
@@ -428,6 +430,7 @@ private:
     std::unordered_map<TileHandle, MagicTapeSharedPtr> TapeCollection;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
     ProbeRunningStateSharedPtr ScopeProbe = std::make_shared<ProbeRunningState>();
+    TileHandle ActiveProbeTile;
 
     void Recompile();
     ScratchSharedPtr Compile();

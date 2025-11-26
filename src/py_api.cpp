@@ -248,6 +248,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("get_implicit_wire", &Patch::GetImplicitWire)
 		.def("read_output_probe", &Patch::ReadOutputProbe)
 		.def("read_scope_probe", &Patch::ReadScopeProbe)
+		.def("set_active_probe", &Patch::SetActiveProbe)
+		.def("clear_active_probe", &Patch::ClearActiveProbe)
 		.def("set_special_input", &Patch::SetSpecialInput);
 
 	m.def("init_audio", &Audio::Init);

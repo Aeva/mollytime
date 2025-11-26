@@ -2299,23 +2299,8 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
 
     TileHandle ReceiverTile = PortHandleTilePart(InputPort);
     OpCode ReceiverSymbol = GetTileSymbol(ReceiverTile);
-    if (ReceiverSymbol == OpCode::SCOPE)
-    {
-        // Disconnect all other connected scopes before applying the new connection.
-        std::vector<WireHandle> ScopeConnections;
-        for (const WireHandle& Wire : Wires)
-        {
-            if (GetTileSymbol(PortHandleTilePart(std::get<1>(Wire))) == OpCode::SCOPE)
-            {
-                ScopeConnections.push_back(Wire);
-            }
-        }
-        for (const WireHandle& Wire : ScopeConnections)
-        {
-            Disconnect(std::get<0>(Wire), std::get<1>(Wire));
-        }
-    }
-    else if (ReceiverSymbol == OpCode::GRAD && PortHandlePortIndexPart(InputPort) == 0)
+
+    if (ReceiverSymbol == OpCode::GRAD && PortHandlePortIndexPart(InputPort) == 0)
     {
         PortHandle Port = MakePortHandle(ReceiverTile, 0);
         ActiveOutputs[Port] = std::make_shared<RunningState>(ImprobableMagnitude);
@@ -2390,6 +2375,23 @@ std::tuple<double, double> Patch::ReadScopeProbe()
 {
     TRACEABLE_SCOPE;
     return ScopeProbe->Get();
+}
+
+
+void Patch::SetActiveProbe(TileHandle Tile)
+{
+    if (ActiveProbeTile != Tile)
+    {
+        ActiveProbeTile = Tile;
+        Recompile();
+    }
+}
+
+
+void Patch::ClearActiveProbe()
+{
+    TileHandle Tile = -1;
+    Patch::SetActiveProbe(Tile);
 }
 
 
@@ -2589,19 +2591,43 @@ ScratchSharedPtr Patch::Compile()
             Scopes.push_back(Tile);
         }
     }
-    for (const auto& [Tile, Output] : AcceptedOutputs)
+
     {
-        Program->Outputs.push_back(Output);
-    }
-    for (const TileHandle& Tile : Scopes)
-    {
-        RunningStateSharedPtr Output = Step(Tile);
-        if (Output != nullptr)
+        RunningStateSharedPtr ActiveProbeInput = nullptr;
+        for (const auto& [Tile, Output] : AcceptedOutputs)
         {
-            // Only one probe may be connected at a time.
-            Program->ProbeInput = Output;
-            break;
+            // Collect the patch output registers.  This is unrelated to the scope probes.
+            Program->Outputs.push_back(Output);
+
+            // This output tile is also the current active probe.
+            if (Tile == ActiveProbeTile)
+            {
+                ActiveProbeInput = Output;
+            }
         }
+
+        // None of the out tiles are the active probe, so see if any the scope tiles are.
+        if (!ActiveProbeInput)
+        {
+            for (const TileHandle& Tile : Scopes)
+            {
+                if (Tile == ActiveProbeTile)
+                {
+                    // This scope tile is the active probe, but if there is nothing connected to it, then
+                    // the probe will behave as if it is disconnected.
+                    ActiveProbeInput = Step(Tile);
+                    if (!ActiveProbeInput)
+                    {
+                        // The scope tile does appear to be disconnected, so force the probe values to zero
+                        // since they most likely will not be updated when the patch runs.
+                        OutputProbe->Set(0.0);
+                        ScopeProbe->Set(0.0);
+                    }
+                    break;
+                }
+            }
+        }
+        Program->ProbeInput = ActiveProbeInput;
     }
 
     OutputTileNames.clear();

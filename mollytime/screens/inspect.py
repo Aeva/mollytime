@@ -21,7 +21,6 @@ from .common import *
 from .select import select_screen
 from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
-from .scope import scope_screen
 
 from .. import mollytime
 
@@ -61,12 +60,17 @@ class inspect_screen(editor_screen):
         self.beam_hue = random.randint(0, 360)
         self.advance_scope_color()
 
-    def toggle_scope(self, tile_id):
+    def toggle_scope(self, editor, tile_id):
         if self.scope_target == tile_id:
             self.scope_target = None
         else:
             self.scope_target_changed = True
             self.scope_target = tile_id
+
+        if self.scope_target:
+            editor.patch.set_active_probe(self.scope_target)
+        else:
+            editor.patch.clear_active_probe()
         self.update_play_area = True
 
     def advance_scope_color(self):
@@ -106,23 +110,16 @@ class inspect_screen(editor_screen):
 
         goto_select_icon = editor.select_target
 
-        goto_scope_rect = mollytime.Rect(
-            editor.grid_size,
-            3 * editor.grid_size * 3,
-            editor.grid_size * 2, editor.grid_size * 2)
-
-        goto_scope_icon = editor.scope_target
-
         goto_save_rect = mollytime.Rect(
             editor.grid_size,
-            4 * editor.grid_size * 3,
+            3 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_save_icon = editor.save_target
 
         goto_load_rect = mollytime.Rect(
             editor.grid_size,
-            5 * editor.grid_size * 3,
+            4 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_load_icon = editor.load_target
@@ -131,14 +128,13 @@ class inspect_screen(editor_screen):
             (active_rect, active_icon, None),
             (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen),
             (goto_select_rect, goto_select_icon, self.goto_select_screen),
-            (goto_scope_rect, goto_scope_icon, self.goto_scope_screen),
             (goto_save_rect, goto_save_icon, self.goto_save_patch),
             (goto_load_rect, goto_load_icon, self.goto_load_patch)]
 
     def goto_pick_and_place_screen(self, editor):
         overlay = pick_and_place_screen(editor)
         self.purge_events()
-        self.toggle_scope(None)
+        self.toggle_scope(editor, None)
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
@@ -148,19 +144,11 @@ class inspect_screen(editor_screen):
         overlay = select_screen(editor)
         editor.unfreeze()
         self.purge_events()
-        self.toggle_scope(None)
+        self.toggle_scope(editor, None)
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
         self.refresh_can_throttle(editor)
-
-    def goto_scope_screen(self, editor):
-        overlay = scope_screen(editor)
-        self.purge_events()
-        self.update_play_area = True
-        self.update_sidebar = True
-        editor.play_area.redraw()
-        editor.clear_selection()
 
     def goto_calculator(self, editor):
         overlay = calculator_screen(editor)
@@ -178,7 +166,7 @@ class inspect_screen(editor_screen):
         assert(os.path.isfile(self.load_path))
         self.search_path = os.path.split(self.load_path)[0]
         editor.load_patch(self.load_path)
-        self.toggle_scope(None)
+        self.toggle_scope(editor, None)
         self.force_redraw = True
         self.refresh_can_throttle(editor)
 
@@ -258,7 +246,7 @@ class inspect_screen(editor_screen):
                             editor.patch.set_special_input(tile_id, 1.0)
                         return
                     elif symbol in (OpCode.OUT, OpCode.SCOPE):
-                        self.toggle_scope(tile_id)
+                        self.toggle_scope(editor, tile_id)
                         return
                     break
 
@@ -294,7 +282,7 @@ class inspect_screen(editor_screen):
                     self.hold[key] = tile_id
                     editor.patch.set_special_input(tile_id, 1.0)
                 elif symbol in (OpCode.OUT, OpCode.SCOPE):
-                    self.toggle_scope(tile_id)
+                    self.toggle_scope(editor, tile_id)
 
     def touch_update(self, editor, key, pos, event):
         super().touch_update(editor, key, pos, event)
