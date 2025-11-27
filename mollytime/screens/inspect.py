@@ -420,6 +420,20 @@ class inspect_screen(editor_screen):
             # highlight the active scope target
             editor.scope_tile_highlight.draw(self.scope_overlay, rect, label)
 
+            line_color_a = parse_color("#888")
+            line_color_b = editor.scope_bg_color
+            for i in range(1, 8):
+                alpha = i / 8
+                y = int(editor.play_rect.h * alpha)
+                start_pt = (0, y)
+                end_pt = (editor.play_rect.w, y)
+                if alpha == 0.5:
+                    mollytime.draw.line(self.scope_overlay, line_color_a, start_pt, end_pt, 1, alpha = .5)
+                elif i % 2 == 1:
+                    mollytime.draw.line(self.scope_overlay, line_color_b, start_pt, end_pt, 1, alpha = .3)
+                else:
+                    mollytime.draw.line(self.scope_overlay, line_color_a, start_pt, end_pt, 1, alpha = .1)
+
             # present w/ the scope overlay
             editor.present((self.scope_overlay, (0, 0)))
 
