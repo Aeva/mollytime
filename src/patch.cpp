@@ -985,6 +985,10 @@ struct RandomThunk : public InstructionThunk
                 Output->Set(Roll());
             }
         }
+        else
+        {
+            Output->Set(Roll());
+        }
     }
 
     virtual ~RandomThunk() {};
