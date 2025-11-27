@@ -406,6 +406,8 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("premultiplied_additive", Draw::BlendModeType::PremultipliedAdditive)
 		.value("modulate", Draw::BlendModeType::Modulate)
 		.value("multiply", Draw::BlendModeType::Multiply)
+		.value("eraser", Draw::BlendModeType::Eraser)
+		.value("inverse_eraser", Draw::BlendModeType::InverseEraser)
 		.export_values()
 		.finalize();
 

@@ -187,7 +187,10 @@ namespace Draw
         Additive                = 0x00000002u, // SDL_BLENDMODE_ADD
         PremultipliedAdditive   = 0x00000020u, // SDL_BLENDMODE_BLEND_PREMULTIPLIED
         Modulate                = 0x00000004u, // SDL_BLENDMODE_MOD
-        Multiply                = 0x00000008u  // SDL_BLENDMODE_MUL
+        Multiply                = 0x00000008u, // SDL_BLENDMODE_MUL
+
+        Eraser                  = 0xFFFFu - 1u, // this is not a SDL blend mode, and will be substituted
+        InverseEraser           = 0xFFFFu - 2u, // this is not a SDL blend mode, and will be substituted
     };
 
     struct TextureCaddy

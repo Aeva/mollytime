@@ -140,9 +140,35 @@ namespace Draw
         }
     }
 
-    void Texture::SetBlendMode(BlendModeType BlendMode)
+    void Texture::SetBlendMode(BlendModeType BlendModeInt)
     {
-        if (!SDL_SetTextureBlendMode(GetTexture(), (Uint32)BlendMode))
+        SDL_BlendMode BlendMode;
+        if (BlendModeInt == BlendModeType::Eraser)
+        {
+            BlendMode = SDL_ComposeCustomBlendMode(
+                SDL_BLENDFACTOR_ZERO /* srcColorFactor */,
+                SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA /* dstColorFactor */,
+                SDL_BLENDOPERATION_ADD /* colorOperation */,
+                SDL_BLENDFACTOR_ZERO /* srcAlphaFactor */,
+                SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA /* dstAlphaFactor */,
+                SDL_BLENDOPERATION_ADD /* alphaOperation */);
+        }
+        else if (BlendModeInt == BlendModeType::InverseEraser)
+        {
+            BlendMode = SDL_ComposeCustomBlendMode(
+                SDL_BLENDFACTOR_ZERO /* srcColorFactor */,
+                SDL_BLENDFACTOR_SRC_ALPHA /* dstColorFactor */,
+                SDL_BLENDOPERATION_ADD /* colorOperation */,
+                SDL_BLENDFACTOR_ZERO /* srcAlphaFactor */,
+                SDL_BLENDFACTOR_SRC_ALPHA /* dstAlphaFactor */,
+                SDL_BLENDOPERATION_ADD /* alphaOperation */);
+        }
+        else
+        {
+            BlendMode = (Uint32)BlendModeInt;
+        }
+
+        if (!SDL_SetTextureBlendMode(GetTexture(), BlendMode))
         {
             throw std::runtime_error(std::format("Failed to set blend mode. SDL error: {}", SDL_GetError()));
         }

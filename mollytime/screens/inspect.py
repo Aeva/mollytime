@@ -366,7 +366,11 @@ class inspect_screen(editor_screen):
                 self.scope_history.fill(parse_color("#000"), 0.0)
                 self.scope_history.set_blend_mode(mollytime.draw.premultiplied_alpha)
 
-            self.scope_overlay.fill(editor.scope_bg_color, 0.8)
+                self.scope_mask = self.scope_overlay.copy()
+                self.scope_mask.fill(parse_color("#000"), 0.0)
+                self.scope_mask.set_blend_mode(mollytime.draw.eraser)
+
+            self.scope_overlay.fill(editor.scope_bg_color, 0.9)
 
             # highlight the active scope target
             rect = editor.get_tile_rect(self.scope_target)
@@ -404,10 +408,13 @@ class inspect_screen(editor_screen):
             if self.scope_target_changed:
                 self.scope_target_changed = False
                 self.scope_history.fill((0, 0, 0), 0.0)
+                self.scope_mask.fill((0, 0, 0), 0.0)
                 elapsed = 2
             else:
                 self.scope_history.fill_rect((0, 0, 0), clear_rect, alpha=0.0)
                 mollytime.draw.rect(self.scope_history, beam_color, beam_rect, alpha=0.8)
+                self.scope_mask.fill_rect((0, 0, 0), clear_rect, alpha=0.0)
+                mollytime.draw.rect(self.scope_mask, (255, 255, 255), beam_rect, alpha=1.0)
 
             if elapsed > 1:
                 self.last_x = 0
@@ -415,6 +422,8 @@ class inspect_screen(editor_screen):
                 self.advance_scope_color()
             else:
                 self.last_x = beam_x
+
+            self.scope_overlay.blit(self.scope_mask, (0, 0))
             self.scope_overlay.blit(self.scope_history, (0, 0))
 
             # highlight the active scope target
