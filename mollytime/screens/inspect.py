@@ -455,6 +455,22 @@ class inspect_screen(editor_screen):
             else:
                 self.last_x = beam_x
 
+            line_color = parse_color("#CCC")
+            for i in range(1, 8):
+                alpha = i / 8
+                y = int(editor.play_rect.h * alpha)
+                start_pt = (0, y)
+                end_pt = (editor.play_rect.w, y)
+                if alpha == 0.5:
+                    mollytime.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .9)
+                    mollytime.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .2)
+                elif i % 2 == 1:
+                    mollytime.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .6)
+                    mollytime.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .12)
+                else:
+                    mollytime.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .7)
+                    mollytime.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .125)
+
             self.scope_mask.set_blend_mode(mollytime.draw.eraser)
             interactive_cold.blit(self.scope_mask, (0, 0))
 
@@ -465,20 +481,6 @@ class inspect_screen(editor_screen):
             self.scope_overlay.blit(self.scope_mask, (0, 0))
 
             self.scope_overlay.blit(interactive_cold, (0, 0))
-
-            line_color_a = parse_color("#888")
-            line_color_b = editor.scope_bg_color
-            for i in range(1, 8):
-                alpha = i / 8
-                y = int(editor.play_rect.h * alpha)
-                start_pt = (0, y)
-                end_pt = (editor.play_rect.w, y)
-                if alpha == 0.5:
-                    mollytime.draw.line(self.scope_overlay, line_color_a, start_pt, end_pt, 1, alpha = .5)
-                elif i % 2 == 1:
-                    mollytime.draw.line(self.scope_overlay, line_color_b, start_pt, end_pt, 1, alpha = .3)
-                else:
-                    mollytime.draw.line(self.scope_overlay, line_color_a, start_pt, end_pt, 1, alpha = .1)
 
             # present w/ the scope overlay
             editor.present((self.scope_overlay, (0, 0)))
