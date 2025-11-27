@@ -215,6 +215,12 @@ class inspect_screen(editor_screen):
 
         mollytime.display.show_load_dialog(patch_dir)
 
+    def handle_escape(self, editor):
+        if self.scope_target is None:
+            super().handle_escape(editor)
+        else:
+            self.toggle_scope(editor, None)
+
     def on_move(self, editor, pos, event):
         self.cursor_pos = pos
 

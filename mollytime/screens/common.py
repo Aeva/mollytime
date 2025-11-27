@@ -681,12 +681,15 @@ class editor_screen:
             elif event.type == mollytime.events.QUIT:
                 exit(0)
 
+    def handle_escape(self, editor):
+        self.purge_events()
+        self.live = False
+
     @profile_function("process_events")
     def process_events(self, editor):
         for event in mollytime.events.get():
             if (event.type == mollytime.events.KEYDOWN and event.key.key == mollytime.events.K_ESCAPE):
-               self.purge_events()
-               self.live = False
+               self.handle_escape(editor)
 
             if event.type == mollytime.events.MOUSEMOTION and (abs(event.motion.rel[0]) > 0 or abs(event.motion.rel[1]) > 0):
                 self.on_move(editor, event.motion.pos, event)
