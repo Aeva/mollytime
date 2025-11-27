@@ -393,7 +393,7 @@ class inspect_screen(editor_screen):
             interactive_cold.set_blend_mode(mollytime.draw.premultiplied_alpha)
             interactive_cold.fill(editor.scope_bg_color, 0.9)
 
-            # highlight the active scope target
+            # highlight the interactive elements
             for tile_id in self.interactive_tiles:
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
@@ -487,6 +487,11 @@ class inspect_screen(editor_screen):
             self.scope_overlay.blit(self.scope_mask, (0, 0))
 
             self.scope_overlay.blit(interactive_cold, (0, 0))
+
+            # draw the emergency exit sign
+            if is_nan:
+                rect = editor.get_tile_rect(self.scope_target)
+                editor.invalid_placement.draw(self.scope_overlay, rect, "NaN")
 
             # present w/ the scope overlay
             editor.present((self.scope_overlay, (0, 0)))
