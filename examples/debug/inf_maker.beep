@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="1" symbol="out" x="2" y="-1"/>
+		<tile id="2" symbol="tape_loop" x="-1" y="0"/>
+		<tile id="3" symbol="noi" x="-2" y="0"/>
+		<tile id="4" symbol="const" x="-1" y="1" value="0.01"/>
+		<tile id="5" symbol="const" x="-2" y="-1" value="10000000.0"/>
+		<tile id="6" symbol="mul" x="1" y="0"/>
+		<tile id="7" symbol="abs" x="0" y="0"/>
+		<tile id="8" symbol="sqr" x="1" y="1"/>
+		<tile id="9" symbol="mul" x="-1" y="-1"/>
+		<tile id="10" symbol="scope" x="2" y="0"/>
+		<wire from="9:0" to="2:0"/>
+		<wire from="2:0" to="7:0"/>
+		<wire from="7:0" to="6:0"/>
+		<wire from="3:0" to="2:0"/>
+		<wire from="5:0" to="9:0"/>
+		<wire from="8:0" to="6:0"/>
+		<wire from="2:0" to="9:0"/>
+		<wire from="6:0" to="10:0"/>
+		<wire from="4:0" to="2:2"/>
+	</patch>
+</mollytime>
