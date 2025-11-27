@@ -173,7 +173,7 @@ class plate_bg:
         if self.text:
             self.draw_label(self.surface, rect, self.text)
 
-    def draw_label(self, target, rect, label):
+    def draw_label(self, target, rect, label, alpha=1.0):
         assert(type(label) == str)
         font_path, size = NATIONAL_PARK_REGULAR, max(10, self.size * .24)
         lines = [i for i in map(str.strip, label.split("\n")) if i]
@@ -202,12 +202,15 @@ class plate_bg:
         y_offset = rect.centery - combined_rect.centery
         for text_surface, text_rect in zip(surfaces, rects):
             text_rect.top += y_offset
+            text_surface.set_alpha(alpha)
             target.blit(text_surface, text_rect)
 
-    def draw(self, target, rect, label=None):
+    def draw(self, target, rect, label=None, alpha=1.0, text_alpha=None):
+        self.surface.set_alpha(alpha)
         target.blit(self.surface, rect)
         if label:
-            self.draw_label(target, rect, label)
+            text_alpha = alpha if text_alpha is None else text_alpha
+            self.draw_label(target, rect, label, text_alpha)
 
 
 def draw_outline(target, rect, color, radius, inset=0):

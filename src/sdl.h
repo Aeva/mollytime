@@ -216,7 +216,7 @@ namespace Draw
         Rect GetRect() const;
         Texture Copy() const;
         
-        void SetAlpha(int Alpha);
+        void SetAlpha(float Alpha);
         void SetBlendMode(BlendModeType BlendMode = BlendModeType::Alpha);
         void Fill(ColorPoint& Color, float Alpha = 1.0f);
         void FillRect(ColorPoint& Color, const Rect& Region, float Alpha = 1.0f);

@@ -66,7 +66,7 @@ class connect_screen(editor_screen):
             radius = max(1, editor.grid_size // 12)
             draw_arrow(node_graph, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-        node_graph.set_alpha(int(0.25 * 255))
+        node_graph.set_alpha(0.25)
 
         matte_color = editor.select_color # parse_color("#b1b3b8") #editor.select_color
 
@@ -91,7 +91,7 @@ class connect_screen(editor_screen):
         start = (start[0] - 1, start[1])
         stop = (stop[0] - 1, stop[1])
 
-        matte.set_alpha(int(0.8 * 255))
+        matte.set_alpha(0.8)
         self.bg.blit(matte, (0, 0))
 
         radius = (viewport.h - editor.grid_size) // 3

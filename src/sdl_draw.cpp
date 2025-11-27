@@ -132,9 +132,9 @@ namespace Draw
         return NewTexture;
     }
     
-    void Texture::SetAlpha(int Alpha)
+    void Texture::SetAlpha(float Alpha)
     {
-        if (!SDL_SetTextureAlphaMod(GetTexture(), static_cast<Uint8>(Alpha)))
+        if (!SDL_SetTextureAlphaModFloat(GetTexture(), Alpha))
         {
             throw std::runtime_error(std::format("Failed to set texture alpha. SDL error: {}", SDL_GetError()));
         }

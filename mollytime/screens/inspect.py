@@ -59,6 +59,7 @@ class inspect_screen(editor_screen):
         self.last_x = 0
         self.beam_hue = random.randint(0, 360)
         self.advance_scope_color()
+        self.update_interactive_tiles(editor)
 
     def toggle_scope(self, editor, tile_id):
         if self.scope_target == tile_id:
@@ -66,12 +67,18 @@ class inspect_screen(editor_screen):
         else:
             self.scope_target_changed = True
             self.scope_target = tile_id
-
         if self.scope_target:
             editor.patch.set_active_probe(self.scope_target)
         else:
             editor.patch.clear_active_probe()
         self.update_play_area = True
+
+    def update_interactive_tiles(self, editor):
+        self.interactive_tiles = []
+        for tile_id in editor.tile_positions.keys():
+            symbol = editor.patch.get_tile_symbol(tile_id)
+            if symbol in (OpCode.BOOP, OpCode.CONST, OpCode.SCOPE, OpCode.OUT):
+                self.interactive_tiles.append(tile_id)
 
     def advance_scope_color(self):
         margin = 40
@@ -135,6 +142,7 @@ class inspect_screen(editor_screen):
         overlay = pick_and_place_screen(editor)
         self.purge_events()
         self.toggle_scope(editor, None)
+        self.update_interactive_tiles(editor)
         self.update_play_area = True
         self.update_sidebar = True
         editor.clear_selection()
@@ -167,6 +175,7 @@ class inspect_screen(editor_screen):
         self.search_path = os.path.split(self.load_path)[0]
         editor.load_patch(self.load_path)
         self.toggle_scope(editor, None)
+        self.update_interactive_tiles(editor)
         self.force_redraw = True
         self.refresh_can_throttle(editor)
 
@@ -362,22 +371,45 @@ class inspect_screen(editor_screen):
             if not self.scope_overlay:
                 self.scope_overlay = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
                 self.scope_overlay.set_blend_mode(mollytime.draw.premultiplied_alpha)
+
                 self.scope_history = self.scope_overlay.copy()
                 self.scope_history.fill(parse_color("#000"), 0.0)
                 self.scope_history.set_blend_mode(mollytime.draw.premultiplied_alpha)
 
                 self.scope_mask = self.scope_overlay.copy()
                 self.scope_mask.fill(parse_color("#000"), 0.0)
-                self.scope_mask.set_blend_mode(mollytime.draw.eraser)
 
-            self.scope_overlay.fill(editor.scope_bg_color, 0.9)
+            interactive_hot = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
+            interactive_hot.set_blend_mode(mollytime.draw.multiply)
+            interactive_hot.fill((255, 255, 255), 1.0)
+
+            interactive_cold = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
+            interactive_cold.set_blend_mode(mollytime.draw.premultiplied_alpha)
+            interactive_cold.fill(editor.scope_bg_color, 0.9)
 
             # highlight the active scope target
-            rect = editor.get_tile_rect(self.scope_target)
-            label = editor.patch.get_tile_label(self.scope_target)
-            editor.tile_bg.draw(self.scope_overlay, rect)
-            outline_rect = mollytime.Rect(rect.x + 4, rect.y + 4, rect.width - 8, rect.height - 8)
-            draw_outline(self.scope_overlay, outline_rect, parse_color("#777"), 8)
+            for tile_id in self.interactive_tiles:
+                rect = editor.get_tile_rect(tile_id)
+                label = editor.patch.get_tile_label(tile_id)
+                symbol = editor.patch.get_tile_symbol(tile_id)
+
+                if tile_id == self.scope_target:
+                    hot_alpha = 0.5
+                    cold_alpha = 1.0
+                    draw_outline(interactive_cold, rect, parse_color("#333"), 8)
+                    outline_rect = mollytime.Rect(rect.x - 4, rect.y - 4, rect.width + 8, rect.height + 8)
+                    draw_outline(interactive_cold, outline_rect, parse_color("#FFF"), 4)
+                    draw_outline(interactive_hot, outline_rect, parse_color("#CCC"), 4)
+                elif symbol in (OpCode.BOOP, OpCode.OUT, OpCode.SCOPE):
+                    hot_alpha = 0.3
+                    cold_alpha = 0.8
+                else:
+                    hot_alpha = 0.2
+                    cold_alpha = 0.2
+
+                interactive_cold.fill_rect(editor.scope_bg_color, rect, 1.0)
+                editor.tile_bg.draw(interactive_cold, rect, label, cold_alpha, text_alpha = 1.0)
+                editor.tile_bg.draw(interactive_hot, rect, label, hot_alpha)
 
             # draw the beam
             min_sample, max_sample = editor.patch.read_scope_probe()
@@ -423,11 +455,16 @@ class inspect_screen(editor_screen):
             else:
                 self.last_x = beam_x
 
-            self.scope_overlay.blit(self.scope_mask, (0, 0))
-            self.scope_overlay.blit(self.scope_history, (0, 0))
+            self.scope_mask.set_blend_mode(mollytime.draw.eraser)
+            interactive_cold.blit(self.scope_mask, (0, 0))
 
-            # highlight the active scope target
-            editor.scope_tile_highlight.draw(self.scope_overlay, rect, label)
+            self.scope_overlay.blit(self.scope_history, (0, 0))
+            self.scope_overlay.blit(interactive_hot, (0, 0))
+
+            self.scope_mask.set_blend_mode(mollytime.draw.inverse_eraser)
+            self.scope_overlay.blit(self.scope_mask, (0, 0))
+
+            self.scope_overlay.blit(interactive_cold, (0, 0))
 
             line_color_a = parse_color("#888")
             line_color_b = editor.scope_bg_color

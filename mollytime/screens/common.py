@@ -552,7 +552,7 @@ class editor_screen:
 
         font_path, size = AFACAD_REGULAR, editor.grid_size
         self.screen_label_surface = render_text(font_path, size, color, text)
-        self.screen_label_surface.set_alpha(int(alpha * 255))
+        self.screen_label_surface.set_alpha(alpha)
         self.screen_label_rect = self.screen_label_surface.get_rect().copy()
         self.screen_label_rect.left = margin_x
         self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)

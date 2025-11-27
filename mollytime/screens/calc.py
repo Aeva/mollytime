@@ -204,7 +204,7 @@ class calculator_screen(editor_screen):
             radius = max(1, editor.grid_size // 12)
             draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
 
-        frame.set_alpha(int(0.25 * 255))
+        frame.set_alpha(0.25)
 
         self.bg = mollytime.draw.Texture((frame.get_width(), frame.get_height()))
         self.bg.fill((0, 0, 0))
@@ -277,7 +277,7 @@ class calculator_screen(editor_screen):
             def print_text(text, alpha=1.0):
                 nonlocal line_count
                 surface = render_text(font_path, size, color, text)
-                surface.set_alpha(int(alpha * 255))
+                surface.set_alpha(alpha)
                 rect = surface.get_rect().copy()
 
                 rect.right = anchor_x
