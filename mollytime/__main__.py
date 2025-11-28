@@ -44,6 +44,8 @@ def main():
     mollytime.draw.init()
     mollytime.font.init()
 
+    print(f'SDL3 selected the "{mollytime.draw.get_renderer_name()}" rendering backend.')
+
     dump_icon = False
     if operating_system == "Windows":
         icon_size = 32

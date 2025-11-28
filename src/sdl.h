@@ -229,6 +229,7 @@ namespace Draw
 
     void Init();
     void Flip();
+    const std::string_view GetRendererName();
     
     void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth = 0, float Alpha = 1.0f); // Fills if BorderWidth <= 0

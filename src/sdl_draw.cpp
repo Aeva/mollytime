@@ -330,6 +330,15 @@ namespace Draw
             throw std::runtime_error(std::format("Failed to present renderer. SDL error: {}", SDL_GetError()));
         }
     }
+
+    const std::string_view GetRendererName()
+    {
+        if (!Renderer)
+        {
+            throw std::runtime_error("Renderer must be initialized first.\n");
+        }
+        return SDL_GetRendererName(Renderer);
+    }
     
     void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha)
     {
