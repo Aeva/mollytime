@@ -149,6 +149,7 @@ packages before building mollytime:
 ```
 sudo dnf install \
   clang \
+  libcxx-devel \
   pipewire-jack-audio-connection-kit-devel \
   alsa-lib-devel \
   python3-devel
@@ -159,3 +160,70 @@ as described in the sections above:
 ```
 python mollybuild.py setup release linux-clang
 ```
+
+## Ubuntu Studio 24.04 LTS
+
+Ubuntu Studio 24.04 defaults to KDE, which may or may not prove to be problematic for touch
+screens, as noted in the section about Fedora above.  This has yet to be tested.
+
+Ubuntu Studio 24.04 does not provide a suitable version of Clang or SDL3 through apt, so these must be installed
+manually.
+
+Fortunately, the LLVM project provides compiled versions of Clang for apt based Linux distributions.
+Follow these instructions to install Clang 20 on your system:
+[Install Clang 20, 19, or old versions in Ubuntu 24.04 | 22.04](https://ubuntuhandbook.org/index.php/2023/09/how-to-install-clang-17-or-16-in-ubuntu-22-04-20-04/)
+
+Next, install Mollytime's required dependencies via apt like so:
+
+```
+sudo apt-get install python3-dev python3-venv clang-20 lldb-20 lld-20 clangd-20 libc++-20-dev cmake
+```
+
+Now we need to build SDL3 and SDL3_ttf from source.  For the sake of copy-and-paste without reading,
+these instructions will have you make a folder called `science` in your home folder, which will
+contain the SDL build source trees as well as Mollytime, but feel free to use your own filing
+system if you're the sort that likes to read all this text.
+
+```
+cd ~
+mkdir science
+cd science
+git clone https://github.com/libsdl-org/SDL
+git clone https://github.com/libsdl-org/SDL_ttf
+git clone https://github.com/Aeva/mollytime
+```
+
+Note that we're drinking from the root branch for all three.  These should generally be pretty stable,
+but you may encounter bugs.  Assuming all went well, let's build these:
+
+```
+cd ~/science/SDL
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DSDL_X11_XSCRNSAVER=OFF ..
+cmake --build . --config Release --parallel
+sudo cmake --install . --config Release
+```
+
+If all goes well, SDL3 will build without issue.  The last command installs it somewhere our
+build system can find it.  Assuming this was successful, now let's do the same for SDL3_ttf:
+
+```
+cd ~/science/SDL_ttf
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release --parallel
+sudo cmake --install . --config Release
+```
+
+If that was successful, we should be able to build Mollytime now.
+
+```
+cd ~/science/mollytime
+python -m venv venv
+source venv/bin/activate
+python mollybuild.py setup release linux-clang-20
+```
+
+From here, you can run Mollytime by running `python -m mollytime` while your venv is active.

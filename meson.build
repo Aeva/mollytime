@@ -49,6 +49,19 @@ elif compiler.get_argument_syntax() == 'msvc'
 endif
 
 # ---
+# Force libc++ when compiling on Linux
+if compiler.get_id() == 'clang'
+    # NOTE: according to https://mesonbuild.com/Reference-tables.html#compiler-ids,
+    # compiler.get_id() probably returns "clang-cl" for Windows clang, so branching again
+    # on the build machine target is probably not necessary, but this (hopefully) avoids
+    # regressing the Windows build until it can be tested properly.
+    if build_machine.system() != 'windows'
+        add_project_arguments(['-stdlib=libc++'], language : 'cpp')
+        add_project_link_arguments(['-stdlib=libc++'], language : 'cpp')
+    endif
+endif
+
+# ---
 # Python
 
 python_install = py.find_installation(pure : false)
@@ -218,10 +231,8 @@ python_files = files(
     'mollytime' / 'screens' / '__init__.py',
     'mollytime' / 'screens' / 'calc.py',
     'mollytime' / 'screens' / 'common.py',
-    'mollytime' / 'screens' / 'connect.py',
     'mollytime' / 'screens' / 'inspect.py',
     'mollytime' / 'screens' / 'pick_and_place.py',
-    'mollytime' / 'screens' / 'scope.py',
     'mollytime' / 'screens' / 'select.py'
 )
 

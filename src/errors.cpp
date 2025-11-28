@@ -16,6 +16,7 @@
 #include "errors.h"
 
 #include <stdexcept>
+#include <string>
 
 #ifdef ENABLE_STACK_TRACES
 #include <sstream>

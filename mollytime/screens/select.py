@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from .common import *
-from .connect import connect_screen
 
 from .. import mollytime
 

@@ -25,12 +25,13 @@
 
 // 2451545 is the Julian date for January 1, 2000 12:00:00.0 UT1.
 static const double J2000 = 2451545.0;
-static const std::chrono::utc_clock::time_point JulianEpochUtc = ([]()
+#if 0
+static const std::chrono::tai_clock::time_point JulianEpochUtc = ([]()
 {
     // C++ is a beautiful language.
     std::istringstream DateString{"2000:01:01:12:00:00"};
     DateString.imbue(std::locale("en_US.utf-8"));
-    std::chrono::utc_clock::time_point TimePoint;
+    std::chrono::tai_clock::time_point TimePoint;
     DateString >> std::chrono::parse("%Y:%m:%d:%H:%M:%S", TimePoint);
     return TimePoint;
 })();
@@ -38,8 +39,8 @@ static const std::chrono::utc_clock::time_point JulianEpochUtc = ([]()
 
 double GetCurrentJulianDate()
 {
-    std::chrono::utc_clock::time_point AnchorUtc = std::chrono::utc_clock::now();
-    std::chrono::utc_clock::duration TimeSinceEpoch(AnchorUtc - JulianEpochUtc);
+    std::chrono::tai_clock::time_point AnchorUtc = std::chrono::tai_clock::now();
+    std::chrono::tai_clock::duration TimeSinceEpoch(AnchorUtc - JulianEpochUtc);
     double Days = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<86400>>>(TimeSinceEpoch).count();
 
     // https://crf.usno.navy.mil/ut1-utc claims that UTC and UT1 are only
@@ -50,7 +51,13 @@ double GetCurrentJulianDate()
 
     // See also: https://aa.usno.navy.mil/data/JulianDate
 }
-
+#else
+double GetCurrentJulianDate()
+{
+    // Time is broken :sunglasses:
+    return J2000;
+}
+#endif
 
 static constexpr double ToRadians = std::numbers::pi / 180.0;
 static constexpr double ToDegrees = 180.0 / std::numbers::pi;
