@@ -33,13 +33,12 @@ void RealTimeAudioThread::ResetFramePressure()
     FramePressure.resize(100, 0.0f);
     FramePressureIndex = 0;
     FramePressureCount = 0;
-    TemporalPressure = 0.0f;
+    BufferState->TemporalPressure.store(0.0f);
 }
 
 
 void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 {
-    TimePoint FrameStart = Clock::now();
     {
         TRACEABLE_LOCK_GUARD(BufferState->Mutex);
         if (BufferState->PendingProgram)
@@ -48,7 +47,6 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
             BufferState->PendingProgram = nullptr;
             ResetFramePressure();
         }
-        BufferState->TemporalPressure.store(TemporalPressure);
 
         // Hook for gathering the audio buffer read and write pointers:
         BeginFrame(Frame);
@@ -60,11 +58,9 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
         Midi::ProcessEvents(Program.get());
     }
 
-    TimePoint EvalStart;
-    TimePoint EvalEnd;
+    TimePoint EvalStart = Clock::now();
     if (Program)
     {
-        EvalStart = Clock::now();
         for (int SampleIndex = 0; SampleIndex < Frame.SampleCount; ++SampleIndex)
         {
 #if MIDI_ALSA
@@ -90,11 +86,9 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
                 WritePtr[SampleIndex] = float(*ReadPtr);
             }
         }
-        EvalEnd = Clock::now();
     }
     else
     {
-        EvalStart = Clock::now();
         for (int SampleIndex = 0; SampleIndex < Frame.SampleCount; ++SampleIndex)
         {
             Frame.OutLeft[SampleIndex] = 0.0f;
@@ -107,33 +101,33 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
                 WritePtr[SampleIndex] = 0.0f;
             }
         }
-        EvalEnd = Clock::now();
     }
+    TimePoint EvalEnd = Clock::now();
 
     // Hook for notifying the audio API that the data is ready, should it require such a thing.
     EndFrame(Frame);
 
-    Duration EvalDelta = Duration(EvalEnd - EvalStart);
-    Duration FrameDelta = Duration(FrameStart - LastFrameStart);
-
-    FramePressure[FramePressureIndex++] = float(EvalDelta.count()) / float(FrameDelta.count());
+    const std::chrono::duration<double> EvalDelta = EvalEnd - EvalStart;
+    const std::chrono::duration<double> Interval(SampleInterval * double(Frame.SampleCount));
+    const double Pressure = EvalDelta.count() / Interval.count();
+    FramePressure[FramePressureIndex++] = float(Pressure);
 
     FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
     FramePressureIndex %= FramePressure.size();
     if (Program && FramePressureCount == static_cast<int>(FramePressure.size()))
     {
-        TemporalPressure = FramePressure[0];
+        float TemporalPressure = FramePressure[0];
         for (int Index = 1; Index < FramePressureCount; ++Index)
         {
             TemporalPressure += FramePressure[Index];
         }
         TemporalPressure /= float(FramePressureCount);
+        BufferState->TemporalPressure.store(TemporalPressure);
     }
     else
     {
-        TemporalPressure = 0.0f;
+        BufferState->TemporalPressure.store(0.0f);
     }
-    LastFrameStart = FrameStart;
 }
 
 

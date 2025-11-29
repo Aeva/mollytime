@@ -26,7 +26,6 @@
 
 using Clock = std::chrono::steady_clock;
 using TimePoint = std::chrono::time_point<Clock>;
-using Duration = Clock::duration;
 
 
 struct AudioThreadShared
@@ -55,9 +54,7 @@ protected:
     double SampleInterval = 0.0;
 
     ScratchSharedPtr Program = nullptr;
-    TimePoint LastFrameStart;
 
-    float TemporalPressure = 0.0f;
     std::vector<float> FramePressure;
     int FramePressureIndex = 0;
     int FramePressureCount = 0;
