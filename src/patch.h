@@ -92,6 +92,7 @@ enum class OpCode : uint32_t
     TPTSVF_NOTCH,
     ADSR,
     QNTZ,
+    ISQN,
     RSQN,
     GATE,
     NOTE,

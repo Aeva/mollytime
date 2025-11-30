@@ -197,6 +197,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("TPTSVF_NOTCH", OpCode::TPTSVF_NOTCH)
 		.value("ADSR", OpCode::ADSR)
 		.value("QNTZ", OpCode::QNTZ)
+		.value("ISQN", OpCode::ISQN)
 		.value("RSQN", OpCode::RSQN)
 		.value("GATE", OpCode::GATE)
 		.value("NOTE", OpCode::NOTE)

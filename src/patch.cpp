@@ -1405,6 +1405,64 @@ struct QuantizeThunk : public InstructionThunk
 };
 
 
+struct InputSequenceThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<3, 2, 3> Info = { OpCode::ISQN, "input\nseq", {"clock", "input", "restart"}, {"#", "complete"} };
+    InstructionRegisters<3, 2, 3> Registers;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
+        std::vector<RunningStateSharedPtr>& InClock = Registers.Input[0];
+        std::vector<RunningStateSharedPtr>& InSequence = Registers.Input[1];
+        std::vector<RunningStateSharedPtr>& InRestart = Registers.Input[2];
+        RunningStateSharedPtr& OutValue = Registers.Output[0];
+        RunningStateSharedPtr& OutComplete = Registers.Output[1];
+        RunningStateSharedPtr& LastClock = Registers.Closure[0];
+        RunningStateSharedPtr& LastRestart = Registers.Closure[1];
+        RunningStateSharedPtr& Cursor = Registers.Closure[2];
+
+        double Restart = Combine(CombinerAdd, InRestart, 0.0);
+        double PreviousRestart = LastRestart->Get();
+        LastRestart->Set(Restart);
+
+        if (PreviousRestart <= 0.0 && Restart >= 1.0)
+        {
+            Cursor->Set(0.0);
+        }
+
+        double Clock = Combine(CombinerAdd, InClock, 0.0);
+        double PreviousClock = LastClock->Get();
+        LastClock->Set(Clock);
+
+        if (PreviousClock <= 0.0 && Clock >= 1.0)
+        {
+            // Modulating the index happens at the start of this thunk, because the patch may
+            // have been modified between calls, which could result in the sequence changing
+            // length.
+            const int Period = InSequence.size();
+            int Index = int(Cursor->Get()) % Period;
+            OutValue->Set(InSequence[Index]->Get());
+
+            // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
+            // Patches that use this signal to switch between sequences will want to add an extra
+            // step to each sequence using this signal.  Generally this extra note will never be
+            // heard if this pulse triggers a flip flop to switch to another sequence, because even
+            // if you pause the clock on this sequence, it'll usually pulse again when you switch
+            // back to this sequence.  In other words, the way of constructing a patch that chains
+            // sequences that was most obvious to me always skips the last note in each sequence.
+            // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
+            OutComplete->Set(Index == Period - 1);
+
+            Index = (Index + 1);
+            Cursor->Set(double(Index));
+        }
+    }
+
+    virtual ~InputSequenceThunk() {};
+};
+
+
 struct RandomSequenceThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<3, 2, 4> Info = { OpCode::RSQN, "seed\nseq", {"clock", "period", "seed"}, {"#", "complete"} };
@@ -1418,12 +1476,12 @@ struct RandomSequenceThunk : public InstructionThunk
         std::vector<RunningStateSharedPtr>& InClock = Registers.Input[0];
         std::vector<RunningStateSharedPtr>& InPeriod = Registers.Input[1];
         std::vector<RunningStateSharedPtr>& InSeed = Registers.Input[2];
+        RunningStateSharedPtr& OutValue = Registers.Output[0];
+        RunningStateSharedPtr& OutComplete = Registers.Output[1];
         RunningStateSharedPtr& LastClock = Registers.Closure[0];
         RunningStateSharedPtr& LastPeriod = Registers.Closure[1];
         RunningStateSharedPtr& LastSeed = Registers.Closure[2];
         RunningStateSharedPtr& Cursor = Registers.Closure[3];
-        RunningStateSharedPtr& OutValue = Registers.Output[0];
-        RunningStateSharedPtr& OutComplete = Registers.Output[1];
 
         double Clock = Combine(CombinerAdd, InClock, 0.0);
         double Previous = LastClock->Get();
@@ -1880,6 +1938,7 @@ struct SymbolInfo
         SetBasic<NotchThunk>();
         SetBasic<AdsrThunk>();
         SetBasic<QuantizeThunk>();
+        SetBasic<InputSequenceThunk>();
         SetBasic<RandomSequenceThunk>();
         SetBasic<MidiToHzThunk>();
         SetBasic<LoudnessFudgeThunk>();
