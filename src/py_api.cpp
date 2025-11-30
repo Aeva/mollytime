@@ -385,6 +385,7 @@ PYBIND11_MODULE(mollytime, m) {
         .def("set_caption", &Display::SetCaption)
         .def("set_icon", &Display::SetIcon)
         .def("set_mode", &Display::SetMode, py::arg("display"), py::arg("size"), py::arg("flags"))
+        .def("get_window_surface", &Display::GetWindowSurface)
         .def("show_load_dialog", &Display::ShowLoadDialog)
         .def("show_save_dialog", &Display::ShowSaveDialog)
         .def("get_load_dialog_result", &Display::GetLoadDialogResult)

@@ -100,7 +100,8 @@ def main():
     # on Windows and X11 Linux.  Wayland doesn't strictly need it, but it doesn't hurt.
     window_flags = mollytime.display.FULLSCREEN | mollytime.display.BORDERLESS
 
-    screen = mollytime.display.set_mode(size=unscaled_display_size, display=display_index, flags=window_flags)
+    mollytime.display.set_mode(size=unscaled_display_size, display=display_index, flags=window_flags)
+    screen = mollytime.display.get_window_surface()
 
     dpi = None
 

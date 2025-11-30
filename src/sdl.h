@@ -257,7 +257,9 @@ namespace Display
     void SetIcon(const Draw::Texture& Texture);
 
     // Returns a Texture representing the new window surface.
-    Draw::Texture SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags);
+    void SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags);
+
+    Draw::Texture GetWindowSurface();
     
     // Internal
     SDL_Window* GetWindow();

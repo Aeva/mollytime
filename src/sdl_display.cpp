@@ -141,7 +141,7 @@ namespace Display
         SDL_DestroySurface(Surface);
     }
 
-    Draw::Texture SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags)
+    void SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags)
     {
         assert(Window != nullptr);
 
@@ -180,8 +180,6 @@ namespace Display
                     {
                         throw std::runtime_error(std::format("Failed to set fullscreen mode. SDL error: {}", SDL_GetError()));
                     }
-
-                    return Draw::Texture(Window, Width, Height);
                 }
             }
 
@@ -209,8 +207,19 @@ namespace Display
             {
                 throw std::runtime_error(std::format("Failed to set window position. SDL error: {}", SDL_GetError()));
             }
-            return Draw::Texture(Window, Width, Height);
         }
+    }
+
+    Draw::Texture GetWindowSurface()
+    {
+        assert(Window != nullptr);
+        int Width;
+        int Height;
+        if (!SDL_GetWindowSizeInPixels(Window, &Width, &Height))
+        {
+            throw std::runtime_error(std::format("Failed to get window size. SDL error: {}", SDL_GetError()));
+        }
+        return Draw::Texture(Window, Width, Height);
     }
 
     SDL_Window* GetWindow()
