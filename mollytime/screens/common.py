@@ -34,7 +34,7 @@ temporal_pressure_precent = ""
 
 
 class program_card:
-    def __init__(self, screen, dpi):
+    def __init__(self, dpi):
         self.focus_x = 0
         self.focus_y = 0
 
@@ -95,7 +95,7 @@ class program_card:
         self.selected = []
 
         self.clock = mollytime.time.Clock()
-        self.resize(screen, dpi)
+        self.resize(dpi)
 
     def find_center_of_mass(self, quantized=False):
         center_of_mass = (0, 0)
@@ -383,12 +383,13 @@ class program_card:
         self.draw_touch_points()
         mollytime.draw.flip()
 
-    def resize(self, screen, dpi):
-        self.screen = screen
+    def resize(self, dpi):
+        self.screen = mollytime.draw.get_rendering_surface()
         self.dpi = dpi
 
-        screen_w = screen.get_rect().width
-        screen_h = screen.get_rect().height
+        screen_rect = self.screen.get_rect()
+        screen_w = screen_rect.width
+        screen_h = screen_rect.height
         assert(screen_w > 1)
         assert(screen_h > 1)
 

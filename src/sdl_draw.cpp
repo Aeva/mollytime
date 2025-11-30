@@ -53,12 +53,12 @@ namespace Draw
         }
     }
 
-    Texture::Texture(SDL_Window* Window, int InWidth, int InHeight)
-        : Width(InWidth)
-        , Height(InHeight)
+    Texture::Texture()
     {
-        // SDL_GetWindowSize is claiming the window size is (1, 1) on Linux for some reason,
-        // but we don't really need to call it since the window size is already known.
+        if (!SDL_GetRenderOutputSize(GetRenderer(), &Width, &Height))
+        {
+            throw std::runtime_error(std::format("Failed to get window size. SDL error: {}", SDL_GetError()));
+        }
     }
 
     Texture::Texture(SDL_Surface* Surface)
@@ -338,6 +338,13 @@ namespace Draw
             throw std::runtime_error("Renderer must be initialized first.\n");
         }
         return SDL_GetRendererName(Renderer);
+    }
+
+
+    Texture GetRenderingSurface()
+    {
+        assert(Renderer != nullptr);
+        return Texture();
     }
     
     void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha)

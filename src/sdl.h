@@ -206,7 +206,8 @@ namespace Draw
         int Width, Height;
         
     public:
-        Texture(SDL_Window* Window, int Width, int Height);
+        // When passed no arguments, this allows drawing and blitting on the rendering surface.
+        Texture();
         Texture(SDL_Surface* Surface);
         Texture(int Width, int Height);
         Texture(const Size& Size);
@@ -230,6 +231,7 @@ namespace Draw
     void Init();
     void Flip();
     const std::string_view GetRendererName();
+    Texture GetRenderingSurface();
     
     void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth = 0, float Alpha = 1.0f); // Fills if BorderWidth <= 0
@@ -258,8 +260,6 @@ namespace Display
 
     // Returns a Texture representing the new window surface.
     void SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags);
-
-    Draw::Texture GetWindowSurface();
     
     // Internal
     SDL_Window* GetWindow();

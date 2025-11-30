@@ -210,18 +210,6 @@ namespace Display
         }
     }
 
-    Draw::Texture GetWindowSurface()
-    {
-        assert(Window != nullptr);
-        int Width;
-        int Height;
-        if (!SDL_GetWindowSizeInPixels(Window, &Width, &Height))
-        {
-            throw std::runtime_error(std::format("Failed to get window size. SDL error: {}", SDL_GetError()));
-        }
-        return Draw::Texture(Window, Width, Height);
-    }
-
     SDL_Window* GetWindow()
     {
         assert(Window != nullptr);

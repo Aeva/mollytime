@@ -101,7 +101,6 @@ def main():
     window_flags = mollytime.display.FULLSCREEN | mollytime.display.BORDERLESS
 
     mollytime.display.set_mode(size=unscaled_display_size, display=display_index, flags=window_flags)
-    screen = mollytime.display.get_window_surface()
 
     dpi = None
 
@@ -155,7 +154,7 @@ def main():
 
     dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
-    editor = program_card(screen, dpi)
+    editor = program_card(dpi)
     ui = inspect_screen(editor)
 
     mollytime.shutdown_audio()
