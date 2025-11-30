@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cassert>
 #include <stdexcept>
 #include <random>
 #include <format>
@@ -1841,6 +1842,7 @@ struct SymbolInfo
         Set(OpCode::IN, "in", {}, {"in"});
         Set(OpCode::OUT, "out", {"out"}, {});
         Set(OpCode::AUX, "aux", {"out"}, {});
+        Set(OpCode::CASCADE, "cascade", {"eval\nfirst", "eval\nsecond"}, {"linked"});
 
         SetBasic<SinThunk>();
         SetBasic<SqrThunk>();
@@ -2411,6 +2413,8 @@ ScratchSharedPtr Patch::Compile()
     TRACEABLE_SCOPE;
 
     std::set<TileHandle> BreadCrumbs;
+    std::map<TileHandle, std::vector<PortHandle>> Cascades;
+
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->MidiChannels = MidiChannels;
     Program->OutputProbe = OutputProbe;
@@ -2456,7 +2460,35 @@ ScratchSharedPtr Patch::Compile()
             }
         }
 
-        if (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE)
+        if (Symbol == OpCode::CASCADE)
+        {
+            // Cascade tiles only build input lists for other tiles and do not emit any thunks.
+            auto Result = Cascades.try_emplace(Tile);
+            if (Result.second)
+            {
+                std::vector<PortHandle>& Sequence = (Result.first->second);
+                for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
+                {
+                    PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
+                    for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
+                    {
+                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
+                        OpCode ConnectedSymbol = GetTileSymbol(ConnectedTile);
+                        if (ConnectedSymbol == OpCode::CASCADE)
+                        {
+                            std::vector<PortHandle>& Append = Cascades.at(ConnectedTile);
+                            Sequence.insert(Sequence.end(), Append.cbegin(), Append.cend());
+                        }
+                        else
+                        {
+                            Sequence.push_back(ConnectedOutput);
+                        }
+                    }
+                }
+            }
+            return nullptr;
+        }
+        else if (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE)
         {
             // The output tile does not have any specific behavior, but may emit
             // an implicit add.
@@ -2497,7 +2529,19 @@ ScratchSharedPtr Patch::Compile()
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
                 for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
                 {
-                    PortInputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
+                    OpCode ConnectedSymbol = GetTileSymbol(ConnectedTile);
+                    if (ConnectedSymbol == OpCode::CASCADE)
+                    {
+                        for (PortHandle ForwardedOutput : Cascades.at(ConnectedTile))
+                        {
+                            PortInputs.push_back(ActiveOutputs.at(ForwardedOutput));
+                        }
+                    }
+                    else
+                    {
+                        PortInputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                    }
                 }
             }
 

@@ -46,7 +46,8 @@ using WireHandle = std::tuple<PortHandle, PortHandle>;
 
 enum class OpCode : uint32_t
 {
-    CONST = 0,
+    CASCADE = 0,
+    CONST,
     SCOPE,
     IN,
     OUT,
