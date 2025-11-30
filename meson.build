@@ -222,6 +222,7 @@ python_files = files(
     'mollytime' / '__init__.py',
     'mollytime' / '__main__.py',
     'mollytime' / 'colors.py',
+    'mollytime' / 'dpi.py',
     'mollytime' / 'fonts.py',
     'mollytime' / 'more_math.py',
     'mollytime' / 'patterns.py',
