@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_keycode.h>
 
 struct ColorPoint;
 
@@ -109,7 +110,9 @@ namespace Events
     enum class KeyCode : uint32_t
     {
         // From SDL_keycode.h
-        Escape = 0x0000001bu    /**< '\x1B' */
+        Escape  = SDLK_ESCAPE,
+        F       = SDLK_F,
+        F11     = SDLK_F11,
     };
 
     enum class MouseButton : uint32_t
@@ -264,7 +267,7 @@ namespace Display
         Borderless = (1 << 1)
     };
     
-    void Init();
+    void Init(bool ForceFullscreen);
     
     int GetCurrentDisplayIndex();
     std::vector<Size> GetDesktopSizes();
@@ -273,8 +276,8 @@ namespace Display
     void SetCaption(const std::string_view& Title);
     void SetIcon(const Draw::Texture& Texture);
 
-    // Returns a Texture representing the new window surface.
-    void SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags);
+    void ToggleFullscreen();
+    float GetResolutionScale();
     
     // Internal
     SDL_Window* GetWindow();

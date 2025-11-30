@@ -548,6 +548,14 @@ class editor_screen:
 
             self.draw(editor)
 
+    def toggle_fullscreen(self, editor):
+        mollytime.display.toggle_fullscreen()
+
+    def handle_resize_event(self, editor, event):
+        self.reset_touch_tracker()
+        self.force_redraw = True
+        editor.resize()
+
     def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):
         inner_w = (editor.play_area.viewport.w // editor.grid_size) * editor.grid_size
         inner_h = (editor.play_area.viewport.h // editor.grid_size) * editor.grid_size
@@ -692,10 +700,16 @@ class editor_screen:
     @profile_function("process_events")
     def process_events(self, editor):
         for event in mollytime.events.get():
-            if (event.type == mollytime.events.KEYDOWN and event.key.key == mollytime.events.K_ESCAPE):
+            if event.type == mollytime.events.KEYDOWN and event.key.key == mollytime.events.K_ESCAPE:
                self.handle_escape(editor)
 
-            if event.type == mollytime.events.MOUSEMOTION and (abs(event.motion.rel[0]) > 0 or abs(event.motion.rel[1]) > 0):
+            elif event.type == mollytime.events.KEYDOWN and event.key.key in (mollytime.events.K_F, mollytime.events.K_F11):
+               self.toggle_fullscreen(editor)
+
+            elif event.type == mollytime.events.WINDOWRESIZE or event.type == mollytime.events.PIXELSIZECHANGED:
+                self.handle_resize_event(editor, event)
+
+            elif event.type == mollytime.events.MOUSEMOTION and (abs(event.motion.rel[0]) > 0 or abs(event.motion.rel[1]) > 0):
                 self.on_move(editor, event.motion.pos, event)
 
             elif event.type == mollytime.events.MOUSEBUTTONDOWN and event.button.button == mollytime.events.BUTTON_LEFT:

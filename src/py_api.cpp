@@ -324,6 +324,8 @@ PYBIND11_MODULE(mollytime, m) {
     
     py::native_enum<Events::KeyCode>(events, "KeyCode", "enum.IntFlag")
         .value("K_ESCAPE", Events::KeyCode::Escape)
+        .value("K_F", Events::KeyCode::F)
+        .value("K_F11", Events::KeyCode::F11)
         .export_values()
         .finalize();
     
@@ -388,13 +390,14 @@ PYBIND11_MODULE(mollytime, m) {
         .finalize();
     
     display
-        .def("init", &Display::Init)
+        .def("init", &Display::Init, py::arg("force_fullscreen"))
         .def("get_current_display_index", &Display::GetCurrentDisplayIndex)
         .def("get_desktop_sizes", &Display::GetDesktopSizes)
         .def("list_modes", &Display::ListModes, py::arg("display"))
         .def("set_caption", &Display::SetCaption)
         .def("set_icon", &Display::SetIcon)
-        .def("set_mode", &Display::SetMode, py::arg("display"), py::arg("size"), py::arg("flags"))
+        .def("toggle_fullscreen", &Display::ToggleFullscreen)
+        .def("get_resolution_scale", &Display::GetResolutionScale)
         .def("show_load_dialog", &Display::ShowLoadDialog)
         .def("show_save_dialog", &Display::ShowSaveDialog)
         .def("get_load_dialog_result", &Display::GetLoadDialogResult)

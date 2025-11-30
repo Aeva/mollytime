@@ -38,7 +38,7 @@ def main():
 
     mollytime.init_midi()
     mollytime.init_audio(48000)
-    mollytime.display.init()
+    mollytime.display.init(force_fullscreen=True) # TODO make this a commandline flag that's off by default
     mollytime.draw.init()
     mollytime.font.init()
 
@@ -67,19 +67,8 @@ def main():
     mollytime.display.set_icon(program_icon.surface)
     mollytime.display.set_caption("mollytime")
 
-    display_index_arg, vertical_inches_arg = (sys.argv[1:] + [None, None])[:2]
-    display_index = 0
+    vertical_inches_arg = (sys.argv[1:] + [None])[0]
     vertical_inches = None
-
-    sizes = mollytime.display.get_desktop_sizes()
-
-    if display_index_arg is not None:
-        try:
-            override_display_index = int(display_index_arg)
-            assert(override_display_index > -1 and override_display_index < len(sizes))
-            display_index = override_display_index
-        except:
-            print(f"\"{display_index_arg}\" is not a valid display index.  Defaulting to \"{display_index}\".")
 
     if vertical_inches_arg is not None:
         try:
@@ -88,15 +77,6 @@ def main():
             vertical_inches = override_vertical_inches
         except:
             print(f"\"{vertical_inches_arg}\" is not a valid vertical distance.  Defaulting to \"{vertical_inches}\".")
-
-    scaled_display_size = sizes[display_index]
-    unscaled_display_size = mollytime.display.list_modes(display=display_index)[0]
-
-    # The BORDERLESS parameter is needed for borderless fullscreen and to prevent display mode setting
-    # on Windows and X11 Linux.  Wayland doesn't strictly need it, but it doesn't hurt.
-    window_flags = mollytime.display.FULLSCREEN | mollytime.display.BORDERLESS
-
-    mollytime.display.set_mode(size=unscaled_display_size, display=display_index, flags=window_flags)
 
     # The rendering surface doesn't get created right away on Linux (and possibly other platforms).
     # This code ensures that it is fully created before we advance to creating the UI.

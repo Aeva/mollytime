@@ -26,10 +26,28 @@ def calculate_dpi(vertical_inches=None):
     scaled_display_size = sizes[display_index]
     unscaled_display_size = mollytime.display.list_modes(display=display_index)[0]
 
+    # TODO: SDL_GetWindowDisplayScale, at lesat in the version of SDL3 that I presently have, does
+    # not correctly support fractional resolution scaling on x11, and instead rounds up.  Likewise,
+    # the scaled_display_size and unscaled_display_size sizes above are the same indicating that
+    # it rounds down for those.  Since we determine our own DPI and provide a way to indirectly
+    # override it, we will ignore the resolution scale for simplicity's sake, though it would
+    # be nice to use where it is supported correctly.
+    if False:
+        resolution_scale = mollytime.display.get_resolution_scale()
+        print(f"calculated resolution scale: {scaled_display_size[0] / unscaled_display_size[0]}")
+        print(f"reported resolution scale: {resolution_scale}")
+
+    unscaled_render_rect = mollytime.draw.get_rendering_surface().get_rect()
+    unscaled_render_size = (unscaled_render_rect.width, unscaled_render_rect.height)
+
+    minimum_vertical_inches = 7
+    minimum_dpi = max(480 // minimum_vertical_inches, 16)
+    maximum_dpi = max(minimum_dpi, int(unscaled_render_size[1] / minimum_vertical_inches))
+
     dpi = None
 
     if vertical_inches is None:
-        vertical_inches = 7.5
+        vertical_inches = minimum_vertical_inches
 
         if platform.system() == "Linux":
             xrandr_dpi = None
@@ -76,10 +94,11 @@ def calculate_dpi(vertical_inches=None):
         pass
 
     if dpi is None:
-        in_y = vertical_inches
+        in_y = max(minimum_vertical_inches, vertical_inches)
         res_y = min(scaled_display_size)
         dpi = round(res_y / in_y)
         #print(f"DPI assuming smallest physical screen dimension is {in_y} inches: {dpi} dpi")
 
-    return int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
-
+    # TODO System resolution scale is assumed to be 1:1 at the moment, as we do our own DPI calculation.  See note above.
+    #dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
+    return min(max(dpi, minimum_dpi), maximum_dpi)

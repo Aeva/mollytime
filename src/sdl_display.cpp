@@ -16,39 +16,62 @@ namespace Display
 {
     static SDL_Window* Window;
 
-    static std::span<const SDL_DisplayID> GetDisplayIds()
+    static int GetDisplayCount()
     {
         int DisplayCount;
-        const SDL_DisplayID* DisplayIdPtr = SDL_GetDisplays(&DisplayCount);
-        if(DisplayIdPtr == nullptr)
+        SDL_DisplayID* DisplayIdPtr = SDL_GetDisplays(&DisplayCount);
+        if (DisplayIdPtr == nullptr)
         {
             throw std::runtime_error(std::format("Failed to get displays. SDL error: {}", SDL_GetError()));
         }
-        if(DisplayCount < 1)
+        SDL_free(DisplayIdPtr);
+        return std::max(0, DisplayCount);
+    }
+
+    static std::vector<SDL_DisplayID> GetDisplayIds()
+    {
+        int DisplayCount;
+        SDL_DisplayID* DisplayIdPtr = SDL_GetDisplays(&DisplayCount);
+        if (DisplayIdPtr == nullptr)
+        {
+            throw std::runtime_error(std::format("Failed to get displays. SDL error: {}", SDL_GetError()));
+        }
+        if ( DisplayCount < 1)
         {
             throw std::runtime_error("No displays found.");
         }
-
-        return std::span<const SDL_DisplayID>(DisplayIdPtr, DisplayCount);
+        std::vector<SDL_DisplayID> DisplayIDs(DisplayCount);
+        for (int DisplayIndex = 0; DisplayIndex < DisplayCount; ++DisplayIndex)
+        {
+            DisplayIDs[DisplayIndex] = DisplayIdPtr[DisplayIndex];
+        }
+        SDL_free(DisplayIdPtr);
+        return DisplayIDs;
     }
 
-    static std::span<SDL_DisplayMode*> GetDisplayModes(SDL_DisplayID DisplayId)
+    static std::vector<SDL_DisplayMode*> GetDisplayModes(SDL_DisplayID DisplayId)
     {
         int DisplayModeCount;
         SDL_DisplayMode** DisplayModesPtr = SDL_GetFullscreenDisplayModes(DisplayId, &DisplayModeCount);
-        if(DisplayModesPtr == nullptr)
+        if (DisplayModesPtr == nullptr)
         {
             throw std::runtime_error(std::format("Failed to get display mode. SDL error: {}", SDL_GetError()));
         }
-        if(DisplayModeCount < 1)
+        if (DisplayModeCount < 1)
         {
             throw std::runtime_error("No display modes found.");
         }
-
-        return std::span<SDL_DisplayMode*>(DisplayModesPtr, DisplayModeCount);
+        std::vector<SDL_DisplayMode*> DisplayModes(DisplayModeCount);
+        for (int DisplayModeIndex = 0; DisplayModeIndex < DisplayModeCount; ++DisplayModeIndex)
+        {
+            assert(DisplayModesPtr[DisplayModeIndex] != nullptr);
+            DisplayModes[DisplayModeIndex] = DisplayModesPtr[DisplayModeIndex];
+        }
+        SDL_free(DisplayModesPtr);
+        return DisplayModes;
     }
 
-    void Init()
+    void Init(bool ForceFullscreen)
     {
         SDL_SetHint(SDL_HINT_APP_ID, "mollytime");
         SDL_SetHint(SDL_HINT_APP_NAME, "mollytime");
@@ -62,6 +85,7 @@ namespace Display
         SDL_SetEventEnabled(SDL_EVENT_PEN_DOWN, true);
         SDL_SetEventEnabled(SDL_EVENT_PEN_UP, true);
         SDL_SetEventEnabled(SDL_EVENT_PEN_MOTION, true);
+        const char* WindowTitle = "mollytime";
 
         if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR))
         {
@@ -73,16 +97,45 @@ namespace Display
             SDL_DestroyWindow(Window);
         }
 
-        Window = SDL_CreateWindow("", 0, 0, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
+        int WindowFlags = SDL_WINDOW_RESIZABLE;
+        const bool StartFullscreened = GetDisplayCount() < 2 || ForceFullscreen;
+        if (StartFullscreened)
+        {
+            WindowFlags |= SDL_WINDOW_FULLSCREEN;
+        }
+
+        // Start in windowed mode.
+        int InitialWidth = 640;
+        int InitialHeight = 480;
+        {
+            SDL_DisplayID PrimaryDisplayID = SDL_GetPrimaryDisplay();
+            SDL_Rect PrimaryDisplayRect;
+            if (SDL_GetDisplayBounds(PrimaryDisplayID, &PrimaryDisplayRect))
+            {
+                int Smallest = std::min(PrimaryDisplayRect.w, PrimaryDisplayRect.h);
+                int Margin = int(float(Smallest) * .15f);
+                InitialWidth = std::max(InitialWidth, PrimaryDisplayRect.w - Margin);
+                InitialHeight = std::max(InitialHeight, PrimaryDisplayRect.h - Margin);
+            }
+        }
+        Window = SDL_CreateWindow(WindowTitle, InitialWidth, InitialHeight, WindowFlags);
+
         if (Window == nullptr)
         {
             throw std::runtime_error(std::format("Failed to create window. SDL error: {}", SDL_GetError()));
+        }
+        else
+        {
+            if (!SDL_SetWindowMinimumSize(Window, 320, 240))
+            {
+                throw std::runtime_error(std::format("Failed to set minimum window size to 320x240. SDL error: {}", SDL_GetError()));
+            }
         }
     }
 
     int GetCurrentDisplayIndex()
     {
-        const std::span<const SDL_DisplayID> DisplayIds = GetDisplayIds();
+        const std::vector<SDL_DisplayID> DisplayIds = GetDisplayIds();
         const SDL_DisplayID CurrentDisplayId = SDL_GetDisplayForWindow(Window);
         int DisplayIndex = 0;
         for (const SDL_DisplayID DisplayID : DisplayIds)
@@ -101,7 +154,7 @@ namespace Display
 
     std::vector<Size> GetDesktopSizes()
     {
-        const std::span<const SDL_DisplayID> DisplayIds = GetDisplayIds();
+        const std::vector<SDL_DisplayID> DisplayIds = GetDisplayIds();
 
         std::vector<Size> Sizes;
         for (const SDL_DisplayID& ID : DisplayIds)
@@ -120,7 +173,7 @@ namespace Display
 
     std::vector<Size> ListModes(int DisplayIndex)
     {
-        const std::span<const SDL_DisplayID> DisplayIds = GetDisplayIds();
+        const std::vector<SDL_DisplayID> DisplayIds = GetDisplayIds();
         if (DisplayIndex < 0 || DisplayIndex >= std::ssize(DisplayIds))
         {
             // std::span doesn't have bounds-checked `.at()` until C++26...
@@ -128,7 +181,7 @@ namespace Display
         }
 
         const SDL_DisplayID DisplayId = DisplayIds[DisplayIndex];
-        const std::span<SDL_DisplayMode*> DisplayModes = GetDisplayModes(DisplayId);
+        const std::vector<SDL_DisplayMode*> DisplayModes = GetDisplayModes(DisplayId);
 
         std::vector<Size> Sizes;
         for(SDL_DisplayMode* Mode : DisplayModes)
@@ -160,73 +213,42 @@ namespace Display
         SDL_DestroySurface(Surface);
     }
 
-    void SetMode(int DisplayIndex, const Size& Size, WindowFlags Flags)
+    static bool GetFullscreenState()
     {
         assert(Window != nullptr);
+        SDL_WindowFlags WindowFlags = SDL_GetWindowFlags(Window);
+        return ((WindowFlags & SDL_WINDOW_FULLSCREEN) == SDL_WINDOW_FULLSCREEN);
+    }
 
-        const std::span<const SDL_DisplayID> DisplayIds = GetDisplayIds();
-        if (DisplayIndex < 0 || DisplayIndex >= std::ssize(DisplayIds))
+    void ToggleFullscreen()
+    {
+        assert(Window != nullptr);
+        const bool IsCurrentlyFullscreen = GetFullscreenState();
+        if (IsCurrentlyFullscreen)
         {
-            // std::span doesn't have bounds-checked `.at()` until C++26...
-            throw std::out_of_range(std::format("Display index out of range. Expected >= 0, < {}.", DisplayIds.size()));
-        }
-
-        const auto& [Width, Height] = Size;
-        const bool wants_fullscreen = static_cast<uint32_t>(Flags) & static_cast<uint32_t>(WindowFlags::Fullscreen);
-        const bool wants_borderless = static_cast<uint32_t>(Flags) & static_cast<uint32_t>(WindowFlags::Borderless);
-        
-        const SDL_DisplayID DisplayId = DisplayIds[DisplayIndex];
-        const bool is_exclusive_fullscreen = wants_fullscreen && !wants_borderless;
-
-        // Set exclusive fullscreen mode.
-        if (!SDL_SetWindowFullscreen(Window, is_exclusive_fullscreen))
-        {
-            throw std::runtime_error(std::format("Failed to set fullscreen state. SDL error: {}", SDL_GetError()));
-        }
-
-        // Display mode method changes if we're in exclusive fullscreen.
-        if (is_exclusive_fullscreen)
-        {
-            // Look for an exclusive fullscreen display mode that exactly-matches the requested dimensions.
-            const std::span<SDL_DisplayMode*> DisplayModes = GetDisplayModes(DisplayId);
-            for (SDL_DisplayMode* Mode : DisplayModes)
+            if (!SDL_SetWindowFullscreen(Window, false))
             {
-                assert(Mode != nullptr);
-
-                if(Mode->w == Width && Mode->h == Height)
-                {
-                    if (!SDL_SetWindowFullscreenMode(Window, Mode))
-                    {
-                        throw std::runtime_error(std::format("Failed to set fullscreen mode. SDL error: {}", SDL_GetError()));
-                    }
-                }
+                throw std::runtime_error(std::format("Unable to leave fullscreen. SDL error: {}", SDL_GetError()));
             }
-
-            // No match. This is now the user's problem.
-            throw std::invalid_argument(std::format(
-                "Display index {} doesn't support the requested fullscreen size ({}x{}).",
-                DisplayIndex, Width, Height
-            ));
         }
         else
         {
-            // Borderless windows are normal windows, and can be set to any resolution.
-            if (!SDL_SetWindowBordered(Window, !wants_borderless))
+            if (!SDL_SetWindowFullscreen(Window, true))
             {
-                throw std::runtime_error(std::format("Failed to set window border state. SDL error: {}", SDL_GetError()));
-            }
-            if (!SDL_SetWindowSize(Window, Width, Height))
-            {
-                throw std::runtime_error(std::format("Failed to set window size. SDL error: {}", SDL_GetError()));
-            }
-
-            // Thus, we need to re-center the window after setting resolution.
-            const int CenterPosition = SDL_WINDOWPOS_CENTERED_DISPLAY(DisplayIndex);
-            if (!SDL_SetWindowPosition(Window, CenterPosition, CenterPosition))
-            {
-                throw std::runtime_error(std::format("Failed to set window position. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(std::format("Failed to enter fullscreen. SDL error: {}", SDL_GetError()));
             }
         }
+    }
+
+    float GetResolutionScale()
+    {
+        assert(Window != nullptr);
+        float Scale = SDL_GetWindowDisplayScale(Window);
+        if (Scale <= 0.0f)
+        {
+            throw std::runtime_error(std::format("Unable to determine resolution scale. SDL error: {}", SDL_GetError()));
+        }
+        return Scale;
     }
 
     SDL_Window* GetWindow()
