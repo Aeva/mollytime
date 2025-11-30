@@ -155,13 +155,17 @@ def main():
 
     dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
+    # The rendering surface doesn't get created right away on Linux (and possibly other platforms).
+    # This code ensures that it is fully created before we advance to creating the UI.
     wait_start = time.time()
+    flush = mollytime.events.get()
     while not mollytime.draw.get_renderer_ready():
-        if wait_start - time.time() >= 1:
+        flush = mollytime.events.get()
+        if wait_start - time.time() < 1:
+            time.sleep(0.01)
+        else:
             # the display manager had its chance
             break
-        else:
-            time.sleep(.1)
 
     editor = program_card(dpi)
     ui = inspect_screen(editor)
