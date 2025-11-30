@@ -155,15 +155,13 @@ def main():
 
     dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
 
-    waiting_for_resize = True
     wait_start = time.time()
-    while waiting_for_resize:
-        for event in mollytime.events.get():
-            if event.type in (mollytime.events.WINDOWRESIZE, mollytime.events.PIXELSIZECHANGED):
-                waiting_for_resize = False
-        if wait_start - time.time() >= .5:
+    while not mollytime.draw.get_renderer_ready():
+        if wait_start - time.time() >= 1:
             # the display manager had its chance
             break
+        else:
+            time.sleep(.1)
 
     editor = program_card(dpi)
     ui = inspect_screen(editor)

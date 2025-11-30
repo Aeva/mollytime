@@ -436,6 +436,7 @@ PYBIND11_MODULE(mollytime, m) {
         .def("init", &Draw::Init)
         .def("flip", &Draw::Flip)
         .def("get_renderer_name", &Draw::GetRendererName)
+        .def("get_renderer_ready", &Draw::GetRendererReady)
         .def("get_rendering_surface", &Draw::GetRenderingSurface)
         .def("line", &Draw::DrawLine, py::arg("texture"), py::arg("color"), py::arg("start"), py::arg("end"), py::arg("width") = 1.0f, py::arg("alpha") = 1.0f)
         .def("rect", &Draw::DrawRect, py::arg("texture"), py::arg("color"), py::arg("rect"), py::arg("depth") = 0, py::arg("alpha") = 1.0f)

@@ -57,7 +57,7 @@ namespace Draw
     {
         if (!SDL_GetRenderOutputSize(GetRenderer(), &Width, &Height))
         {
-            throw std::runtime_error(std::format("Failed to get window size. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(std::format("Failed to get renderer output size. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -340,6 +340,17 @@ namespace Draw
         return SDL_GetRendererName(Renderer);
     }
 
+    bool GetRendererReady()
+    {
+        assert(Renderer != nullptr);
+        int Width = 0;
+        int Height = 0;
+        if (!SDL_GetRenderOutputSize(Renderer, &Width, &Height))
+        {
+            throw std::runtime_error(std::format("Failed to get renderer output size. SDL error: {}", SDL_GetError()));
+        }
+        return Width > 1 && Height > 1;
+    }
 
     Texture GetRenderingSurface()
     {

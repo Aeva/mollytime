@@ -244,6 +244,7 @@ namespace Draw
     void Init();
     void Flip();
     const std::string_view GetRendererName();
+    bool GetRendererReady();
     Texture GetRenderingSurface();
     
     void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
