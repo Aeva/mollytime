@@ -66,17 +66,11 @@
 		<tile id="63" symbol="const" x="-4" y="4" value="0.5"/>
 		<tile id="64" symbol="const" x="-6" y="0" value="0.125"/>
 		<tile id="65" symbol="qntz" x="4" y="5"/>
-		<tile id="66" symbol="const" x="1" y="6" value="0.0"/>
-		<tile id="67" symbol="add" x="2" y="6"/>
-		<tile id="68" symbol="add" x="3" y="6"/>
-		<tile id="69" symbol="add" x="4" y="6"/>
-		<tile id="70" symbol="add" x="5" y="6"/>
-		<tile id="71" symbol="add" x="6" y="6"/>
-		<tile id="72" symbol="const" x="3" y="7" value="2.0"/>
-		<tile id="73" symbol="const" x="2" y="7" value="2.0"/>
-		<tile id="74" symbol="const" x="5" y="7" value="1.0"/>
-		<tile id="75" symbol="const" x="4" y="7" value="2.0"/>
-		<tile id="76" symbol="const" x="6" y="7" value="2.0"/>
+		<tile id="72" symbol="const" x="1" y="8" value="2.0"/>
+		<tile id="73" symbol="const" x="0" y="8" value="2.0"/>
+		<tile id="74" symbol="const" x="3" y="8" value="1.0"/>
+		<tile id="75" symbol="const" x="2" y="8" value="2.0"/>
+		<tile id="76" symbol="const" x="4" y="8" value="2.0"/>
 		<tile id="77" symbol="add" x="4" y="4"/>
 		<tile id="78" symbol="mul" x="4" y="3"/>
 		<tile id="79" symbol="const" x="5" y="3" value="29.0"/>
@@ -84,10 +78,8 @@
 		<tile id="81" symbol="midi_hz" x="1" y="2"/>
 		<tile id="82" symbol="mul" x="8" y="1"/>
 		<tile id="83" symbol="const" x="9" y="1" value="0.25"/>
-		<tile id="84" symbol="add" x="7" y="6"/>
-		<tile id="85" symbol="add" x="8" y="6"/>
-		<tile id="86" symbol="const" x="7" y="7" value="2.0"/>
-		<tile id="87" symbol="const" x="8" y="7" value="1.0"/>
+		<tile id="86" symbol="const" x="5" y="8" value="2.0"/>
+		<tile id="87" symbol="const" x="6" y="8" value="1.0"/>
 		<tile id="88" symbol="tape_loop" x="4" y="-1"/>
 		<tile id="89" symbol="const" x="4" y="-2" value="-0.25"/>
 		<tile id="90" symbol="const" x="5" y="-2" value="0.5"/>
@@ -113,74 +105,77 @@
 		<tile id="110" symbol="const" x="1" y="-4" value="1.0"/>
 		<tile id="111" symbol="const" x="0" y="-3" value="0.5"/>
 		<tile id="112" symbol="mul" x="-4" y="-3"/>
-		<tile id="114" symbol="boop" x="3" y="1"/>
-		<tile id="115" symbol="adsr" x="-6" y="-4"/>
-		<tile id="116" symbol="const" x="-7" y="-4" value="60.0"/>
-		<tile id="117" symbol="scope" x="3" y="-3"/>
-		<tile id="118" symbol="mix" x="1" y="-7"/>
-		<tile id="119" symbol="const" x="2" y="-8" value="110.0"/>
-		<tile id="121" symbol="const" x="4" y="-7" value="0.1"/>
-		<tile id="122" symbol="stu" x="2" y="-7"/>
-		<tile id="123" symbol="noi" x="3" y="-7"/>
-		<tile id="124" symbol="mix" x="-4" y="-7"/>
-		<tile id="125" symbol="stu" x="-5" y="-7"/>
-		<tile id="126" symbol="const" x="-4" y="-8" value="2400.0"/>
-		<tile id="127" symbol="const" x="-7" y="-7" value="0.09"/>
-		<tile id="128" symbol="noi" x="-6" y="-7"/>
-		<tile id="134" symbol="flp" x="2" y="1"/>
+		<tile id="113" symbol="boop" x="3" y="1"/>
+		<tile id="114" symbol="adsr" x="-6" y="-4"/>
+		<tile id="115" symbol="const" x="-7" y="-4" value="60.0"/>
+		<tile id="116" symbol="scope" x="3" y="-3"/>
+		<tile id="117" symbol="mix" x="1" y="-7"/>
+		<tile id="118" symbol="const" x="2" y="-8" value="110.0"/>
+		<tile id="119" symbol="const" x="4" y="-7" value="0.1"/>
+		<tile id="120" symbol="stu" x="2" y="-7"/>
+		<tile id="121" symbol="noi" x="3" y="-7"/>
+		<tile id="122" symbol="mix" x="-4" y="-7"/>
+		<tile id="123" symbol="stu" x="-5" y="-7"/>
+		<tile id="124" symbol="const" x="-4" y="-8" value="2400.0"/>
+		<tile id="125" symbol="const" x="-7" y="-7" value="0.09"/>
+		<tile id="126" symbol="noi" x="-6" y="-7"/>
+		<tile id="127" symbol="flp" x="2" y="1"/>
+		<tile id="128" symbol="go" x="4" y="7"/>
+		<tile id="129" symbol="go" x="5" y="7"/>
+		<tile id="130" symbol="go" x="6" y="7"/>
+		<tile id="131" symbol="go" x="3" y="7"/>
+		<tile id="132" symbol="go" x="2" y="7"/>
+		<tile id="133" symbol="go" x="1" y="7"/>
+		<tile id="134" symbol="go" x="0" y="7"/>
 		<wire from="22:0" to="23:1"/>
-		<wire from="115:0" to="112:0"/>
+		<wire from="115:0" to="114:1"/>
 		<wire from="55:0" to="82:0"/>
-		<wire from="30:0" to="124:0"/>
 		<wire from="89:0" to="88:1"/>
 		<wire from="29:0" to="35:2"/>
 		<wire from="60:0" to="21:0"/>
-		<wire from="116:0" to="115:4"/>
-		<wire from="123:0" to="122:0"/>
+		<wire from="126:0" to="123:0"/>
+		<wire from="72:0" to="133:1"/>
+		<wire from="132:0" to="131:0"/>
 		<wire from="24:0" to="21:2"/>
-		<wire from="66:0" to="67:0"/>
 		<wire from="52:0" to="50:0"/>
 		<wire from="6:0" to="5:0"/>
-		<wire from="119:0" to="118:1"/>
 		<wire from="77:0" to="65:0"/>
 		<wire from="20:0" to="18:1"/>
-		<wire from="68:0" to="69:0"/>
 		<wire from="103:0" to="109:2"/>
+		<wire from="113:0" to="127:0"/>
 		<wire from="58:0" to="60:0"/>
 		<wire from="44:0" to="43:0"/>
 		<wire from="42:0" to="43:0"/>
+		<wire from="123:0" to="122:2"/>
+		<wire from="127:0" to="45:0"/>
 		<wire from="45:0" to="94:0"/>
 		<wire from="64:0" to="62:0"/>
 		<wire from="43:0" to="1:0"/>
-		<wire from="71:0" to="84:0"/>
-		<wire from="19:0" to="118:0"/>
-		<wire from="125:0" to="124:2"/>
+		<wire from="131:0" to="128:0"/>
 		<wire from="46:0" to="45:0"/>
+		<wire from="75:0" to="132:1"/>
 		<wire from="90:0" to="88:2"/>
 		<wire from="99:0" to="94:0"/>
 		<wire from="3:0" to="2:0"/>
+		<wire from="124:0" to="122:1"/>
 		<wire from="25:0" to="27:0"/>
-		<wire from="104:0" to="103:4"/>
+		<wire from="86:0" to="129:1"/>
 		<wire from="11:0" to="9:2"/>
 		<wire from="53:0" to="55:0"/>
 		<wire from="102:0" to="13:0"/>
 		<wire from="37:0" to="38:0"/>
-		<wire from="87:0" to="85:0"/>
+		<wire from="104:0" to="103:4"/>
 		<wire from="7:0" to="4:0"/>
-		<wire from="126:0" to="124:1"/>
 		<wire from="16:0" to="17:2"/>
 		<wire from="49:0" to="47:2"/>
 		<wire from="9:0" to="18:0"/>
 		<wire from="57:0" to="53:1"/>
-		<wire from="72:0" to="68:0"/>
+		<wire from="76:0" to="128:1"/>
+		<wire from="128:0" to="129:0"/>
 		<wire from="112:0" to="25:0"/>
 		<wire from="40:0" to="36:1"/>
-		<wire from="85:0" to="65:2"/>
 		<wire from="79:0" to="78:0"/>
-		<wire from="74:0" to="70:0"/>
 		<wire from="96:0" to="95:0"/>
-		<wire from="103:0" to="117:0"/>
-		<wire from="84:0" to="65:2"/>
 		<wire from="91:0" to="45:0"/>
 		<wire from="17:0" to="10:0"/>
 		<wire from="49:0" to="47:4"/>
@@ -188,37 +183,34 @@
 		<wire from="26:0" to="62:0"/>
 		<wire from="98:0" to="97:0"/>
 		<wire from="5:0" to="7:0"/>
-		<wire from="114:0" to="134:0"/>
+		<wire from="134:0" to="133:0"/>
 		<wire from="24:0" to="23:2"/>
 		<wire from="4:0" to="13:0"/>
+		<wire from="115:0" to="114:2"/>
 		<wire from="34:0" to="35:0"/>
+		<wire from="125:0" to="126:0"/>
+		<wire from="74:0" to="131:1"/>
 		<wire from="33:0" to="27:2"/>
-		<wire from="73:0" to="67:0"/>
 		<wire from="27:0" to="34:0"/>
 		<wire from="93:0" to="92:0"/>
 		<wire from="8:0" to="9:0"/>
 		<wire from="23:0" to="2:0"/>
+		<wire from="121:0" to="120:0"/>
 		<wire from="36:0" to="37:0"/>
 		<wire from="103:0" to="45:0"/>
 		<wire from="107:0" to="103:0"/>
 		<wire from="110:0" to="109:0"/>
-		<wire from="127:0" to="128:0"/>
-		<wire from="106:0" to="115:0"/>
-		<wire from="124:0" to="35:1"/>
 		<wire from="82:0" to="52:0"/>
-		<wire from="69:0" to="65:2"/>
-		<wire from="75:0" to="69:0"/>
-		<wire from="122:0" to="118:2"/>
-		<wire from="68:0" to="65:2"/>
 		<wire from="35:0" to="26:0"/>
+		<wire from="130:0" to="65:2"/>
 		<wire from="80:0" to="77:0"/>
 		<wire from="14:0" to="13:0"/>
+		<wire from="119:0" to="121:0"/>
 		<wire from="28:0" to="34:2"/>
 		<wire from="31:0" to="34:1"/>
-		<wire from="116:0" to="115:1"/>
-		<wire from="84:0" to="85:0"/>
-		<wire from="121:0" to="123:0"/>
+		<wire from="133:0" to="132:0"/>
 		<wire from="101:0" to="102:2"/>
+		<wire from="118:0" to="117:1"/>
 		<wire from="50:0" to="51:0"/>
 		<wire from="13:0" to="8:0"/>
 		<wire from="109:0" to="13:0"/>
@@ -227,31 +219,31 @@
 		<wire from="65:0" to="81:0"/>
 		<wire from="95:0" to="97:0"/>
 		<wire from="18:0" to="17:0"/>
-		<wire from="118:0" to="18:1"/>
 		<wire from="26:0" to="25:0"/>
 		<wire from="10:0" to="8:0"/>
-		<wire from="128:0" to="125:0"/>
+		<wire from="19:0" to="117:0"/>
 		<wire from="22:0" to="21:1"/>
 		<wire from="101:0" to="102:4"/>
-		<wire from="70:0" to="71:0"/>
+		<wire from="30:0" to="122:0"/>
+		<wire from="87:0" to="130:1"/>
+		<wire from="120:0" to="117:2"/>
 		<wire from="50:0" to="54:0"/>
 		<wire from="102:0" to="107:0"/>
 		<wire from="14:0" to="99:0"/>
 		<wire from="47:0" to="91:0"/>
-		<wire from="86:0" to="84:0"/>
 		<wire from="81:0" to="46:0"/>
-		<wire from="71:0" to="65:2"/>
+		<wire from="114:0" to="112:0"/>
 		<wire from="13:0" to="112:0"/>
+		<wire from="115:0" to="114:4"/>
 		<wire from="59:0" to="58:0"/>
 		<wire from="39:0" to="37:2"/>
+		<wire from="122:0" to="35:1"/>
 		<wire from="94:0" to="25:0"/>
-		<wire from="67:0" to="65:2"/>
 		<wire from="88:0" to="92:0"/>
-		<wire from="70:0" to="65:2"/>
-		<wire from="66:0" to="65:2"/>
-		<wire from="67:0" to="68:0"/>
+		<wire from="129:0" to="130:0"/>
+		<wire from="73:0" to="134:1"/>
+		<wire from="103:0" to="116:0"/>
 		<wire from="78:0" to="77:0"/>
-		<wire from="76:0" to="71:0"/>
 		<wire from="111:0" to="109:1"/>
 		<wire from="15:0" to="17:1"/>
 		<wire from="21:0" to="23:0"/>
@@ -259,11 +251,10 @@
 		<wire from="40:0" to="37:1"/>
 		<wire from="32:0" to="26:0"/>
 		<wire from="61:0" to="36:0"/>
-		<wire from="134:0" to="45:0"/>
-		<wire from="69:0" to="70:0"/>
 		<wire from="104:0" to="103:2"/>
 		<wire from="47:0" to="88:0"/>
 		<wire from="105:0" to="106:0"/>
+		<wire from="117:0" to="18:1"/>
 		<wire from="108:0" to="103:1"/>
 		<wire from="10:0" to="58:0"/>
 		<wire from="48:0" to="47:1"/>
@@ -272,11 +263,11 @@
 		<wire from="41:0" to="38:0"/>
 		<wire from="50:0" to="47:0"/>
 		<wire from="51:0" to="78:0"/>
+		<wire from="106:0" to="114:0"/>
 		<wire from="97:0" to="99:0"/>
 		<wire from="83:0" to="82:0"/>
 		<wire from="92:0" to="91:0"/>
 		<wire from="45:0" to="8:0"/>
-		<wire from="116:0" to="115:2"/>
 		<wire from="12:0" to="10:0"/>
 		<wire from="80:0" to="65:1"/>
 		<wire from="106:0" to="102:0"/>
