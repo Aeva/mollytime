@@ -306,15 +306,17 @@ PYBIND11_MODULE(mollytime, m) {
     py::module_ events = m.def_submodule("events");
 
     py::native_enum<Events::EventType>(events, "Type", "enum.IntEnum")
-        .value("QUIT", Events::EventType::Quit)
-        .value("KEYDOWN", Events::EventType::KeyDown)
-        .value("KEYUP", Events::EventType::KeyUp)
-        .value("MOUSEMOTION", Events::EventType::MouseMotion)
-        .value("MOUSEBUTTONDOWN", Events::EventType::MouseButtonDown)
-        .value("MOUSEBUTTONUP", Events::EventType::MouseButtonUp)
-        .value("FINGERDOWN", Events::EventType::FingerDown)
-        .value("FINGERUP", Events::EventType::FingerUp)
-        .value("FINGERMOTION", Events::EventType::FingerMotion)
+        .value("QUIT",              Events::EventType::Quit)
+        .value("WINDOWRESIZE",      Events::EventType::WindowResized)
+        .value("PIXELSIZECHANGED",  Events::EventType::WindowPixelSizeChanged)
+        .value("KEYDOWN",           Events::EventType::KeyDown)
+        .value("KEYUP",             Events::EventType::KeyUp)
+        .value("MOUSEMOTION",       Events::EventType::MouseMotion)
+        .value("MOUSEBUTTONDOWN",   Events::EventType::MouseButtonDown)
+        .value("MOUSEBUTTONUP",     Events::EventType::MouseButtonUp)
+        .value("FINGERDOWN",        Events::EventType::FingerDown)
+        .value("FINGERUP",          Events::EventType::FingerUp)
+        .value("FINGERMOTION",      Events::EventType::FingerMotion)
         .export_values()
         .finalize();
     
@@ -327,6 +329,10 @@ PYBIND11_MODULE(mollytime, m) {
         .value("BUTTON_LEFT", Events::MouseButton::Left)
         .export_values()
         .finalize();
+
+    py::class_<Events::ResizeEvent>(events, "ResizeEvent")
+        .def_readonly("Width", &Events::ResizeEvent::Width)
+        .def_readonly("Height", &Events::ResizeEvent::Height);
     
     py::class_<Events::KeyboardEvent>(events, "KeyboardEvent")
         .def_readonly("key", &Events::KeyboardEvent::Key);
@@ -354,6 +360,7 @@ PYBIND11_MODULE(mollytime, m) {
     
     py::class_<Events::Event>(events, "Event")
         .def_readonly("type", &Events::Event::Type)
+        .def_readonly("resize", &Events::Event::Resize)
         .def_readonly("key", &Events::Event::Key)
         .def_readonly("motion", &Events::Event::Motion)
         .def_readonly("button", &Events::Event::Button)

@@ -31,6 +31,19 @@ namespace Events
                         .Type = EventType::Quit
                     });
                     break;
+                case SDL_EVENT_WINDOW_RESIZED:
+                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                    Events.push_back(
+                    {
+                        .Resize =
+                        {
+                            // Theoretically these are semantically separate events.
+                            static_cast<EventType>(Next.type),
+                            static_cast<int>(Next.window.data1),
+                            static_cast<int>(Next.window.data2)
+                        }
+                    });
+                    break;
                 case SDL_EVENT_KEY_DOWN:
                     Events.push_back(
                     {

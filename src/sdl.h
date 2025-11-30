@@ -6,6 +6,8 @@
 #include <vector>
 #include <memory>
 
+#include <SDL3/SDL_events.h>
+
 struct ColorPoint;
 
 struct SDL_Renderer;
@@ -91,15 +93,17 @@ namespace Events
     enum class EventType
     {
         // From SDL_EventType
-        Quit            = 0x100,
-        KeyDown         = 0x300,
-        KeyUp           = 0x301,
-        MouseMotion     = 0x400,
-        MouseButtonDown = 0x401,
-        MouseButtonUp   = 0x402,
-        FingerDown      = 0x700,
-        FingerUp        = 0x701,
-        FingerMotion    = 0x702
+        Quit                    = SDL_EVENT_QUIT,
+        WindowResized           = SDL_EVENT_WINDOW_RESIZED,
+        WindowPixelSizeChanged  = SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED,
+        KeyDown                 = SDL_EVENT_KEY_DOWN,
+        KeyUp                   = SDL_EVENT_KEY_UP,
+        MouseMotion             = SDL_EVENT_MOUSE_MOTION,
+        MouseButtonDown         = SDL_EVENT_MOUSE_BUTTON_DOWN,
+        MouseButtonUp           = SDL_EVENT_MOUSE_BUTTON_UP,
+        FingerDown              = SDL_EVENT_FINGER_DOWN,
+        FingerUp                = SDL_EVENT_FINGER_UP,
+        FingerMotion            = SDL_EVENT_FINGER_MOTION,
     };
 
     enum class KeyCode : uint32_t
@@ -113,6 +117,14 @@ namespace Events
         // From SDL_mouse.h / SDL_touch.h
         Left = 1,
         Touch = static_cast<uint32_t>(-1)
+    };
+
+    struct ResizeEvent
+    {
+        EventType Type;
+
+        int Width;
+        int Height;
     };
 
     struct KeyboardEvent
@@ -163,6 +175,7 @@ namespace Events
     {
         EventType Type;
 
+        ResizeEvent Resize;
         KeyboardEvent Key;
         MouseMotionEvent Motion;
         MouseButtonEvent Button;

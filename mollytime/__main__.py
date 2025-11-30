@@ -19,6 +19,7 @@ import os
 import sys
 import platform
 import subprocess
+import time
 
 
 from . import mollytime
@@ -153,6 +154,16 @@ def main():
         print(f"DPI assuming smallest physical screen dimension is {in_y} inches: {dpi} dpi")
 
     dpi = int(dpi * (max(unscaled_display_size) / max(scaled_display_size)))
+
+    waiting_for_resize = True
+    wait_start = time.time()
+    while waiting_for_resize:
+        for event in mollytime.events.get():
+            if event.type in (mollytime.events.WINDOWRESIZE, mollytime.events.PIXELSIZECHANGED):
+                waiting_for_resize = False
+        if wait_start - time.time() >= .5:
+            # the display manager had its chance
+            break
 
     editor = program_card(dpi)
     ui = inspect_screen(editor)
