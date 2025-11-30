@@ -1342,60 +1342,56 @@ struct QuantizeThunk : public InstructionThunk
 
         if (InNote.size() > 0 && InScale.size() > 1)
         {
-            // TODO it sure would be great to cache this somewhere *nervous laughter*
-            std::vector<double> Scale = std::vector<double>(InScale.size());
-            double Low = InScale[0]->Get();
-            double High = InScale[0]->Get();
-            Scale[0] = Low;
-            for (int Index = 1; Index < int(InScale.size()); ++Index)
-            {
-                double Rel = InScale[Index]->Get();
-                Low = std::min(Low, Rel);
-                High = std::max(High, Rel);
-                Scale[Index] = Rel;
-            }
-            const double Stride = High - Low;
-
-            double Root = Combine(CombinerAdd, InRoot, 60.0); // defaults to Middle C
-            for (double& Rel : Scale)
-            {
-                Rel = Rel - Low + Root;
-            }
-
-            Low = Root;
-            High = Low + Stride;
-            double Shift = 0.0;
+            const double Root = Combine(CombinerAdd, InRoot, 60.0); // defaults to Middle C
             double Note = Combine(CombinerAdd, InNote, 0.0);
-            if (Note < Low)
+
+            double Stride = 0.0;
+            std::vector<double> Scale;
+            Scale.reserve(InScale.size() + 1);
+            Scale.push_back(0.0);
+            for (RunningStateSharedPtr& IntervalRegister : InScale)
             {
-                while (Note < Low)
+                double Interval = IntervalRegister->Get();
+                if (Interval > 0.0)
                 {
-                    --Shift;
-                    Note += Stride;
-                }
-            }
-            else
-            {
-                while (Note > High)
-                {
-                    ++Shift;
-                    Note -= Stride;
+                    Stride += Interval;
+                    Scale.push_back(Stride);
                 }
             }
 
-            double NearestRel = Scale[0];
-            double NearestDist = std::abs(Note - Scale[0]);
-            for (int Index = 1; Index < int(InScale.size()); ++Index)
+            if (Scale.size() == 0)
             {
-                double TestDist = std::abs(Note - Scale[Index]);
-                if (TestDist < NearestDist)
+                OutNote->Set(Note);
+                return;
+            }
+
+            double Shift = 0.0;
+            Note -= Root;
+            while (Note < 0.0)
+            {
+                --Shift;
+                Note += Stride;
+            }
+            while (Note > Stride)
+            {
+                ++Shift;
+                Note -= Stride;
+            }
+
+            double Low = 0.0;
+            double High = 0.0;
+            for (int Index = 0; Index < int(Scale.size()) - 1; ++Index)
+            {
+                Low = Scale[Index];
+                High = Scale[Index + 1];
+                if (Low <= Note && Note <= High)
                 {
-                    NearestDist = TestDist;
-                    NearestRel = Scale[Index];
+                    break;
                 }
             }
 
-            Note = Shift * Stride + NearestRel;
+            Note = (std::abs(Note - Low) <= std::abs(Note - High)) ? Low : High;
+            Note += Shift * Stride + Root;
             OutNote->Set(Note);
         }
         else
@@ -1842,7 +1838,7 @@ struct SymbolInfo
         Set(OpCode::IN, "in", {}, {"in"});
         Set(OpCode::OUT, "out", {"out"}, {});
         Set(OpCode::AUX, "aux", {"out"}, {});
-        Set(OpCode::CASCADE, "cascade", {"eval\nfirst", "eval\nsecond"}, {"linked"});
+        Set(OpCode::GO, "go", {"before", "after"}, {"linked"});
 
         SetBasic<SinThunk>();
         SetBasic<SqrThunk>();
@@ -2413,7 +2409,7 @@ ScratchSharedPtr Patch::Compile()
     TRACEABLE_SCOPE;
 
     std::set<TileHandle> BreadCrumbs;
-    std::map<TileHandle, std::vector<PortHandle>> Cascades;
+    std::map<TileHandle, std::vector<PortHandle>> InputSequences;
 
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->MidiChannels = MidiChannels;
@@ -2460,10 +2456,10 @@ ScratchSharedPtr Patch::Compile()
             }
         }
 
-        if (Symbol == OpCode::CASCADE)
+        if (Symbol == OpCode::GO)
         {
-            // Cascade tiles only build input lists for other tiles and do not emit any thunks.
-            auto Result = Cascades.try_emplace(Tile);
+            // Go tiles only build input lists for other tiles, and do not emit any thunks.
+            auto Result = InputSequences.try_emplace(Tile);
             if (Result.second)
             {
                 std::vector<PortHandle>& Sequence = (Result.first->second);
@@ -2474,9 +2470,9 @@ ScratchSharedPtr Patch::Compile()
                     {
                         TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
                         OpCode ConnectedSymbol = GetTileSymbol(ConnectedTile);
-                        if (ConnectedSymbol == OpCode::CASCADE)
+                        if (ConnectedSymbol == OpCode::GO)
                         {
-                            std::vector<PortHandle>& Append = Cascades.at(ConnectedTile);
+                            std::vector<PortHandle>& Append = InputSequences.at(ConnectedTile);
                             Sequence.insert(Sequence.end(), Append.cbegin(), Append.cend());
                         }
                         else
@@ -2531,9 +2527,9 @@ ScratchSharedPtr Patch::Compile()
                 {
                     TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
                     OpCode ConnectedSymbol = GetTileSymbol(ConnectedTile);
-                    if (ConnectedSymbol == OpCode::CASCADE)
+                    if (ConnectedSymbol == OpCode::GO)
                     {
-                        for (PortHandle ForwardedOutput : Cascades.at(ConnectedTile))
+                        for (PortHandle ForwardedOutput : InputSequences.at(ConnectedTile))
                         {
                             PortInputs.push_back(ActiveOutputs.at(ForwardedOutput));
                         }

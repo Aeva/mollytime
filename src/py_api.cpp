@@ -151,7 +151,7 @@ PYBIND11_MODULE(mollytime, m) {
 	});
 
 	py::native_enum<OpCode>(m, "OpCode", "enum.IntEnum")
-		.value("CASCADE", OpCode::CASCADE)
+		.value("GO", OpCode::GO)
 		.value("CONST", OpCode::CONST)
 		.value("SCOPE", OpCode::SCOPE)
 		.value("IN", OpCode::IN)

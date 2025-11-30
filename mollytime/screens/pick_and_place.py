@@ -64,7 +64,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.AUX, None, OpCode.LOUD_FUDGE, OpCode.VELO, OpCode.PRES, OpCode.CTRL],
             ]),
             (":3", [
-                [OpCode.POW, OpCode.SPOW, OpCode.CASCADE, OpCode.FLD, OpCode.GRAD, OpCode.ABS],
+                [OpCode.POW, OpCode.SPOW, OpCode.GO, OpCode.FLD, OpCode.GRAD, OpCode.ABS],
                 [OpCode.TAPE_LOOP, OpCode.RNG, OpCode.RSQN, OpCode.QNTZ, OpCode.BAL, OpCode.SIGN],
             ]),
             (":y", [
