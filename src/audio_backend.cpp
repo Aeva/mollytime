@@ -114,19 +114,22 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 
     FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
     FramePressureIndex %= FramePressure.size();
-    if (Program && FramePressureCount == static_cast<int>(FramePressure.size()))
+    if (FramePressureCount > 0)
     {
-        float TemporalPressure = FramePressure[0];
-        for (int Index = 1; Index < FramePressureCount; ++Index)
+        if (Program && FramePressureCount == static_cast<int>(FramePressure.size()))
         {
-            TemporalPressure += FramePressure[Index];
+            float TemporalPressure = FramePressure[0];
+            for (int Index = 1; Index < FramePressureCount; ++Index)
+            {
+                TemporalPressure += FramePressure[Index];
+            }
+            TemporalPressure /= float(FramePressureCount);
+            BufferState->TemporalPressure.store(TemporalPressure);
         }
-        TemporalPressure /= float(FramePressureCount);
-        BufferState->TemporalPressure.store(TemporalPressure);
-    }
-    else
-    {
-        BufferState->TemporalPressure.store(0.0f);
+        else
+        {
+            BufferState->TemporalPressure.store(0.0f);
+        }
     }
 }
 
