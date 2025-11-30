@@ -21,6 +21,7 @@ from xml.etree import ElementTree
 from ..fonts import *
 from ..colors import *
 from ..patterns import *
+from ..dpi import calculate_dpi
 from ..perf import profile_function
 from ..power import poll_battery
 
@@ -34,7 +35,9 @@ temporal_pressure_precent = ""
 
 
 class program_card:
-    def __init__(self, dpi):
+    def __init__(self, vertical_inches_override):
+        self.vertical_inches_override = vertical_inches_override
+
         self.focus_x = 0
         self.focus_y = 0
 
@@ -95,7 +98,7 @@ class program_card:
         self.selected = []
 
         self.clock = mollytime.time.Clock()
-        self.resize(dpi)
+        self.resize()
 
     def find_center_of_mass(self, quantized=False):
         center_of_mass = (0, 0)
@@ -383,9 +386,9 @@ class program_card:
         self.draw_touch_points()
         mollytime.draw.flip()
 
-    def resize(self, dpi):
+    def resize(self):
         self.screen = mollytime.draw.get_rendering_surface()
-        self.dpi = dpi
+        self.dpi = dpi = calculate_dpi(self.vertical_inches_override)
 
         screen_rect = self.screen.get_rect()
         screen_w = screen_rect.width

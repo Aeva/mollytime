@@ -389,6 +389,7 @@ PYBIND11_MODULE(mollytime, m) {
     
     display
         .def("init", &Display::Init)
+        .def("get_current_display_index", &Display::GetCurrentDisplayIndex)
         .def("get_desktop_sizes", &Display::GetDesktopSizes)
         .def("list_modes", &Display::ListModes, py::arg("display"))
         .def("set_caption", &Display::SetCaption)

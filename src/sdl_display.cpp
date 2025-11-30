@@ -80,6 +80,25 @@ namespace Display
         }
     }
 
+    int GetCurrentDisplayIndex()
+    {
+        const std::span<const SDL_DisplayID> DisplayIds = GetDisplayIds();
+        const SDL_DisplayID CurrentDisplayId = SDL_GetDisplayForWindow(Window);
+        int DisplayIndex = 0;
+        for (const SDL_DisplayID DisplayID : DisplayIds)
+        {
+            if (DisplayID == CurrentDisplayId)
+            {
+                return DisplayIndex;
+            }
+            else
+            {
+                ++DisplayIndex;
+            }
+        }
+        return 0;
+    }
+
     std::vector<Size> GetDesktopSizes()
     {
         const std::span<const SDL_DisplayID> DisplayIds = GetDisplayIds();

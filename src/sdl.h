@@ -266,6 +266,7 @@ namespace Display
     
     void Init();
     
+    int GetCurrentDisplayIndex();
     std::vector<Size> GetDesktopSizes();
     std::vector<Size> ListModes(int DisplayIndex);
     
