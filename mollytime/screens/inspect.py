@@ -61,6 +61,10 @@ class inspect_screen(editor_screen):
         self.advance_scope_color()
         self.update_interactive_tiles(editor)
 
+    def resize_screen(self, editor):
+        self.repopulate_sidebar(editor)
+        self.scope_overlay = None
+
     def toggle_scope(self, editor, tile_id):
         if self.scope_target == tile_id:
             self.scope_target = None

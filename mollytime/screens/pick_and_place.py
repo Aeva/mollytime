@@ -22,14 +22,7 @@ from .common import *
 class pick_and_place_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = mollytime.mouse.get_pos()
-        self.press_start = None
-
-        self.prospective_tile = None
-        self.grabbed_tile = None
-        self.original_position = None
-        self.last_valid_position = None
-        self.last_hover_position = None
-        self.drop_deletes = False
+        self.reset_grab_state()
 
         self.set_screen_label(editor, "inspect > pick & place")
         self.repopulate_sidebar(editor)
@@ -39,6 +32,22 @@ class pick_and_place_screen(editor_screen):
         self.redraw_palette_overlay(editor)
         self.set_catalog_page(0)
         self.redraw_catalog_index(editor)
+
+    def reset_grab_state(self):
+        self.press_start = None
+        self.prospective_tile = None
+        self.grabbed_tile = None
+        self.original_position = None
+        self.last_valid_position = None
+        self.last_hover_position = None
+        self.drop_deletes = False
+
+    def resize_screen(self, editor):
+        self.reset_grab_state()
+        self.repopulate_sidebar(editor)
+        self.redraw_palette_overlay(editor)
+        self.redraw_catalog_index(editor)
+        self.set_catalog_page(self.current_palette)
 
     def redraw_palette_overlay(self, editor):
         self.all_palettes = []

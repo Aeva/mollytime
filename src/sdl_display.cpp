@@ -71,7 +71,7 @@ namespace Display
         return DisplayModes;
     }
 
-    void Init(bool ForceFullscreen)
+    void Init(int ForceFullscreen)
     {
         SDL_SetHint(SDL_HINT_APP_ID, "mollytime");
         SDL_SetHint(SDL_HINT_APP_NAME, "mollytime");
@@ -98,7 +98,7 @@ namespace Display
         }
 
         int WindowFlags = SDL_WINDOW_RESIZABLE;
-        const bool StartFullscreened = GetDisplayCount() < 2 || ForceFullscreen;
+        const bool StartFullscreened = ForceFullscreen == 1 || (ForceFullscreen != -1 && GetDisplayCount() < 2);
         if (StartFullscreened)
         {
             WindowFlags |= SDL_WINDOW_FULLSCREEN;

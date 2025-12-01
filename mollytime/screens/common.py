@@ -98,6 +98,8 @@ class program_card:
         self.selected = []
 
         self.clock = mollytime.time.Clock()
+
+        self.dpi = None
         self.resize()
 
     def find_center_of_mass(self, quantized=False):
@@ -469,7 +471,6 @@ class program_card:
 
         self.placeholder_target = plate_bg(self.grid_size, self.tile_color, "magic")
 
-
 class editor_screen:
     touch_points = {}
     touch_colors = {}
@@ -555,6 +556,10 @@ class editor_screen:
         self.reset_touch_tracker()
         self.force_redraw = True
         editor.resize()
+        self.resize_screen(editor)
+
+    def resize_screen(self, editor):
+        pass
 
     def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):
         inner_w = (editor.play_area.viewport.w // editor.grid_size) * editor.grid_size

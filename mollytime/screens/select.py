@@ -23,7 +23,9 @@ class select_screen(editor_screen):
         self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
         self.set_screen_label(editor, "inspect > select")
+        self.resize_screen(editor)
 
+    def resize_screen(self, editor):
         w = editor.grid_size * 3
         h = editor.play_rect.height
         self.selectbar_rect = mollytime.Rect(0, 0, w, h)

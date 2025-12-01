@@ -267,7 +267,7 @@ namespace Display
         Borderless = (1 << 1)
     };
     
-    void Init(bool ForceFullscreen);
+    void Init(int ForceFullscreen);
     
     int GetCurrentDisplayIndex();
     std::vector<Size> GetDesktopSizes();

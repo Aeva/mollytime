@@ -36,22 +36,37 @@ def main():
         # needed for highdpi to work correctly
         ctypes.windll.user32.SetProcessDPIAware()
 
+    args = list(sys.argv[1:])
+    force_fullscreen = 0
+    dump_icon = False
+    vertical_inches = None
+
+    while args:
+        arg = args.pop(0)
+        if arg in ("-w" "--windowed"):
+            force_fullscreen = -1
+        elif arg in ("-f" "--fullscreen"):
+            force_fullscreen = 1
+        elif arg == "--dump-icon":
+            dump_icon = True
+        elif arg == "--vertical-inches":
+            vertical_inches = float(args.pop(0))
+        else:
+            print(f"Ignoring unknown arg: {arg}")
+
     mollytime.init_midi()
     mollytime.init_audio(48000)
-    mollytime.display.init(force_fullscreen=True) # TODO make this a commandline flag that's off by default
+
+    mollytime.display.init(force_fullscreen)
     mollytime.draw.init()
     mollytime.font.init()
 
     print(f'SDL3 selected the "{mollytime.draw.get_renderer_name()}" rendering backend.')
 
-    dump_icon = False
     if operating_system == "Windows":
         icon_size = 32
     else:
         icon_size = 512
-    if len(sys.argv) >= 2 and sys.argv[1] == "icon":
-        icon_size = int((sys.argv[2:] + ["256"])[0])
-        dump_icon = True
     
     # TODO: Implement mollytime.draw.Texture.save()
     # # According to the docs, the program icon must be set before calling "pygame.display.set_mode".
@@ -66,17 +81,6 @@ def main():
     assert(program_icon.surface.get_rect().h == icon_size)
     mollytime.display.set_icon(program_icon.surface)
     mollytime.display.set_caption("mollytime")
-
-    vertical_inches_arg = (sys.argv[1:] + [None])[0]
-    vertical_inches = None
-
-    if vertical_inches_arg is not None:
-        try:
-            override_vertical_inches = float(vertical_inches_arg)
-            assert(override_vertical_inches > 0)
-            vertical_inches = override_vertical_inches
-        except:
-            print(f"\"{vertical_inches_arg}\" is not a valid vertical distance.  Defaulting to \"{vertical_inches}\".")
 
     # The rendering surface doesn't get created right away on Linux (and possibly other platforms).
     # This code ensures that it is fully created before we advance to creating the UI.

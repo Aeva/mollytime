@@ -390,7 +390,7 @@ PYBIND11_MODULE(mollytime, m) {
         .finalize();
     
     display
-        .def("init", &Display::Init, py::arg("force_fullscreen"))
+        .def("init", &Display::Init)
         .def("get_current_display_index", &Display::GetCurrentDisplayIndex)
         .def("get_desktop_sizes", &Display::GetDesktopSizes)
         .def("list_modes", &Display::ListModes, py::arg("display"))

@@ -42,10 +42,8 @@ class calculator_screen(editor_screen):
 
         screen_label_color = (255, 255, 255)
         self.set_screen_label(editor, "inspect > calculator", screen_label_color, 1)
-        self.repopulate_sidebar(editor)
-        self.render_play_area(editor)
 
-        rows = [
+        self.rows = [
             ['reset', '440', 'clear', 'back\nspace'],
             [7, 8, 9, '÷'],
             [4, 5, 6, '×'],
@@ -60,9 +58,15 @@ class calculator_screen(editor_screen):
             '+' : operator.add,
         }
 
-        per_row = max(map(len, rows))
+        self.resize_screen(editor)
+
+    def resize_screen(self, editor):
+        self.repopulate_sidebar(editor)
+        self.render_play_area(editor)
+
+        per_row = max(map(len, self.rows))
         x_span = editor.grid_size * 3 * per_row
-        y_span = editor.grid_size * 3 * len(rows)
+        y_span = editor.grid_size * 3 * len(self.rows)
 
         self.history_font = NATIONAL_PARK_REGULAR
         self.history_font_size = editor.grid_size
@@ -73,7 +77,7 @@ class calculator_screen(editor_screen):
         self.text_anchor_y = editor.play_area.viewport.bottom - editor.grid_size * 2
 
         self.buttons = []
-        for y, row in enumerate(rows):
+        for y, row in enumerate(self.rows):
             y = y * editor.grid_size * 3 + y_start
             for x, label in enumerate(row):
                 x = x * editor.grid_size * 3 + x_start
