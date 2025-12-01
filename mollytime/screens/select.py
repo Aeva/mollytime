@@ -89,7 +89,7 @@ class select_screen(editor_screen):
 
             click_start = (self.lhs_selectbar_rect.centerx - radius, tile_size)
             click_stop = (self.lhs_selectbar_rect.centerx - radius, self.lhs_selectbar_rect.bottom - tile_size * 2)
-            outline = 8
+            outline = editor.heavy_line
 
             self.lhs_targets = []
             for index, port in enumerate(lhs_outputs):
@@ -322,7 +322,7 @@ class select_screen(editor_screen):
             frame.blit(self.lhs_selectbar_bg, self.lhs_selectbar_rect)
             frame.blit(self.rhs_selectbar_bg, self.rhs_selectbar_rect)
             for start, stop in self.connections:
-                draw_arrow(frame, parse_color("#fff000"), start, stop, 8)
+                draw_arrow(frame, parse_color("#fff000"), start, stop, editor.heavy_line)
 
             frame.blit(self.screen_label_surface, self.screen_label_rect)
 

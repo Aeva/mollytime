@@ -283,6 +283,7 @@ class inspect_screen(editor_screen):
             for rect, surface, action in self.side_bar_targets:
                 if action is not None and rect.collidepoint(rel_pos):
                     action(editor)
+                    self.resize_screen(editor)
                     return
 
     def on_release(self, editor, pos, event):
@@ -401,6 +402,9 @@ class inspect_screen(editor_screen):
             interactive_cold.set_blend_mode(mollytime.draw.premultiplied_alpha)
             interactive_cold.fill(editor.scope_bg_color, 0.9)
 
+            outline = editor.heavy_line
+            half_outline = max(outline // 2, 1)
+
             # highlight the interactive elements
             for tile_id in self.interactive_tiles:
                 rect = editor.get_tile_rect(tile_id)
@@ -410,10 +414,10 @@ class inspect_screen(editor_screen):
                 if tile_id == self.scope_target:
                     hot_alpha = 0.5
                     cold_alpha = 1.0
-                    draw_outline(interactive_cold, rect, parse_color("#333"), 8)
-                    outline_rect = mollytime.Rect(rect.x - 4, rect.y - 4, rect.width + 8, rect.height + 8)
-                    draw_outline(interactive_cold, outline_rect, parse_color("#FFF"), 4)
-                    draw_outline(interactive_hot, outline_rect, parse_color("#CCC"), 4)
+                    draw_outline(interactive_cold, rect, parse_color("#333"), outline)
+                    outline_rect = mollytime.Rect(rect.x - half_outline, rect.y - half_outline, rect.width + outline, rect.height + outline)
+                    draw_outline(interactive_cold, outline_rect, parse_color("#FFF"), half_outline)
+                    draw_outline(interactive_hot, outline_rect, parse_color("#CCC"), half_outline)
                 elif symbol in (OpCode.BOOP, OpCode.OUT, OpCode.SCOPE):
                     hot_alpha = 0.3
                     cold_alpha = 0.8

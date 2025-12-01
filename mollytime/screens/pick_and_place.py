@@ -188,7 +188,7 @@ class pick_and_place_screen(editor_screen):
 
             if index == self.current_palette:
                 editor.tile_bg.draw(self.catalog_index_surface, rect, name)
-                draw_outline(self.catalog_index_surface, rect, parse_color("#fff000"), 8)
+                draw_outline(self.catalog_index_surface, rect, parse_color("#fff000"), editor.heavy_line)
             else:
                 editor.tile_bg.draw(self.catalog_index_surface, rect, name)
             self.catalog_index_targets.append((rect, name))

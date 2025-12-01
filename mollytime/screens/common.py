@@ -403,6 +403,8 @@ class program_card:
         side_bar_w = self.grid_size * 3
         side_bar_h = screen_h
 
+        self.heavy_line = max(dpi // 32, 2)
+
         self.play_rect = mollytime.Rect(0, 0, screen_w - side_bar_w, screen_h)
         self.play_area = tile_grid_bg(self.play_rect, self.grid_size)
         self._play_area_surface = self.play_area.surface.copy()
