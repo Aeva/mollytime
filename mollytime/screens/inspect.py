@@ -80,7 +80,7 @@ class inspect_screen(editor_screen):
         self.interactive_tiles = []
         for tile_id in editor.tile_positions.keys():
             symbol = editor.patch.get_tile_symbol(tile_id)
-            if symbol in (OpCode.BOOP, OpCode.CONST, OpCode.SCOPE, OpCode.OUT):
+            if symbol in (OpCode.BOOP, OpCode.TWEAK, OpCode.CONST, OpCode.SCOPE, OpCode.OUT):
                 self.interactive_tiles.append(tile_id)
 
     def advance_scope_color(self):
@@ -91,7 +91,7 @@ class inspect_screen(editor_screen):
     def refresh_can_throttle(self, editor):
         for tile_id in editor.tile_positions.keys():
             symbol = editor.patch.get_tile_symbol(tile_id)
-            if symbol == OpCode.BOOP:
+            if symbol == OpCode.BOOP or symbol == OpCode.TWEAK:
                 self.can_throttle = False
                 return
         self.can_throttle = True
