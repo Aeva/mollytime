@@ -60,7 +60,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             ("8)", [
                 [OpCode.STU, OpCode.MIX, OpCode.ADSR, OpCode.CEIL, OpCode.ROUND, OpCode.SCOPE],
-                [OpCode.UTS, OpCode.INV, OpCode.BOOP, OpCode.FLOOR, OpCode.FLP, OpCode.PLS],
+                [OpCode.UTS, OpCode.TWEAK, OpCode.BOOP, OpCode.FLOOR, OpCode.FLP, OpCode.PLS],
             ]),
             ("%)", [
                 [0, .1, .25, .5, 1, 2],
@@ -75,8 +75,8 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.RNG, None, OpCode.RSQN, None, None, None],
             ]),
             (":3", [
-                [OpCode.POW, OpCode.SPOW, None, OpCode.FLD, OpCode.GRAD, OpCode.ABS],
-                [OpCode.TAPE_LOOP, None, None, None, OpCode.BAL, OpCode.SIGN],
+                [OpCode.INV, None, OpCode.FLD, OpCode.GRAD, OpCode.SPOW, OpCode.ABS],
+                [OpCode.TAPE_LOOP, None, None, OpCode.BAL, OpCode.POW, OpCode.SIGN],
             ]),
             (":y", [
                 [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None, OpCode.MOON],

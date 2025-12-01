@@ -207,6 +207,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)
 		.value("BOOP", OpCode::BOOP)
+		.value("TWEAK", OpCode::TWEAK)
 		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
 		.value("MOON", OpCode::MOON)
 		.value("Count", OpCode::Count)
@@ -252,7 +253,10 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("read_scope_probe", &Patch::ReadScopeProbe)
 		.def("set_active_probe", &Patch::SetActiveProbe)
 		.def("clear_active_probe", &Patch::ClearActiveProbe)
-		.def("set_special_input", &Patch::SetSpecialInput);
+		.def("set_special_input", &Patch::SetSpecialInput)
+		.def("add_special_input", &Patch::AddSpecialInput)
+		.def("add_range_special_input", &Patch::AddRangeSpecialInput)
+		.def("get_special_input", &Patch::GetSpecialInput);
 
 	m.def("init_audio", &Audio::Init);
 	m.def("shutdown_audio", &Audio::Shutdown);
@@ -316,6 +320,7 @@ PYBIND11_MODULE(mollytime, m) {
         .value("MOUSEMOTION",       Events::EventType::MouseMotion)
         .value("MOUSEBUTTONDOWN",   Events::EventType::MouseButtonDown)
         .value("MOUSEBUTTONUP",     Events::EventType::MouseButtonUp)
+		.value("MOUSEWHEEL",		Events::EventType::MouseWheel)
         .value("FINGERDOWN",        Events::EventType::FingerDown)
         .value("FINGERUP",          Events::EventType::FingerUp)
         .value("FINGERMOTION",      Events::EventType::FingerMotion)
@@ -355,6 +360,13 @@ PYBIND11_MODULE(mollytime, m) {
         .def_readonly("button", &Events::MouseButtonEvent::Button)
         .def_readonly("touch", &Events::MouseButtonEvent::IsTouch)
         .def_property_readonly("pos", &Events::MouseButtonEvent::GetPosition);
+
+		py::class_<Events::MouseWheelEvent>(events, "MouseWheelEvent")
+		.def_readonly("horizontal", &Events::MouseWheelEvent::Horizontal)
+		.def_readonly("vertical", &Events::MouseWheelEvent::Vertical)
+		.def_readonly("cursor_x", &Events::MouseWheelEvent::CursorX)
+		.def_readonly("cursor_y", &Events::MouseWheelEvent::CursorY)
+		.def_property_readonly("pos", &Events::MouseWheelEvent::GetPosition);
     
     py::class_<Events::TouchFingerEvent>(events, "TouchFingerEvent")
         .def_readonly("x", &Events::TouchFingerEvent::X)
@@ -368,6 +380,7 @@ PYBIND11_MODULE(mollytime, m) {
         .def_readonly("key", &Events::Event::Key)
         .def_readonly("motion", &Events::Event::Motion)
         .def_readonly("button", &Events::Event::Button)
+		.def_readonly("wheel", &Events::Event::Wheel)
         .def_readonly("tfinger", &Events::Event::Touch);
     
     events.def("get", &Events::Get);

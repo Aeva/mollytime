@@ -1702,6 +1702,22 @@ struct BoopThunk : public InstructionThunk
 };
 
 
+struct TweakThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<0, 1, 0> Info = { OpCode::TWEAK, "tweak", {}, {"value"} };
+    InstructionRegisters<0, 1, 0> Registers;
+    AtomicRunningStateSharedPtr Input;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("TweakThunk");
+        Registers.Output[0]->Set(Input->Get());
+    }
+
+    virtual ~TweakThunk() {};
+};
+
+
 struct BlankTape : public MagicTape
 {
     BlankTape(TileHandle Tile)
@@ -1945,6 +1961,7 @@ struct SymbolInfo
         SetBasic<MoonThunk>();
 
         SetWidget<BoopThunk>();
+        SetWidget<TweakThunk>();
 
         SetMidi<GateThunk>();
         SetMidi<NoteThunk>();
@@ -2093,7 +2110,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         ActiveOutputs[MakeClosureHandle(AllocatedHandle, 2)] = std::make_shared<RunningState>(1.0);
         ActiveOutputs[MakeClosureHandle(AllocatedHandle, 3)] = std::make_shared<RunningState>(1.0);
     }
-    else if (Symbol == OpCode::BOOP)
+    else if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
     }
@@ -2151,7 +2168,7 @@ void Patch::EraseTile(TileHandle Tile)
         ActiveOutputs.erase(Closure);
     }
 
-    if (Symbol == OpCode::BOOP)
+    if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
     {
         SpecialInputs.erase(Tile);
     }
@@ -2460,6 +2477,27 @@ void Patch::SetSpecialInput(TileHandle Tile, double Value)
 {
     TRACEABLE_SCOPE;
     SpecialInputs[Tile]->Set(Value);
+}
+
+
+void Patch::AddSpecialInput(TileHandle Tile, double Value)
+{
+    TRACEABLE_SCOPE;
+    SpecialInputs[Tile]->Add(Value);
+}
+
+
+void Patch::AddRangeSpecialInput(TileHandle Tile, double Value, double LimitLow, double LimitHigh)
+{
+    TRACEABLE_SCOPE;
+    SpecialInputs[Tile]->Add(Value, LimitLow, LimitHigh);
+}
+
+
+double Patch::GetSpecialInput(TileHandle Tile)
+{
+    TRACEABLE_SCOPE;
+    return SpecialInputs[Tile]->Get();
 }
 
 

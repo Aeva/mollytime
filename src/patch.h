@@ -102,6 +102,7 @@ enum class OpCode : uint32_t
     MIDI_HZ,
     LOUD_FUDGE,
     BOOP,
+    TWEAK,
     TAPE_LOOP,
     MOON,
     Count
@@ -158,6 +159,15 @@ struct AtomicRunningState
     void Set(double NewSample)
     {
         Sample.store(NewSample);
+    }
+    void Add(double Increment)
+    {
+        Sample.fetch_add(Increment);
+    }
+    void Add(double Increment, double LimitLow, double LimitHigh)
+    {
+        double Value = Sample.load();
+        Sample.store(std::min(std::max(Value + Increment, LimitLow), LimitHigh));
     }
 
 private:
@@ -415,6 +425,9 @@ struct Patch
     void SetActiveProbe(TileHandle Tile);
     void ClearActiveProbe();
     void SetSpecialInput(TileHandle Tile, double Value);
+    void AddSpecialInput(TileHandle Tile, double Value);
+    void AddRangeSpecialInput(TileHandle Tile, double Value, double LimitLow, double LimitHigh);
+    double GetSpecialInput(TileHandle Tile);
 
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);

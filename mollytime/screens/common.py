@@ -563,6 +563,9 @@ class editor_screen:
     def resize_screen(self, editor):
         pass
 
+    def on_scroll(self, editor, event):
+        pass
+
     def touch_start(self, editor, key, pos, event):
         self.force_redraw = True
         editor_screen.touch_points[key] = pos
@@ -711,6 +714,9 @@ class editor_screen:
 
             elif event.type == mollytime.events.MOUSEBUTTONUP and event.button.button == mollytime.events.BUTTON_LEFT:
                 self.on_release(editor, event.button.pos, event)
+
+            elif event.type == mollytime.events.MOUSEWHEEL:
+                self.on_scroll(editor, event.wheel)
 
             elif event.type == mollytime.events.FINGERMOTION:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)

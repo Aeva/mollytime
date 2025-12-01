@@ -102,6 +102,7 @@ namespace Events
         MouseMotion             = SDL_EVENT_MOUSE_MOTION,
         MouseButtonDown         = SDL_EVENT_MOUSE_BUTTON_DOWN,
         MouseButtonUp           = SDL_EVENT_MOUSE_BUTTON_UP,
+        MouseWheel              = SDL_EVENT_MOUSE_WHEEL,
         FingerDown              = SDL_EVENT_FINGER_DOWN,
         FingerUp                = SDL_EVENT_FINGER_UP,
         FingerMotion            = SDL_EVENT_FINGER_MOTION,
@@ -163,6 +164,23 @@ namespace Events
         Point GetPosition() const { return { X, Y }; }
     };
 
+    struct MouseWheelEvent
+    {
+        EventType Type;
+
+        // Negative to the left, positive to the right.
+        float Horizontal;
+
+        // Negative toward the user, positive toward the screen.
+        float Vertical;
+
+        // Mouse coordinates.
+        float CursorX;
+        float CursorY;
+
+        Point GetPosition() const { return { CursorX, CursorY }; }
+    };
+
     struct TouchFingerEvent
     {
         EventType Type;
@@ -182,6 +200,7 @@ namespace Events
         KeyboardEvent Key;
         MouseMotionEvent Motion;
         MouseButtonEvent Button;
+        MouseWheelEvent Wheel;
         TouchFingerEvent Touch;
     };
 

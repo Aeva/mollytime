@@ -136,6 +136,19 @@ namespace Events
                         });
                     }
                     break;
+                case SDL_EVENT_MOUSE_WHEEL:
+                    Events.push_back(
+                        {
+                            .Wheel =
+                            {
+                                EventType::MouseWheel,
+                                Next.wheel.x,
+                                Next.wheel.y,
+                                Next.wheel.mouse_x,
+                                Next.wheel.mouse_y
+                            }
+                        });
+                    break;
                 case SDL_EVENT_FINGER_DOWN:
 #if DEBUG_EVENTS
                     std::print("{}: {} FINGER {}({}) DOWN: {}, {}, pressure: {}\n",

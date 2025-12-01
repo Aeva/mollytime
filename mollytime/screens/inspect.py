@@ -292,6 +292,17 @@ class inspect_screen(editor_screen):
                 editor.patch.set_special_input(tile_id, 0.0)
                 del self.hold["m"]
 
+    def on_scroll(self, editor, event):
+        for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
+            rect = mollytime.Rect(
+                editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
+                editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
+                editor.grid_size * 2, editor.grid_size * 2)
+            if rect.collidepoint(event.pos) and editor.patch.get_tile_symbol(tile_id) == OpCode.TWEAK:
+                # TODO touch pad also reports horizontal, so maybe we can do something with that?
+                #print(event.horizontal, event.vertical)
+                editor.patch.add_range_special_input(tile_id, event.vertical * -0.01, 0.0, 1.0)
+
     def touch_start(self, editor, key, pos, event):
         super().touch_start(editor, key, pos, event)
         for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
@@ -415,7 +426,7 @@ class inspect_screen(editor_screen):
                     outline_rect = mollytime.Rect(rect.x - half_outline, rect.y - half_outline, rect.width + outline, rect.height + outline)
                     draw_outline(interactive_cold, outline_rect, parse_color("#FFF"), half_outline)
                     draw_outline(interactive_hot, outline_rect, parse_color("#CCC"), half_outline)
-                elif symbol in (OpCode.BOOP, OpCode.OUT, OpCode.SCOPE):
+                elif symbol in (OpCode.BOOP, OpCode.TWEAK, OpCode.OUT, OpCode.SCOPE):
                     hot_alpha = 0.3
                     cold_alpha = 0.8
                 else:
