@@ -563,19 +563,6 @@ class editor_screen:
     def resize_screen(self, editor):
         pass
 
-    def set_screen_label(self, editor, text, color=parse_color("#000"), alpha = .4):
-        inner_w = (editor.play_area.viewport.w // editor.grid_size) * editor.grid_size
-        inner_h = (editor.play_area.viewport.h // editor.grid_size) * editor.grid_size
-        margin_x = (editor.play_area.viewport.w - inner_w) // 2
-        margin_y = (editor.play_area.viewport.h - inner_h) // 2
-
-        font_path, size = AFACAD_REGULAR, editor.grid_size
-        self.screen_label_surface = render_text(font_path, size, color, text)
-        self.screen_label_surface.set_alpha(alpha)
-        self.screen_label_rect = self.screen_label_surface.get_rect().copy()
-        self.screen_label_rect.left = margin_x
-        self.screen_label_rect.top = margin_y + editor.grid_size - get_font_baseline(font_path, size)
-
     def touch_start(self, editor, key, pos, event):
         self.force_redraw = True
         editor_screen.touch_points[key] = pos

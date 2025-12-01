@@ -40,9 +40,6 @@ class calculator_screen(editor_screen):
         self.calculation = [term]
         self.initial_state = [term]
 
-        screen_label_color = (255, 255, 255)
-        self.set_screen_label(editor, "inspect > calculator", screen_label_color, 1)
-
         self.rows = [
             ['reset', '440', 'clear', 'back\nspace'],
             [7, 8, 9, '÷'],
@@ -302,8 +299,6 @@ class calculator_screen(editor_screen):
                 alpha = alpha * alpha * alpha
                 alpha *= .75
                 print_text(text, alpha)
-
-            frame.blit(self.screen_label_surface, self.screen_label_rect)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:

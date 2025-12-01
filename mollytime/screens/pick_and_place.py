@@ -23,8 +23,6 @@ class pick_and_place_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = mollytime.mouse.get_pos()
         self.reset_grab_state()
-
-        self.set_screen_label(editor, "inspect > pick & place")
         self.repopulate_sidebar(editor)
 
         self.extra_draws = 0

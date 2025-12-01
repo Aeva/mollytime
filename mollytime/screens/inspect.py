@@ -41,7 +41,6 @@ class inspect_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
-        self.set_screen_label(editor, "inspect")
         self.repopulate_sidebar(editor)
         self.pending_save = None
         self.pending_load = None
@@ -367,8 +366,6 @@ class inspect_screen(editor_screen):
                 rhs_rect = editor.get_tile_rect(decode_port_tile(in_port))
                 radius = max(1, editor.grid_size // 12)
                 draw_arrow(frame, (0, 0, 0), lhs_rect, rhs_rect, radius)
-
-            frame.blit(self.screen_label_surface, self.screen_label_rect)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:

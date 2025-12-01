@@ -22,7 +22,6 @@ class select_screen(editor_screen):
     def setup(self, editor):
         self.cursor_pos = mollytime.mouse.get_pos()
         self.press_start = None
-        self.set_screen_label(editor, "inspect > select")
         self.resize_screen(editor)
 
     def resize_screen(self, editor):
@@ -33,7 +32,6 @@ class select_screen(editor_screen):
         self.selectbar_rect = mollytime.Rect(0, 0, w, h)
         self.lhs_selectbar_rect = self.selectbar_rect.copy()
         self.rhs_selectbar_rect = mollytime.Rect(editor.play_rect.width - w, 0, w, h)
-        self.screen_label_rect.left += w
 
         self.lhs_selectbar_bg = mollytime.draw.Texture((w, h))
         self.rhs_selectbar_bg = mollytime.draw.Texture((w, h))
@@ -51,7 +49,7 @@ class select_screen(editor_screen):
         lhs_tile = editor.lhs_selection()
         rhs_tile = editor.rhs_selection()
 
-        screen_label_color = (255, 255, 255)
+        label_color = (255, 255, 255)
         font_path, size = AFACAD_REGULAR, editor.grid_size
 
         self.lhs_selectbar_bg.fill(editor.select_color, 0.95)
@@ -64,9 +62,9 @@ class select_screen(editor_screen):
 
         def header_label(text, target):
             def inner(line_offset, line):
-                surface = render_text(font_path, size, screen_label_color, line)
+                surface = render_text(font_path, size, label_color, line)
                 rect = surface.get_rect()
-                rect.top = self.screen_label_rect.top + size * line_offset
+                rect.top = self.selectbar_rect.top + size * line_offset
                 rect.left = (self.selectbar_rect.width - rect.width) / 2
                 target.blit(surface, rect)
             for line in enumerate(text.strip().split("\n")):
@@ -323,8 +321,6 @@ class select_screen(editor_screen):
             frame.blit(self.rhs_selectbar_bg, self.rhs_selectbar_rect)
             for start, stop in self.connections:
                 draw_arrow(frame, parse_color("#fff000"), start, stop, editor.heavy_line)
-
-            frame.blit(self.screen_label_surface, self.screen_label_rect)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:
