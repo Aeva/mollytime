@@ -163,6 +163,8 @@ class program_card:
             }
             if symbol == OpCode.CONST:
                 params["value"] = self.patch.get_constant(tile_id)
+            elif symbol == OpCode.TWEAK:
+                params["value"] = self.patch.get_special_input(tile_id)
 
             entry = " ".join([f'{key}="{value}"' for key, value in params.items()])
             entries.append(f'{indent}<tile {entry}/>\n')
@@ -210,7 +212,11 @@ class program_card:
                             value = float(patch_child.attrib["value"])
                             rewrite[old_id] = self.make_constant((x, y), value)
                         else:
-                            rewrite[old_id] = self.make_tile((x, y), symbol)
+                            tile_id = self.make_tile((x, y), symbol)
+                            rewrite[old_id] = tile_id
+                            if symbol == OpCode.TWEAK:
+                                value = float(patch_child.attrib["value"])
+                                self.patch.set_special_input(tile_id, value)
 
                 for patch_child in root_child:
                     if patch_child.tag == "wire":
