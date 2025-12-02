@@ -302,6 +302,7 @@ class inspect_screen(editor_screen):
                 # TODO touch pad also reports horizontal, so maybe we can do something with that?
                 #print(event.horizontal, event.vertical)
                 editor.patch.add_range_special_input(tile_id, event.vertical * -0.01, 0.0, 1.0)
+                self.update_play_area = True
 
     def touch_start(self, editor, key, pos, event):
         super().touch_start(editor, key, pos, event)
@@ -367,10 +368,16 @@ class inspect_screen(editor_screen):
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
-                if self.draw_clip and editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
+                symbol = editor.patch.get_tile_symbol(tile_id)
+                if self.draw_clip and symbol == OpCode.OUT:
                     editor.clip_tile.draw(frame, rect, label)
                 else:
-                    editor.tile_bg.draw(frame, rect, label)
+                    if symbol == OpCode.TWEAK:
+                        editor.tile_bg.draw(frame, rect)
+                        arc = editor.patch.get_special_input(tile_id)
+                        mollytime.draw.pie(frame, (0, 0, 0), rect.center, 64, .75, -arc)
+                    else:
+                        editor.tile_bg.draw(frame, rect, label)
 
             for (out_port, in_port) in editor.patch.wires:
                 lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))
@@ -434,8 +441,16 @@ class inspect_screen(editor_screen):
                     cold_alpha = 0.2
 
                 interactive_cold.fill_rect(editor.scope_bg_color, rect, 1.0)
-                editor.tile_bg.draw(interactive_cold, rect, label, cold_alpha, text_alpha = 1.0)
-                editor.tile_bg.draw(interactive_hot, rect, label, hot_alpha)
+
+                if symbol == OpCode.TWEAK:
+                    editor.tile_bg.draw(interactive_cold, rect, alpha=cold_alpha, text_alpha = 1.0)
+                    editor.tile_bg.draw(interactive_hot, rect, alpha=hot_alpha)
+                    arc = editor.patch.get_special_input(tile_id)
+                    mollytime.draw.pie(interactive_cold, (0, 0, 0), rect.center, 64, .75, -arc, alpha = 1.0)
+                    mollytime.draw.pie(interactive_hot, (200, 200, 200), rect.center, 64, .75, -arc)
+                else:
+                    editor.tile_bg.draw(interactive_cold, rect, label, cold_alpha, text_alpha = 1.0)
+                    editor.tile_bg.draw(interactive_hot, rect, label, hot_alpha)
 
             # draw the beam
             min_sample, max_sample = editor.patch.read_scope_probe()

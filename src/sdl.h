@@ -271,6 +271,7 @@ namespace Draw
     
     void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
     void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth = 0, float Alpha = 1.0f); // Fills if BorderWidth <= 0
+    void DrawPie(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Angle, float Arc, float Alpha = 1.0f);
     void DrawCircle(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Alpha = 1.0f);
     void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Points, float Alpha = 1.0f);
 

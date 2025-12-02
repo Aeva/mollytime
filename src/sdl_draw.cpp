@@ -494,6 +494,61 @@ namespace Draw
     }
 
     static void PrepareConvexHull(
+        const std::vector<Point>& Points, const Point& Center, const ColorPoint& Color, float Alpha,
+        std::vector<SDL_Vertex>& OutVertices, std::vector<int>& OutIndices)
+    {
+        const auto [CenterX, CenterY] = Center;
+        OutVertices.clear();
+        OutIndices.clear();
+        if (Points.size() == 0)
+        {
+            return;
+        }
+        {
+            OutVertices.reserve(Points.size() + 1);
+            {
+                // Placeholder for the center vertex, which is calculated later.
+                SDL_Vertex CenterVertexTBD;
+                Color.Eval(ColorSpace::sRGB, CenterVertexTBD.color);
+                CenterVertexTBD.color.a = Alpha;
+                OutVertices.push_back(CenterVertexTBD);
+            }
+            for (const Point& Corner : Points)
+            {
+                SDL_Vertex Vertex;
+                glm::vec2 Pt = GLMPoint(Corner);
+                Vertex.position = SDLPoint(Pt);
+                Vertex.color = OutVertices[0].color;
+                OutVertices.push_back(Vertex);
+            }
+            OutVertices[0].position = { CenterX, CenterY };
+        }
+        {
+            glm::vec3 CenterPoint(CenterX, CenterY, 0.0f);
+            OutIndices.reserve(Points.size() * 3);
+            for (int IndexA = 0; IndexA < (int)Points.size(); ++IndexA)
+            {
+                int IndexB = (IndexA + 1) % (int)Points.size();
+
+                glm::vec3 PointA = glm::vec3(OutVertices[IndexA].position.x, OutVertices[IndexA].position.y, 0.0f) - CenterPoint;
+                glm::vec3 PointB = glm::vec3(OutVertices[IndexB].position.x, OutVertices[IndexB].position.y, 0.0f) - CenterPoint;
+                glm::vec3 Norm = glm::cross(PointA, PointB);
+                if (Norm.z < 0.0f)
+                {
+                    OutIndices.push_back(IndexA + 1);
+                    OutIndices.push_back(IndexB + 1);
+                }
+                else
+                {
+                    OutIndices.push_back(IndexB + 1);
+                    OutIndices.push_back(IndexA + 1);
+                }
+                OutIndices.push_back(0);
+            }
+        }
+    }
+
+    static void PrepareConvexHull(
         const std::vector<Point>& Points, const ColorPoint& Color, float Alpha,
         std::vector<SDL_Vertex>& OutVertices, std::vector<int>& OutIndices)
     {
@@ -547,6 +602,48 @@ namespace Draw
                 }
                 OutIndices.push_back(0);
             }
+        }
+    }
+
+    static std::vector<Point> UnitPie(const int Count, const float Rotation, const float Arc)
+    {
+        std::vector<Point> Points;
+        Points.resize(Count);
+        for (int Index = 0; Index < Count; ++Index)
+        {
+            float Alpha = float(Index) / float(Count - 1);
+            Alpha = Rotation + Alpha * Arc;
+            const float Angle = Tau * Alpha;
+            Points[Index] = { std::cos(Angle), -std::sin(Angle) };
+        }
+        return Points;
+    }
+
+    void DrawPie(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Angle, float Arc, float Alpha)
+    {
+        assert(Renderer != nullptr);
+
+        std::vector<Point> PieTemplate = UnitPie(32, Angle, Arc);
+        std::vector<Point> Points;
+        Points.reserve(PieTemplate.size());
+        const auto [CenterX, CenterY] = Center;
+        for (const auto [UnitX, UnitY] : PieTemplate)
+        {
+            Points.emplace_back(UnitX * Radius + CenterX, UnitY * Radius + CenterY);
+        }
+
+        std::vector<SDL_Vertex> Vertices;
+        std::vector<int> Indices;
+        PrepareConvexHull(Points, Center, Color, Alpha, Vertices, Indices);
+
+        if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
+        {
+            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+        }
+
+        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size() - 3))
+        {
+            throw std::runtime_error(std::format("Failed to render pie. SDL error: {}", SDL_GetError()));
         }
     }
 
