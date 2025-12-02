@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <mollytime version="2025.07.13">
 	<patch>
-		<tile id="1" symbol="tweak" x="-4" y="1"/>
+		<tile id="1" symbol="tweak" x="-4" y="1" value="0.0"/>
 		<tile id="2" symbol="mix" x="-4" y="0"/>
 		<tile id="3" symbol="sin" x="-1" y="-2"/>
 		<tile id="4" symbol="const" x="-3" y="-2" value="440.0"/>
@@ -12,18 +12,18 @@
 		<tile id="9" symbol="sin" x="-3" y="-1"/>
 		<tile id="10" symbol="mul" x="-2" y="-1"/>
 		<tile id="11" symbol="mul" x="0" y="-2"/>
-		<tile id="12" symbol="tweak" x="-2" y="1"/>
+		<tile id="12" symbol="tweak" x="-2" y="1" value="0.0"/>
 		<tile id="13" symbol="const" x="0" y="-1" value="0.5"/>
 		<tile id="14" symbol="out" x="1" y="-2"/>
 		<tile id="15" symbol="scope" x="-1" y="1"/>
 		<tile id="16" symbol="scope" x="-5" y="1"/>
 		<tile id="17" symbol="const" x="-1" y="0" value="10.0"/>
 		<tile id="18" symbol="adsr" x="2" y="0"/>
-		<tile id="19" symbol="tweak" x="1" y="1"/>
-		<tile id="20" symbol="tweak" x="2" y="1"/>
-		<tile id="21" symbol="tweak" x="3" y="1"/>
-		<tile id="22" symbol="tweak" x="4" y="1"/>
-		<tile id="23" symbol="tweak" x="5" y="0"/>
+		<tile id="19" symbol="tweak" x="1" y="1" value="0.0"/>
+		<tile id="20" symbol="tweak" x="2" y="1" value="0.0"/>
+		<tile id="21" symbol="tweak" x="3" y="1" value="0.0"/>
+		<tile id="22" symbol="tweak" x="4" y="1" value="0.0"/>
+		<tile id="23" symbol="tweak" x="5" y="0" value="0.0"/>
 		<tile id="24" symbol="sqr" x="3" y="-1"/>
 		<tile id="25" symbol="mix" x="4" y="-1"/>
 		<tile id="26" symbol="const" x="3" y="-2" value="0.1"/>

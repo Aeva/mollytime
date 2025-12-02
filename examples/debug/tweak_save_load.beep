@@ -2,7 +2,7 @@
 <mollytime version="2025.07.13">
 	<patch>
 		<tile id="1" symbol="out" x="2" y="0"/>
-		<tile id="2" symbol="tweak" x="-1" y="0" value="0.25000000000000006"/>
+		<tile id="2" symbol="tweak" x="-1" y="0" value="0.5000000000000002"/>
 		<tile id="3" symbol="scope" x="0" y="0"/>
 		<wire from="2:0" to="3:0"/>
 	</patch>
