@@ -1378,6 +1378,32 @@ struct QuantizeThunk : public InstructionThunk
                 Note -= Stride;
             }
 
+#if 1
+            {
+                double Alpha = Note / Stride;
+                int IndexLow = 0;
+                int IndexHigh = 0;
+                double AlphaLow = 0.0;
+                double AlphaHigh = 1.0;
+                for (int Index = 1; Index < int(Scale.size()); ++Index)
+                {
+                    IndexHigh = int(Index);
+                    AlphaHigh = double(Index) / double(Scale.size() - 1);
+                    if (AlphaLow <= Alpha && Alpha <= AlphaHigh)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        IndexLow = IndexHigh;
+                        AlphaLow = AlphaHigh;
+                    }
+                }
+                Alpha = (Alpha - AlphaLow) / (AlphaHigh - AlphaLow);
+                Note = (1.0 - Alpha) * Scale[IndexLow] + Alpha * Scale[IndexLow + 1];
+            }
+#endif
+
             double Low = 0.0;
             double High = 0.0;
             for (int Index = 0; Index < int(Scale.size()) - 1; ++Index)
