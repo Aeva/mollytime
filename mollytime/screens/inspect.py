@@ -365,6 +365,7 @@ class inspect_screen(editor_screen):
 
             frame = editor.reset_play_area()
 
+            radius = int(editor.grid_size * .72)
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
@@ -375,7 +376,7 @@ class inspect_screen(editor_screen):
                     if symbol == OpCode.TWEAK:
                         editor.tile_bg.draw(frame, rect)
                         arc = editor.patch.get_special_input(tile_id)
-                        mollytime.draw.pie(frame, (0, 0, 0), rect.center, 64, .75, -arc)
+                        mollytime.draw.pie(frame, (0, 0, 0), rect.center, radius, .75, -arc)
                     else:
                         editor.tile_bg.draw(frame, rect, label)
 
