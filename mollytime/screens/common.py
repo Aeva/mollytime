@@ -590,6 +590,7 @@ class editor_screen:
 
     def reset_touch_tracker(self):
         self.force_redraw = True
+        self.primary_touch = None
         editor_screen.touch_points = {}
         editor_screen.touch_colors = {}
 
@@ -728,16 +729,25 @@ class editor_screen:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)
                 pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_update(editor, key, pos, event)
+                if key == self.primary_touch:
+                    self.on_move(editor, pos, event)
 
             elif event.type == mollytime.events.FINGERDOWN:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)
                 pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_start(editor, key, pos, event)
+                if self.primary_touch is None:
+                    self.primary_touch = key
+                    self.on_press(editor, pos, event)
+
 
             elif event.type == mollytime.events.FINGERUP:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)
                 pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_end(editor, key, pos, event)
+                if key == self.primary_touch:
+                    self.on_release(editor, pos, event)
+                    self.primary_touch = None
 
             elif event.type == mollytime.events.QUIT:
                 sys.exit(0)
