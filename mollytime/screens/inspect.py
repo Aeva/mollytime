@@ -316,8 +316,6 @@ class inspect_screen(editor_screen):
                 if symbol == OpCode.BOOP:
                     self.hold[key] = tile_id
                     editor.patch.set_special_input(tile_id, 1.0)
-                elif symbol in (OpCode.OUT, OpCode.SCOPE):
-                    self.toggle_scope(editor, tile_id)
 
     def touch_update(self, editor, key, pos, event):
         super().touch_update(editor, key, pos, event)
