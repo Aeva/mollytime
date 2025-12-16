@@ -5,8 +5,11 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_dialog.h>
 #include <SDL3/SDL_render.h>
+#include <SDL3/SDL_version.h>
+#include <SDL3/SDL_revision.h>
 
 #include <cassert>
+#include <print>
 #include <format>
 #include <span>
 #include <stdexcept>
@@ -90,6 +93,18 @@ namespace Display
         if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR))
         {
             throw std::runtime_error(std::format("Failed to initialize SDL. SDL error: {}", SDL_GetError()));
+        }
+
+        std::string_view LinkedRevision = SDL_GetRevision();
+        std::string_view CompiledRevision = SDL_REVISION;
+        if (LinkedRevision != CompiledRevision)
+        {
+            std::print("Compiled SDL version: {}\n", CompiledRevision);
+            std::print("Linked SDL version: {}\n", LinkedRevision);
+        }
+        else
+        {
+            std::print("SDL version: {}\n", CompiledRevision);
         }
 
         if (Window != nullptr)
