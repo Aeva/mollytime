@@ -706,29 +706,29 @@ struct FoldThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("FoldThunk");
-        std::vector<RunningStateSharedPtr>& InValue = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InPositive = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& InNegative = Registers.Input[2];
-        RunningStateSharedPtr& Output = Registers.Output[0];
+        double Sample = Registers.CombineInput(0);
+        double& Output = Registers.OutputRef(0);
 
-        double Val = Combine(CombinerAdd, InValue, 0.0);
-        double Threshold = 1.0;
-        if (Val < 0.0 && InNegative.size() > 0)
+        double Threshold;
+        if (Sample < 0.0 && Registers.InputConnected(2))
         {
-            Threshold = Combine(CombinerAdd, InNegative, 0.0);
+            // Use the negative threshold input.
+            Threshold = Registers.CombineInput(2);
         }
         else
         {
-            Threshold = Combine(CombinerAdd, InPositive, 0.0);
+            // Use the positive threshold input or default to 1.
+            Threshold = Registers.CombineInput(1, 1.0);
         }
-        double Sign = Val < 0.0 ? -1.0 : 1.0;
+
+        double Sign = Sample < 0.0 ? -1.0 : 1.0;
         Threshold = std::min(std::max(std::abs(Threshold), 0.0), 1.0);
-        Val = std::abs(Val);
-        if (Val > Threshold)
+        Sample = std::abs(Sample);
+        if (Sample > Threshold)
         {
-            Val = Threshold - (Val - Threshold);
+            Sample = Threshold - (Sample - Threshold);
         }
-        Output->Set(Val * Sign);
+        Output = Sample * Sign;
     }
 
     virtual ~FoldThunk() {};

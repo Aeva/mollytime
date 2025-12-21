@@ -344,6 +344,11 @@ struct InstructionRegisters
         }
     }
 
+    inline bool InputConnected(uint32_t InputIndex)
+    {
+        return Input[InputIndex].size() > 0;
+    }
+
     inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         return Combine(Combiner, Input[InputIndex], Default);
