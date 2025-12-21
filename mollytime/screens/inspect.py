@@ -418,6 +418,7 @@ class inspect_screen(editor_screen):
 
             outline = editor.heavy_line
             half_outline = max(outline // 2, 1)
+            radius = int(editor.grid_size * .72)
 
             # highlight the interactive elements
             for tile_id in self.interactive_tiles:
@@ -445,8 +446,8 @@ class inspect_screen(editor_screen):
                     editor.tile_bg.draw(interactive_cold, rect, alpha=cold_alpha, text_alpha = 1.0)
                     editor.tile_bg.draw(interactive_hot, rect, alpha=hot_alpha)
                     arc = editor.patch.get_special_input(tile_id)
-                    mollytime.draw.pie(interactive_cold, (0, 0, 0), rect.center, 64, .75, -arc, alpha = 1.0)
-                    mollytime.draw.pie(interactive_hot, (200, 200, 200), rect.center, 64, .75, -arc)
+                    mollytime.draw.pie(interactive_cold, (0, 0, 0), rect.center, radius, .75, -arc, alpha = 1.0)
+                    mollytime.draw.pie(interactive_hot, (200, 200, 200), rect.center, radius, .75, -arc)
                 else:
                     editor.tile_bg.draw(interactive_cold, rect, label, cold_alpha, text_alpha = 1.0)
                     editor.tile_bg.draw(interactive_hot, rect, label, hot_alpha)
