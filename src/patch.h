@@ -120,15 +120,26 @@ uint32_t DecodeSampleHandle(double WireValue);
 std::string GetDefaultName(OpCode Symbol);
 
 
+struct RegisterAllocation
+{
+    uint32_t BaseOffset;
+    uint32_t LaneCount;
+};
+
+
 struct RunningState
 {
     RunningState(double InSample)
         : Sample(InSample)
     {
     }
-    double* DangerGet()
+    double* DangerPtr()
     {
         return &Sample;
+    }
+    double& DangerRef()
+    {
+        return Sample;
     }
     double Get()
     {
@@ -333,6 +344,21 @@ struct InstructionRegisters
             Closure[Index] = AssignedClosures[Index];
         }
     }
+
+    inline double CombineInput(uint32_t InputIndex, auto& Combiner, double Default=0.0)
+    {
+        return Combine(CombinerAdd, Input[InputIndex], Default);
+    }
+
+    inline double& OutputRef(uint32_t OutputIndex)
+    {
+        return Output[OutputIndex]->DangerRef();
+    }
+
+    inline double& ClosureRef(uint32_t ClosureIndex)
+    {
+        return Closure[ClosureIndex]->DangerRef();
+    }
 };
 
 
@@ -357,6 +383,11 @@ struct MidiChannelState
 
 struct Scratch final : public MidiHandler
 {
+    uint64_t Identity;
+    uint32_t Polyphony;
+    std::vector<double> RegisterFile;
+    std::map<PortHandle, RegisterAllocation> RegisterMap;
+
     std::vector<std::shared_ptr<InstructionThunk>> Program;
     std::vector<RunningStateSharedPtr> Outputs;
     std::map<TileHandle, RunningStateSharedPtr> Inputs;
@@ -369,6 +400,8 @@ struct Scratch final : public MidiHandler
 
     std::array<MidiChannelState, 16> MidiChannels;
 
+    void Migrate(const Scratch& Old);
+
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
     MagicTapeSharedPtr FindTape(double WireValue);
 };
@@ -378,6 +411,7 @@ using ScratchSharedPtr = std::shared_ptr<Scratch>;
 
 struct Patch
 {
+    uint64_t Identity;
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;

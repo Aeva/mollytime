@@ -43,6 +43,10 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
         TRACEABLE_LOCK_GUARD(BufferState->Mutex);
         if (BufferState->PendingProgram)
         {
+            if (Program && BufferState->PendingProgram->Identity == Program->Identity)
+            {
+                BufferState->PendingProgram->Migrate(*Program);
+            }
             Program = BufferState->PendingProgram;
             BufferState->PendingProgram = nullptr;
             ResetFramePressure();

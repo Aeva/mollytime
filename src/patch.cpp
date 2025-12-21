@@ -188,15 +188,12 @@ struct SinThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SinThunk");
-        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.ClosureRef(0);
 
-        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
-        double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        ActivePhase->Set(Phase);
-        OutAmplitude->Set(std::sin(Phase * Tau));
+        Amplitude = std::sin(Phase * Tau);
     }
 
     virtual ~SinThunk() {};
@@ -211,20 +208,16 @@ struct SqrThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SqrThunk");
-        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.ClosureRef(0);
 
-        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
-        double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        ActivePhase->Set(Phase);
         if (Phase < 0.0)
         {
             Phase += 1.0;
         }
-        double Sign = Phase < 0.5 ? 1.0 : -1.0;
-        OutAmplitude->Set(Sign);
+        Amplitude = Phase < 0.5 ? 1.0 : -1.0;
     }
 
     virtual ~SqrThunk() {};
@@ -239,14 +232,11 @@ struct TriThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TriThunk");
-        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.ClosureRef(0);
 
-        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
-        double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        ActivePhase->Set(Phase);
         if (Phase < 0.0)
         {
             Phase += 1.0;
@@ -258,7 +248,7 @@ struct TriThunk : public InstructionThunk
         {
             Alpha = 1.0 - Alpha;
         }
-        OutAmplitude->Set(Alpha * Sign);
+        Amplitude = Alpha * Sign;
     }
 
     virtual ~TriThunk() {};
@@ -273,29 +263,17 @@ struct SawThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SawThunk");
-        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
+        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.ClosureRef(0);
 
-        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
-        double Phase = ActivePhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        ActivePhase->Set(Phase);
         if (Phase < 0.0)
         {
             Phase += 1.0;
         }
-        /*
-        double Sign = Phase < 0.5 ? 1.0 : -1.0;
-        double IntegerPart = 0.0;
-        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
-        if (int(IntegerPart) % 2 == 1)
-        {
-            Alpha = 1.0 - Alpha;
-        }
-        OutAmplitude->Set(Alpha * Sign);
-        */
-        OutAmplitude->Set(Phase * 2.0 - 1.0);
+
+        Amplitude = Phase * 2.0 - 1.0;
     }
 
     virtual ~SawThunk() {};
@@ -2088,6 +2066,8 @@ int GetClosureCount(OpCode Symbol)
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
+    static uint64_t NextPatchIdentity = 0;
+    Identity = ++NextPatchIdentity;
     // This forces the playing patch to clear, which is useful for the editor, but
     // probably not something we want in a future stand-alone runtime.
     Recompile();
@@ -2535,6 +2515,7 @@ ScratchSharedPtr Patch::Compile()
     std::map<TileHandle, std::vector<PortHandle>> InputSequences;
 
     ScratchSharedPtr Program = std::make_shared<Scratch>();
+    Program->Identity = Identity;
     Program->MidiChannels = MidiChannels;
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
@@ -2830,6 +2811,34 @@ void Patch::Recompile()
     {
         ScratchSharedPtr CurrentProgram = Compile();
         Audio::GetStream()->ProgramChange(CurrentProgram);
+    }
+}
+
+
+void Scratch::Migrate(const Scratch& Old)
+{
+    TRACEABLE_SCOPE;
+    for (auto const& [Handle, NewAllocation] : RegisterMap)
+    {
+        auto Found = Old.RegisterMap.find(Handle);
+        if (Found != Old.RegisterMap.end())
+        {
+            const RegisterAllocation& OldAllocation = Found->second;
+            if (OldAllocation.LaneCount == NewAllocation.LaneCount)
+            {
+                for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
+                {
+                    RegisterFile[NewAllocation.BaseOffset + Lane] = RegisterFile[OldAllocation.BaseOffset + Lane];
+                }
+            }
+            else if (OldAllocation.LaneCount == 1)
+            {
+                for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
+                {
+                    RegisterFile[NewAllocation.BaseOffset + Lane] = RegisterFile[OldAllocation.BaseOffset];
+                }
+            }
+        }
     }
 }
 
