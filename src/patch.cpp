@@ -188,7 +188,7 @@ struct SinThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SinThunk");
-        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
 
@@ -208,7 +208,7 @@ struct SqrThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SqrThunk");
-        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
 
@@ -232,7 +232,7 @@ struct TriThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TriThunk");
-        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
 
@@ -263,7 +263,7 @@ struct SawThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SawThunk");
-        double Hz = Registers.CombineInput(0, CombinerAdd, 440.0);
+        double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
 
@@ -288,14 +288,12 @@ struct NoiThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoiThunk");
-        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& ActivePhase = Registers.Closure[0];
-        RunningStateSharedPtr& HighAmp = Registers.Closure[1];
-        RunningStateSharedPtr& LowAmp = Registers.Closure[2];
+        double Hz = Registers.CombineInput(0, 440.0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.ClosureRef(0);
+        double& HighAmp = Registers.ClosureRef(1);
+        double& LowAmp = Registers.ClosureRef(2);
 
-        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
-        double Phase = ActivePhase->Get();
         int Before = int(Phase * 4.0);
         Phase += Hz * SampleInterval;
         int After = int(Phase * 4.0);
@@ -305,17 +303,16 @@ struct NoiThunk : public InstructionThunk
             After %= 4;
             if (After == 1)
             {
-                LowAmp->Set(Roll() * 2.0 - 1.0);
+                LowAmp = Roll() * 2.0 - 1.0;
             }
             else if (After == 3)
             {
-                HighAmp->Set(Roll() * 2.0 - 1.0);
+                HighAmp = Roll() * 2.0 - 1.0;
             }
         }
         Phase = std::fmod(Phase, 1.0);
-        ActivePhase->Set(Phase);
         double Alpha = std::sin(Phase * Tau) * .5 + .5;
-        OutAmplitude->Set(LowAmp->Get() * (1.0 - Alpha) + HighAmp->Get() * Alpha);
+        Amplitude = LowAmp * (1.0 - Alpha) + HighAmp * Alpha;
     }
 
     virtual ~NoiThunk() {};
@@ -330,17 +327,14 @@ struct PhaseThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PhaseThunk");
-        std::vector<RunningStateSharedPtr>& InFrequencyHz = Registers.Input[0];
-        RunningStateSharedPtr& OutPhase = Registers.Output[0];
+        double Hz = Registers.CombineInput(0, 440.0);
+        double& Phase = Registers.OutputRef(0);
 
-        double Hz = Combine(CombinerAdd, InFrequencyHz, 440.0);
-        double Phase = OutPhase->Get();
         Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
         if (Phase < 0.0)
         {
             Phase += 1.0;
         }
-        OutPhase->Set(Phase);
     }
 
     virtual ~PhaseThunk() {};
@@ -355,14 +349,12 @@ struct SinTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SinTrainThunk");
-        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+        double InPhase = Registers.CombineInput(0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.OutputRef(1);
 
-        double Phase = Combine(CombinerAdd, InPhase, 0.0);
-        Phase = std::fmod(Phase, 1.0);
-        OutAmplitude->Set(std::sin(Phase * Tau));
-        OutPhase->Set(Phase);
+        Phase = std::fmod(InPhase, 1.0);
+        Amplitude = std::sin(Phase * Tau);
     }
 
     virtual ~SinTrainThunk() {};
@@ -377,19 +369,16 @@ struct SqrTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
-        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+        double InPhase = Registers.CombineInput(0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.OutputRef(1);
 
-        double Phase = Combine(CombinerAdd, InPhase, 0.0);
-        Phase = std::fmod(Phase, 1.0);
+        Phase = std::fmod(InPhase, 1.0);
         if (Phase < 0.0)
         {
             Phase += 1.0;
         }
-        double Sign = Phase < 0.5 ? 1.0 : -1.0;
-        OutAmplitude->Set(Sign);
-        OutPhase->Set(Phase);
+        Amplitude = Phase < 0.5 ? 1.0 : -1.0;
     }
 
     virtual ~SqrTrainThunk() {};
@@ -404,12 +393,11 @@ struct TriTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TriTrainThunk");
-        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+        double InPhase = Registers.CombineInput(0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.OutputRef(1);
 
-        double Phase = Combine(CombinerAdd, InPhase, 0.0);
-        Phase = std::fmod(Phase, 1.0);
+        Phase = std::fmod(InPhase, 1.0);
         if (Phase < 0.0)
         {
             Phase += 1.0;
@@ -421,8 +409,7 @@ struct TriTrainThunk : public InstructionThunk
         {
             Alpha = 1.0 - Alpha;
         }
-        OutAmplitude->Set(Alpha * Sign);
-        OutPhase->Set(Phase);
+        Amplitude = Alpha * Sign;
     }
 
     virtual ~TriTrainThunk() {};
@@ -437,28 +424,17 @@ struct SawTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SawTrainThunk");
-        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& OutPhase = Registers.Output[1];
+        double InPhase = Registers.CombineInput(0);
+        double& Amplitude = Registers.OutputRef(0);
+        double& Phase = Registers.OutputRef(1);
 
-        double Phase = Combine(CombinerAdd, InPhase, 0.0);
-        Phase = std::fmod(Phase, 1.0);
+        Phase = std::fmod(InPhase, 1.0);
         if (Phase < 0.0)
         {
             Phase += 1.0;
         }
-        /*
-        double Sign = Phase < 0.5 ? 1.0 : -1.0;
-        double IntegerPart = 0.0;
-        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
-        if (int(IntegerPart) % 2 == 1)
-        {
-            Alpha = 1.0 - Alpha;
-        }
-        OutAmplitude->Set(Alpha * Sign);
-        */
-        OutAmplitude->Set(Phase * 2.0 - 1.0);
-        OutPhase->Set(Phase);
+
+        Amplitude = Phase * 2.0 - 1.0;
     }
 
     virtual ~SawTrainThunk() {};
@@ -473,14 +449,11 @@ struct PhaseWidthModulationThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
-        std::vector<RunningStateSharedPtr>& InPhase = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InBalance = Registers.Input[1];
-        RunningStateSharedPtr& OutPhase = Registers.Output[0];
+        double Phase = Registers.CombineInput(0);
+        double Balance = Registers.CombineInput(1);
+        double& OutPhase = Registers.OutputRef(0);
 
-        const double Balance = Combine(CombinerAdd, InBalance, 0.0);
         const double Pivot = (Balance * 0.5 + 0.5);
-
-        double Phase = Combine(CombinerAdd, InPhase, 0.0);
         Phase = std::fmod(Phase, 1.0);
 
         if (Phase <= Pivot && Pivot > 0.0)
@@ -494,7 +467,7 @@ struct PhaseWidthModulationThunk : public InstructionThunk
             Phase = 0.5 + Alpha * 0.5;
         }
 
-        OutPhase->Set(Phase);
+        OutPhase = Phase;
     }
 
     virtual ~PhaseWidthModulationThunk() {};
@@ -509,7 +482,7 @@ struct AddThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("AddThunk");
-        Registers.Output[0]->Set(Combine(CombinerAdd, Registers.Input[0], 0.0));
+        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
     }
 
     virtual ~AddThunk() {};
@@ -524,7 +497,7 @@ struct MulThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MulThunk");
-        Registers.Output[0]->Set(Combine(CombinerMul, Registers.Input[0], 0.0));
+        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMul);
     }
 
     virtual ~MulThunk() {};
@@ -539,10 +512,12 @@ struct RcpThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RcpThunk");
-        double Divisor = Combine(CombinerMul, Registers.Input[0], 0.0);
+        double Divisor = Registers.CombineInput(0, 0.0, CombinerMul);
+        double& Output = Registers.OutputRef(0);
+
         if (Divisor != 0.0)
         {
-            Registers.Output[0]->Set(1.0 / Divisor);
+            Output = 1.0 / Divisor;
         }
     }
 
@@ -558,16 +533,14 @@ struct PowThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PowThunk");
-        std::vector<RunningStateSharedPtr>& InValue = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InExponent = Registers.Input[1];
-        RunningStateSharedPtr& Output = Registers.Output[0];
+        double Base = Registers.CombineInput(0);
+        double Exponent = Registers.CombineInput(1, 2.0);
+        double& Output = Registers.OutputRef(0);
 
-        double Base = Combine(CombinerMin, InValue, 0.0);
-        double Exponent = Combine(CombinerMin, InExponent, 2.0);
         double Result = std::pow(Base, Exponent);
         if (std::isfinite(Result))
         {
-            Output->Set(Result);
+            Output = Result;
         }
     }
 
@@ -583,17 +556,15 @@ struct SignPreservingPowThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
-        std::vector<RunningStateSharedPtr>& InValue = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InExponent = Registers.Input[1];
-        RunningStateSharedPtr& Output = Registers.Output[0];
+        double Base = Registers.CombineInput(0);
+        double Exponent = Registers.CombineInput(1, 2.0);
+        double& Output = Registers.OutputRef(0);
 
-        double Base = Combine(CombinerMin, InValue, 0.0);
         double Sign = Base >= 0.0 ? 1.0 : -1.0;
-        double Exponent = Combine(CombinerMin, InExponent, 2.0);
         double Result = std::pow(std::abs(Base), Exponent);
         if (std::isfinite(Result))
         {
-            Output->Set(Result * Sign);
+            Output = Result * Sign;
         }
     }
 
@@ -609,7 +580,7 @@ struct MinThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MinThunk");
-        Registers.Output[0]->Set(Combine(CombinerMin, Registers.Input[0], 0.0));
+        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMin);
     }
 
     virtual ~MinThunk() {};
@@ -624,7 +595,7 @@ struct MaxThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MaxThunk");
-        Registers.Output[0]->Set(Combine(CombinerMax, Registers.Input[0], 0.0));
+        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMax);
     }
 
     virtual ~MaxThunk() {};
@@ -639,10 +610,11 @@ struct ClampThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ClampThunk");
-        double Sample = Combine(CombinerAdd, Registers.Input[0], 0.0);
-        Sample = std::min(Sample, Combine(CombinerMax, Registers.Input[1], 1.0));
-        Sample = std::max(Sample, Combine(CombinerMin, Registers.Input[2], -1.0));
-        Registers.Output[0]->Set(Sample);
+        double Sample = Registers.CombineInput(0);
+        double High = Registers.CombineInput(1, 1.0, CombinerMax);
+        double Low = Registers.CombineInput(2, -1.0, CombinerMin);
+        double& Output = Registers.OutputRef(0);
+        Output = std::max(std::min(Sample, High), Low);
     }
 
     virtual ~ClampThunk() {};
@@ -657,7 +629,7 @@ struct FloorThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("FloorThunk");
-        Registers.Output[0]->Set(std::floor(Combine(CombinerAdd, Registers.Input[0], 0.0)));
+        Registers.OutputRef(0) = std::floor(Registers.CombineInput(0));
     }
 
     virtual ~FloorThunk() {};
@@ -672,7 +644,7 @@ struct CeilThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("CeilThunk");
-        Registers.Output[0]->Set(std::ceil(Combine(CombinerAdd, Registers.Input[0], 0.0)));
+        Registers.OutputRef(0) = std::ceil(Registers.CombineInput(0));
     }
 
     virtual ~CeilThunk() {};
@@ -687,7 +659,7 @@ struct RoundThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RoundThunk");
-        Registers.Output[0]->Set(std::round(Combine(CombinerAdd, Registers.Input[0], 0.0)));
+        Registers.OutputRef(0) = std::round(Registers.CombineInput(0));
     }
 
     virtual ~RoundThunk() {};
@@ -702,8 +674,9 @@ struct SignThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("SignThunk");
-        double Sign = Combine(CombinerAdd, Registers.Input[0], 0.0) < 0.0 ? -1.0 : 1.0;
-        Registers.Output[0]->Set(Sign);
+        double Number = Registers.CombineInput(0);
+        double& Sign = Registers.OutputRef(0);
+        Sign = (Number < 0.0) ? -1.0 : 1.0;
     }
 
     virtual ~SignThunk() {};
@@ -718,7 +691,7 @@ struct AbsThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("AbsThunk");
-        Registers.Output[0]->Set(std::abs(Combine(CombinerAdd, Registers.Input[0], 0.0)));
+        Registers.OutputRef(0) = std::abs(Registers.CombineInput(0));
     }
 
     virtual ~AbsThunk() {};

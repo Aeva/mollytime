@@ -297,6 +297,9 @@ inline double CombinerMax(double LHS, double RHS)
 }
 
 
+using CombinerFn = decltype((CombinerAdd));
+
+
 inline double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
 {
     double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
@@ -322,10 +325,6 @@ struct InstructionInfo
 template<int InputCount, int OutputCount, int ClosureCount>
 struct InstructionRegisters
 {
-    std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
-    std::array<RunningStateSharedPtr, OutputCount> Output;
-    std::array<RunningStateSharedPtr, ClosureCount> Closure;
-
     void Connect(
         std::vector<std::vector<RunningStateSharedPtr>>& AssignedInputs,
         std::vector<RunningStateSharedPtr>& AssignedOutputs,
@@ -345,9 +344,9 @@ struct InstructionRegisters
         }
     }
 
-    inline double CombineInput(uint32_t InputIndex, auto& Combiner, double Default=0.0)
+    inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
-        return Combine(CombinerAdd, Input[InputIndex], Default);
+        return Combine(Combiner, Input[InputIndex], Default);
     }
 
     inline double& OutputRef(uint32_t OutputIndex)
@@ -359,6 +358,10 @@ struct InstructionRegisters
     {
         return Closure[ClosureIndex]->DangerRef();
     }
+
+    std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
+    std::array<RunningStateSharedPtr, OutputCount> Output;
+    std::array<RunningStateSharedPtr, ClosureCount> Closure;
 };
 
 
