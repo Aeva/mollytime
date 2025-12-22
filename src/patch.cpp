@@ -1492,7 +1492,7 @@ struct GateThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GateThunk");
-        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Gate = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
@@ -1514,7 +1514,7 @@ struct NoteThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoteThunk");
-        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Note = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
@@ -1536,7 +1536,7 @@ struct VelocityThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("VelocityThunk");
-        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Velocity = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
@@ -1558,7 +1558,7 @@ struct PressureThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PressureThunk");
-        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Pressure = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
@@ -1580,18 +1580,15 @@ struct ControlChangeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
-        std::vector<RunningStateSharedPtr>& Control = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& Channel = Registers.Input[1];
-        RunningStateSharedPtr& Output = Registers.Output[0];
-
-        int EventChannel = int(Combine(CombinerAdd, Channel, 0.0));
-        double EventParam = Combine(CombinerAdd, Control, 0.0);
-        if (EventChannel >= 0 && EventChannel <= 15)
+        int Control = int(Registers.CombineInput(0));
+        int Channel = int(Registers.CombineInput(1, double(Program->MostRecentChannel)));
+        double& Output = Registers.OutputRef(0);
+        if (Channel >= 0 && Channel <= 15)
         {
-            MidiChannelState& State = Program->MidiChannels[EventChannel];
-            if (State.CtrlParam->Get() == EventParam)
+            MidiChannelState& State = Program->MidiChannels[Channel];
+            if (int(State.CtrlParam->Get()) == Control)
             {
-                Output->Set(State.CtrlValue->Get());
+                Output = State.CtrlValue->Get();
             }
         }
     }
@@ -1611,8 +1608,9 @@ struct MidiToHzThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
-        double Note = Combine(CombinerAdd, Registers.Input[0], 0.0);
-        Registers.Output[0]->Set(MidiNoteToHz(Note));
+        double Note = Registers.CombineInput(0);
+        double& Output = Registers.OutputRef(0);
+        Output = MidiNoteToHz(Note);
     }
 
     virtual ~MidiToHzThunk() {};
@@ -1627,8 +1625,9 @@ struct LoudnessFudgeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
-        double Hz = Combine(CombinerAdd, Registers.Input[0], 0.0);
-        Registers.Output[0]->Set(PerceptualAmplitudeCorrectionByHz(Hz));
+        double Hz = Registers.CombineInput(0);
+        double& Output = Registers.OutputRef(0);
+        Output = PerceptualAmplitudeCorrectionByHz(Hz);
     }
 
     virtual ~LoudnessFudgeThunk() {};
@@ -1644,7 +1643,7 @@ struct BoopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("BoopThunk");
-        Registers.Output[0]->Set(Input->Get());
+        Registers.OutputRef(0) = Input->Get();
     }
 
     virtual ~BoopThunk() {};
@@ -1660,7 +1659,7 @@ struct TweakThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TweakThunk");
-        Registers.Output[0]->Set(Input->Get());
+        Registers.OutputRef(0) = Input->Get();
     }
 
     virtual ~TweakThunk() {};
