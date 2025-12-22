@@ -407,6 +407,7 @@ struct Scratch final : public MidiHandler
     ProbeRunningStateSharedPtr ScopeProbe;
 
     std::array<MidiChannelState, 16> MidiChannels;
+    int MostRecentChannel = 0;
 
     void Migrate(const Scratch& Old);
 

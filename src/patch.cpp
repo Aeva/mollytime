@@ -1492,11 +1492,12 @@ struct GateThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GateThunk");
-        int Channel = int(Combine(CombinerAdd, Registers.Input[0], 0.0));
+        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        double& Gate = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
             MidiChannelState& State = Program->MidiChannels[Channel];
-            Registers.Output[0]->Set(State.Gate->Get());
+            Gate = State.Gate->Get();
         }
     }
 
@@ -1513,11 +1514,12 @@ struct NoteThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoteThunk");
-        int Channel = int(Combine(CombinerAdd, Registers.Input[0], 0.0));
+        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        double& Note = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
             MidiChannelState& State = Program->MidiChannels[Channel];
-            Registers.Output[0]->Set(State.Note->Get());
+            Note = State.Note->Get();
         }
     }
 
@@ -1534,11 +1536,12 @@ struct VelocityThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("VelocityThunk");
-        int Channel = int(Combine(CombinerAdd, Registers.Input[0], 0.0));
+        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        double& Velocity = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
             MidiChannelState& State = Program->MidiChannels[Channel];
-            Registers.Output[0]->Set(State.Velocity->Get());
+            Velocity = State.Velocity->Get();
         }
     }
 
@@ -1555,11 +1558,12 @@ struct PressureThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PressureThunk");
-        int Channel = int(Combine(CombinerAdd, Registers.Input[0], 0.0));
+        int Channel = int(Registers.CombineInput(0, float(Program->MostRecentChannel)));
+        double& Pressure = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
         {
             MidiChannelState& State = Program->MidiChannels[Channel];
-            Registers.Output[0]->Set(State.Pressure->Get());
+            Pressure = State.Pressure->Get();
         }
     }
 
@@ -2759,6 +2763,10 @@ void Patch::Recompile()
 void Scratch::Migrate(const Scratch& Old)
 {
     TRACEABLE_SCOPE;
+
+    MidiChannels = Old.MidiChannels;
+    MostRecentChannel = Old.MostRecentChannel;
+
     for (auto const& [Handle, NewAllocation] : RegisterMap)
     {
         auto Found = Old.RegisterMap.find(Handle);
@@ -2796,6 +2804,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             MidiChannelState& State = MidiChannels[Message.Channel];
             if (Message.Type == MidiMessageType::Note)
             {
+                MostRecentChannel = Message.Channel;
                 double& Note = Message.Param1;
                 double& Velocity = Message.Param2;
                 if (Velocity > 0.0)
@@ -2813,6 +2822,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             }
             else if (Message.Type == MidiMessageType::PolyPress)
             {
+                MostRecentChannel = Message.Channel;
                 double& Note = Message.Param1;
                 double& Pressure = Message.Param2;
                 if (Note == State.Note->Get())
@@ -2822,6 +2832,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             }
             else if (Message.Type == MidiMessageType::ControlChange)
             {
+                MostRecentChannel = Message.Channel;
                 State.CtrlParam->Set(Message.Param1);
                 State.CtrlValue->Set(Message.Param2);
             }
