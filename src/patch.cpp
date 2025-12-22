@@ -33,9 +33,6 @@
 
 constexpr double Tau = std::numbers::pi * 2.0;
 
-const double ImprobableMagnitude = 123456789.0;
-
-
 static std::random_device RandomDevice;
 static std::mt19937 RandomGenerator{ RandomDevice() };
 const double RngScale = 1.0 / double(RandomGenerator.max());
@@ -942,28 +939,33 @@ struct RandomThunk : public InstructionThunk
 
 struct GradualThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::GRAD, "grad", {"#", "rate"}, {"#"} };
-    InstructionRegisters<2, 1, 0> Registers;
+    static constexpr InstructionInfo<2, 1, 1> Info = { OpCode::GRAD, "grad", {"#", "rate"}, {"#"} };
+    InstructionRegisters<2, 1, 1> Registers;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GradualThunk");
-        double Value = Registers.CombineInput(0);
-        double Rate = Registers.CombineInput(1);
-        double& Pos = Registers.OutputRef(0);
-
-        Rate *= SampleInterval;
-
-        if (Pos == ImprobableMagnitude)
+        if (Registers.InputConnected(0))
         {
-            Pos = Value;
-        }
-        else
-        {
-            double Delta = Value - Pos;
-            double Sign = (Delta < 0.0) ? -1.0 : 1.0;
-            Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
-            Pos += Delta;
+            double Value = Registers.CombineInput(0);
+            double Rate = Registers.CombineInput(1);
+            double& Pos = Registers.OutputRef(0);
+            double& Initialized = Registers.ClosureRef(0);
+
+            Rate *= SampleInterval;
+
+            if (Initialized == 0.0)
+            {
+                Initialized = 1.0;
+                Pos = Value;
+            }
+            else
+            {
+                double Delta = Value - Pos;
+                double Sign = (Delta < 0.0) ? -1.0 : 1.0;
+                Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
+                Pos += Delta;
+            }
         }
     }
 
@@ -2025,12 +2027,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         PortHandle Closure = MakeClosureHandle(AllocatedHandle, ClosureIndex);
         ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
     }
-    if (Symbol == OpCode::GRAD)
-    {
-        PortHandle Port = MakePortHandle(AllocatedHandle, 0);
-        ActiveOutputs[Port]->Set(ImprobableMagnitude);
-    }
-    else if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
+    if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
         || Symbol == OpCode::TPTSVF_NOTCH)
     {
         // Gain and Feedback coefficients init to 1.
@@ -2301,15 +2298,6 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
     if (!ByInput.contains(InputPort))
     {
         throw std::range_error(std::format("Fatal error: {} is not a known input port!\n", InputPort));
-    }
-
-    TileHandle ReceiverTile = PortHandleTilePart(InputPort);
-    OpCode ReceiverSymbol = GetTileSymbol(ReceiverTile);
-
-    if (ReceiverSymbol == OpCode::GRAD && PortHandlePortIndexPart(InputPort) == 0)
-    {
-        PortHandle Port = MakePortHandle(ReceiverTile, 0);
-        ActiveOutputs[Port] = std::make_shared<RunningState>(ImprobableMagnitude);
     }
 
     ByInput[InputPort].insert(OutputPort);
