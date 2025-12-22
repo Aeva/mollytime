@@ -918,24 +918,21 @@ struct RandomThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RandomThunk");
-        std::vector<RunningStateSharedPtr>& Inputs = Registers.Input[0];
-        RunningStateSharedPtr& Output = Registers.Output[0];
-        RunningStateSharedPtr& LastInput = Registers.Closure[0];
+        double Clock = Registers.CombineInput(0);
+        double& Output = Registers.OutputRef(0);
+        double& Latch = Registers.ClosureRef(0);
 
-        if (Inputs.size() > 0)
+        if (Registers.InputConnected(0))
         {
-            double Clock = Combine(CombinerAdd, Inputs, 0.0);
-
-            double Previous = LastInput->Get();
-            LastInput->Set(Clock);
-            if (Previous <= 0.0 && Clock >= 1.0)
+            if (Latch <= 0.0 && Clock >= 1.0)
             {
-                Output->Set(Roll());
+                Output = Roll();
             }
+            Latch = Clock;
         }
         else
         {
-            Output->Set(Roll());
+            Output = Roll();
         }
     }
 
