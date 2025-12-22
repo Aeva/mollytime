@@ -1126,25 +1126,16 @@ struct AdsrThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("AdsrThunk");
-        std::vector<RunningStateSharedPtr>& Trigger = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& AttackTime = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& DecayTime = Registers.Input[2];
-        std::vector<RunningStateSharedPtr>& SustainAmount = Registers.Input[3];
-        std::vector<RunningStateSharedPtr>& ReleaseTime = Registers.Input[4];
-        RunningStateSharedPtr& OutAmplitude = Registers.Output[0];
-        RunningStateSharedPtr& LastTrigger = Registers.Closure[0];
-        RunningStateSharedPtr& Mode = Registers.Closure[1];
 
-        double Trig = Combine(CombinerAdd, Trigger, 0.0);
-        double Previous = LastTrigger->Get();
-        LastTrigger->Set(Trig);
+        double Trigger = Registers.CombineInput(0);
+        const double Attack = std::max(Registers.CombineInput(1, 0.1), 0.0);
+        const double Decay = std::max(Registers.CombineInput(2, 0.1), 0.0);
+        const double Sustain = std::min(std::max(Registers.CombineInput(3, 1.0), 0.0), 1.0);
+        const double Release = std::max(Registers.CombineInput(4, 1.0), 0.0);
 
-        const double Attack = std::max(Combine(CombinerAdd, AttackTime, 0.1), 0.0);
-        const double Decay = std::max(Combine(CombinerAdd, DecayTime, 0.1), 0.0);
-        const double Sustain = std::min(std::max(Combine(CombinerAdd, SustainAmount, 1.0), 0.0), 1.0);
-        const double Release = std::max(Combine(CombinerAdd, ReleaseTime, 1.0), 0.0);
-
-        double Amplitude = OutAmplitude->Get();
+        double& Amplitude = Registers.OutputRef(0);
+        double& LastTrigger = Registers.ClosureRef(0);
+        double& Mode = Registers.ClosureRef(1);
 
         // Use simple rates of change for attack, decay, and release.  These
         // input parameters are the number of seconds it takes to transit one
@@ -1156,29 +1147,29 @@ struct AdsrThunk : public InstructionThunk
 
         auto BeginAttack = [&]()
         {
-            Mode->Set(3.0);
+            Mode = 3.0;
         };
 
         auto BeginDecayToSustain = [&]()
         {
-            Mode->Set(2.0);
+            Mode = 2.0;
         };
 
         auto BeginDecayToRelease = [&]()
         {
-            Mode->Set(1.0);
+            Mode = 1.0;
         };
 
         auto BeginRelease = [&]()
         {
-            Mode->Set(0.0);
+            Mode = 0.0;
         };
 
-        if (Trig >= 1.0 && Previous <= 0.0)
+        if (Trigger >= 1.0 && LastTrigger <= 0.0)
         {
             BeginAttack();
         }
-        else if (Trig <= 0.0 && Previous >= 1.0)
+        else if (Trigger <= 0.0 && LastTrigger >= 1.0)
         {
             // Note this is comparing divisors, so larger Rate values are faster:
             if (Amplitude > Sustain && DecayRate > ReleaseRate)
@@ -1196,18 +1187,18 @@ struct AdsrThunk : public InstructionThunk
             }
         }
 
-        if (Mode->Get() == 3.0 && Attack == 0.0)
+        if (Mode == 3.0 && Attack == 0.0)
         {
             // If Attack is zero, then Amplitude rises to one immediately.
             Amplitude = 1.0;
         }
-        else if ((Mode->Get() == 1.0 || Mode->Get() == 2.0) && (Decay == 0.0 || Sustain == 1.0))
+        else if ((Mode == 1.0 || Mode == 2.0) && (Decay == 0.0 || Sustain == 1.0))
         {
             // If Decay is zero, then Amplitude drops to Sustain immediately.
             // If Sustain is one, then Decay is not applied.
             Amplitude = std::min(Amplitude, Sustain);
         }
-        else if (Mode->Get() == 0.0 && Release == 0.0)
+        else if (Mode == 0.0 && Release == 0.0)
         {
             // If Release is zero, then Amplitude drops to zero immediately.
             // the release transition occurs.
@@ -1216,7 +1207,7 @@ struct AdsrThunk : public InstructionThunk
         else
         {
             double Rate;
-            switch (int(Mode->Get()))
+            switch (int(Mode))
             {
             case 3:
                 Rate = AttackRate;
@@ -1231,24 +1222,24 @@ struct AdsrThunk : public InstructionThunk
             }
 
             // Apply the rate of change appropriate for the current phase.
-            const double Direction = (Mode->Get() == 3.0) ? 1.0 : -1.0;
+            const double Direction = (Mode == 3.0) ? 1.0 : -1.0;
             Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
         }
 
-        if (Mode->Get() == 3.0 && Amplitude == 1.0)
+        if (Mode == 3.0 && Amplitude == 1.0)
         {
             BeginDecayToSustain();
         }
-        else if (Mode->Get() == 2.0 && Amplitude < Sustain)
+        else if (Mode == 2.0 && Amplitude < Sustain)
         {
             Amplitude = Sustain;
         }
-        else if (Mode->Get() == 1.0 && Amplitude <= Sustain)
+        else if (Mode == 1.0 && Amplitude <= Sustain)
         {
             BeginRelease();
         }
 
-        OutAmplitude->Set(Amplitude);
+        LastTrigger = Trigger;
     }
 
     virtual ~AdsrThunk() {};
