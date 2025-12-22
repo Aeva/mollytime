@@ -948,13 +948,12 @@ struct GradualThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GradualThunk");
-        std::vector<RunningStateSharedPtr>& ValueInputs = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& RateInputs = Registers.Input[1];
-        RunningStateSharedPtr& Output = Registers.Output[0];
+        double Value = Registers.CombineInput(0);
+        double Rate = Registers.CombineInput(1);
+        double& Pos = Registers.OutputRef(0);
 
-        double Value = Combine(CombinerAdd, ValueInputs, 0.0);
-        double Rate = Combine(CombinerAdd, RateInputs, 0.0) * SampleInterval;
-        double Pos = Output->Get();
+        Rate *= SampleInterval;
+
         if (Pos == ImprobableMagnitude)
         {
             Pos = Value;
@@ -966,7 +965,6 @@ struct GradualThunk : public InstructionThunk
             Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
             Pos += Delta;
         }
-        Output->Set(Pos);
     }
 
     virtual ~GradualThunk() {};
@@ -999,110 +997,96 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     {
         TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
 
-        std::vector<RunningStateSharedPtr>& Sample = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& Cutoff = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& Resonance = Registers.Input[2];
-        RunningStateSharedPtr& Output = Registers.Output[0];
-
-        RunningStateSharedPtr& LastCutoff = Registers.Closure[0];
-        RunningStateSharedPtr& LastResonance = Registers.Closure[1];
-
-        RunningStateSharedPtr& Gain = Registers.Closure[2];
-        RunningStateSharedPtr& FeedbackDamping = Registers.Closure[3];
+        double Sample = Registers.CombineInput(0);
+        double Cutoff = Registers.CombineInput(1, 1000.0);
+        double Resonance = Registers.CombineInput(2);
+        double& Output = Registers.OutputRef(0);
+        double& LastCutoff = Registers.ClosureRef(0);
+        double& LastResonance = Registers.ClosureRef(1);
+        double& Gain = Registers.ClosureRef(2);
+        double& FeedbackDamping = Registers.ClosureRef(3);
         // TODO: ShelfGain can be factored out for most specializations of this class
-        RunningStateSharedPtr& ShelfGain = Registers.Closure[4];
-        RunningStateSharedPtr& StateVar_z1_A = Registers.Closure[5]; // state variables (z^-1)
-        RunningStateSharedPtr& StateVar_z2_A = Registers.Closure[6];
-
-        double Input = Combine(CombinerAdd, Sample, 0.0);
-        double Cut = Combine(CombinerAdd, Cutoff, 1000.0);
-        double Res = Combine(CombinerAdd, Resonance, 0.0);
-        double LastCut = LastCutoff->Get();
-        double LastRes = LastResonance->Get();
+        double& ShelfGain = Registers.ClosureRef(4);
+        double& z1_A = Registers.ClosureRef(5); // state variables (z^-1)
+        double& z2_A = Registers.ClosureRef(6);
 
         // TODO: Is this section actually worth the two extra RunningState vars and the branch?
-        if (Cut != LastCut || Res != LastRes)
+        if (Cutoff != LastCutoff || Resonance != LastResonance)
         {
-            LastCutoff->Set(Cut);
-            LastResonance->Set(Res);
+            LastCutoff = Cutoff;
+            LastResonance = Resonance;
 
             // prewarp the cutoff (for bilinear-transform filters)
-            double wd = Cut * Tau;
+            double wd = Cutoff * Tau;
             double T = SampleInterval;
             double wa = (2.0 / T) * std::tan(wd * T / 2.0);
 
             // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value of Q.
             // This is the highest double precision value where integers can be exactly represented,
             // which serves no other purpose than to be an improbably high value.
-            double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Res, 0.0), 1.0))), std::pow(2.0, 53.0));
+            double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Resonance, 0.0), 1.0))), std::pow(2.0, 53.0));
 
             // Calculate g (gain element of integrator)
-            Gain->Set(wa * T / 2.0);
+            Gain = wa * T / 2.0;
 
             // Calculate Zavalishin's R from Q (referred to as damping parameter)
-            FeedbackDamping->Set(1.0 / (2.0 * Q));
+            FeedbackDamping = 1.0 / (2.0 * Q);
 
             // Gain for BandShelving filter
-            //KCoeff = shelfGain;
+            //ShelfGain = ShelfGain; ????????
         }
 
-        double gCoeff = Gain->Get();
-        double RCoeff = FeedbackDamping->Get();
-        double KCoeff = ShelfGain->Get();
-        double z1_A = StateVar_z1_A->Get();
-        double z2_A = StateVar_z2_A->Get();
+        double HP = (Sample - (2.0 * FeedbackDamping + Gain) * z1_A - z2_A) /
+            (1.0 + (2.0 * FeedbackDamping * Gain) + Gain * Gain);
 
-        double HP = (Input - (2.0 * RCoeff + gCoeff) * z1_A - z2_A) /
-            (1.0 + (2.0 * RCoeff * gCoeff) + gCoeff * gCoeff);
+        double BP = HP * Gain + z1_A;
 
-        double BP = HP * gCoeff + z1_A;
+        double LP = BP * Gain + z2_A;
 
-        double LP = BP * gCoeff + z2_A;
+        double UBP = 2.0 * FeedbackDamping * BP;
 
-        double UBP = 2.0 * RCoeff * BP;
+        double BShelf = Sample + UBP * ShelfGain;
 
-        double BShelf = Input + UBP * KCoeff;
+        double Notch = Sample - UBP;
 
-        double Notch = Input - UBP;
-
-        double AP = Input - (4.0 * RCoeff * BP);
+        double AP = Sample - (4.0 * FeedbackDamping * BP);
 
         double Peak = LP - HP;
 
-        StateVar_z1_A->Set(gCoeff * HP + BP);
-        StateVar_z2_A->Set(gCoeff * BP + LP);
+        z1_A = Gain * HP + BP;
+        z2_A = Gain * BP + LP;
 
         if constexpr (Mode == FilterType::Lowpass)
         {
-            Output->Set(LP);
+            Output = LP;
         }
         else if constexpr (Mode == FilterType::Bandpass)
         {
-            Output->Set(BP);
+            Output = BP;
         }
         else if constexpr (Mode == FilterType::Highpass)
         {
-            Output->Set(HP);
+            Output = HP;
         }
         else if constexpr (Mode == FilterType::UnitGainBandpass)
         {
-            Output->Set(UBP);
+            Output = UBP;
         }
         else if constexpr (Mode == FilterType::BandShelving)
         {
-            Output->Set(BShelf);
+            Output = BShelf;
         }
         else if constexpr (Mode == FilterType::Notch)
         {
-            Output->Set(Notch);
+            Output = Notch;
         }
         else if constexpr (Mode == FilterType::Allpass)
         {
-            Output->Set(AP);
+            Output = AP;
         }
         else if constexpr (Mode == FilterType::Peak)
         {
-            Output->Set(Peak);
+            Output = Peak;
         }
     }
 
