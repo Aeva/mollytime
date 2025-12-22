@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <cassert>
 #include <stdexcept>
 #include <random>
@@ -2424,6 +2425,19 @@ ScratchSharedPtr Patch::Compile()
     std::set<TileHandle> BreadCrumbs;
     std::map<TileHandle, std::vector<PortHandle>> InputSequences;
 
+    struct TilePartial
+    {
+        TileHandle Tile;
+        uint32_t Polyphony = 1;
+        bool PatchOutput = false;
+
+        std::vector<std::vector<RunningStateSharedPtr>> Inputs;
+        std::vector<RunningStateSharedPtr> Outputs;
+        std::vector<RunningStateSharedPtr> Closures;
+    };
+    std::vector<TilePartial> FlatGraph;
+    FlatGraph.reserve(TileSymbols.size());
+
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->Identity = Identity;
     Program->MidiChannels = MidiChannels;
@@ -2441,11 +2455,18 @@ ScratchSharedPtr Patch::Compile()
         }
     }
 
-    std::function<RunningStateSharedPtr(TileHandle)> Step = [&](const TileHandle Tile) -> RunningStateSharedPtr
+    auto VisitTile = [&](TileHandle Tile) -> TilePartial&
+    {
+        TilePartial& Partial = FlatGraph.emplace_back();
+        Partial.Tile = Tile;
+        return Partial;
+    };
+
+    std::function<void(TileHandle)> Step = [&](const TileHandle Tile) -> void
     {
         if (!BreadCrumbs.insert(Tile).second)
         {
-            return nullptr;
+            return;
         }
 
         const OpCode Symbol = GetTileSymbol(Tile);
@@ -2453,7 +2474,7 @@ ScratchSharedPtr Patch::Compile()
         {
             // Constant tiles return early because they terminate recursion,
             // and because they have no thunk.
-            return nullptr;
+            return;
         }
 
         const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
@@ -2496,46 +2517,33 @@ ScratchSharedPtr Patch::Compile()
                     }
                 }
             }
-            return nullptr;
         }
         else if (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE)
         {
-            // The output tile does not have any specific behavior, but may emit
-            // an implicit add.
+            TilePartial& Partial = VisitTile(Tile);
+            Partial.PatchOutput = true;
+            Partial.Outputs = { std::make_shared<RunningState>(0.0) };
+            std::vector<RunningStateSharedPtr>& Input0 = Partial.Inputs.emplace_back();
 
             const PortHandle InputHandle = MakePortHandle(Tile, 0);
-            std::set<PortHandle> ConnectedOutputs = ByInput.at(InputHandle);
-
-            if (ConnectedOutputs.size() == 0)
+            for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
             {
-                return std::make_shared<RunningState>(0.0);
-            }
-            else if (ConnectedOutputs.size() == 1)
-            {
-                return ActiveOutputs.at(*ConnectedOutputs.begin());
-            }
-            else
-            {
-                std::vector<RunningStateSharedPtr> Input0;
-                for (PortHandle ConnectedOutput : ConnectedOutputs)
-                {
-                    Input0.push_back(ActiveOutputs.at(ConnectedOutput));
-                }
-
-                std::vector<std::vector<RunningStateSharedPtr>> Inputs = { Input0 };
-                std::vector<RunningStateSharedPtr> Outputs = { std::make_shared<RunningState>(0.0) };
-                std::vector<RunningStateSharedPtr> Closures;
-                static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
-                Program->Program.push_back(AddCreateAndConnect(Inputs, Outputs, Closures));
-                return Outputs[0];
+                Input0.push_back(ActiveOutputs.at(ConnectedOutput));
             }
         }
         else
         {
-            std::vector<std::vector<RunningStateSharedPtr>> Inputs;
+            TilePartial& Partial = VisitTile(Tile);
+
+            if (Symbol == OpCode::GATE || Symbol == OpCode::NOTE || Symbol == OpCode::VELO ||
+                Symbol == OpCode::PRES || Symbol == OpCode::CTRL)
+            {
+                Partial.Polyphony = MidiPolyphony;
+            }
+
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
             {
-                std::vector<RunningStateSharedPtr>& PortInputs = Inputs.emplace_back();
+                std::vector<RunningStateSharedPtr>& PortInputs = Partial.Inputs.emplace_back();
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
                 for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
                 {
@@ -2555,144 +2563,165 @@ ScratchSharedPtr Patch::Compile()
                 }
             }
 
-            std::vector<RunningStateSharedPtr> Outputs;
             for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
                 PortHandle OutputHandle = MakePortHandle(Tile, PortIndex);
-                Outputs.push_back(ActiveOutputs.at(OutputHandle));
+                Partial.Outputs.push_back(ActiveOutputs.at(OutputHandle));
             }
 
-            std::vector<RunningStateSharedPtr> Closures;
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
             {
-                Closures.push_back(ActiveOutputs.at(MakeClosureHandle(Tile, ClosureIndex)));
+                Partial.Closures.push_back(ActiveOutputs.at(MakeClosureHandle(Tile, ClosureIndex)));
+            }
+        }
+
+        // TODO should this be considered unreachable?
+    };
+
+    Program->Outputs.clear();
+
+    // The handles for all the different types of output tiles are staged here so
+    // they can be sorted and stepped deterministically.  The outputs are evaluated
+    // in ascending order of TileID magnitude.  If there are multiple OpCode::OUT
+    // tiles, they will renamed to indicate which semantic output they represent.
+    // OpCode::AUX tiles are always renamed in accordance of their tile handles.
+    // Everything else retains its default name.
+    // OpCode::SCOPE is the only exception: it will only ever be included in the
+    // graph when the operator sets it as the active probe tile.
+    std::vector<TileHandle> TapeTiles;
+    std::vector<TileHandle> OutputTiles;
+    std::vector<TileHandle> AuxTiles;
+    {
+        for (const auto& [Tile, Symbol] : TileSymbols)
+        {
+            switch (Symbol)
+            {
+                case OpCode::OUT:
+                    OutputTiles.push_back(Tile);
+                    break;
+                case OpCode::AUX:
+                    AuxTiles.push_back(Tile);
+                    break;
+                case OpCode::TAPE_LOOP:
+                    TapeTiles.push_back(Tile);
+                    break;
+                default:
+                    break;
+            }
+        }
+        auto SortAndStep = [Step](std::vector<TileHandle>& OutputSet) -> void
+        {
+            // You are filled with determinism.
+            std::sort(OutputSet.begin(), OutputSet.end());
+            for (TileHandle Tile : OutputSet)
+            {
+                Step(Tile);
+            }
+        };
+        SortAndStep(TapeTiles);
+        SortAndStep(OutputTiles);
+        SortAndStep(AuxTiles);
+    }
+
+    bool ProbeConnected = false;
+    if (ActiveProbeTile != TileHandle(-1))
+    {
+        auto Found = TileSymbols.find(ActiveProbeTile);
+        if (Found != TileSymbols.end())
+        {
+            ProbeConnected = true;
+            const OpCode Symbol = Found->second;
+            if (Symbol == OpCode::SCOPE)
+            {
+                Step(ActiveProbeTile);
+            }
+        }
+    }
+    if (!ProbeConnected)
+    {
+        // The scope tile does appear to be disconnected, so force the probe values to zero
+        // since they most likely will not be updated when the patch runs.
+        OutputProbe->Set(0.0);
+        ScopeProbe->Set(0.0);
+        Program->ProbeInput = nullptr;
+    }
+
+    // From this point on, `FlatGraph` contains entries for everything that will contribute to the compiled patch program.
+
+    for (TilePartial& Partial : FlatGraph)
+    {
+        const OpCode Symbol = GetTileSymbol(Partial.Tile);
+        if (Partial.PatchOutput)
+        {
+            RunningStateSharedPtr Output = Partial.Outputs[0];
+            if (Partial.Inputs[0].size() == 1)
+            {
+                Output = Partial.Inputs[0][0];
+            }
+            else if (Partial.Inputs[0].size() > 1)
+            {
+                static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
+                Program->Program.push_back(AddCreateAndConnect(Partial.Inputs, Partial.Outputs, Partial.Closures));
             }
 
+            // Collect the patch output registers.
+            if (Symbol == OpCode::OUT)
+            {
+                Program->Outputs.push_back(Output);
+            }
+            else if (Symbol == OpCode::AUX)
+            {
+                Program->AuxOutputs[Partial.Tile] = Output;
+            }
+
+            // This tile is also the current active probe.
+            if (Partial.Tile == ActiveProbeTile)
+            {
+                Program->ProbeInput = Output;
+            }
+        }
+        else
+        {
             {
                 auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures));
-                    return nullptr;
+                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures));
+                    continue;
                 }
             }
             {
                 auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, SpecialInputs[Tile]));
-                    return nullptr;
+                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures, SpecialInputs[Partial.Tile]));
+                    continue;
                 }
             }
             {
                 auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, Program.get()));
-                    return nullptr;
+                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures, Program.get()));
+                    continue;
                 }
             }
             {
                 auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, TapeCollection.at(Tile)));
-                    return nullptr;
+                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures, TapeCollection.at(Partial.Tile)));
+                    continue;
                 }
             }
         }
-
-        // TODO should this be considered unreachable?
-        return nullptr;
-    };
-
-    std::vector<TileHandle> Scopes;
-    Program->Outputs.clear();
-
-    // The graphs for output tiles are staged here so that they can be named and
-    // assigned to physical audio outputs deterministically.  The output with the
-    // lowest tile ID is assigned to the left channel (or the mono output if there
-    // is only one), the next lowest is the right channel, and the rest are
-    // ignored (and labeled accordingly).
-    std::map<TileHandle, RunningStateSharedPtr> AcceptedOutputs;
-
-    for (const auto& [Tile, Symbol] : TileSymbols)
-    {
-        if (Symbol == OpCode::TAPE_LOOP)
-        {
-            // TODO: In theory, we probably want to evaluate all of the dependencies for
-            // pseudo outputs first, then evaluate the thunks for the pseudo outputs, then
-            // the rest of the program graph.
-            RunningStateSharedPtr Ignore = Step(Tile);
-        }
-    }
-    for (const auto& [Tile, Symbol] : TileSymbols)
-    {
-        if (Symbol == OpCode::OUT)
-        {
-            RunningStateSharedPtr Output = Step(Tile);
-            if (Output != nullptr)
-            {
-                AcceptedOutputs[Tile] = Output;
-            }
-        }
-        else if (Symbol == OpCode::AUX)
-        {
-            RunningStateSharedPtr Output = Step(Tile);
-            if (Output != nullptr)
-            {
-                Program->AuxOutputs[Tile] = Output;
-            }
-        }
-        else if (Symbol == OpCode::SCOPE)
-        {
-            Scopes.push_back(Tile);
-        }
-    }
-
-    {
-        RunningStateSharedPtr ActiveProbeInput = nullptr;
-        for (const auto& [Tile, Output] : AcceptedOutputs)
-        {
-            // Collect the patch output registers.  This is unrelated to the scope probes.
-            Program->Outputs.push_back(Output);
-
-            // This output tile is also the current active probe.
-            if (Tile == ActiveProbeTile)
-            {
-                ActiveProbeInput = Output;
-            }
-        }
-
-        // None of the out tiles are the active probe, so see if any the scope tiles are.
-        if (!ActiveProbeInput)
-        {
-            for (const TileHandle& Tile : Scopes)
-            {
-                if (Tile == ActiveProbeTile)
-                {
-                    // This scope tile is the active probe, but if there is nothing connected to it, then
-                    // the probe will behave as if it is disconnected.
-                    ActiveProbeInput = Step(Tile);
-                    if (!ActiveProbeInput)
-                    {
-                        // The scope tile does appear to be disconnected, so force the probe values to zero
-                        // since they most likely will not be updated when the patch runs.
-                        OutputProbe->Set(0.0);
-                        ScopeProbe->Set(0.0);
-                    }
-                    break;
-                }
-            }
-        }
-        Program->ProbeInput = ActiveProbeInput;
     }
 
     OutputTileNames.clear();
-    if (AcceptedOutputs.size() >= 2)
+    if (OutputTiles.size() >= 2)
     {
         int OutputIndex = 0;
-        for (const auto& [Tile, Output] : AcceptedOutputs)
+        for (const TileHandle& Tile : OutputTiles)
         {
             if (OutputIndex == 0)
             {

@@ -434,6 +434,7 @@ using ScratchSharedPtr = std::shared_ptr<Scratch>;
 struct Patch
 {
     uint64_t Identity;
+    uint32_t MidiPolyphony = 4;
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
