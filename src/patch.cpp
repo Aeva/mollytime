@@ -1602,9 +1602,6 @@ struct MidiToHzThunk : public InstructionThunk
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"} };
     InstructionRegisters<1, 1, 0> Registers;
 
-    std::vector<RunningStateSharedPtr> Inputs;
-    RunningStateSharedPtr Output = nullptr;
-
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
@@ -1744,20 +1741,18 @@ struct TapeLoopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
-        std::vector<RunningStateSharedPtr>& InSample = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InOffset = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& InLength = Registers.Input[2];
-        std::vector<RunningStateSharedPtr>& InReset = Registers.Input[3];
-        RunningStateSharedPtr& Output = Registers.Output[0];
-        RunningStateSharedPtr& ReadHead = Registers.Closure[0];
-        RunningStateSharedPtr& WriteHead = Registers.Closure[1];
-        RunningStateSharedPtr& LastReset = Registers.Closure[2];
-        RunningStateSharedPtr& LastOffset = Registers.Closure[3];
+        double Sample = Registers.CombineInput(0);
+        double Offset = Registers.CombineInput(1);
+        double Seconds = Registers.CombineInput(2);
+        double Reset = Registers.CombineInput(3);
+        double& Output = Registers.OutputRef(0);
+        double& ReadHead = Registers.ClosureRef(0);
+        double& WriteHead = Registers.ClosureRef(1);
+        double& LastReset = Registers.ClosureRef(2);
+        double& LastOffset = Registers.ClosureRef(3);
 
-        double Offset = Combine(CombinerAdd, InOffset, 0.0);
-        double Seconds = Combine(CombinerAdd, InLength, 0.0);
-        uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead->Get());
-        uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead->Get());
+        uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
+        uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
 
         auto ResetOffset = [&]()
         {
@@ -1770,7 +1765,7 @@ struct TapeLoopThunk : public InstructionThunk
             {
                 ReadIndex = 0;
             }
-            LastOffset->Set(Offset);
+            LastOffset = Offset;
         };
 
         if (Seconds != Tape->Seconds)
@@ -1782,25 +1777,23 @@ struct TapeLoopThunk : public InstructionThunk
 
         if (Tape->Samples.size() > 0)
         {
-            double Reset = Combine(CombinerAdd, InReset, 0.0);
-            if (LastReset->Get() <= 0.0 && Reset >= 1.0)
+            if (LastReset <= 0.0 && Reset >= 1.0)
             {
                 Tape->Reset(Seconds);
                 WriteIndex = 0;
                 ResetOffset();
             }
-            else if (Offset != LastOffset->Get())
+            else if (Offset != LastOffset)
             {
                 ResetOffset();
             }
-            LastReset->Set(Reset);
+            LastReset = Reset;
 
-            Output->Set(Tape->ReadAndAdvance(ReadIndex));
-            ReadHead->Set(std::bit_cast<double, uint64_t>(ReadIndex));
+            Output = Tape->ReadAndAdvance(ReadIndex);
+            ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
 
-            double Sample = Combine(CombinerAdd, InSample, 0.0);
             Tape->WriteAndAdvance(WriteIndex, Sample);
-            WriteHead->Set(std::bit_cast<double, uint64_t>(WriteIndex));
+            WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
         }
     }
 
