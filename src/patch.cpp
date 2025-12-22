@@ -743,9 +743,10 @@ struct InvertThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("InvertThunk");
-        double Value = Combine(CombinerAdd, Registers.Input[0], 0.0);
+        double Value = Registers.CombineInput(0);
+        double& Output = Registers.OutputRef(0);
         double Sign = Value < 0.0 ? -1.0 : 1.0;
-        Registers.Output[0]->Set((1.0 - std::abs(Value)) * Sign);
+        Output = (1.0 - std::abs(Value)) * Sign;
     }
 
     virtual ~InvertThunk() {};
@@ -760,7 +761,7 @@ struct ToUnipolarThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
-        Registers.Output[0]->Set(Combine(CombinerAdd, Registers.Input[0], 0.0) * 0.5 + 0.5);
+        Registers.OutputRef(0) = Registers.CombineInput(0) * 0.5 + 0.5;
     }
 
     virtual ~ToUnipolarThunk() {};
@@ -775,7 +776,7 @@ struct ToBipolarThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
-        Registers.Output[0]->Set(Combine(CombinerAdd, Registers.Input[0], 0.0) * 2.0 - 1.0);
+        Registers.OutputRef(0) = Registers.CombineInput(0) * 2.0 - 1.0;
     }
 
     virtual ~ToBipolarThunk() {};
@@ -790,15 +791,12 @@ struct MixThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("MixThunk");
-        std::vector<RunningStateSharedPtr>& Left = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& Right = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& Balance = Registers.Input[2];
-        RunningStateSharedPtr& Output = Registers.Output[0];
+        double Left = Registers.CombineInput(0);
+        double Right = Registers.CombineInput(1);
+        double Alpha = Registers.CombineInput(2, 0.5);
+        double& Output = Registers.OutputRef(0);
 
-        double X = Combine(CombinerAdd, Left, 0.0);
-        double Y = Combine(CombinerAdd, Right, 0.0);
-        double Alpha = Combine(CombinerAdd, Balance, 0.5);
-        Output->Set((1.0 - Alpha) * X + Alpha * Y);
+        Output = (1.0 - Alpha) * Left + Alpha * Right;
     }
 
     virtual ~MixThunk() {};
@@ -813,16 +811,15 @@ struct StereoBalanceThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
-        std::vector<RunningStateSharedPtr>& Sample = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& Balance = Registers.Input[1];
-        RunningStateSharedPtr& Left = Registers.Output[0];
-        RunningStateSharedPtr& Right = Registers.Output[1];
+        double Sample = Registers.CombineInput(0);
+        double Balance = Registers.CombineInput(1);
+        double& Left = Registers.OutputRef(0);
+        double& Right = Registers.OutputRef(1);
 
-        double Value = Combine(CombinerAdd, Sample, 0.0);
-        double Alpha = std::min(std::max(Combine(CombinerAdd, Balance, 0.0), -1.0), 1.0) * 0.5 + 0.5;
+        double Alpha = std::min(std::max(Balance, -1.0), 1.0) * 0.5 + 0.5;
         double InvA = 1.0 - Alpha;
-        Left->Set(Value * InvA);
-        Right->Set(Value * Alpha);
+        Left = Sample * InvA;
+        Right = Sample * Alpha;
     }
 
     virtual ~StereoBalanceThunk() {};
