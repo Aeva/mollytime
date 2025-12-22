@@ -376,6 +376,7 @@ struct InstructionRegisters
         return Closure[ClosureIndex]->DangerRef();
     }
 
+private:
     std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
     std::array<RunningStateSharedPtr, OutputCount> Output;
     std::array<RunningStateSharedPtr, ClosureCount> Closure;
