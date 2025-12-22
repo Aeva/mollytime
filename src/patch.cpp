@@ -1406,33 +1406,28 @@ struct RandomSequenceThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("RandomSequenceThunk");
-        std::vector<RunningStateSharedPtr>& InClock = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InPeriod = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& InSeed = Registers.Input[2];
-        RunningStateSharedPtr& OutValue = Registers.Output[0];
-        RunningStateSharedPtr& OutComplete = Registers.Output[1];
-        RunningStateSharedPtr& LastClock = Registers.Closure[0];
-        RunningStateSharedPtr& LastPeriod = Registers.Closure[1];
-        RunningStateSharedPtr& LastSeed = Registers.Closure[2];
-        RunningStateSharedPtr& Cursor = Registers.Closure[3];
+        double Clock = Registers.CombineInput(0);
 
-        double Clock = Combine(CombinerAdd, InClock, 0.0);
-        double Previous = LastClock->Get();
-        LastClock->Set(Clock);
+        double& OutValue = Registers.OutputRef(0);
+        double& OutComplete = Registers.OutputRef(1);
+        double& LastClock = Registers.ClosureRef(0);
+        double& LastPeriod = Registers.ClosureRef(1);
+        double& LastSeed = Registers.ClosureRef(2);
+        double& Cursor = Registers.ClosureRef(3);
 
-        if (Previous <= 0.0 && Clock >= 1.0)
+        if (LastClock <= 0.0 && Clock >= 1.0)
         {
-            double Seed = Combine(CombinerAdd, InSeed, 0.0);
-            int Period = std::max(int(Combine(CombinerAdd, InPeriod, 4.0)), 1);
+            int Period = std::max(int(Registers.CombineInput(1, 4.0)), 1);
+            double Seed = Registers.CombineInput(2);
 
-            const bool Reset = Period != int(LastPeriod->Get()) || Seed != LastSeed->Get();
+            const bool Reset = Period != int(LastPeriod) || Seed != LastSeed;
             if (Reset || int(Cache.size()) != Period)
             {
-                LastSeed->Set(Seed);
-                LastPeriod->Set(double(Period));
+                LastSeed = Seed;
+                LastPeriod = double(Period);
                 if (Reset)
                 {
-                    Cursor->Set(0.0);
+                    Cursor = 0.0;
                 }
                 Cache.resize(Period);
                 std::mt19937 Generator;
@@ -1445,8 +1440,8 @@ struct RandomSequenceThunk : public InstructionThunk
                 }
             }
 
-            int Index = int(Cursor->Get());
-            OutValue->Set(Cache[Index]);
+            int Index = int(Cursor);
+            OutValue = Cache[Index];
 
             // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
             // Patches that use this signal to switch between sequences will want to add an extra
@@ -1456,15 +1451,17 @@ struct RandomSequenceThunk : public InstructionThunk
             // back to this sequence.  In other words, the way of constructing a patch that chains
             // sequences that was most obvious to me always skips the last note in each sequence.
             // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
-            OutComplete->Set(Index == Period - 1);
+            OutComplete = double(Index == (Period - 1));
 
             Index = (Index + 1) % Period;
-            Cursor->Set(double(Index));
+            Cursor = double(Index);
         }
         else
         {
-            OutComplete->Set(0.0);
+            OutComplete = 0.0;
         }
+
+        LastClock = Clock;
     }
 
     virtual ~RandomSequenceThunk() {};
