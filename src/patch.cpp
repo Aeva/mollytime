@@ -2431,9 +2431,13 @@ ScratchSharedPtr Patch::Compile()
         uint32_t Polyphony = 1;
         bool PatchOutput = false;
 
-        std::vector<std::vector<RunningStateSharedPtr>> Inputs;
-        std::vector<RunningStateSharedPtr> Outputs;
-        std::vector<RunningStateSharedPtr> Closures;
+        // This is NOT redundant to Patch::ByInput because its elements are ordered,
+        // and that ordering is determined at compile time (e.g. by OpCode::GO).
+        std::vector<std::vector<PortHandle>> Inputs;
+
+        // TODO: These may be inferred implicitly, and probably don't need to be recorded:
+        std::vector<PortHandle> Outputs;
+        std::vector<PortHandle> Closures;
     };
     std::vector<TilePartial> FlatGraph;
     FlatGraph.reserve(TileSymbols.size());
@@ -2522,13 +2526,12 @@ ScratchSharedPtr Patch::Compile()
         {
             TilePartial& Partial = VisitTile(Tile);
             Partial.PatchOutput = true;
-            Partial.Outputs = { std::make_shared<RunningState>(0.0) };
-            std::vector<RunningStateSharedPtr>& Input0 = Partial.Inputs.emplace_back();
+            std::vector<PortHandle>& Input0 = Partial.Inputs.emplace_back();
 
             const PortHandle InputHandle = MakePortHandle(Tile, 0);
             for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
             {
-                Input0.push_back(ActiveOutputs.at(ConnectedOutput));
+                Input0.push_back(ConnectedOutput);
             }
         }
         else
@@ -2543,7 +2546,7 @@ ScratchSharedPtr Patch::Compile()
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
             {
-                std::vector<RunningStateSharedPtr>& PortInputs = Partial.Inputs.emplace_back();
+                std::vector<PortHandle>& PortInputs = Partial.Inputs.emplace_back();
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
                 for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
                 {
@@ -2553,25 +2556,24 @@ ScratchSharedPtr Patch::Compile()
                     {
                         for (PortHandle ForwardedOutput : InputSequences.at(ConnectedTile))
                         {
-                            PortInputs.push_back(ActiveOutputs.at(ForwardedOutput));
+                            PortInputs.push_back(ForwardedOutput);
                         }
                     }
                     else
                     {
-                        PortInputs.push_back(ActiveOutputs.at(ConnectedOutput));
+                        PortInputs.push_back(ConnectedOutput);
                     }
                 }
             }
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
-                PortHandle OutputHandle = MakePortHandle(Tile, PortIndex);
-                Partial.Outputs.push_back(ActiveOutputs.at(OutputHandle));
+                Partial.Outputs.push_back(MakePortHandle(Tile, PortIndex));
             }
 
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
             {
-                Partial.Closures.push_back(ActiveOutputs.at(MakeClosureHandle(Tile, ClosureIndex)));
+                Partial.Closures.push_back(MakeClosureHandle(Tile, ClosureIndex));
             }
         }
 
@@ -2651,33 +2653,60 @@ ScratchSharedPtr Patch::Compile()
     for (TilePartial& Partial : FlatGraph)
     {
         const OpCode Symbol = GetTileSymbol(Partial.Tile);
+
+        std::vector<std::vector<RunningStateSharedPtr>> Inputs;
+        Inputs.reserve(Partial.Inputs.size());
+        for (std::vector<PortHandle>& InputPorts : Partial.Inputs)
+        {
+            std::vector<RunningStateSharedPtr>& InputRegisters = Inputs.emplace_back();
+            InputRegisters.reserve(InputPorts.size());
+            for (PortHandle InputPort : InputPorts)
+            {
+                InputRegisters.push_back(ActiveOutputs.at(InputPort));
+            }
+        }
+
+        std::vector<RunningStateSharedPtr> Outputs;
+        Outputs.reserve(Partial.Outputs.size());
+        for (PortHandle OutputPort : Partial.Outputs)
+        {
+            Outputs.push_back(ActiveOutputs.at(OutputPort));
+        }
+
+        std::vector<RunningStateSharedPtr> Closures;
+        Closures.reserve(Partial.Closures.size());
+        for (PortHandle ClosurePort : Partial.Closures)
+        {
+            Closures.push_back(ActiveOutputs.at(ClosurePort));
+        }
+
         if (Partial.PatchOutput)
         {
-            RunningStateSharedPtr Output = Partial.Outputs[0];
-            if (Partial.Inputs[0].size() == 1)
+            Outputs = { std::make_shared<RunningState>(0.0) };
+            if (Inputs[0].size() == 1)
             {
-                Output = Partial.Inputs[0][0];
+                Outputs[0] = Inputs[0][0];
             }
-            else if (Partial.Inputs[0].size() > 1)
+            else if (Inputs[0].size() > 1)
             {
                 static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
-                Program->Program.push_back(AddCreateAndConnect(Partial.Inputs, Partial.Outputs, Partial.Closures));
+                Program->Program.push_back(AddCreateAndConnect(Inputs, Outputs, Closures));
             }
 
             // Collect the patch output registers.
             if (Symbol == OpCode::OUT)
             {
-                Program->Outputs.push_back(Output);
+                Program->Outputs.push_back(Outputs[0]);
             }
             else if (Symbol == OpCode::AUX)
             {
-                Program->AuxOutputs[Partial.Tile] = Output;
+                Program->AuxOutputs[Partial.Tile] = Outputs[0];
             }
 
             // This tile is also the current active probe.
             if (Partial.Tile == ActiveProbeTile)
             {
-                Program->ProbeInput = Output;
+                Program->ProbeInput = Outputs[0];
             }
         }
         else
@@ -2686,7 +2715,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures));
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures));
                     continue;
                 }
             }
@@ -2694,7 +2723,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures, SpecialInputs[Partial.Tile]));
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]));
                     continue;
                 }
             }
@@ -2702,7 +2731,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures, Program.get()));
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, Program.get()));
                     continue;
                 }
             }
@@ -2710,7 +2739,7 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Partial.Inputs, Partial.Outputs, Partial.Closures, TapeCollection.at(Partial.Tile)));
+                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile)));
                     continue;
                 }
             }
