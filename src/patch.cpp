@@ -834,28 +834,26 @@ struct PulseThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PulseThunk");
-        std::vector<RunningStateSharedPtr>& Inputs = Registers.Input[0];
-        RunningStateSharedPtr& Output = Registers.Output[0];
-        RunningStateSharedPtr& Latch = Registers.Closure[0];
 
-        if (Inputs.size() > 0)
+        double Clock = Registers.CombineInput(0);
+        double& Output = Registers.OutputRef(0);
+        double& Latch = Registers.ClosureRef(0);
+
+        if (Registers.InputConnected(0))
         {
-            double Clock = Combine(CombinerAdd, Inputs, 0.0);
-            double State = Latch->Get();
-
-            if (State == 0.0 && Clock >= 1.0)
+            if (Latch == 0.0 && Clock >= 1.0)
             {
-                Latch->Set(1.0);
-                Output->Set(1.0);
+                Latch = 1.0;
+                Output = 1.0;
             }
-            else if (State == 1.0 && Clock <= 0.0)
+            else if (Latch == 1.0 && Clock <= 0.0)
             {
-                Latch->Set(0.0);
-                Output->Set(0.0);
+                Latch = 0.0;
+                Output = 0.0;
             }
             else
             {
-                Output->Set(0.0);
+                Output = 0.0;
             }
         }
     }
@@ -872,37 +870,38 @@ struct FlipFlopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
-        std::vector<RunningStateSharedPtr>& Inputs = Registers.Input[0];
-        RunningStateSharedPtr& EvenOutput = Registers.Output[0];
-        RunningStateSharedPtr& OddOutput = Registers.Output[1];
-        RunningStateSharedPtr& LastInput = Registers.Closure[0];
+        double Clock = Registers.CombineInput(0);
+        double& EvenOutput = Registers.OutputRef(0);
+        double& OddOutput = Registers.OutputRef(1);
+        double& Latch = Registers.ClosureRef(0);
 
-        double LastEven = EvenOutput->Get();
-        double LastOdd = OddOutput->Get();
+        const double LastEven = EvenOutput;
+        const double LastOdd = OddOutput;
         if (LastEven == LastOdd)
         {
-            EvenOutput->Set(1.0);
-            OddOutput->Set(0.0);
+            EvenOutput = 1.0;
+            OddOutput = 0.0;
         }
 
-        if (Inputs.size() > 0)
+        if (Registers.InputConnected(0))
         {
-            double Clock = Combine(CombinerAdd, Inputs, 0.0);
-
-            double Previous = LastInput->Get();
-            LastInput->Set(Clock);
-            if (Previous <= 0.0 && Clock >= 1.0)
+            if (Latch <= 0.0 && Clock >= 1.0)
             {
+                Latch = 1.0;
                 if (LastEven > 0.0)
                 {
-                    EvenOutput->Set(0.0);
-                    OddOutput->Set(1.0);
+                    EvenOutput = 0.0;
+                    OddOutput = 1.0;
                 }
                 else
                 {
-                    EvenOutput->Set(1.0);
-                    OddOutput->Set(0.0);
+                    EvenOutput = 1.0;
+                    OddOutput = 0.0;
                 }
+            }
+            else if (Clock <= 0.0)
+            {
+                Latch = 0.0;
             }
         }
     }
