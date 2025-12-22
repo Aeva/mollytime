@@ -1254,23 +1254,21 @@ struct QuantizeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("QuantizeThunk");
-        std::vector<RunningStateSharedPtr>& InNote = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InRoot = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& InScale = Registers.Input[2];
-        RunningStateSharedPtr& OutNote = Registers.Output[0];
 
-        if (InNote.size() > 0 && InScale.size() > 1)
+        double Note = Registers.CombineInput(0);
+        const double Root = Registers.CombineInput(1, 60.0); // defaults to Middle C
+        std::vector<double> Intervals = Registers.InputVector(2);
+        double& OutNote = Registers.OutputRef(0);
+
+        if (Registers.InputConnected(0) && Registers.InputConnected(2))
         {
-            const double Root = Combine(CombinerAdd, InRoot, 60.0); // defaults to Middle C
-            double Note = Combine(CombinerAdd, InNote, 0.0);
-
             double Stride = 0.0;
             std::vector<double> Scale;
-            Scale.reserve(InScale.size() + 1);
+            Scale.reserve(Intervals.size() + 1);
             Scale.push_back(0.0);
-            for (RunningStateSharedPtr& IntervalRegister : InScale)
+            for (double Interval : Intervals)
             {
-                double Interval = IntervalRegister->Get();
+                Interval = std::max(Interval, 0.0);
                 if (Interval > 0.0)
                 {
                     Stride += Interval;
@@ -1280,7 +1278,7 @@ struct QuantizeThunk : public InstructionThunk
 
             if (Scale.size() == 0)
             {
-                OutNote->Set(Note);
+                OutNote = Note;
                 return;
             }
 
@@ -1337,13 +1335,9 @@ struct QuantizeThunk : public InstructionThunk
 
             Note = (std::abs(Note - Low) <= std::abs(Note - High)) ? Low : High;
             Note += Shift * Stride + Root;
-            OutNote->Set(Note);
         }
-        else
-        {
-            double Note = Combine(CombinerAdd, InNote, 0.0);
-            OutNote->Set(Note);
-        }
+
+        OutNote = Note;
     }
 
     virtual ~QuantizeThunk() {};

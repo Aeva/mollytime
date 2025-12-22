@@ -344,6 +344,18 @@ struct InstructionRegisters
         }
     }
 
+    inline std::vector<double> InputVector(uint32_t InputIndex)
+    {
+        std::vector<RunningStateSharedPtr>& Target = Input[InputIndex];
+        std::vector<double> Out;
+        Out.reserve(Target.size());
+        for (RunningStateSharedPtr& RunningState : Target)
+        {
+            Out.push_back(RunningState->Get());
+        }
+        return Out;
+    }
+
     inline bool InputConnected(uint32_t InputIndex)
     {
         return Input[InputIndex].size() > 0;
