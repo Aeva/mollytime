@@ -137,49 +137,44 @@ static double MoonPosition(double JulianDate, double ObserverLatitude, double Ob
 void MoonThunk::Crank(double SampleInterval)
 {
     TRACEABLE_NAMED_SCOPE("MoonThunk");
-    std::vector<RunningStateSharedPtr> Latitude = Registers.Input[0];
-    std::vector<RunningStateSharedPtr> Longitude = Registers.Input[1];
-    std::vector<RunningStateSharedPtr> JulianDate = Registers.Input[2];
-    std::vector<RunningStateSharedPtr> Speed = Registers.Input[3];
-    RunningStateSharedPtr Altitude = Registers.Output[0];
+
+    double Latitude = Registers.CombineInput(0, 41.881944);
+    double Longitude = Registers.CombineInput(1, -87.627778);
+    double JulianDate = Registers.CombineInput(2, -1.0);
+    double Speed = Registers.CombineInput(3, 1.0);
+    double& Altitude = Registers.OutputRef(0);
 
     // If JulianDate was unset, then this will cache the current Julian Date
     // at the time the tile was activated.
-    RunningStateSharedPtr OriginDate = Registers.Closure[0];
-    RunningStateSharedPtr ElapsedSeconds = Registers.Closure[1];
+    double& OriginDate = Registers.ClosureRef(0);
+    double& ElapsedSeconds = Registers.ClosureRef(1);
 
-    double ObserverLatitude = Combine(CombinerAdd, Latitude, 41.881944);
-    double ObserverLongitude = Combine(CombinerAdd, Longitude, -87.627778);
-    double TimeMultiplier = Combine(CombinerAdd, Speed, 1.0);
-
-    double CurrentDate = Combine(CombinerAdd, JulianDate, -1.0);
-    if (CurrentDate < 0.0)
+    if (JulianDate < 0.0)
     {
         // Stars did not exist prior to noon Universal Time on January 1, 4713 BC, so
         // we will use an impossible date to indicate the origin should be measured in
         // local time instead.
-        CurrentDate = OriginDate->Get();
-        if (CurrentDate == 0.0)
+        JulianDate = OriginDate;
+        if (JulianDate == 0.0)
         {
             // As it is extremely unlikely that the operator of this program is starting
             // this patch at exactly noon Universal Time on January 1, 4713 BC, we use
             // a zero value to indicate that the current time needs to be recorded and
             // saved in the closure register.  You can express this date explicitly, in
             // which case the closure register is ignored.
-            CurrentDate = GetCurrentJulianDate();
-            OriginDate->Set(CurrentDate);
+            JulianDate = GetCurrentJulianDate();
+            OriginDate = JulianDate;
         }
     }
     {
         // Since samples are calculated in batches, we must assume that ::Crank is
         // called multiple times semisimultaneously.  As such, we have to advance
         // time and recorde the elapsed time in a closure register.
-        double AccumulatedTime = ElapsedSeconds->Get() + SampleInterval * TimeMultiplier;
-        ElapsedSeconds->Set(AccumulatedTime);
+        ElapsedSeconds = ElapsedSeconds + SampleInterval * Speed;
         // And then we convert that to a fraction of a day and add it to the origin date.
-        CurrentDate += AccumulatedTime / 86400.0;
+        JulianDate += ElapsedSeconds / 86400.0;
     }
 
-    double AltitudeH = MoonPosition(CurrentDate, ObserverLatitude, ObserverLongitude);
-    Altitude->Set(AltitudeH / 90.0);
+    double AltitudeH = MoonPosition(JulianDate, Latitude, Longitude);
+    Altitude = AltitudeH / 90.0;
 }
