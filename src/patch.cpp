@@ -1352,36 +1352,29 @@ struct InputSequenceThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
-        std::vector<RunningStateSharedPtr>& InClock = Registers.Input[0];
-        std::vector<RunningStateSharedPtr>& InSequence = Registers.Input[1];
-        std::vector<RunningStateSharedPtr>& InRestart = Registers.Input[2];
-        RunningStateSharedPtr& OutValue = Registers.Output[0];
-        RunningStateSharedPtr& OutComplete = Registers.Output[1];
-        RunningStateSharedPtr& LastClock = Registers.Closure[0];
-        RunningStateSharedPtr& LastRestart = Registers.Closure[1];
-        RunningStateSharedPtr& Cursor = Registers.Closure[2];
+        double Clock = Registers.CombineInput(0);
+        std::vector<double> Sequence = Registers.InputVector(1);
+        double Restart = Registers.CombineInput(2);
+        double& OutValue = Registers.OutputRef(0);
+        double& OutComplete = Registers.OutputRef(1);
+        double& LastClock = Registers.ClosureRef(0);
+        double& LastRestart = Registers.ClosureRef(1);
+        double& Cursor = Registers.ClosureRef(2);
 
-        double Restart = Combine(CombinerAdd, InRestart, 0.0);
-        double PreviousRestart = LastRestart->Get();
-        LastRestart->Set(Restart);
-
-        if (PreviousRestart <= 0.0 && Restart >= 1.0)
+        if (LastRestart <= 0.0 && Restart >= 1.0)
         {
-            Cursor->Set(0.0);
+            Cursor = 0.0;
         }
+        LastRestart = Restart;
 
-        double Clock = Combine(CombinerAdd, InClock, 0.0);
-        double PreviousClock = LastClock->Get();
-        LastClock->Set(Clock);
-
-        if (PreviousClock <= 0.0 && Clock >= 1.0)
+        if (LastClock <= 0.0 && Clock >= 1.0)
         {
             // Modulating the index happens at the start of this thunk, because the patch may
             // have been modified between calls, which could result in the sequence changing
             // length.
-            const int Period = InSequence.size();
-            int Index = int(Cursor->Get()) % Period;
-            OutValue->Set(InSequence[Index]->Get());
+            const int Period = Sequence.size();
+            int Index = int(Cursor) % Period;
+            OutValue = Sequence[Index];
 
             // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
             // Patches that use this signal to switch between sequences will want to add an extra
@@ -1391,11 +1384,12 @@ struct InputSequenceThunk : public InstructionThunk
             // back to this sequence.  In other words, the way of constructing a patch that chains
             // sequences that was most obvious to me always skips the last note in each sequence.
             // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
-            OutComplete->Set(Index == Period - 1);
+            OutComplete = double(Index == (Period - 1));
 
             Index = (Index + 1);
-            Cursor->Set(double(Index));
+            Cursor = double(Index);
         }
+        LastClock = Clock;
     }
 
     virtual ~InputSequenceThunk() {};
