@@ -2428,16 +2428,12 @@ ScratchSharedPtr Patch::Compile()
     struct TilePartial
     {
         TileHandle Tile;
-        uint32_t Polyphony = 1;
+        uint32_t Polyphony = 0;
         bool PatchOutput = false;
 
         // This is NOT redundant to Patch::ByInput because its elements are ordered,
         // and that ordering is determined at compile time (e.g. by OpCode::GO).
         std::vector<std::vector<PortHandle>> Inputs;
-
-        // TODO: These may be inferred implicitly, and probably don't need to be recorded:
-        std::vector<PortHandle> Outputs;
-        std::vector<PortHandle> Closures;
     };
     std::vector<TilePartial> FlatGraph;
     FlatGraph.reserve(TileSymbols.size());
@@ -2476,14 +2472,10 @@ ScratchSharedPtr Patch::Compile()
         const OpCode Symbol = GetTileSymbol(Tile);
         if (Symbol == OpCode::CONST)
         {
-            // Constant tiles return early because they terminate recursion,
-            // and because they have no thunk.
             return;
         }
 
         const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
-        const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
-        const size_t ClosureCount = SymbolInfoMap.Closures[(int)Symbol];
 
         // Recurse first to populate everything sequentally.
         for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -2565,16 +2557,6 @@ ScratchSharedPtr Patch::Compile()
                     }
                 }
             }
-
-            for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
-            {
-                Partial.Outputs.push_back(MakePortHandle(Tile, PortIndex));
-            }
-
-            for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
-            {
-                Partial.Closures.push_back(MakeClosureHandle(Tile, ClosureIndex));
-            }
         }
 
         // TODO should this be considered unreachable?
@@ -2590,6 +2572,9 @@ ScratchSharedPtr Patch::Compile()
     // Everything else retains its default name.
     // OpCode::SCOPE is the only exception: it will only ever be included in the
     // graph when the operator sets it as the active probe tile.
+    // Tape tiles aren't actually outputs, but they're solved before anything else
+    // to ensure consistent ordering and latency in the event that they're used to
+    // create feedback loops.
     std::vector<TileHandle> TapeTiles;
     std::vector<TileHandle> OutputTiles;
     std::vector<TileHandle> AuxTiles;
@@ -2656,29 +2641,18 @@ ScratchSharedPtr Patch::Compile()
 
         std::vector<std::vector<RunningStateSharedPtr>> Inputs;
         Inputs.reserve(Partial.Inputs.size());
-        for (std::vector<PortHandle>& InputPorts : Partial.Inputs)
+        for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
         {
             std::vector<RunningStateSharedPtr>& InputRegisters = Inputs.emplace_back();
-            InputRegisters.reserve(InputPorts.size());
-            for (PortHandle InputPort : InputPorts)
+            InputRegisters.reserve(ConnectedOutputs.size());
+            for (PortHandle ConnectedOutput : ConnectedOutputs)
             {
-                InputRegisters.push_back(ActiveOutputs.at(InputPort));
+                InputRegisters.push_back(ActiveOutputs.at(ConnectedOutput));
             }
         }
 
         std::vector<RunningStateSharedPtr> Outputs;
-        Outputs.reserve(Partial.Outputs.size());
-        for (PortHandle OutputPort : Partial.Outputs)
-        {
-            Outputs.push_back(ActiveOutputs.at(OutputPort));
-        }
-
         std::vector<RunningStateSharedPtr> Closures;
-        Closures.reserve(Partial.Closures.size());
-        for (PortHandle ClosurePort : Partial.Closures)
-        {
-            Closures.push_back(ActiveOutputs.at(ClosurePort));
-        }
 
         if (Partial.PatchOutput)
         {
@@ -2711,6 +2685,23 @@ ScratchSharedPtr Patch::Compile()
         }
         else
         {
+            const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+            const size_t ClosureCount = SymbolInfoMap.Closures[(int)Symbol];
+
+            Outputs.reserve(OutputCount);
+            for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
+            {
+                PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
+                Outputs.push_back(ActiveOutputs.at(OutputPort));
+            }
+
+            Closures.reserve(ClosureCount);
+            for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
+            {
+                PortHandle ClosurePort = MakeClosureHandle(Partial.Tile, ClosureIndex);
+                Closures.push_back(ActiveOutputs.at(ClosurePort));
+            }
+
             {
                 auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
