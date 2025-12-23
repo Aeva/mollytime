@@ -64,7 +64,7 @@ void JackRealTimeThread::BeginFrame(FramePointers& Frame)
     // All "input" jack ports are guaranteed to correspond to a program input.
     for (const auto& [Tile, JackPort] : JackBufferState->InputPorts)
     {
-        double* WritePtr = Program->Inputs.at(Tile)->DangerPtr();
+        double* WritePtr = Program->RegisterFile.data() + Program->Inputs.at(Tile);
         Frame.InPtrs.emplace_back((float*)jack_port_get_buffer(JackPort, FrameCount), WritePtr);
     }
     if (JackBufferState->OutputPorts.size() >= 2)
@@ -75,7 +75,7 @@ void JackRealTimeThread::BeginFrame(FramePointers& Frame)
     // All "aux" jack ports are always guaranteed to correspond to an "aux" program output.
     for (const auto& [Tile, JackPort] : JackBufferState->AuxOutPorts)
     {
-        double* ReadPtr = Program->AuxOutputs.at(Tile)->DangerPtr();
+        double* ReadPtr = Program->RegisterFile.data() + Program->AuxOutputs.at(Tile);
         Frame.AuxPtrs.emplace_back(ReadPtr, (float*)jack_port_get_buffer(JackPort, FrameCount));
     }
 }

@@ -122,39 +122,9 @@ std::string GetDefaultName(OpCode Symbol);
 
 struct RegisterAllocation
 {
-    uint32_t BaseOffset;
+    std::ptrdiff_t BaseOffset;
     uint32_t LaneCount;
 };
-
-
-struct RunningState
-{
-    RunningState(double InSample)
-        : Sample(InSample)
-    {
-    }
-    double* DangerPtr()
-    {
-        return &Sample;
-    }
-    double& DangerRef()
-    {
-        return Sample;
-    }
-    double Get()
-    {
-        return Sample;
-    }
-    void Set(double NewSample)
-    {
-        Sample = NewSample;
-    }
-
-private:
-    double Sample;
-};
-
-using RunningStateSharedPtr = std::shared_ptr<RunningState>;
 
 
 struct AtomicRunningState
@@ -300,17 +270,6 @@ inline double CombinerMax(double LHS, double RHS)
 using CombinerFn = decltype((CombinerAdd));
 
 
-inline double Combine(auto& Combiner, std::vector<RunningStateSharedPtr>& Inputs, double Default=0.0)
-{
-    double Result = Inputs.size() == 0 ? Default : Inputs[0]->Get();
-    for (int Index = 1; Index < static_cast<int>(Inputs.size()); ++Index)
-    {
-        Result = Combiner(Result, Inputs[Index]->Get());
-    }
-    return Result;
-}
-
-
 template<int InputCount, int OutputCount, int ClosureCount_>
 struct InstructionInfo
 {
@@ -325,23 +284,25 @@ struct InstructionInfo
 struct InstructionRegisters
 {
     inline void Connect(
-        std::vector<std::vector<RunningStateSharedPtr>>& AssignedInputs,
-        std::vector<RunningStateSharedPtr>& AssignedOutputs,
-        std::vector<RunningStateSharedPtr>& AssignedClosures)
+        std::vector<std::vector<std::ptrdiff_t>>& InInputs,
+        std::vector<std::ptrdiff_t>& InOutputs,
+        std::vector<std::ptrdiff_t>& InClosures,
+        std::vector<double>* InRegisterFile)
     {
-        Input = AssignedInputs;
-        Output = AssignedOutputs;
-        Closure = AssignedClosures;
+        Input = InInputs;
+        Output = InOutputs;
+        Closure = InClosures;
+        RegisterFile = InRegisterFile;
     }
 
     inline std::vector<double> InputVector(uint32_t InputIndex)
     {
-        std::vector<RunningStateSharedPtr>& Target = Input[InputIndex];
+        std::vector<std::ptrdiff_t>& Target = Input[InputIndex];
         std::vector<double> Out;
         Out.reserve(Target.size());
-        for (RunningStateSharedPtr& RunningState : Target)
+        for (std::ptrdiff_t& Offset : Target)
         {
-            Out.push_back(RunningState->Get());
+            Out.push_back(RegisterValue(Offset));
         }
         return Out;
     }
@@ -353,23 +314,41 @@ struct InstructionRegisters
 
     inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
-        return Combine(Combiner, Input[InputIndex], Default);
+        std::vector<std::ptrdiff_t>& InputRegisters = Input[0];
+        double Result = InputRegisters.size() == 0 ? Default : RegisterValue(InputRegisters[0]);
+        for (int Index = 1; Index < static_cast<int>(InputRegisters.size()); ++Index)
+        {
+            double NextValue = RegisterValue(InputRegisters[Index]);
+            Result = Combiner(Result, NextValue);
+        }
+        return Result;
     }
 
     inline double& OutputRef(uint32_t OutputIndex)
     {
-        return Output[OutputIndex]->DangerRef();
+        return *RegisterPtr(Output[OutputIndex]);
     }
 
     inline double& ClosureRef(uint32_t ClosureIndex)
     {
-        return Closure[ClosureIndex]->DangerRef();
+        return *RegisterPtr(Closure[ClosureIndex]);
     }
 
 private:
-    std::vector<std::vector<RunningStateSharedPtr>> Input;
-    std::vector<RunningStateSharedPtr> Output;
-    std::vector<RunningStateSharedPtr> Closure;
+    inline double* RegisterPtr(std::ptrdiff_t Offset)
+    {
+        return RegisterFile->data() + Offset;
+    }
+
+    inline double RegisterValue(std::ptrdiff_t Offset)
+    {
+        return *RegisterPtr(Offset);
+    }
+
+    std::vector<std::vector<std::ptrdiff_t>> Input;
+    std::vector<std::ptrdiff_t> Output;
+    std::vector<std::ptrdiff_t> Closure;
+    std::vector<double>* RegisterFile;
 };
 
 
@@ -380,7 +359,10 @@ struct InstructionThunk
     virtual ~InstructionThunk() {};
 };
 
+using InstructionThunkSharedPtr = std::shared_ptr<InstructionThunk>;
 
+
+#if 0
 struct MidiChannelState
 {
     RunningStateSharedPtr Gate = std::make_shared<RunningState>(0.0);
@@ -391,27 +373,31 @@ struct MidiChannelState
     RunningStateSharedPtr CtrlParam = std::make_shared<RunningState>(0.0);
     RunningStateSharedPtr CtrlValue = std::make_shared<RunningState>(0.0);
 };
+#endif
 
 
 struct Scratch final : public MidiHandler
 {
     uint64_t Identity;
     uint32_t Polyphony;
-    std::vector<double> RegisterFile;
-    std::map<PortHandle, RegisterAllocation> RegisterMap;
 
-    std::vector<std::shared_ptr<InstructionThunk>> Program;
-    std::vector<RunningStateSharedPtr> Outputs;
-    std::map<TileHandle, RunningStateSharedPtr> Inputs;
-    std::map<TileHandle, RunningStateSharedPtr> AuxOutputs;
+    std::vector<double> RegisterFile;
+    std::map<PortHandle, RegisterAllocation> PersistentRegisters;
+
+    std::vector<InstructionThunkSharedPtr> Program;
+    std::vector<std::ptrdiff_t> Outputs;
+    std::map<TileHandle, std::ptrdiff_t> Inputs;
+    std::map<TileHandle, std::ptrdiff_t> AuxOutputs;
 
     std::unordered_map<TileHandle, MagicTapeSharedPtr> Tapes;
-    RunningStateSharedPtr ProbeInput = nullptr;
+    std::ptrdiff_t ProbeInput;
     ProbeRunningStateSharedPtr OutputProbe;
     ProbeRunningStateSharedPtr ScopeProbe;
 
+#if 0
     std::array<MidiChannelState, 16> MidiChannels;
     int MostRecentChannel = 0;
+#endif
 
     void Migrate(const Scratch& Old);
 
@@ -480,15 +466,16 @@ struct Patch
 private:
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
+#if 0
     // These should only ever be set or read by the audio thread:
     std::array<MidiChannelState, 16> MidiChannels;
+#endif
 
     // This is a cache of known output tiles for the purpose of labeling
     // audio channels.  This is updated every time the program is compiled.
     std::unordered_map<TileHandle, std::string> OutputTileNames;
 
     TileHandle LastAssignedTileHandle;
-    std::unordered_map<PortHandle, RunningStateSharedPtr> ActiveOutputs;
     std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;
     std::unordered_map<TileHandle, MagicTapeSharedPtr> TapeCollection;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();

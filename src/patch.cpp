@@ -1439,6 +1439,7 @@ struct GateThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GateThunk");
+#if 0
         int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Gate = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
@@ -1446,6 +1447,7 @@ struct GateThunk : public InstructionThunk
             MidiChannelState& State = Program->MidiChannels[Channel];
             Gate = State.Gate->Get();
         }
+#endif
     }
 
     virtual ~GateThunk() {};
@@ -1460,6 +1462,7 @@ struct NoteThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoteThunk");
+#if 0
         int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Note = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
@@ -1467,6 +1470,7 @@ struct NoteThunk : public InstructionThunk
             MidiChannelState& State = Program->MidiChannels[Channel];
             Note = State.Note->Get();
         }
+#endif
     }
 
     virtual ~NoteThunk() {};
@@ -1481,6 +1485,7 @@ struct VelocityThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("VelocityThunk");
+#if 0
         int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Velocity = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
@@ -1488,6 +1493,7 @@ struct VelocityThunk : public InstructionThunk
             MidiChannelState& State = Program->MidiChannels[Channel];
             Velocity = State.Velocity->Get();
         }
+#endif
     }
 
     virtual ~VelocityThunk() {};
@@ -1502,6 +1508,7 @@ struct PressureThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PressureThunk");
+#if 0
         int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
         double& Pressure = Registers.OutputRef(0);
         if (Channel >= 0 && Channel <= 15)
@@ -1509,6 +1516,7 @@ struct PressureThunk : public InstructionThunk
             MidiChannelState& State = Program->MidiChannels[Channel];
             Pressure = State.Pressure->Get();
         }
+#endif
     }
 
     virtual ~PressureThunk() {};
@@ -1523,6 +1531,7 @@ struct ControlChangeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
+#if 0
         int Control = int(Registers.CombineInput(0));
         int Channel = int(Registers.CombineInput(1, double(Program->MostRecentChannel)));
         double& Output = Registers.OutputRef(0);
@@ -1534,6 +1543,7 @@ struct ControlChangeThunk : public InstructionThunk
                 Output = State.CtrlValue->Get();
             }
         }
+#endif
     }
 
     virtual ~ControlChangeThunk() {};
@@ -1741,29 +1751,32 @@ struct TapeLoopThunk : public InstructionThunk
 
 using BasicCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-        std::vector<RunningStateSharedPtr>& Outputs,
-        std::vector<RunningStateSharedPtr>& Closures)>;
+        ScratchSharedPtr& Program,
+        std::vector<std::vector<std::ptrdiff_t>>& Inputs,
+        std::vector<std::ptrdiff_t>& Outputs,
+        std::vector<std::ptrdiff_t>& Closures)>;
 
 using WidgetCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-        std::vector<RunningStateSharedPtr>& Outputs,
-        std::vector<RunningStateSharedPtr>& Closures,
+        ScratchSharedPtr& Program,
+        std::vector<std::vector<std::ptrdiff_t>>& Inputs,
+        std::vector<std::ptrdiff_t>& Outputs,
+        std::vector<std::ptrdiff_t>& Closures,
         AtomicRunningStateSharedPtr& SpecialInput)>;
 
 using MidiCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-        std::vector<RunningStateSharedPtr>& Outputs,
-        std::vector<RunningStateSharedPtr>& Closures,
-        Scratch* Program)>;
+        ScratchSharedPtr& Program,
+        std::vector<std::vector<std::ptrdiff_t>>& Inputs,
+        std::vector<std::ptrdiff_t>& Outputs,
+        std::vector<std::ptrdiff_t>& Closures)>;
 
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<std::vector<RunningStateSharedPtr>>& Inputs,
-        std::vector<RunningStateSharedPtr>& Outputs,
-        std::vector<RunningStateSharedPtr>& Closures,
+        ScratchSharedPtr& Program,
+        std::vector<std::vector<std::ptrdiff_t>>& Inputs,
+        std::vector<std::ptrdiff_t>& Outputs,
+        std::vector<std::ptrdiff_t>& Closures,
         MagicTapeSharedPtr& Tape)>;
 
 
@@ -1874,10 +1887,11 @@ private:
     void SetBasic()
     {
         SetCommon<ThunkT>();
-        BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures)
+        BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures)
         {
+            std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -1886,11 +1900,12 @@ private:
     void SetMidi()
     {
         SetCommon<ThunkT>();
-        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures, Scratch* Program)
+        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures)
         {
+            std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures);
-            Thunk->Program = Program;
+            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Program = Program.get();
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -1899,10 +1914,11 @@ private:
     void SetWidget()
     {
         SetCommon<ThunkT>();
-        WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
+        WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
         {
+            std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Input = SpecialInput;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -1912,10 +1928,11 @@ private:
     void SetTape()
     {
         SetCommon<ThunkT>();
-        TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](auto& Inputs, auto& Outputs, auto& Closures, auto& Tape)
+        TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& Tape)
         {
+            std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures);
+            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -1970,23 +1987,10 @@ TileHandle Patch::MakeTile(OpCode Symbol)
     for (PortHandle Port : GetTileOutputPorts(AllocatedHandle))
     {
         ByOutput[Port] = std::set<PortHandle>();
-        ActiveOutputs[Port] = std::make_shared<RunningState>(0.0);
     }
-    int Closures = GetClosureCount(Symbol);
-    for (int ClosureIndex = 0; ClosureIndex < Closures; ++ClosureIndex)
-    {
-        PortHandle Closure = MakeClosureHandle(AllocatedHandle, ClosureIndex);
-        ActiveOutputs[Closure] = std::make_shared<RunningState>(0.0);
-    }
-    if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
-        || Symbol == OpCode::TPTSVF_NOTCH)
-    {
-        // Gain and Feedback coefficients init to 1.
-        // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
-        ActiveOutputs[MakeClosureHandle(AllocatedHandle, 2)] = std::make_shared<RunningState>(1.0);
-        ActiveOutputs[MakeClosureHandle(AllocatedHandle, 3)] = std::make_shared<RunningState>(1.0);
-    }
-    else if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
+
+    // TODO: Move these into Patch::Compile somehow?
+    if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
     }
@@ -2031,19 +2035,8 @@ void Patch::EraseTile(TileHandle Tile)
     {
         Disconnect(std::get<0>(Wire), std::get<1>(Wire));
     }
-    for (PortHandle Port : GetTileOutputPorts(Tile))
-    {
-        ActiveOutputs.erase(Port);
-    }
 
     OpCode Symbol = GetTileSymbol(Tile);
-    int Closures = GetClosureCount(Symbol);
-    for (int ClosureIndex = 0; ClosureIndex < Closures; ++ClosureIndex)
-    {
-        PortHandle Closure = MakeClosureHandle(Tile, ClosureIndex);
-        ActiveOutputs.erase(Closure);
-    }
-
     if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
     {
         SpecialInputs.erase(Tile);
@@ -2147,12 +2140,16 @@ void Patch::SetConstant(TileHandle Tile, double NewValue)
 void Patch::ReplaceConstantOutput(TileHandle Tile, double NewValue)
 {
     TRACEABLE_SCOPE;
+#if 0
+    ?????????????????????????
+
     // Patch should never mutate the shared pointers stored in Patch::ActiveOutputs,
     // as the active Scratch object will be continuously reading and mutating these
     // values.  By instead replacing the entries stored in Patch::ActiveOutputs, the
     // new constant values only take effect in subsequently compiled Scratch objects.
     PortHandle Port = MakePortHandle(Tile, 0);
     ActiveOutputs[Port] = std::make_shared<RunningState>(NewValue);
+#endif
     Recompile();
 }
 
@@ -2391,7 +2388,9 @@ ScratchSharedPtr Patch::Compile()
 
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->Identity = Identity;
+#if 0
     Program->MidiChannels = MidiChannels;
+#endif
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
 
@@ -2577,10 +2576,25 @@ ScratchSharedPtr Patch::Compile()
         // since they most likely will not be updated when the patch runs.
         OutputProbe->Set(0.0);
         ScopeProbe->Set(0.0);
-        Program->ProbeInput = nullptr;
+        Program->ProbeInput = 0;
     }
 
     // From this point on, `FlatGraph` contains entries for everything that will contribute to the compiled patch program.
+
+    std::map<PortHandle, std::ptrdiff_t> RegisterMap;
+    auto AllocateTemporaryRegister = [&](PortHandle Handle, double InitialValue = 0.0) -> std::ptrdiff_t
+    {
+        std::ptrdiff_t Offset = Program->RegisterFile.size();
+        Program->RegisterFile.push_back(InitialValue);
+        RegisterMap[Handle] = Offset;
+        return Offset;
+    };
+    auto AllocatePersistentRegister = [&](PortHandle Handle, double InitialValue = 0.0) -> std::ptrdiff_t
+    {
+        std::ptrdiff_t Offset = AllocateTemporaryRegister(Handle, InitialValue);
+        Program->PersistentRegisters[Handle] = { Offset, 1 };
+        return Offset;
+    };
 
     for (TilePartial& Partial : FlatGraph)
     {
@@ -2600,55 +2614,69 @@ ScratchSharedPtr Patch::Compile()
             }
         }
 
-        std::vector<std::vector<RunningStateSharedPtr>> Inputs;
+        std::vector<std::vector<std::ptrdiff_t>> Inputs;
         Inputs.reserve(Partial.Inputs.size());
         for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
         {
-            std::vector<RunningStateSharedPtr>& InputRegisters = Inputs.emplace_back();
+            std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
             InputRegisters.reserve(ConnectedOutputs.size());
             for (PortHandle ConnectedOutput : ConnectedOutputs)
             {
-                InputRegisters.push_back(ActiveOutputs.at(ConnectedOutput));
+                InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
             }
         }
 
-        std::vector<RunningStateSharedPtr> Outputs;
-        std::vector<RunningStateSharedPtr> Closures;
+        std::vector<std::ptrdiff_t> Outputs;
+        std::vector<std::ptrdiff_t> Closures;
 
         if (Symbol == OpCode::CONST)
         {
+            // A temporary register is fine here, because this should never be overwritten.
+            AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
         }
         else if (Symbol == OpCode::IN)
         {
-            Program->Inputs[Partial.Tile] = ActiveOutputs.at(MakePortHandle(Partial.Tile, 0));
+            // If the audio backend is not guaranteed to write to this input every frame, a persistent register
+            // might be better, depending on whether or not resseting to zero is more or less ideal than holding
+            // the last known value.
+            Program->Inputs[Partial.Tile] = AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
         }
         else if (Partial.PatchOutput)
         {
-            Outputs = { std::make_shared<RunningState>(0.0) };
+            std::ptrdiff_t OutputRegister;
+
             if (Inputs[0].size() == 1)
             {
-                Outputs[0] = Inputs[0][0];
+                OutputRegister = Inputs[0][0];
             }
-            else if (Inputs[0].size() > 1)
+            else
             {
-                static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
-                Program->Program.push_back(AddCreateAndConnect(Inputs, Outputs, Closures));
+                // A temporary register is fine here because this will be written every frame in any
+                // situation where it is possible to observe its effect, output tiles have no persistent
+                // state, and cannot be used to construct graph cycles.
+                OutputRegister = AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
+                Outputs = { OutputRegister };
+                if (Inputs[0].size() > 1)
+                {
+                    static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
+                    Program->Program.push_back(AddCreateAndConnect(Program, Inputs, Outputs, Closures));
+                }
             }
 
             // Collect the patch output registers.
             if (Symbol == OpCode::OUT)
             {
-                Program->Outputs.push_back(Outputs[0]);
+                Program->Outputs.push_back(OutputRegister);
             }
             else if (Symbol == OpCode::AUX)
             {
-                Program->AuxOutputs[Partial.Tile] = Outputs[0];
+                Program->AuxOutputs[Partial.Tile] = OutputRegister;
             }
 
             // This tile is also the current active probe.
             if (Partial.Tile == ActiveProbeTile)
             {
-                Program->ProbeInput = Outputs[0];
+                Program->ProbeInput = OutputRegister;
             }
         }
         else
@@ -2659,22 +2687,38 @@ ScratchSharedPtr Patch::Compile()
             Outputs.reserve(OutputCount);
             for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
+                // Persistent registers are used here, because there may be graph cycles, in which
+                // case we need to be able to read values from the previous frame, which may have come
+                // from a different patch.  Additionally, thunks are free to assume their outputs are
+                // persistent, which can be used to save on allocating extra closure registers.
                 PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
-                Outputs.push_back(ActiveOutputs.at(OutputPort));
+                Outputs.push_back(AllocatePersistentRegister(OutputPort));
             }
 
             Closures.reserve(ClosureCount);
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
             {
+                // Closure registers represent a thunk's internal state, and as such they must be
+                // persistent across patch revisions.
                 PortHandle ClosurePort = MakeClosureHandle(Partial.Tile, ClosureIndex);
-                Closures.push_back(ActiveOutputs.at(ClosurePort));
+                Closures.push_back(AllocatePersistentRegister(ClosurePort));
             }
 
             {
                 auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures));
+                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures);
+                    Program->Program.push_back(Thunk);
+
+                    if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
+                        || Symbol == OpCode::TPTSVF_NOTCH)
+                    {
+                        // Gain and Feedback coefficients init to 1.
+                        // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
+                        Thunk->Registers.ClosureRef(2) = 1.0;
+                        Thunk->Registers.ClosureRef(3) = 1.0;
+                    }
                     continue;
                 }
             }
@@ -2682,7 +2726,8 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]));
+                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]);
+                    Program->Program.push_back(Thunk);
                     continue;
                 }
             }
@@ -2690,7 +2735,14 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, Program.get()));
+                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures);
+                    Program->Program.push_back(Thunk);
+
+                    if (Symbol == OpCode::NOTE)
+                    {
+                        // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
+                        Thunk->Registers.OutputRef(0) = 50.0;
+                    }
                     continue;
                 }
             }
@@ -2698,7 +2750,8 @@ ScratchSharedPtr Patch::Compile()
                 auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                 {
-                    Program->Program.push_back(Found->second(Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile)));
+                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile));
+                    Program->Program.push_back(Thunk);
                     continue;
                 }
             }
@@ -2746,13 +2799,15 @@ void Scratch::Migrate(const Scratch& Old)
 {
     TRACEABLE_SCOPE;
 
+#if 0
     MidiChannels = Old.MidiChannels;
     MostRecentChannel = Old.MostRecentChannel;
+#endif
 
-    for (auto const& [Handle, NewAllocation] : RegisterMap)
+    for (auto const& [Handle, NewAllocation] : PersistentRegisters)
     {
-        auto Found = Old.RegisterMap.find(Handle);
-        if (Found != Old.RegisterMap.end())
+        auto Found = Old.PersistentRegisters.find(Handle);
+        if (Found != Old.PersistentRegisters.end())
         {
             const RegisterAllocation& OldAllocation = Found->second;
             if (OldAllocation.LaneCount == NewAllocation.LaneCount)
@@ -2777,6 +2832,7 @@ void Scratch::Migrate(const Scratch& Old)
 void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
+#if 0
     {
         TRACEABLE_NAMED_SCOPE("MIDI PHASE");
 
@@ -2820,6 +2876,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             }
         }
     }
+#endif
     {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
         for (std::shared_ptr<InstructionThunk>& Thunk : Program)
@@ -2830,31 +2887,31 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
     {
         if (Outputs.size() == 1)
         {
-            OutLeft = float(Outputs[0]->Get());
-            OutRight = float(Outputs[0]->Get());
+            OutLeft = RegisterFile[Outputs[0]];
+            OutRight = RegisterFile[Outputs[0]];
         }
         else if (Outputs.size() > 1)
         {
-            OutLeft = float(Outputs[0]->Get());
-            OutRight = float(Outputs[1]->Get());
+            OutLeft = RegisterFile[Outputs[0]];
+            OutRight = RegisterFile[Outputs[1]];
         }
     }
     if (ProbeInput)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
-        ScopeProbe->Set(ProbeInput->Get());
+        ScopeProbe->Set(RegisterFile[ProbeInput]);
         if (Outputs.size() > 0)
         {
             // TODO : per-output probes
-            OutputProbe->Set(Outputs[0]->Get());
+            OutputProbe->Set(RegisterFile[Outputs[0]]);
         }
     }
     else if (Outputs.size() > 0)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         // TODO : per-output probes
-        ScopeProbe->Set(Outputs[0]->Get());
-        OutputProbe->Set(Outputs[0]->Get());
+        ScopeProbe->Set(RegisterFile[Outputs[0]]);
+        OutputProbe->Set(RegisterFile[Outputs[0]]);
     }
 }
 
