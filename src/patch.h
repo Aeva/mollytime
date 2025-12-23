@@ -322,26 +322,16 @@ struct InstructionInfo
 };
 
 
-template<int InputCount, int OutputCount, int ClosureCount>
 struct InstructionRegisters
 {
-    void Connect(
+    inline void Connect(
         std::vector<std::vector<RunningStateSharedPtr>>& AssignedInputs,
         std::vector<RunningStateSharedPtr>& AssignedOutputs,
         std::vector<RunningStateSharedPtr>& AssignedClosures)
     {
-        for (int Index = 0; Index < InputCount; ++Index)
-        {
-            Input[Index] = AssignedInputs[Index];
-        }
-        for (int Index = 0; Index < OutputCount; ++Index)
-        {
-            Output[Index] = AssignedOutputs[Index];
-        }
-        for (int Index = 0; Index < ClosureCount; ++Index)
-        {
-            Closure[Index] = AssignedClosures[Index];
-        }
+        Input = AssignedInputs;
+        Output = AssignedOutputs;
+        Closure = AssignedClosures;
     }
 
     inline std::vector<double> InputVector(uint32_t InputIndex)
@@ -377,14 +367,15 @@ struct InstructionRegisters
     }
 
 private:
-    std::array<std::vector<RunningStateSharedPtr>, InputCount> Input;
-    std::array<RunningStateSharedPtr, OutputCount> Output;
-    std::array<RunningStateSharedPtr, ClosureCount> Closure;
+    std::vector<std::vector<RunningStateSharedPtr>> Input;
+    std::vector<RunningStateSharedPtr> Output;
+    std::vector<RunningStateSharedPtr> Closure;
 };
 
 
 struct InstructionThunk
 {
+    InstructionRegisters Registers;
     virtual void Crank(double SampleInterval) = 0;
     virtual ~InstructionThunk() {};
 };

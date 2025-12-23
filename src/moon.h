@@ -21,7 +21,6 @@
 struct MoonThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<4, 1, 2> Info = { OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"} };
-    InstructionRegisters<4, 1, 2> Registers;
 
     virtual void Crank(double SampleInterval) override;
 
