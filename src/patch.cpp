@@ -2428,7 +2428,7 @@ ScratchSharedPtr Patch::Compile()
     struct TilePartial
     {
         TileHandle Tile;
-        uint32_t Polyphony = 0;
+        uint32_t Polyphony = 0; // Zero indicates to inherit from inputs.
         bool PatchOutput = false;
 
         // This is NOT redundant to Patch::ByInput because its elements are ordered,
@@ -2436,6 +2436,7 @@ ScratchSharedPtr Patch::Compile()
         std::vector<std::vector<PortHandle>> Inputs;
     };
     std::vector<TilePartial> FlatGraph;
+    std::unordered_map<TileHandle, TilePartial*> PartialByTile;
     FlatGraph.reserve(TileSymbols.size());
 
     ScratchSharedPtr Program = std::make_shared<Scratch>();
@@ -2459,6 +2460,7 @@ ScratchSharedPtr Patch::Compile()
     {
         TilePartial& Partial = FlatGraph.emplace_back();
         Partial.Tile = Tile;
+        PartialByTile[Tile] = &Partial;
         return Partial;
     };
 
@@ -2470,8 +2472,10 @@ ScratchSharedPtr Patch::Compile()
         }
 
         const OpCode Symbol = GetTileSymbol(Tile);
-        if (Symbol == OpCode::CONST)
+        if (Symbol == OpCode::CONST || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
         {
+            TilePartial& Partial = VisitTile(Tile);
+            Partial.Polyphony = 1;
             return;
         }
 
@@ -2517,6 +2521,7 @@ ScratchSharedPtr Patch::Compile()
         else if (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE)
         {
             TilePartial& Partial = VisitTile(Tile);
+            Partial.Polyphony = 1;
             Partial.PatchOutput = true;
             std::vector<PortHandle>& Input0 = Partial.Inputs.emplace_back();
 
@@ -2534,6 +2539,11 @@ ScratchSharedPtr Patch::Compile()
                 Symbol == OpCode::PRES || Symbol == OpCode::CTRL)
             {
                 Partial.Polyphony = MidiPolyphony;
+            }
+            else
+            {
+                // Inherit from inputs.
+                Partial.Polyphony = 0;
             }
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -2639,6 +2649,20 @@ ScratchSharedPtr Patch::Compile()
     {
         const OpCode Symbol = GetTileSymbol(Partial.Tile);
 
+        if (Partial.Polyphony == 0)
+        {
+            Partial.Polyphony = 1;
+            for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+            {
+                for (PortHandle ConnectedPort : ConnectedOutputs)
+                {
+                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                    TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                    Partial.Polyphony = std::max(Partial.Polyphony, ConnectedPartial->Polyphony);
+                }
+            }
+        }
+
         std::vector<std::vector<RunningStateSharedPtr>> Inputs;
         Inputs.reserve(Partial.Inputs.size());
         for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
@@ -2654,7 +2678,10 @@ ScratchSharedPtr Patch::Compile()
         std::vector<RunningStateSharedPtr> Outputs;
         std::vector<RunningStateSharedPtr> Closures;
 
-        if (Partial.PatchOutput)
+        if (Symbol == OpCode::CONST)
+        {
+        }
+        else if (Partial.PatchOutput)
         {
             Outputs = { std::make_shared<RunningState>(0.0) };
             if (Inputs[0].size() == 1)
