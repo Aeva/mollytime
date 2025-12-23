@@ -2445,17 +2445,6 @@ ScratchSharedPtr Patch::Compile()
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
 
-    // Input tiles must be processed first and added to the "BreadCrumbs" set
-    // to prevent the Step function below from attempting to process them.
-    for (const auto& [Tile, Symbol] : TileSymbols)
-    {
-        if (Symbol == OpCode::IN)
-        {
-            BreadCrumbs.insert(Tile);
-            Program->Inputs[Tile] = ActiveOutputs.at(MakePortHandle(Tile, 0));
-        }
-    }
-
     auto VisitTile = [&](TileHandle Tile) -> TilePartial&
     {
         TilePartial& Partial = FlatGraph.emplace_back();
@@ -2472,7 +2461,7 @@ ScratchSharedPtr Patch::Compile()
         }
 
         const OpCode Symbol = GetTileSymbol(Tile);
-        if (Symbol == OpCode::CONST || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
+        if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
         {
             TilePartial& Partial = VisitTile(Tile);
             Partial.Polyphony = 1;
@@ -2568,8 +2557,6 @@ ScratchSharedPtr Patch::Compile()
                 }
             }
         }
-
-        // TODO should this be considered unreachable?
     };
 
     Program->Outputs.clear();
@@ -2680,6 +2667,10 @@ ScratchSharedPtr Patch::Compile()
 
         if (Symbol == OpCode::CONST)
         {
+        }
+        else if (Symbol == OpCode::IN)
+        {
+            Program->Inputs[Partial.Tile] = ActiveOutputs.at(MakePortHandle(Partial.Tile, 0));
         }
         else if (Partial.PatchOutput)
         {
