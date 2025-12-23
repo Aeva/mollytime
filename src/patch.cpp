@@ -2632,7 +2632,8 @@ ScratchSharedPtr Patch::Compile()
         if (Symbol == OpCode::CONST)
         {
             // A temporary register is fine here, because this should never be overwritten.
-            AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
+            const double ConstantValue = GetConstant(Partial.Tile);
+            AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0), ConstantValue);
         }
         else if (Symbol == OpCode::IN)
         {
