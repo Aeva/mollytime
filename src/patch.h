@@ -407,6 +407,9 @@ struct Scratch final : public MidiHandler
 
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
     MagicTapeSharedPtr FindTape(double WireValue);
+
+private:
+    void PrintRegisters() const;
 };
 
 using ScratchSharedPtr = std::shared_ptr<Scratch>;
@@ -423,6 +426,9 @@ struct Patch
     std::set<WireHandle> Wires;
     std::unordered_map<PortHandle, std::set<PortHandle>> ByInput;
     std::unordered_map<PortHandle, std::set<PortHandle>> ByOutput;
+
+    std::unordered_map<TileHandle, uint32_t> TileLanes; // Tiles that have live registers, and their current widths.
+    std::vector<TileHandle> ErasedTiles; // Used to erase stale registers
 
     Patch();
 

@@ -1959,6 +1959,12 @@ int GetClosureCount(OpCode Symbol)
 }
 
 
+bool IsOutputSymbol(const OpCode Symbol)
+{
+    return (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE);
+};
+
+
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
@@ -2053,6 +2059,7 @@ void Patch::EraseTile(TileHandle Tile)
     TileSymbols.erase(Tile);
     TileConstants.erase(Tile);
     TileNames.erase(Tile);
+    ErasedTiles.push_back(Tile);
     Recompile();
 }
 
@@ -2370,7 +2377,6 @@ ScratchSharedPtr Patch::Compile()
     {
         TileHandle Tile;
         uint32_t Polyphony = 0; // Zero indicates to inherit from inputs.
-        bool PatchOutput = false;
 
         // This is NOT redundant to Patch::ByInput because its elements are ordered,
         // and that ordering is determined at compile time (e.g. by OpCode::GO).
@@ -2450,11 +2456,10 @@ ScratchSharedPtr Patch::Compile()
                 }
             }
         }
-        else if (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE)
+        else if (IsOutputSymbol(Symbol))
         {
             TilePartial& Partial = VisitTile(Tile);
             Partial.Polyphony = 1;
-            Partial.PatchOutput = true;
             std::vector<PortHandle>& Input0 = Partial.Inputs.emplace_back();
 
             const PortHandle InputHandle = MakePortHandle(Tile, 0);
@@ -2575,25 +2580,20 @@ ScratchSharedPtr Patch::Compile()
 
     // From this point on, `FlatGraph` contains entries for everything that will contribute to the compiled patch program.
 
-    std::map<PortHandle, std::ptrdiff_t> RegisterMap;
-    auto AllocateTemporaryRegister = [&](PortHandle Handle, double InitialValue = 0.0) -> std::ptrdiff_t
-    {
-        std::ptrdiff_t Offset = Program->RegisterFile.size();
-        Program->RegisterFile.push_back(InitialValue);
-        RegisterMap[Handle] = Offset;
-        return Offset;
-    };
-    auto AllocatePersistentRegister = [&](PortHandle Handle, double InitialValue = 0.0) -> std::ptrdiff_t
-    {
-        std::ptrdiff_t Offset = AllocateTemporaryRegister(Handle, InitialValue);
-        Program->PersistentRegisters[Handle] = { Offset, 1 };
-        return Offset;
-    };
 
-    // First solve tile polyphony via propagation.
+    // Remove persistence information for recently erased tiles.
+    {
+        for (TileHandle Tile : ErasedTiles)
+        {
+            TileLanes.erase(Tile);
+        }
+        ErasedTiles.clear();
+    }
+
+    // Solve tile polyphony via propagation.
     for (TilePartial& Partial : FlatGraph)
     {
-        if (Partial.Polyphony == 0)
+        if (Partial.Polyphony < 1)
         {
             Partial.Polyphony = 1;
             for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
@@ -2606,29 +2606,51 @@ ScratchSharedPtr Patch::Compile()
                 }
             }
         }
+        TileLanes.insert_or_assign(Partial.Tile, Partial.Polyphony);
     }
 
-    // Output registers have to be allocated before thunks are generated, as graphs can have cycles.
-    for (TilePartial& Partial : FlatGraph)
+    std::map<PortHandle, std::ptrdiff_t> RegisterMap;
+    auto AllocateRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
     {
-        const OpCode Symbol = GetTileSymbol(Partial.Tile);
+        std::ptrdiff_t Offset = Program->RegisterFile.size();
+        Program->RegisterFile.insert(Program->RegisterFile.end(), Lanes, InitialValue);
+        RegisterMap[Port] = Offset;
+        return Offset;
+    };
+    auto AllocatePersistentRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
+    {
+        std::ptrdiff_t Offset = AllocateRegister(Port, Lanes, InitialValue);
+        Program->PersistentRegisters[Port] = { Offset, Lanes };
+        return Offset;
+    };
+
+    // Output registers can't be allocated in tandem with thunk generation, as graphs can have cycles.
+    // Likewise, we need to allocate registers for everything we want to persist between patch generations,
+    // not just the registers needed for the current version of a patch.
+    for (auto& TileAndLanes : TileLanes)
+    {
+        const TileHandle Tile = TileAndLanes.first;
+        const uint32_t Lanes = TileAndLanes.second;
+        const OpCode Symbol = GetTileSymbol(Tile);
 
         if (Symbol == OpCode::CONST)
         {
             // A temporary register is fine here, because this should never be overwritten.
-            const double ConstantValue = GetConstant(Partial.Tile);
-            AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0), ConstantValue);
+            const double ConstantValue = GetConstant(Tile);
+            AllocateRegister(MakePortHandle(Tile, 0), Lanes, ConstantValue);
         }
         else if (Symbol == OpCode::IN)
         {
             // If the audio backend is not guaranteed to write to this input every frame, a persistent register
             // might be better, depending on whether or not resseting to zero is more or less ideal than holding
             // the last known value.
-            Program->Inputs[Partial.Tile] = AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
+            Program->Inputs[Tile] = AllocateRegister(MakePortHandle(Tile, 0), Lanes);
         }
-        else if (Partial.PatchOutput)
+        else if (IsOutputSymbol(Symbol))
         {
-            if (Partial.Inputs[0].size() != 1)
+            const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
+            const size_t ConnectedInputCount = (InputCount > 0) ? ByInput.at(MakePortHandle(Tile, 0)).size() : 0;
+            if (ConnectedInputCount != 1)
             {
                 // If we have zero connected inputs, then we make a register so we have something to output.
                 // If we have exactly one, we'll reuse the output of the connection.
@@ -2638,7 +2660,7 @@ ScratchSharedPtr Patch::Compile()
                 // A temporary register is fine here because this will be written every frame in any
                 // situation where it is possible to observe its effect, output tiles have no persistent
                 // state, and cannot be used to construct graph cycles.
-                AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
+                AllocateRegister(MakePortHandle(Tile, 0), Lanes);
             }
         }
         else
@@ -2652,46 +2674,21 @@ ScratchSharedPtr Patch::Compile()
                 // case we need to be able to read values from the previous frame, which may have come
                 // from a different patch.  Additionally, thunks are free to assume their outputs are
                 // persistent, which can be used to save on allocating extra closure registers.
-                PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
-                AllocatePersistentRegister(OutputPort);
+                PortHandle OutputPort = MakePortHandle(Tile, PortIndex);
+                AllocatePersistentRegister(OutputPort, Lanes);
             }
 
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
             {
                 // Closure registers represent a thunk's internal state, and as such they must be
                 // persistent across patch revisions.
-                PortHandle ClosurePort = MakeClosureHandle(Partial.Tile, ClosureIndex);
-                AllocatePersistentRegister(ClosurePort);
+                PortHandle ClosurePort = MakeClosureHandle(Tile, ClosureIndex);
+                AllocatePersistentRegister(ClosurePort, Lanes);
             }
         }
     }
 
-#if 1
-    // HACK force all tiles to allocate registers until we figure out what is going on
-    for (const auto& [Tile, Symbol] : TileSymbols)
-    {
-        const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
-        const size_t ClosureCount = SymbolInfoMap.Closures[(int)Symbol];
-
-        for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
-        {
-            PortHandle OutputPort = MakePortHandle(Tile, PortIndex);
-            if (RegisterMap.contains(OutputPort)) break;
-            AllocatePersistentRegister(OutputPort);
-        }
-
-        for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
-        {
-            // Closure registers represent a thunk's internal state, and as such they must be
-            // persistent across patch revisions.
-            PortHandle ClosurePort = MakeClosureHandle(Tile, ClosureIndex);
-            if (RegisterMap.contains(ClosurePort)) break;
-            AllocatePersistentRegister(ClosurePort);
-        }
-    }
-#endif
-
-    // Emit thunks.
+    // Emit thunks, and adjust default values.
     for (TilePartial& Partial : FlatGraph)
     {
         const OpCode Symbol = GetTileSymbol(Partial.Tile);
@@ -2716,7 +2713,7 @@ ScratchSharedPtr Patch::Compile()
             // No thunks are created for these symbols.
             continue;
         }
-        else if (Partial.PatchOutput)
+        else if (IsOutputSymbol(Symbol))
         {
             std::ptrdiff_t OutputRegister;
 
@@ -2896,6 +2893,32 @@ void Patch::Recompile()
 }
 
 
+void Scratch::PrintRegisters() const
+{
+    std::unordered_map<uint32_t, PortHandle> PortsByRegisterOffset;
+    for (auto const& [Port, Allocation] : PersistentRegisters)
+    {
+        PortsByRegisterOffset[Allocation.BaseOffset] = Port;
+    }
+    for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)RegisterFile.size(); ++Register)
+    {
+        const double Value = RegisterFile.at(Register);
+        auto Found = PortsByRegisterOffset.find(Register);
+        if (Found != PortsByRegisterOffset.end())
+        {
+            PortHandle Port = Found->second;
+            TileHandle Tile = PortHandleTilePart(Port);
+            int32_t Index = (int32_t)PortHandlePortIndexPart(Port);
+            std::print("    {:>4}: {:^8.4} ({}:{})\n", Register, Value, Tile, Index);
+        }
+        else
+        {
+            std::print("    {:>4}: {:^8.4}\n", Register, Value);
+        }
+    }
+}
+
+
 void Scratch::Migrate(const Scratch& Old)
 {
     TRACEABLE_SCOPE;
@@ -2905,48 +2928,96 @@ void Scratch::Migrate(const Scratch& Old)
     MostRecentChannel = Old.MostRecentChannel;
 #endif
 
-#if 0
-    {
-        std::print("\n\n\n\nOld register file:\n");
-        for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)Old.RegisterFile.size(); ++Register)
-        {
-            std::print("\t{}: {}\n", Register, Old.RegisterFile.at(Register));
-        }
-    }
-#endif
+    constexpr bool EnableDebugLogging = false;
 
-    for (auto const& [Handle, NewAllocation] : PersistentRegisters)
+    if (EnableDebugLogging)
     {
-        auto Found = Old.PersistentRegisters.find(Handle);
+        std::print("\n\n==============================================================================\n");
+        std::print("Old register file:\n");
+        Old.PrintRegisters();
+        std::print("\nRunning migration:\n");
+    }
+
+    for (auto const& [Port, NewAllocation] : PersistentRegisters)
+    {
+        auto Found = Old.PersistentRegisters.find(Port);
         if (Found != Old.PersistentRegisters.end())
         {
+            if (EnableDebugLogging)
+            {
+                std::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
+            }
+
             const RegisterAllocation& OldAllocation = Found->second;
             if (OldAllocation.LaneCount == NewAllocation.LaneCount)
             {
+                if (EnableDebugLogging)
+                {
+                    std::print(" (copy, no resize)\n");
+                }
+
+                double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                 {
-                    RegisterFile[NewAllocation.BaseOffset + Lane] = RegisterFile[OldAllocation.BaseOffset + Lane];
+                    const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset + Lane];
+                    if (EnableDebugLogging)
+                    {
+                        const double StompedValue = Register[Lane];
+                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
+                        std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                    }
+                    Register[Lane] = MigratedValue;
                 }
             }
             else if (OldAllocation.LaneCount == 1)
             {
+                std::print(" (mono -> poly resize)\n");
+                double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                 {
-                    RegisterFile[NewAllocation.BaseOffset + Lane] = RegisterFile[OldAllocation.BaseOffset];
+                    const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset];
+                    if (EnableDebugLogging)
+                    {
+                        const double StompedValue = Register[Lane];
+                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
+                        std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                    }
+                    Register[Lane] = MigratedValue;
                 }
+            }
+            else
+            {
+                // If the register is migrating from polyphonic to monophonic, the correct default value for
+                // that port is expected to already be in the new register file.  Usually this value will be
+                // zero, but some thunks will set different default values for their ports.
+                if (EnableDebugLogging)
+                {
+                    std::print(" (poly->mono RESET)\n");
+                }
+            }
+
+            if (EnableDebugLogging)
+            {
+                std::print("\n");
+            }
+        }
+        else
+        {
+            // The register is totally new, and already has the correct starting value.  No additional
+            // handling is required.
+            if (EnableDebugLogging)
+            {
+                std::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
             }
         }
     }
 
-#if 0
+    if (EnableDebugLogging)
     {
+        std::print("\nMigration complete!\n");
         std::print("\nNew register file:\n");
-        for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)RegisterFile.size(); ++Register)
-        {
-            std::print("\t{}: {}\n", Register, RegisterFile.at(Register));
-        }
+        PrintRegisters();
     }
-#endif
 }
 
 
