@@ -1891,6 +1891,7 @@ private:
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
+            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -1904,6 +1905,7 @@ private:
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
+            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Program = Program.get();
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -1918,6 +1920,7 @@ private:
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
+            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Input = SpecialInput;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -1932,6 +1935,7 @@ private:
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
+            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -2662,6 +2666,31 @@ ScratchSharedPtr Patch::Compile()
         }
     }
 
+#if 1
+    // HACK force all tiles to allocate registers until we figure out what is going on
+    for (const auto& [Tile, Symbol] : TileSymbols)
+    {
+        const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+        const size_t ClosureCount = SymbolInfoMap.Closures[(int)Symbol];
+
+        for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
+        {
+            PortHandle OutputPort = MakePortHandle(Tile, PortIndex);
+            if (RegisterMap.contains(OutputPort)) break;
+            AllocatePersistentRegister(OutputPort);
+        }
+
+        for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
+        {
+            // Closure registers represent a thunk's internal state, and as such they must be
+            // persistent across patch revisions.
+            PortHandle ClosurePort = MakeClosureHandle(Tile, ClosureIndex);
+            if (RegisterMap.contains(ClosurePort)) break;
+            AllocatePersistentRegister(ClosurePort);
+        }
+    }
+#endif
+
     // Emit thunks.
     for (TilePartial& Partial : FlatGraph)
     {
@@ -2795,6 +2824,41 @@ ScratchSharedPtr Patch::Compile()
         }
     }
 
+#if 0
+    std::print("\n\n==============================================================================\n");
+    int ThunkIndex = 0;
+    for (InstructionThunkSharedPtr& Thunk : Program->Program)
+    {
+        OpCode Symbol = Thunk->DebugSymbol;
+        std::print("THUNK {}:\n{}\n", ThunkIndex++, GetDefaultName(Symbol));
+        {
+            int InputIndex = 0;
+            for (std::vector<std::ptrdiff_t>& InputConnections : Thunk->Registers.Input)
+            {
+                std::print("\tINPUT {}:\n", InputIndex++);
+                for (std::ptrdiff_t& Register : InputConnections)
+                {
+                    std::print("\t - {}\n", Register);
+                }
+            }
+        }
+        {
+            int OutputIndex = 0;
+            for (std::ptrdiff_t& Register : Thunk->Registers.Output)
+            {
+                std::print("\tOUTPUT {}: {}\n", OutputIndex++, Register);
+            }
+        }
+        {
+            int ClosureIndex = 0;
+            for (std::ptrdiff_t& Register : Thunk->Registers.Closure)
+            {
+                std::print("\nCLOSURE {}: {}\n", ClosureIndex++, Register);
+            }
+        }
+    }
+#endif
+
     OutputTileNames.clear();
     if (OutputTiles.size() >= 2)
     {
@@ -2841,6 +2905,16 @@ void Scratch::Migrate(const Scratch& Old)
     MostRecentChannel = Old.MostRecentChannel;
 #endif
 
+#if 0
+    {
+        std::print("\n\n\n\nOld register file:\n");
+        for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)Old.RegisterFile.size(); ++Register)
+        {
+            std::print("\t{}: {}\n", Register, Old.RegisterFile.at(Register));
+        }
+    }
+#endif
+
     for (auto const& [Handle, NewAllocation] : PersistentRegisters)
     {
         auto Found = Old.PersistentRegisters.find(Handle);
@@ -2863,6 +2937,16 @@ void Scratch::Migrate(const Scratch& Old)
             }
         }
     }
+
+#if 0
+    {
+        std::print("\nNew register file:\n");
+        for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)RegisterFile.size(); ++Register)
+        {
+            std::print("\t{}: {}\n", Register, RegisterFile.at(Register));
+        }
+    }
+#endif
 }
 
 
@@ -2916,7 +3000,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 #endif
     {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
-        for (std::shared_ptr<InstructionThunk>& Thunk : Program)
+        for (InstructionThunkSharedPtr& Thunk : Program)
         {
             Thunk->Crank(SampleInterval);
         }

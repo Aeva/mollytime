@@ -314,7 +314,7 @@ struct InstructionRegisters
 
     inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
-        std::vector<std::ptrdiff_t>& InputRegisters = Input[0];
+        std::vector<std::ptrdiff_t>& InputRegisters = Input[InputIndex];
         double Result = InputRegisters.size() == 0 ? Default : RegisterValue(InputRegisters[0]);
         for (int Index = 1; Index < static_cast<int>(InputRegisters.size()); ++Index)
         {
@@ -349,11 +349,15 @@ private:
     std::vector<std::ptrdiff_t> Output;
     std::vector<std::ptrdiff_t> Closure;
     std::vector<double>* RegisterFile;
+
+    // Temporary debug holepunch:
+    friend struct Patch;
 };
 
 
 struct InstructionThunk
 {
+    OpCode DebugSymbol;
     InstructionRegisters Registers;
     virtual void Crank(double SampleInterval) = 0;
     virtual ~InstructionThunk() {};
