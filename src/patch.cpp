@@ -2742,10 +2742,18 @@ ScratchSharedPtr Patch::Compile()
 
         std::vector<std::vector<std::ptrdiff_t>> Inputs;
         Inputs.reserve(Partial.Inputs.size());
+
+        std::vector<std::vector<uint32_t>> InputWidths;
+        InputWidths.reserve(Partial.Inputs.size());
+
         for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
         {
             std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
             InputRegisters.reserve(ConnectedOutputs.size());
+
+            std::vector<uint32_t>& Widths = InputWidths.emplace_back();
+            Widths.reserve(ConnectedOutputs.size());
+
             if (Partial.Polyphony == 1)
             {
                 for (PortHandle ConnectedOutput : ConnectedOutputs)
@@ -2756,6 +2764,7 @@ ScratchSharedPtr Patch::Compile()
                         ConnectedOutput = Found->second;
                     }
                     InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
+                    Widths.push_back(1);
                 }
             }
             else
@@ -2763,6 +2772,9 @@ ScratchSharedPtr Patch::Compile()
                 for (PortHandle ConnectedOutput : ConnectedOutputs)
                 {
                     InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
+                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
+                    TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                    Widths.push_back(ConnectedPartial->Polyphony);
                 }
             }
         }
@@ -2829,62 +2841,85 @@ ScratchSharedPtr Patch::Compile()
                 Closures.push_back(RegisterMap.at(ClosurePort));
             }
 
-            bool ThunkEmitted = false;
+            for (uint32_t Lane = 0; Lane < Partial.Polyphony; ++Lane)
             {
-                auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
-                if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
+                if (Lane > 0)
                 {
-                    ThunkEmitted = true;
-                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures);
-                    Program->Program.push_back(Thunk);
-
-                    if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
-                        || Symbol == OpCode::TPTSVF_NOTCH)
+                    for (uint32_t InputIndex = 0; InputIndex < Inputs.size(); ++InputIndex)
                     {
-                        // Gain and Feedback coefficients init to 1.
-                        // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
-                        Thunk->Registers.ClosureRef(2) = 1.0;
-                        Thunk->Registers.ClosureRef(3) = 1.0;
+                        std::vector<std::ptrdiff_t>& InputRegisters = Inputs[InputIndex];
+                        for (uint32_t Connection = 0; Connection < InputRegisters.size(); ++Connection)
+                        {
+                            // TODO: assert that this matches if the width is not 1
+                            if (InputWidths[InputIndex][Connection] == Partial.Polyphony)
+                            {
+                                ++(InputRegisters[Connection]);
+                            }
+                        }
+                    }
+                    for (std::ptrdiff_t& OutputRegister : Outputs)
+                    {
+                        ++OutputRegister;
+                    }
+                    for (std::ptrdiff_t& ClosureRegister : Closures)
+                    {
+                        ++ClosureRegister;
                     }
                 }
-            }
 
-            if (!ThunkEmitted)
-            {
-                auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
-                if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
+                InstructionThunkSharedPtr Thunk = nullptr;
                 {
-                    ThunkEmitted = true;
-                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]);
-                    Program->Program.push_back(Thunk);
-                }
-            }
-
-            if (!ThunkEmitted)
-            {
-                auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
-                if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
-                {
-                    ThunkEmitted = true;
-                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures);
-                    Program->Program.push_back(Thunk);
-
-                    if (Symbol == OpCode::NOTE)
+                    auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
+                    if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                     {
-                        // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
-                        Thunk->Registers.OutputRef(0) = 50.0;
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures);
+                        Program->Program.push_back(Thunk);
+
+                        if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
+                            || Symbol == OpCode::TPTSVF_NOTCH)
+                        {
+                            // Gain and Feedback coefficients init to 1.
+                            // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
+                            Thunk->Registers.ClosureRef(2) = 1.0;
+                            Thunk->Registers.ClosureRef(3) = 1.0;
+                        }
                     }
                 }
-            }
 
-            if (!ThunkEmitted)
-            {
-                auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
-                if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
+                if (Thunk == nullptr)
                 {
-                    ThunkEmitted = true;
-                    InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile));
-                    Program->Program.push_back(Thunk);
+                    auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
+                    if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
+                    {
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]);
+                        Program->Program.push_back(Thunk);
+                    }
+                }
+
+                if (Thunk == nullptr)
+                {
+                    auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
+                    if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
+                    {
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures);
+                        Program->Program.push_back(Thunk);
+
+                        if (Symbol == OpCode::NOTE)
+                        {
+                            // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
+                            Thunk->Registers.OutputRef(0) = 50.0;
+                        }
+                    }
+                }
+
+                if (Thunk == nullptr)
+                {
+                    auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
+                    if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
+                    {
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile));
+                        Program->Program.push_back(Thunk);
+                    }
                 }
             }
 
