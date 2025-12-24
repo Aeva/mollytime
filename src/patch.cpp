@@ -1979,7 +1979,14 @@ Patch::Patch()
 TileHandle Patch::MakeTile(OpCode Symbol)
 {
     TRACEABLE_SCOPE;
-    TileHandle AllocatedHandle = ++LastAssignedTileHandle;
+    TileHandle AllocatedHandle;
+    {
+        do
+        {
+            AllocatedHandle = ++LastAssignedTileHandle;
+        }
+        while (AllocatedHandle == 0 || AllocatedHandle == uint32_t(-1));
+    }
     {
         auto Result = TileSymbols.try_emplace(AllocatedHandle, Symbol);
         if (!Result.second)
@@ -2477,6 +2484,11 @@ ScratchSharedPtr Patch::Compile()
             {
                 Partial.Polyphony = MidiPolyphony;
             }
+            else if (Symbol == OpCode::TAPE_LOOP)
+            {
+                // Tape loop is inherently monophonic for now.
+                Partial.Polyphony = 1;
+            }
             else
             {
                 // Inherit from inputs.
@@ -2609,6 +2621,33 @@ ScratchSharedPtr Patch::Compile()
         TileLanes.insert_or_assign(Partial.Tile, Partial.Polyphony);
     }
 
+    std::unordered_map<PortHandle, PortHandle> LaneMergePorts;
+    {
+        uint32_t NextVirtualPortIndex = 0;
+        for (TilePartial& Partial : FlatGraph)
+        {
+            if (Partial.Polyphony == 1)
+            {
+                for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+                {
+                    for (PortHandle ConnectedPort : ConnectedOutputs)
+                    {
+                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        if (ConnectedPartial->Polyphony > 1)
+                        {
+                            PortHandle VirtualPort = MakePortHandle(0, NextVirtualPortIndex);
+                            if (LaneMergePorts.insert({ConnectedPort, VirtualPort}).second)
+                            {
+                                ++NextVirtualPortIndex;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     std::map<PortHandle, std::ptrdiff_t> RegisterMap;
     auto AllocateRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
     {
@@ -2676,6 +2715,14 @@ ScratchSharedPtr Patch::Compile()
                 // persistent, which can be used to save on allocating extra closure registers.
                 PortHandle OutputPort = MakePortHandle(Tile, PortIndex);
                 AllocatePersistentRegister(OutputPort, Lanes);
+
+                auto Found = LaneMergePorts.find(OutputPort);
+                if (Found != LaneMergePorts.end())
+                {
+                    // A monophonic tile requires a temporary register for the merged output.
+                    PortHandle VirtualPort = Found->second;
+                    AllocateRegister(VirtualPort, 1);
+                }
             }
 
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
@@ -2699,9 +2746,24 @@ ScratchSharedPtr Patch::Compile()
         {
             std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
             InputRegisters.reserve(ConnectedOutputs.size());
-            for (PortHandle ConnectedOutput : ConnectedOutputs)
+            if (Partial.Polyphony == 1)
             {
-                InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
+                for (PortHandle ConnectedOutput : ConnectedOutputs)
+                {
+                    auto Found = LaneMergePorts.find(ConnectedOutput);
+                    if (Found != LaneMergePorts.end())
+                    {
+                        ConnectedOutput = Found->second;
+                    }
+                    InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
+                }
+            }
+            else
+            {
+                for (PortHandle ConnectedOutput : ConnectedOutputs)
+                {
+                    InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
+                }
             }
         }
 
@@ -2767,10 +2829,12 @@ ScratchSharedPtr Patch::Compile()
                 Closures.push_back(RegisterMap.at(ClosurePort));
             }
 
+            bool ThunkEmitted = false;
             {
                 auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                 {
+                    ThunkEmitted = true;
                     InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures);
                     Program->Program.push_back(Thunk);
 
@@ -2782,22 +2846,26 @@ ScratchSharedPtr Patch::Compile()
                         Thunk->Registers.ClosureRef(2) = 1.0;
                         Thunk->Registers.ClosureRef(3) = 1.0;
                     }
-                    continue;
                 }
             }
+
+            if (!ThunkEmitted)
             {
                 auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                 {
+                    ThunkEmitted = true;
                     InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]);
                     Program->Program.push_back(Thunk);
-                    continue;
                 }
             }
+
+            if (!ThunkEmitted)
             {
                 auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                 {
+                    ThunkEmitted = true;
                     InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures);
                     Program->Program.push_back(Thunk);
 
@@ -2806,16 +2874,47 @@ ScratchSharedPtr Patch::Compile()
                         // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
                         Thunk->Registers.OutputRef(0) = 50.0;
                     }
-                    continue;
                 }
             }
+
+            if (!ThunkEmitted)
             {
                 auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                 if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                 {
+                    ThunkEmitted = true;
                     InstructionThunkSharedPtr Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile));
                     Program->Program.push_back(Thunk);
-                    continue;
+                }
+            }
+
+            if (Partial.Polyphony > 1)
+            {
+                for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
+                {
+                    PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
+
+                    auto Found = LaneMergePorts.find(OutputPort);
+                    if (Found != LaneMergePorts.end())
+                    {
+                        PortHandle VirtualPort = Found->second;
+
+                        std::ptrdiff_t PolyphonicBaseAddress = RegisterMap.at(OutputPort);
+                        std::ptrdiff_t ResultAddress = RegisterMap.at(VirtualPort);
+
+                        std::vector<std::ptrdiff_t> MergeLanes;
+                        MergeLanes.reserve(Partial.Polyphony);
+                        for (std::ptrdiff_t Lane = 0; Lane < (std::ptrdiff_t)Partial.Polyphony; ++Lane)
+                        {
+                            MergeLanes.push_back(PolyphonicBaseAddress + Lane);
+                        }
+                        std::vector<std::vector<std::ptrdiff_t>> JoinInputs = { MergeLanes };
+                        std::vector<std::ptrdiff_t> JoinOutputs = { ResultAddress };
+                        std::vector<std::ptrdiff_t> JoinClosures;
+
+                        static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
+                        Program->Program.push_back(AddCreateAndConnect(Program, JoinInputs, JoinOutputs, JoinClosures));
+                    }
                 }
             }
         }
