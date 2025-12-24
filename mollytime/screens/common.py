@@ -231,14 +231,16 @@ class program_card:
                         try:
                             self.patch.connect_tiles(out_port, in_port)
                         except:
+                            in_tile_name = self.patch.get_tile_name(in_tile).replace("\n", " ")
+                            out_tile_name = self.patch.get_tile_name(out_tile).replace("\n", " ")
                             old_out_port = patch_child.attrib["from"]
                             old_in_port = patch_child.attrib["to"]
                             print(f"Unable to connect {old_out_port} to {old_in_port}!")
                             print(f" - translated to {out_tile}:{out_index} -> {in_tile}:{in_index} aka {out_port} -> {in_port}")
-                            print(f" - tile {out_tile} is a {self.patch.get_tile_symbol(out_tile)}")
+                            print(f" - tile {out_tile} is a {in_tile_name} ({self.patch.get_tile_symbol(out_tile)})")
                             for name in self.patch.get_tile_output_ports(out_tile):
                                 print(f"   - {name} --->")
-                            print(f" - tile {in_tile} is a {self.patch.get_tile_symbol(in_tile)}")
+                            print(f" - tile {in_tile} is a {out_tile_name} ({self.patch.get_tile_symbol(in_tile)})")
                             for name in self.patch.get_tile_input_ports(out_tile):
                                 print(f"   ---> {name}")
                             raise
