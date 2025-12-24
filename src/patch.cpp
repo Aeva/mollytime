@@ -2140,16 +2140,6 @@ void Patch::SetConstant(TileHandle Tile, double NewValue)
 void Patch::ReplaceConstantOutput(TileHandle Tile, double NewValue)
 {
     TRACEABLE_SCOPE;
-#if 0
-    ?????????????????????????
-
-    // Patch should never mutate the shared pointers stored in Patch::ActiveOutputs,
-    // as the active Scratch object will be continuously reading and mutating these
-    // values.  By instead replacing the entries stored in Patch::ActiveOutputs, the
-    // new constant values only take effect in subsequently compiled Scratch objects.
-    PortHandle Port = MakePortHandle(Tile, 0);
-    ActiveOutputs[Port] = std::make_shared<RunningState>(NewValue);
-#endif
     Recompile();
 }
 
