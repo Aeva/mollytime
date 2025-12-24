@@ -2596,10 +2596,9 @@ ScratchSharedPtr Patch::Compile()
         return Offset;
     };
 
+    // First solve tile polyphony via propagation.
     for (TilePartial& Partial : FlatGraph)
     {
-        const OpCode Symbol = GetTileSymbol(Partial.Tile);
-
         if (Partial.Polyphony == 0)
         {
             Partial.Polyphony = 1;
@@ -2613,21 +2612,12 @@ ScratchSharedPtr Patch::Compile()
                 }
             }
         }
+    }
 
-        std::vector<std::vector<std::ptrdiff_t>> Inputs;
-        Inputs.reserve(Partial.Inputs.size());
-        for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
-        {
-            std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
-            InputRegisters.reserve(ConnectedOutputs.size());
-            for (PortHandle ConnectedOutput : ConnectedOutputs)
-            {
-                InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
-            }
-        }
-
-        std::vector<std::ptrdiff_t> Outputs;
-        std::vector<std::ptrdiff_t> Closures;
+    // Output registers have to be allocated before thunks are generated, as graphs can have cycles.
+    for (TilePartial& Partial : FlatGraph)
+    {
+        const OpCode Symbol = GetTileSymbol(Partial.Tile);
 
         if (Symbol == OpCode::CONST)
         {
@@ -2644,6 +2634,71 @@ ScratchSharedPtr Patch::Compile()
         }
         else if (Partial.PatchOutput)
         {
+            if (Partial.Inputs[0].size() != 1)
+            {
+                // If we have zero connected inputs, then we make a register so we have something to output.
+                // If we have exactly one, we'll reuse the output of the connection.
+                // If we have more than one, we'll need to emit a thunk to add them, and that thunk will need
+                // a register to output to.  This all happens elsewhere, we just need to allocate or not allocate
+                // for now.
+                // A temporary register is fine here because this will be written every frame in any
+                // situation where it is possible to observe its effect, output tiles have no persistent
+                // state, and cannot be used to construct graph cycles.
+                AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
+            }
+        }
+        else
+        {
+            const size_t OutputCount = SymbolInfoMap.OutputNames[(int)Symbol].size();
+            const size_t ClosureCount = SymbolInfoMap.Closures[(int)Symbol];
+
+            for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
+            {
+                // Persistent registers are used here, because there may be graph cycles, in which
+                // case we need to be able to read values from the previous frame, which may have come
+                // from a different patch.  Additionally, thunks are free to assume their outputs are
+                // persistent, which can be used to save on allocating extra closure registers.
+                PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
+                AllocatePersistentRegister(OutputPort);
+            }
+
+            for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
+            {
+                // Closure registers represent a thunk's internal state, and as such they must be
+                // persistent across patch revisions.
+                PortHandle ClosurePort = MakeClosureHandle(Partial.Tile, ClosureIndex);
+                AllocatePersistentRegister(ClosurePort);
+            }
+        }
+    }
+
+    // Emit thunks.
+    for (TilePartial& Partial : FlatGraph)
+    {
+        const OpCode Symbol = GetTileSymbol(Partial.Tile);
+
+        std::vector<std::vector<std::ptrdiff_t>> Inputs;
+        Inputs.reserve(Partial.Inputs.size());
+        for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+        {
+            std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
+            InputRegisters.reserve(ConnectedOutputs.size());
+            for (PortHandle ConnectedOutput : ConnectedOutputs)
+            {
+                InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
+            }
+        }
+
+        std::vector<std::ptrdiff_t> Outputs;
+        std::vector<std::ptrdiff_t> Closures;
+
+        if (Symbol == OpCode::CONST || Symbol == OpCode::IN )
+        {
+            // No thunks are created for these symbols.
+            continue;
+        }
+        else if (Partial.PatchOutput)
+        {
             std::ptrdiff_t OutputRegister;
 
             if (Inputs[0].size() == 1)
@@ -2652,10 +2707,7 @@ ScratchSharedPtr Patch::Compile()
             }
             else
             {
-                // A temporary register is fine here because this will be written every frame in any
-                // situation where it is possible to observe its effect, output tiles have no persistent
-                // state, and cannot be used to construct graph cycles.
-                OutputRegister = AllocateTemporaryRegister(MakePortHandle(Partial.Tile, 0));
+                OutputRegister = RegisterMap.at(MakePortHandle(Partial.Tile, 0));
                 Outputs = { OutputRegister };
                 if (Inputs[0].size() > 1)
                 {
@@ -2688,21 +2740,15 @@ ScratchSharedPtr Patch::Compile()
             Outputs.reserve(OutputCount);
             for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
-                // Persistent registers are used here, because there may be graph cycles, in which
-                // case we need to be able to read values from the previous frame, which may have come
-                // from a different patch.  Additionally, thunks are free to assume their outputs are
-                // persistent, which can be used to save on allocating extra closure registers.
                 PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
-                Outputs.push_back(AllocatePersistentRegister(OutputPort));
+                Outputs.push_back(RegisterMap.at(OutputPort));
             }
 
             Closures.reserve(ClosureCount);
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
             {
-                // Closure registers represent a thunk's internal state, and as such they must be
-                // persistent across patch revisions.
                 PortHandle ClosurePort = MakeClosureHandle(Partial.Tile, ClosureIndex);
-                Closures.push_back(AllocatePersistentRegister(ClosurePort));
+                Closures.push_back(RegisterMap.at(ClosurePort));
             }
 
             {
