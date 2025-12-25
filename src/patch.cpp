@@ -1748,7 +1748,8 @@ using BlankTapeSharedPtr = std::shared_ptr<BlankTape>;
 struct TapeLoopThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<4, 1, 4> Info = { OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"} };
-    BlankTapeSharedPtr Tape;
+    std::vector<MagicTapeSharedPtr> Tapes;
+    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1766,9 +1767,15 @@ struct TapeLoopThunk : public InstructionThunk
         uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
         uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
 
+        if (Lane > Tapes.size() || !Tapes[Lane])
+        {
+            return;
+        }
+        BlankTapeSharedPtr Tape = std::static_pointer_cast<BlankTape>(Tapes[Lane]);
+
         auto ResetOffset = [&]()
         {
-            if (Tape && Tape->Samples.size() > 0)
+            if (Tape->Samples.size() > 0)
             {
                 ReadIndex = Tape->FindSample(Offset);
                 ReadIndex = (ReadIndex + WriteIndex) % Tape->Samples.size();
@@ -1842,7 +1849,8 @@ using TapeCreateAndConnectFn = std::function<
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures,
-        MagicTapeSharedPtr& Tape)>;
+        std::vector<MagicTapeSharedPtr>& Tapes,
+        uint32_t Lane)>;
 
 
 struct SymbolInfo
@@ -2000,14 +2008,16 @@ private:
     void SetTape()
     {
         SetCommon<ThunkT>();
-        TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& Tape)
+        TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
+            ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& Tapes, uint32_t Lane)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
-            Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
+            Thunk->Tapes = Tapes;
+            Thunk->Lane = Lane;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -2076,14 +2086,10 @@ TileHandle Patch::MakeTile(OpCode Symbol)
         ByOutput[Port] = std::set<PortHandle>();
     }
 
-    // TODO: Move these into Patch::Compile somehow?
+    // TODO: Move this into Patch::Compile somehow?
     if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
     {
         SpecialInputs[AllocatedHandle] = std::make_shared<AtomicRunningState>(0.0);
-    }
-    else if (Symbol == OpCode::TAPE_LOOP)
-    {
-        TapeCollection[AllocatedHandle] = std::make_shared<BlankTape>(AllocatedHandle);
     }
     if (Symbol == OpCode::IN || Symbol == OpCode::OUT || Symbol == OpCode::AUX)
     {
@@ -2123,14 +2129,11 @@ void Patch::EraseTile(TileHandle Tile)
         Disconnect(std::get<0>(Wire), std::get<1>(Wire));
     }
 
+    // TODO: Move this into Patch::Compile somehow?
     OpCode Symbol = GetTileSymbol(Tile);
     if (Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
     {
         SpecialInputs.erase(Tile);
-    }
-    else if (Symbol == OpCode::TAPE_LOOP)
-    {
-        TapeCollection.erase(Tile);
     }
 
     TileSymbols.erase(Tile);
@@ -2553,11 +2556,6 @@ ScratchSharedPtr Patch::Compile()
             {
                 Partial.Polyphony = MidiPolyphony;
             }
-            else if (Symbol == OpCode::TAPE_LOOP)
-            {
-                // Tape loop is inherently monophonic for now.
-                Partial.Polyphony = 1;
-            }
             else
             {
                 // Inherit from inputs.
@@ -2667,6 +2665,7 @@ ScratchSharedPtr Patch::Compile()
         for (TileHandle Tile : ErasedTiles)
         {
             TileLanes.erase(Tile);
+            TapeCollection.erase(Tile);
         }
         ErasedTiles.clear();
     }
@@ -2800,6 +2799,22 @@ ScratchSharedPtr Patch::Compile()
                 // persistent across patch revisions.
                 PortHandle ClosurePort = MakeClosureHandle(Tile, ClosureIndex);
                 AllocatePersistentRegister(ClosurePort, Lanes);
+            }
+        }
+    }
+
+    // Make sure we have all our tapes.
+    for (TileHandle Tile : TapeTiles)
+    {
+        TilePartial* Partial = PartialByTile.at(Tile);
+        auto Result = TapeCollection.try_emplace(Tile);
+        std::vector<MagicTapeSharedPtr>& TapeBank = Result.first->second;
+        if (TapeBank.size() != Partial->Polyphony)
+        {
+            TapeBank.resize(Partial->Polyphony);
+            for (uint32_t Lane = 0; Lane < Partial->Polyphony; ++Lane)
+            {
+                TapeBank[Lane] = std::make_shared<BlankTape>(Tile);
             }
         }
     }
@@ -2971,7 +2986,7 @@ ScratchSharedPtr Patch::Compile()
                     auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                     if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                     {
-                        Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile));
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile), Lane);
                         Program->Program.push_back(Thunk);
                     }
                 }
@@ -3256,7 +3271,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     {
                         for (uint32_t LaneOffset = 0; LaneOffset < Polyphony; ++LaneOffset)
                         {
-                            const int Lane = (NextMidiLane + LaneOffset) % Polyphony;
+                            const int Lane = (NextMidiLane + Polyphony - LaneOffset) % Polyphony;
                             if (MidiLanes[Lane].Velocity == 0.0)
                             {
                                 LaneReset = true;

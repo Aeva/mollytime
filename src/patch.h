@@ -456,7 +456,7 @@ using ScratchSharedPtr = std::shared_ptr<Scratch>;
 struct Patch
 {
     uint64_t Identity;
-    uint32_t MidiPolyphony = 10;
+    uint32_t MidiPolyphony = 40;
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
@@ -525,7 +525,7 @@ private:
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;
-    std::unordered_map<TileHandle, MagicTapeSharedPtr> TapeCollection;
+    std::unordered_map<TileHandle, std::vector<MagicTapeSharedPtr>> TapeCollection;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
     ProbeRunningStateSharedPtr ScopeProbe = std::make_shared<ProbeRunningState>();
     TileHandle ActiveProbeTile;
