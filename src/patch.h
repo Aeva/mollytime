@@ -99,6 +99,8 @@ enum class OpCode : uint32_t
     VELO,
     PRES,
     CTRL,
+    LANE_COUNT,
+    ADD_LANES,
     MIDI_HZ,
     LOUD_FUDGE,
     BOOP,

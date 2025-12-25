@@ -1599,6 +1599,20 @@ struct ControlChangeThunk : public InstructionThunk
 };
 
 
+struct AddLanesThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD_LANES, "add\nlanes", {"+"}, {"="} };
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("AddLanesThunk");
+        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
+    }
+
+    virtual ~AddLanesThunk() {};
+};
+
+
 struct MidiToHzThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"} };
@@ -1917,6 +1931,9 @@ struct SymbolInfo
         SetMidi<VelocityThunk>();
         SetMidi<PressureThunk>();
         SetMidi<ControlChangeThunk>();
+
+        Set(OpCode::LANE_COUNT, "lane\ncount", {}, {"#"});
+        SetBasic<AddLanesThunk>();
 
         SetTape<TapeLoopThunk>();
     }
@@ -2451,6 +2468,9 @@ ScratchUniquePtr Patch::Compile()
     std::unordered_map<TileHandle, TilePartial*> PartialByTile;
     FlatGraph.reserve(TileSymbols.size());
 
+    assert(MidiPolyphony > 1);
+    MidiPolyphony = std::max(MidiPolyphony, 2u);
+
     ScratchUniquePtr Program = std::make_unique<Scratch>();
     Program->Identity = Identity;
     Program->OutputProbe = OutputProbe;
@@ -2474,7 +2494,7 @@ ScratchUniquePtr Patch::Compile()
         }
 
         const OpCode Symbol = GetTileSymbol(Tile);
-        if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
+        if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::LANE_COUNT || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
         {
             TilePartial& Partial = VisitTile(Tile);
             Partial.Polyphony = 1;
@@ -2540,6 +2560,10 @@ ScratchUniquePtr Patch::Compile()
                 Symbol == OpCode::PRES || Symbol == OpCode::CTRL)
             {
                 Partial.Polyphony = MidiPolyphony;
+            }
+            else if (Symbol == OpCode::ADD_LANES)
+            {
+                Partial.Polyphony = 1;
             }
             else
             {
@@ -2678,7 +2702,12 @@ ScratchUniquePtr Patch::Compile()
         uint32_t NextVirtualPortIndex = 0;
         for (TilePartial& Partial : FlatGraph)
         {
-            if (Partial.Polyphony == 1)
+            const OpCode Symbol = GetTileSymbol(Partial.Tile);
+            if (Symbol == OpCode::ADD_LANES)
+            {
+                // No virtual ports needed.
+            }
+            else if (Partial.Polyphony == 1)
             {
                 for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
                 {
@@ -2729,6 +2758,11 @@ ScratchUniquePtr Patch::Compile()
             // A temporary register is fine here, because this should never be overwritten.
             const double ConstantValue = GetConstant(Tile);
             AllocateRegister(MakePortHandle(Tile, 0), Lanes, ConstantValue);
+        }
+        else if (Symbol == OpCode::LANE_COUNT)
+        {
+            // A temporary register is fine here, because this should never be overwritten.
+            AllocateRegister(MakePortHandle(Tile, 0), Lanes, double(MidiPolyphony));
         }
         else if (Symbol == OpCode::IN)
         {
@@ -2823,7 +2857,22 @@ ScratchUniquePtr Patch::Compile()
             std::vector<uint32_t>& Widths = InputWidths.emplace_back();
             Widths.reserve(ConnectedOutputs.size());
 
-            if (Partial.Polyphony == 1)
+            if (Symbol == OpCode::ADD_LANES)
+            {
+                for (PortHandle ConnectedOutput : ConnectedOutputs)
+                {
+                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
+                    TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                    std::ptrdiff_t BaseAddress = RegisterMap.at(ConnectedOutput);
+                    uint32_t Width = ConnectedPartial->Polyphony;
+                    for (uint32_t Offset = 0; Offset < Width; ++Offset)
+                    {
+                        InputRegisters.push_back(BaseAddress + Offset);
+                        Widths.push_back(1);
+                    }
+                }
+            }
+            else if (Partial.Polyphony == 1)
             {
                 for (PortHandle ConnectedOutput : ConnectedOutputs)
                 {
@@ -2851,7 +2900,7 @@ ScratchUniquePtr Patch::Compile()
         std::vector<std::ptrdiff_t> Outputs;
         std::vector<std::ptrdiff_t> Closures;
 
-        if (Symbol == OpCode::CONST || Symbol == OpCode::IN )
+        if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::LANE_COUNT)
         {
             // No thunks are created for these symbols.
             continue;
