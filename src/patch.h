@@ -369,15 +369,24 @@ using InstructionThunkSharedPtr = std::shared_ptr<InstructionThunk>;
 #if 0
 struct MidiChannelState
 {
-    RunningStateSharedPtr Gate = std::make_shared<RunningState>(0.0);
-    RunningStateSharedPtr Note = std::make_shared<RunningState>(50.0);
-    RunningStateSharedPtr Velocity = std::make_shared<RunningState>(0.0);
-    RunningStateSharedPtr Pressure = std::make_shared<RunningState>(0.0);
+    double Gate = 0.0;
+    double Note = 50.0;
+    double Velocity = 0.0;
+    double Pressure = 0.0;
 
-    RunningStateSharedPtr CtrlParam = std::make_shared<RunningState>(0.0);
-    RunningStateSharedPtr CtrlValue = std::make_shared<RunningState>(0.0);
+    double CtrlParam = 0.0;
+    double CtrlValue = 0.0;
 };
 #endif
+
+struct MidiNoteState
+{
+    double Gate = 0.0;
+    double Note = 50.0;
+    double Velocity = 0.0;
+    double Pressure = 0.0;
+    double Channel = -1.0;
+};
 
 
 struct Scratch final : public MidiHandler
@@ -397,6 +406,9 @@ struct Scratch final : public MidiHandler
     std::ptrdiff_t ProbeInput;
     ProbeRunningStateSharedPtr OutputProbe;
     ProbeRunningStateSharedPtr ScopeProbe;
+
+    std::vector<MidiNoteState> MidiLanes;
+    int32_t NextMidiLane = -1;
 
 #if 0
     std::array<MidiChannelState, 16> MidiChannels;

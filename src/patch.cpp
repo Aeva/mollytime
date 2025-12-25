@@ -1435,19 +1435,29 @@ struct GateThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::GATE, "gate", {"channel"}, {"gate"} };
     Scratch* Program;
+    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("GateThunk");
-#if 0
-        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
+
         double& Gate = Registers.OutputRef(0);
-        if (Channel >= 0 && Channel <= 15)
+        MidiNoteState& State = Program->MidiLanes[Lane];
+        if (Registers.InputConnected(0))
         {
-            MidiChannelState& State = Program->MidiChannels[Channel];
-            Gate = State.Gate->Get();
+            for (double ChannelMask : Registers.InputVector(0))
+            {
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Gate = State.Gate;
+                    break;
+                }
+            }
         }
-#endif
+        else
+        {
+            Gate = State.Gate;
+        }
     }
 
     virtual ~GateThunk() {};
@@ -1458,19 +1468,29 @@ struct NoteThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::NOTE, "note", {"channel"}, {"note"} };
     Scratch* Program;
+    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("NoteThunk");
-#if 0
-        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
+
         double& Note = Registers.OutputRef(0);
-        if (Channel >= 0 && Channel <= 15)
+        MidiNoteState& State = Program->MidiLanes[Lane];
+        if (Registers.InputConnected(0))
         {
-            MidiChannelState& State = Program->MidiChannels[Channel];
-            Note = State.Note->Get();
+            for (double ChannelMask : Registers.InputVector(0))
+            {
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Note = State.Note;
+                    break;
+                }
+            }
         }
-#endif
+        else
+        {
+            Note = State.Note;
+        }
     }
 
     virtual ~NoteThunk() {};
@@ -1481,19 +1501,29 @@ struct VelocityThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::VELO, "velocity", {"channel"}, {"velocity"} };
     Scratch* Program;
+    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("VelocityThunk");
-#if 0
-        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
+
         double& Velocity = Registers.OutputRef(0);
-        if (Channel >= 0 && Channel <= 15)
+        MidiNoteState& State = Program->MidiLanes[Lane];
+        if (Registers.InputConnected(0))
         {
-            MidiChannelState& State = Program->MidiChannels[Channel];
-            Velocity = State.Velocity->Get();
+            for (double ChannelMask : Registers.InputVector(0))
+            {
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Velocity = State.Velocity;
+                    break;
+                }
+            }
         }
-#endif
+        else
+        {
+            Velocity = State.Velocity;
+        }
     }
 
     virtual ~VelocityThunk() {};
@@ -1504,19 +1534,29 @@ struct PressureThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::PRES, "pressure", {"channel"}, {"pressure"} };
     Scratch* Program;
+    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("PressureThunk");
-#if 0
-        int Channel = int(Registers.CombineInput(0, double(Program->MostRecentChannel)));
+
         double& Pressure = Registers.OutputRef(0);
-        if (Channel >= 0 && Channel <= 15)
+        MidiNoteState& State = Program->MidiLanes[Lane];
+        if (Registers.InputConnected(0))
         {
-            MidiChannelState& State = Program->MidiChannels[Channel];
-            Pressure = State.Pressure->Get();
+            for (double ChannelMask : Registers.InputVector(0))
+            {
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Pressure = State.Pressure;
+                    break;
+                }
+            }
         }
-#endif
+        else
+        {
+            Pressure = State.Pressure;
+        }
     }
 
     virtual ~PressureThunk() {};
@@ -1527,6 +1567,7 @@ struct ControlChangeThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"} };
     Scratch* Program;
+    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1769,7 +1810,8 @@ using MidiCreateAndConnectFn = std::function<
         ScratchSharedPtr& Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
-        std::vector<std::ptrdiff_t>& Closures)>;
+        std::vector<std::ptrdiff_t>& Closures,
+        uint32_t Lane)>;
 
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
@@ -1901,13 +1943,14 @@ private:
     void SetMidi()
     {
         SetCommon<ThunkT>();
-        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures)
+        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, uint32_t Lane)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Program = Program.get();
+            Thunk->Lane = Lane;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -2395,11 +2438,10 @@ ScratchSharedPtr Patch::Compile()
 
     ScratchSharedPtr Program = std::make_shared<Scratch>();
     Program->Identity = Identity;
-#if 0
-    Program->MidiChannels = MidiChannels;
-#endif
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
+    Program->Polyphony = MidiPolyphony;
+    Program->MidiLanes.resize(MidiPolyphony);
 
     auto VisitTile = [&](TileHandle Tile) -> TilePartial&
     {
@@ -2901,7 +2943,7 @@ ScratchSharedPtr Patch::Compile()
                     auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
                     if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                     {
-                        Thunk = Found->second(Program, Inputs, Outputs, Closures);
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures, Lane);
                         Program->Program.push_back(Thunk);
 
                         if (Symbol == OpCode::NOTE)
@@ -3061,6 +3103,10 @@ void Scratch::Migrate(const Scratch& Old)
     MidiChannels = Old.MidiChannels;
     MostRecentChannel = Old.MostRecentChannel;
 #endif
+    if (Polyphony == Old.Polyphony)
+    {
+        MidiLanes = Old.MidiLanes;
+    }
 
     constexpr bool EnableDebugLogging = false;
 
@@ -3158,51 +3204,97 @@ void Scratch::Migrate(const Scratch& Old)
 void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
-#if 0
     {
         TRACEABLE_NAMED_SCOPE("MIDI PHASE");
 
         MidiMessage Message;
         if (PopMidiMessage(Message))
         {
-            MidiChannelState& State = MidiChannels[Message.Channel];
+            int32_t AssignedLane = -1;
+            if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
+            {
+                bool LaneReset = false;
+                const double Note = Message.Param1;
+                const int Channel = int(Message.Channel);
+                if (NextMidiLane == -1)
+                {
+                    NextMidiLane = 0;
+                    AssignedLane = 0;
+                    LaneReset = true;
+                }
+                else
+                {
+                    for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
+                    {
+                        const double LaneNote = MidiLanes[Lane].Note;
+                        const int LaneChannel = int(MidiLanes[Lane].Channel);
+                        if (Note == LaneNote && Channel == LaneChannel)
+                        {
+                            AssignedLane = Lane;
+                            break;
+                        }
+                    }
+                    if (AssignedLane == -1)
+                    {
+                        for (uint32_t LaneOffset = 0; LaneOffset < Polyphony; ++LaneOffset)
+                        {
+                            const int Lane = (NextMidiLane + LaneOffset) % Polyphony;
+                            if (MidiLanes[Lane].Velocity == 0.0)
+                            {
+                                LaneReset = true;
+                                AssignedLane = Lane;
+                                break;
+                            }
+                        }
+                    }
+                    if (AssignedLane == -1)
+                    {
+                        LaneReset = true;
+                        AssignedLane = NextMidiLane;
+                        NextMidiLane = (NextMidiLane + 1) % Polyphony;
+                    }
+                }
+                if (LaneReset)
+                {
+                    MidiNoteState& State = MidiLanes[AssignedLane];
+                    State.Note = Note;
+                    State.Gate = 0.0;
+                    State.Velocity = 0.0;
+                    State.Pressure = 0.0;
+                    State.Channel = double(Channel);
+                }
+            }
             if (Message.Type == MidiMessageType::Note)
             {
-                MostRecentChannel = Message.Channel;
-                double& Note = Message.Param1;
-                double& Velocity = Message.Param2;
+                MidiNoteState& State = MidiLanes[AssignedLane];
+                const double Velocity = Message.Param2;
                 if (Velocity > 0.0)
                 {
-                    State.Note->Set(Note);
-                    State.Gate->Set(1.0);
-                    State.Velocity->Set(Velocity);
+                    State.Gate = 1.0;
+                    State.Velocity = Velocity;
                 }
-                else if (Note == State.Note->Get())
+                else
                 {
-                    State.Gate->Set(0.0);
-                    State.Velocity->Set(0.0);
-                    State.Pressure->Set(0.0);
+                    State.Gate = 0.0;
+                    State.Velocity = 0.0;
+                    State.Pressure = 0.0;
                 }
             }
             else if (Message.Type == MidiMessageType::PolyPress)
             {
-                MostRecentChannel = Message.Channel;
-                double& Note = Message.Param1;
-                double& Pressure = Message.Param2;
-                if (Note == State.Note->Get())
-                {
-                    State.Pressure->Set(Pressure);
-                }
+                MidiNoteState& State = MidiLanes[AssignedLane];
+                const double Pressure = Message.Param2;
+                State.Pressure = Pressure;
             }
+#if 0
             else if (Message.Type == MidiMessageType::ControlChange)
             {
-                MostRecentChannel = Message.Channel;
                 State.CtrlParam->Set(Message.Param1);
                 State.CtrlValue->Set(Message.Param2);
             }
+#endif
         }
     }
-#endif
     {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
         for (InstructionThunkSharedPtr& Thunk : Program)
