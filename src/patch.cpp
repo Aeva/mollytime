@@ -3155,17 +3155,16 @@ void Scratch::Migrate(Scratch& Old)
                         std::print(" (copy, no resize)\n");
                     }
 
-                    double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
                     for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                     {
-                        const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset + Lane];
+                        const double MigratedValue = Old.RegisterFile.at(OldAllocation.BaseOffset + Lane);
                         if (EnableDebugLogging)
                         {
-                            const double StompedValue = Register[Lane];
+                            const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
                             const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
                             std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                         }
-                        Register[Lane] = MigratedValue;
+                        RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
                     }
                 }
                 else if (OldAllocation.LaneCount == 1)
@@ -3174,17 +3173,16 @@ void Scratch::Migrate(Scratch& Old)
                     {
                         std::print(" (mono -> poly resize)\n");
                     }
-                    double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
                     for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                     {
-                        const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset];
+                        const double MigratedValue = Old.RegisterFile.at(OldAllocation.BaseOffset);
                         if (EnableDebugLogging)
                         {
-                            const double StompedValue = Register[Lane];
+                            const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
                             const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
                             std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                         }
-                        Register[Lane] = MigratedValue;
+                        RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
                     }
                 }
                 else
@@ -3340,31 +3338,31 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
     {
         if (Outputs.size() == 1)
         {
-            OutLeft = RegisterFile[Outputs[0]];
-            OutRight = RegisterFile[Outputs[0]];
+            OutLeft = RegisterFile.at(Outputs[0]);
+            OutRight = RegisterFile.at(Outputs[0]);
         }
         else if (Outputs.size() > 1)
         {
-            OutLeft = RegisterFile[Outputs[0]];
-            OutRight = RegisterFile[Outputs[1]];
+            OutLeft = RegisterFile.at(Outputs[0]);
+            OutRight = RegisterFile.at(Outputs[1]);
         }
     }
     if (ProbeInput)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
-        ScopeProbe->Set(RegisterFile[ProbeInput]);
+        ScopeProbe->Set(RegisterFile.at(ProbeInput));
         if (Outputs.size() > 0)
         {
             // TODO : per-output probes
-            OutputProbe->Set(RegisterFile[Outputs[0]]);
+            OutputProbe->Set(RegisterFile.at(Outputs[0]));
         }
     }
     else if (Outputs.size() > 0)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         // TODO : per-output probes
-        ScopeProbe->Set(RegisterFile[Outputs[0]]);
-        OutputProbe->Set(RegisterFile[Outputs[0]]);
+        ScopeProbe->Set(RegisterFile.at(Outputs[0]));
+        OutputProbe->Set(RegisterFile.at(Outputs[0]));
     }
 }
 
