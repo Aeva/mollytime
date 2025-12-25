@@ -160,33 +160,18 @@ using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
 
 struct MagicTape
 {
-    MagicTape(TileHandle Tile)
-        : TapeHandle(EncodeSampleHandle(Tile))
+    MagicTape()
     {
     }
-
-    virtual size_t FindSample(double Position)
-    {
-        return 0;
-    }
-
-    virtual double ReadAndAdvance(uint64_t& Index)
-    {
-        return 0.0;
-    }
-
-    virtual void WriteAndAdvance(uint64_t& Index, double NewSample)
-    {
-    }
-
+    virtual size_t FindSample(double Position) = 0;
+    virtual double ReadAndAdvance(uint64_t& Index) = 0;
+    virtual void WriteAndAdvance(uint64_t& Index, double NewSample) = 0;
     virtual ~MagicTape()
     {
     }
-
-    double TapeHandle;
 };
 
-using MagicTapeSharedPtr = std::shared_ptr<MagicTape>;
+using MagicTapeUniquePtr = std::unique_ptr<MagicTape>;
 
 
 struct ProbeRunningState
@@ -422,13 +407,13 @@ struct Scratch final : public MidiHandler
 
     std::vector<double> RegisterFile;
     std::map<PortHandle, RegisterAllocation> PersistentRegisters;
+    std::unordered_map<PortHandle, std::vector<MagicTapeUniquePtr>> Tapes;
 
     std::vector<InstructionThunkSharedPtr> Program;
     std::vector<std::ptrdiff_t> Outputs;
     std::map<TileHandle, std::ptrdiff_t> Inputs;
     std::map<TileHandle, std::ptrdiff_t> AuxOutputs;
 
-    std::unordered_map<TileHandle, MagicTapeSharedPtr> Tapes;
     std::ptrdiff_t ProbeInput;
     ProbeRunningStateSharedPtr OutputProbe;
     ProbeRunningStateSharedPtr ScopeProbe;
@@ -441,10 +426,10 @@ struct Scratch final : public MidiHandler
     int MostRecentChannel = 0;
 #endif
 
-    void Migrate(const Scratch& Old);
+    void Migrate(Scratch& Old);
 
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
-    MagicTapeSharedPtr FindTape(double WireValue);
+    MagicTape* FindTape(PortHandle Port, uint32_t Lane);
 
 private:
     void PrintRegisters() const;
@@ -525,7 +510,6 @@ private:
 
     TileHandle LastAssignedTileHandle;
     std::unordered_map<TileHandle, AtomicRunningStateSharedPtr> SpecialInputs;
-    std::unordered_map<TileHandle, std::vector<MagicTapeSharedPtr>> TapeCollection;
     ProbeRunningStateSharedPtr OutputProbe = std::make_shared<ProbeRunningState>();
     ProbeRunningStateSharedPtr ScopeProbe = std::make_shared<ProbeRunningState>();
     TileHandle ActiveProbeTile;

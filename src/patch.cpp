@@ -163,21 +163,6 @@ double EncodeSampleHandle(uint32_t SampleHandle)
 }
 
 
-uint32_t DecodeSampleHandle(double WireValue)
-{
-#if 0
-    // 0x7ffffffffffff is the safe area for encoding things, and that leaves
-    // 19 bits for flags in the future.  We only need the bottom 32 bits right
-    // now, however.
-    const uint64_t HandlePart = std::numeric_limits<uint32_t>::max();
-    uint64_t Encoded = std::bit_cast<double, uint64_t>(WireValue);
-    uint32_t SampleHandle = uint32_t(Encoded & HandlePart);
-    return SampleHandle;
-#endif
-    return uint32_t(std::bit_cast<uint64_t, double>(WireValue));
-}
-
-
 struct SinThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SIN, "sin", {"hz"}, {"amp"} };
@@ -1678,8 +1663,7 @@ struct TweakThunk : public InstructionThunk
 
 struct BlankTape : public MagicTape
 {
-    BlankTape(TileHandle Tile)
-        : MagicTape(Tile)
+    BlankTape()
     {
     }
 
@@ -1742,13 +1726,12 @@ struct BlankTape : public MagicTape
     std::vector<double> Samples;
 };
 
-using BlankTapeSharedPtr = std::shared_ptr<BlankTape>;
-
 
 struct TapeLoopThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<4, 1, 4> Info = { OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"} };
-    std::vector<MagicTapeSharedPtr> Tapes;
+    Scratch* Program;
+    PortHandle Port;
     uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
@@ -1767,11 +1750,12 @@ struct TapeLoopThunk : public InstructionThunk
         uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
         uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
 
-        if (Lane > Tapes.size() || !Tapes[Lane])
+        BlankTape* Tape = (BlankTape*)Program->FindTape(Port, Lane);
+
+        if (!Tape)
         {
             return;
         }
-        BlankTapeSharedPtr Tape = std::static_pointer_cast<BlankTape>(Tapes[Lane]);
 
         auto ResetOffset = [&]()
         {
@@ -1849,7 +1833,7 @@ using TapeCreateAndConnectFn = std::function<
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures,
-        std::vector<MagicTapeSharedPtr>& Tapes,
+        PortHandle Port,
         uint32_t Lane)>;
 
 
@@ -2009,14 +1993,15 @@ private:
     {
         SetCommon<ThunkT>();
         TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& Tapes, uint32_t Lane)
+            ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, PortHandle Port, uint32_t Lane)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
-            Thunk->Tapes = Tapes;
+            Thunk->Program = Program.get();
+            Thunk->Port = Port;
             Thunk->Lane = Lane;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -2665,7 +2650,6 @@ ScratchSharedPtr Patch::Compile()
         for (TileHandle Tile : ErasedTiles)
         {
             TileLanes.erase(Tile);
-            TapeCollection.erase(Tile);
         }
         ErasedTiles.clear();
     }
@@ -2807,14 +2791,15 @@ ScratchSharedPtr Patch::Compile()
     for (TileHandle Tile : TapeTiles)
     {
         TilePartial* Partial = PartialByTile.at(Tile);
-        auto Result = TapeCollection.try_emplace(Tile);
-        std::vector<MagicTapeSharedPtr>& TapeBank = Result.first->second;
-        if (TapeBank.size() != Partial->Polyphony)
+        PortHandle Port = MakePortHandle(Tile, 0);
+
+        auto Result = Program->Tapes.try_emplace(Port, (size_t)Partial->Polyphony);
+        std::vector<MagicTapeUniquePtr>& Bank = Result.first->second;
+        if (Result.second)
         {
-            TapeBank.resize(Partial->Polyphony);
-            for (uint32_t Lane = 0; Lane < Partial->Polyphony; ++Lane)
+            for (MagicTapeUniquePtr& Tape : Bank)
             {
-                TapeBank[Lane] = std::make_shared<BlankTape>(Tile);
+                Tape = std::make_unique<BlankTape>();
             }
         }
     }
@@ -2986,7 +2971,7 @@ ScratchSharedPtr Patch::Compile()
                     auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                     if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                     {
-                        Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile), Lane);
+                        Thunk = Found->second(Program, Inputs, Outputs, Closures, MakePortHandle(Partial.Tile, 0), Lane);
                         Program->Program.push_back(Thunk);
                     }
                 }
@@ -3128,7 +3113,7 @@ void Scratch::PrintRegisters() const
 }
 
 
-void Scratch::Migrate(const Scratch& Old)
+void Scratch::Migrate(Scratch& Old)
 {
     TRACEABLE_SCOPE;
 
@@ -3153,74 +3138,86 @@ void Scratch::Migrate(const Scratch& Old)
 
     for (auto const& [Port, NewAllocation] : PersistentRegisters)
     {
-        auto Found = Old.PersistentRegisters.find(Port);
-        if (Found != Old.PersistentRegisters.end())
         {
-            if (EnableDebugLogging)
-            {
-                std::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
-            }
-
-            const RegisterAllocation& OldAllocation = Found->second;
-            if (OldAllocation.LaneCount == NewAllocation.LaneCount)
+            auto Found = Old.PersistentRegisters.find(Port);
+            if (Found != Old.PersistentRegisters.end())
             {
                 if (EnableDebugLogging)
                 {
-                    std::print(" (copy, no resize)\n");
+                    std::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
                 }
 
-                double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
-                for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
+                const RegisterAllocation& OldAllocation = Found->second;
+                if (OldAllocation.LaneCount == NewAllocation.LaneCount)
                 {
-                    const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset + Lane];
                     if (EnableDebugLogging)
                     {
-                        const double StompedValue = Register[Lane];
-                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
-                        std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        std::print(" (copy, no resize)\n");
                     }
-                    Register[Lane] = MigratedValue;
+
+                    double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
+                    for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
+                    {
+                        const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset + Lane];
+                        if (EnableDebugLogging)
+                        {
+                            const double StompedValue = Register[Lane];
+                            const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
+                            std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        }
+                        Register[Lane] = MigratedValue;
+                    }
                 }
-            }
-            else if (OldAllocation.LaneCount == 1)
-            {
-                std::print(" (mono -> poly resize)\n");
-                double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
-                for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
+                else if (OldAllocation.LaneCount == 1)
                 {
-                    const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset];
                     if (EnableDebugLogging)
                     {
-                        const double StompedValue = Register[Lane];
-                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
-                        std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        std::print(" (mono -> poly resize)\n");
                     }
-                    Register[Lane] = MigratedValue;
+                    double* Register = RegisterFile.data() + NewAllocation.BaseOffset;
+                    for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
+                    {
+                        const double MigratedValue = Old.RegisterFile[OldAllocation.BaseOffset];
+                        if (EnableDebugLogging)
+                        {
+                            const double StompedValue = Register[Lane];
+                            const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
+                            std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        }
+                        Register[Lane] = MigratedValue;
+                    }
+                }
+                else
+                {
+                    // If the register is migrating from polyphonic to monophonic, the correct default value for
+                    // that port is expected to already be in the new register file.  Usually this value will be
+                    // zero, but some thunks will set different default values for their ports.
+                    if (EnableDebugLogging)
+                    {
+                        std::print(" (poly->mono RESET)\n");
+                    }
+                }
+
+                if (EnableDebugLogging)
+                {
+                    std::print("\n");
                 }
             }
             else
             {
-                // If the register is migrating from polyphonic to monophonic, the correct default value for
-                // that port is expected to already be in the new register file.  Usually this value will be
-                // zero, but some thunks will set different default values for their ports.
+                // The register is totally new, and already has the correct starting value.  No additional
+                // handling is required.
                 if (EnableDebugLogging)
                 {
-                    std::print(" (poly->mono RESET)\n");
+                    std::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
                 }
             }
-
-            if (EnableDebugLogging)
-            {
-                std::print("\n");
-            }
         }
-        else
         {
-            // The register is totally new, and already has the correct starting value.  No additional
-            // handling is required.
-            if (EnableDebugLogging)
+            auto Found = Old.Tapes.find(Port);
+            if (Found != Old.Tapes.end())
             {
-                std::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
+                Tapes[Port] = std::move(Found->second);
             }
         }
     }
@@ -3372,13 +3369,16 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 }
 
 
-MagicTapeSharedPtr Scratch::FindTape(double WireValue)
+MagicTape* Scratch::FindTape(PortHandle Port, uint32_t Lane)
 {
-    uint32_t SampleHandle = DecodeSampleHandle(WireValue);
-    auto Found = Tapes.find(SampleHandle);
+    auto Found = Tapes.find(Port);
     if (Found != Tapes.end())
     {
-        return Found->second;
+        std::vector<MagicTapeUniquePtr>& Bank = Found->second;
+        if (Lane < Bank.size())
+        {
+            return Bank[Lane].get();
+        }
     }
     return nullptr;
 }
