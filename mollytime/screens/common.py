@@ -202,6 +202,11 @@ class program_card:
                 visited_patch = True
                 next_index = 1
                 rewrite = {}
+
+                midi_lanes = root_child.attrib.get("midi_lanes", None)
+                if midi_lanes is not None:
+                    self.patch.midi_lanes = max(int(midi_lanes), 1)
+
                 for patch_child in root_child:
                     if patch_child.tag == "tile":
                         old_id = int(patch_child.attrib["id"])

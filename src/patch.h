@@ -444,8 +444,6 @@ using ScratchUniquePtr = std::unique_ptr<Scratch>;
 
 struct Patch
 {
-    uint64_t Identity;
-    uint32_t MidiPolyphony = 40;
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
@@ -458,6 +456,9 @@ struct Patch
     std::vector<TileHandle> ErasedTiles; // Used to erase stale registers
 
     Patch();
+
+    void SetPolyphony(int NewPolyphony);
+    int GetPolyphony();
 
     TileHandle MakeTile(OpCode Symbol);
     TileHandle MakeTile(double Constant);
@@ -501,6 +502,9 @@ struct Patch
     double GetSpecialInput(TileHandle Tile);
 
 private:
+    uint64_t Identity;
+    uint32_t MidiPolyphony = 20;
+
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
 #if 0

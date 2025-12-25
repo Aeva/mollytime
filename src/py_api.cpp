@@ -222,6 +222,7 @@ PYBIND11_MODULE(mollytime, m) {
 
 	py::class_<Patch>(m, "Patch")
 		.def(py::init<>())
+		.def_property("midi_lanes", &Patch::GetPolyphony, &Patch::SetPolyphony)
 		.def_readonly("wires", &Patch::Wires)
 		.def("make_tile", [](Patch& Self, OpCode Symbol) -> TileHandle
 		{

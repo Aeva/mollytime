@@ -2058,6 +2058,19 @@ Patch::Patch()
 }
 
 
+void Patch::SetPolyphony(int NewPolyphony)
+{
+    MidiPolyphony = NewPolyphony;
+    Recompile();
+}
+
+
+int Patch::GetPolyphony()
+{
+    return MidiPolyphony;
+}
+
+
 TileHandle Patch::MakeTile(OpCode Symbol)
 {
     TRACEABLE_SCOPE;
@@ -2468,8 +2481,8 @@ ScratchUniquePtr Patch::Compile()
     std::unordered_map<TileHandle, TilePartial*> PartialByTile;
     FlatGraph.reserve(TileSymbols.size());
 
-    assert(MidiPolyphony > 1);
-    MidiPolyphony = std::max(MidiPolyphony, 2u);
+    assert(MidiPolyphony > 0);
+    MidiPolyphony = std::max(MidiPolyphony, 1u);
 
     ScratchUniquePtr Program = std::make_unique<Scratch>();
     Program->Identity = Identity;
