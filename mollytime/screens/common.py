@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gc
 import time
 import random
 from xml.etree import ElementTree
@@ -264,6 +265,7 @@ class program_card:
                 print(f'Unable to open mollytime patch file "{load_path}", because the version is unknown or invalid!')
         else:
             print(f'Unable to open file "{load_path}", because it is not a supported file type.')
+        gc.collect()
 
     def make_tile(self, position, symbol):
         tile_id = self.patch.make_tile(symbol);
