@@ -334,6 +334,18 @@ struct InstructionRegisters
         return *RegisterPtr(Closure[ClosureIndex]);
     }
 
+    inline void ZeroOut()
+    {
+        for (std::ptrdiff_t Offset : Output)
+        {
+            RegisterFile->data()[Offset] = 0.0;
+        }
+        for (std::ptrdiff_t Offset : Closure)
+        {
+            RegisterFile->data()[Offset] = 0.0;
+        }
+    }
+
 private:
     inline double* RegisterPtr(std::ptrdiff_t Offset)
     {
@@ -360,7 +372,19 @@ struct InstructionThunk
     OpCode DebugSymbol;
     InstructionRegisters Registers;
     virtual void Crank(double SampleInterval) = 0;
-    virtual ~InstructionThunk() {};
+
+    virtual void Reset()
+    {
+        Registers.ZeroOut();
+    }
+
+    virtual void Retrigger()
+    {
+    }
+
+    virtual ~InstructionThunk()
+    {
+    }
 };
 
 using InstructionThunkSharedPtr = std::shared_ptr<InstructionThunk>;
@@ -386,6 +410,8 @@ struct MidiNoteState
     double Velocity = 0.0;
     double Pressure = 0.0;
     double Channel = -1.0;
+
+    std::vector<InstructionThunkSharedPtr> Retriggerables;
 };
 
 
@@ -430,7 +456,7 @@ using ScratchSharedPtr = std::shared_ptr<Scratch>;
 struct Patch
 {
     uint64_t Identity;
-    uint32_t MidiPolyphony = 4;
+    uint32_t MidiPolyphony = 10;
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;

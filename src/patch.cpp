@@ -1057,6 +1057,15 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
         }
     }
 
+    virtual void Reset() override
+    {
+        Registers.ZeroOut();
+        // Gain and Feedback coefficients init to 1.
+        // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
+        Registers.ClosureRef(2) = 1.0;
+        Registers.ClosureRef(3) = 1.0;
+    }
+
     virtual ~TopologyPreservingTransformStateVariableFilterThunk() {};
 };
 
@@ -1206,6 +1215,13 @@ struct AdsrThunk : public InstructionThunk
         }
 
         LastTrigger = Trigger;
+    }
+
+    virtual void Retrigger() override
+    {
+        // If the adsr is currently held it will retrigger this frame.
+        double& LastTrigger = Registers.ClosureRef(0);
+        LastTrigger = 0.0;
     }
 
     virtual ~AdsrThunk() {};
@@ -1491,6 +1507,13 @@ struct NoteThunk : public InstructionThunk
         {
             Note = State.Note;
         }
+    }
+
+    virtual void Reset() override
+    {
+        // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
+        Registers.ZeroOut();
+        Registers.OutputRef(0) = 50.0;
     }
 
     virtual ~NoteThunk() {};
@@ -1935,6 +1958,7 @@ private:
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Reset();
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -1949,6 +1973,7 @@ private:
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Reset();
             Thunk->Program = Program.get();
             Thunk->Lane = Lane;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -1965,6 +1990,7 @@ private:
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Reset();
             Thunk->Input = SpecialInput;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -1980,6 +2006,7 @@ private:
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Reset();
             Thunk->Tape = std::static_pointer_cast<BlankTape>(Tape);
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -2916,15 +2943,6 @@ ScratchSharedPtr Patch::Compile()
                     {
                         Thunk = Found->second(Program, Inputs, Outputs, Closures);
                         Program->Program.push_back(Thunk);
-
-                        if (Symbol == OpCode::TPTSVF_LOWPASS || Symbol == OpCode::TPTSVF_BANDPASS || Symbol == OpCode::TPTSVF_HIGHPASS
-                            || Symbol == OpCode::TPTSVF_NOTCH)
-                        {
-                            // Gain and Feedback coefficients init to 1.
-                            // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
-                            Thunk->Registers.ClosureRef(2) = 1.0;
-                            Thunk->Registers.ClosureRef(3) = 1.0;
-                        }
                     }
                 }
 
@@ -2945,12 +2963,6 @@ ScratchSharedPtr Patch::Compile()
                     {
                         Thunk = Found->second(Program, Inputs, Outputs, Closures, Lane);
                         Program->Program.push_back(Thunk);
-
-                        if (Symbol == OpCode::NOTE)
-                        {
-                            // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
-                            Thunk->Registers.OutputRef(0) = 50.0;
-                        }
                     }
                 }
 
@@ -2962,6 +2974,12 @@ ScratchSharedPtr Patch::Compile()
                         Thunk = Found->second(Program, Inputs, Outputs, Closures, TapeCollection.at(Partial.Tile));
                         Program->Program.push_back(Thunk);
                     }
+                }
+
+                // TODO: assert if thunk is nullptr
+                if (Thunk && Partial.Polyphony > 1)
+                {
+                    Program->MidiLanes[Lane].Retriggerables.push_back(Thunk);
                 }
             }
 
@@ -3262,6 +3280,11 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     State.Velocity = 0.0;
                     State.Pressure = 0.0;
                     State.Channel = double(Channel);
+
+                    for (InstructionThunkSharedPtr& Thunk : State.Retriggerables)
+                    {
+                        Thunk->Retrigger();
+                    }
                 }
             }
             if (Message.Type == MidiMessageType::Note)
