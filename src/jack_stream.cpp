@@ -173,18 +173,18 @@ float JackStream::GetTemporalPressure()
 }
 
 
-void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
+void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
 {
     TRACEABLE_SCOPE;
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
-    BufferState.PendingProgram = NewProgram;
+    BufferState.PendingProgram = std::move(NewProgram);
 
     {
         // Remove all jack input ports that no longer correspond to patch input ports.
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.InputPorts)
         {
-            if (!NewProgram->Inputs.contains(Tile))
+            if (!BufferState.PendingProgram->Inputs.contains(Tile))
             {
                 Erased.push_back(Tile);
                 jack_port_unregister(JackClient, JackPort);
@@ -200,7 +200,7 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.AuxOutPorts)
         {
-            if (!NewProgram->AuxOutputs.contains(Tile))
+            if (!BufferState.PendingProgram->AuxOutputs.contains(Tile))
             {
                 Erased.push_back(Tile);
                 jack_port_unregister(JackClient, JackPort);
@@ -213,7 +213,7 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
     }
     {
         // Create jack input ports for any new patch input ports.
-        for (const auto& [Tile, InputRegister] : NewProgram->Inputs)
+        for (const auto& [Tile, InputRegister] : BufferState.PendingProgram->Inputs)
         {
             if (!BufferState.InputPorts.contains(Tile))
             {
@@ -229,7 +229,7 @@ void JackStream::ProgramChange(ScratchSharedPtr& NewProgram)
     }
     {
         // Create jack aux ports for any new patch aux ports.
-        for (const auto& [Tile, OutputRegister] : NewProgram->AuxOutputs)
+        for (const auto& [Tile, OutputRegister] : BufferState.PendingProgram->AuxOutputs)
         {
             if (!BufferState.AuxOutPorts.contains(Tile))
             {

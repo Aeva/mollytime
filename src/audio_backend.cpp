@@ -47,7 +47,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
             {
                 BufferState->PendingProgram->Migrate(*Program);
             }
-            Program = BufferState->PendingProgram;
+            Program = std::move(BufferState->PendingProgram);
             BufferState->PendingProgram = nullptr;
             ResetFramePressure();
         }
@@ -143,7 +143,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 struct StubStream final : AudioStream
 {
     virtual float GetTemporalPressure() override { return 0.0f; }
-    virtual void ProgramChange(ScratchSharedPtr& NewProgram) override {}
+    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override {}
 };
 
 

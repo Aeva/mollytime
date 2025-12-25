@@ -1443,7 +1443,7 @@ struct GateThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("GateThunk");
 
         double& Gate = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
         if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
@@ -1476,7 +1476,7 @@ struct NoteThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("NoteThunk");
 
         double& Note = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
         if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
@@ -1516,7 +1516,7 @@ struct VelocityThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("VelocityThunk");
 
         double& Velocity = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
         if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
@@ -1549,7 +1549,7 @@ struct PressureThunk : public InstructionThunk
         TRACEABLE_NAMED_SCOPE("PressureThunk");
 
         double& Pressure = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
         if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
@@ -1806,14 +1806,14 @@ struct TapeLoopThunk : public InstructionThunk
 
 using BasicCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        ScratchSharedPtr& Program,
+        ScratchUniquePtr& Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures)>;
 
 using WidgetCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        ScratchSharedPtr& Program,
+        ScratchUniquePtr& Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures,
@@ -1821,7 +1821,7 @@ using WidgetCreateAndConnectFn = std::function<
 
 using MidiCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        ScratchSharedPtr& Program,
+        ScratchUniquePtr& Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures,
@@ -1829,7 +1829,7 @@ using MidiCreateAndConnectFn = std::function<
 
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        ScratchSharedPtr& Program,
+        ScratchUniquePtr& Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures,
@@ -1944,7 +1944,7 @@ private:
     void SetBasic()
     {
         SetCommon<ThunkT>();
-        BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures)
+        BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchUniquePtr& Program, auto& Inputs, auto& Outputs, auto& Closures)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
@@ -1959,7 +1959,7 @@ private:
     void SetMidi()
     {
         SetCommon<ThunkT>();
-        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, uint32_t Lane)
+        MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchUniquePtr& Program, auto& Inputs, auto& Outputs, auto& Closures, uint32_t Lane)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
@@ -1976,7 +1976,7 @@ private:
     void SetWidget()
     {
         SetCommon<ThunkT>();
-        WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
+        WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](ScratchUniquePtr& Program, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
@@ -1993,7 +1993,7 @@ private:
     {
         SetCommon<ThunkT>();
         TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            ScratchSharedPtr& Program, auto& Inputs, auto& Outputs, auto& Closures, PortHandle Port, uint32_t Lane)
+            ScratchUniquePtr& Program, auto& Inputs, auto& Outputs, auto& Closures, PortHandle Port, uint32_t Lane)
         {
             std::vector<double>* RegisterFile = &(Program->RegisterFile);
             auto Thunk = std::make_shared<ThunkT>();
@@ -2431,7 +2431,7 @@ double Patch::GetSpecialInput(TileHandle Tile)
 }
 
 
-ScratchSharedPtr Patch::Compile()
+ScratchUniquePtr Patch::Compile()
 {
     TRACEABLE_SCOPE;
 
@@ -2451,12 +2451,12 @@ ScratchSharedPtr Patch::Compile()
     std::unordered_map<TileHandle, TilePartial*> PartialByTile;
     FlatGraph.reserve(TileSymbols.size());
 
-    ScratchSharedPtr Program = std::make_shared<Scratch>();
+    ScratchUniquePtr Program = std::make_unique<Scratch>();
     Program->Identity = Identity;
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
     Program->Polyphony = MidiPolyphony;
-    Program->MidiLanes.resize(MidiPolyphony);
+    Program->MidiLanes.resize(MidiPolyphony, {});
 
     auto VisitTile = [&](TileHandle Tile) -> TilePartial&
     {
@@ -2976,10 +2976,15 @@ ScratchSharedPtr Patch::Compile()
                     }
                 }
 
-                // TODO: assert if thunk is nullptr
-                if (Thunk && Partial.Polyphony > 1)
+                assert(Thunk != nullptr);
+                if (Partial.Polyphony > 1 && Symbol == OpCode::ADSR)
                 {
-                    Program->MidiLanes[Lane].Retriggerables.push_back(Thunk);
+                    Thunk->Retriggerable = true;
+                    uint32_t ThunkIndex = Program->Program.size() - 1;
+                    assert(Program->Program[ThunkIndex] == Thunk);
+                    // TODO: figure out some means of determining if the trigger is directly or indirectly
+                    // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
+                    Program->MidiLanes[Lane].Retriggerables.push_back(ThunkIndex);
                 }
             }
 
@@ -3013,6 +3018,11 @@ ScratchSharedPtr Patch::Compile()
                 }
             }
         }
+    }
+
+    for (InstructionThunkSharedPtr& Thunk : Program->Program)
+    {
+        assert(Thunk != nullptr);
     }
 
 #if 0
@@ -3081,8 +3091,8 @@ void Patch::Recompile()
     TRACEABLE_SCOPE;
     if (!Frozen)
     {
-        ScratchSharedPtr CurrentProgram = Compile();
-        Audio::GetStream()->ProgramChange(CurrentProgram);
+        ScratchUniquePtr NewProgram = Compile();
+        Audio::GetStream()->ProgramChange(std::move(NewProgram));
     }
 }
 
@@ -3123,7 +3133,28 @@ void Scratch::Migrate(Scratch& Old)
 #endif
     if (Polyphony == Old.Polyphony)
     {
-        MidiLanes = Old.MidiLanes;
+        assert(Old.MidiLanes.size() == Old.Polyphony);
+        for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
+        {
+            const MidiNoteState& OldLane = Old.MidiLanes[Lane];
+            MidiNoteState& NewLane = MidiLanes[Lane];
+            NewLane.Gate = OldLane.Gate;
+            NewLane.Note = OldLane.Note;
+            NewLane.Velocity = OldLane.Velocity;
+            NewLane.Pressure = OldLane.Pressure;
+            NewLane.Channel = OldLane.Channel;
+        }
+    }
+    assert(MidiLanes.size() == Polyphony);
+
+    for (MidiNoteState& Lane : MidiLanes)
+    {
+        for (uint32_t ThunkIndex : Lane.Retriggerables)
+        {
+            InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
+            assert(Thunk != nullptr);
+            assert(Thunk->Retriggerable);
+        }
     }
 
     constexpr bool EnableDebugLogging = false;
@@ -3232,6 +3263,7 @@ void Scratch::Migrate(Scratch& Old)
 void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
+    assert(MidiLanes.size() == Polyphony);
     {
         TRACEABLE_NAMED_SCOPE("MIDI PHASE");
 
@@ -3254,8 +3286,8 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                 {
                     for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
                     {
-                        const double LaneNote = MidiLanes[Lane].Note;
-                        const int LaneChannel = int(MidiLanes[Lane].Channel);
+                        const double LaneNote = MidiLanes.at(Lane).Note;
+                        const int LaneChannel = int(MidiLanes.at(Lane).Channel);
                         if (Note == LaneNote && Channel == LaneChannel)
                         {
                             AssignedLane = Lane;
@@ -3267,7 +3299,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         for (uint32_t LaneOffset = 0; LaneOffset < Polyphony; ++LaneOffset)
                         {
                             const int Lane = (NextMidiLane + Polyphony - LaneOffset) % Polyphony;
-                            if (MidiLanes[Lane].Velocity == 0.0)
+                            if (MidiLanes.at(Lane).Velocity == 0.0)
                             {
                                 LaneReset = true;
                                 AssignedLane = Lane;
@@ -3284,22 +3316,25 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                 }
                 if (LaneReset)
                 {
-                    MidiNoteState& State = MidiLanes[AssignedLane];
+                    MidiNoteState& State = MidiLanes.at(AssignedLane);
                     State.Note = Note;
                     State.Gate = 0.0;
                     State.Velocity = 0.0;
                     State.Pressure = 0.0;
                     State.Channel = double(Channel);
 
-                    for (InstructionThunkSharedPtr& Thunk : State.Retriggerables)
+                    for (uint32_t ThunkIndex : State.Retriggerables)
                     {
+                        InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
+                        assert(Thunk != nullptr);
+                        assert(Thunk->Retriggerable);
                         Thunk->Retrigger();
                     }
                 }
             }
             if (Message.Type == MidiMessageType::Note)
             {
-                MidiNoteState& State = MidiLanes[AssignedLane];
+                MidiNoteState& State = MidiLanes.at(AssignedLane);
                 const double Velocity = Message.Param2;
                 if (Velocity > 0.0)
                 {
@@ -3315,7 +3350,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             }
             else if (Message.Type == MidiMessageType::PolyPress)
             {
-                MidiNoteState& State = MidiLanes[AssignedLane];
+                MidiNoteState& State = MidiLanes.at(AssignedLane);
                 const double Pressure = Message.Param2;
                 State.Pressure = Pressure;
             }
@@ -3332,6 +3367,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
         for (InstructionThunkSharedPtr& Thunk : Program)
         {
+            assert(Thunk != nullptr);
             Thunk->Crank(SampleInterval);
         }
     }

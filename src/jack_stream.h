@@ -56,5 +56,5 @@ public:
     virtual ~JackStream() override;
     
     virtual float GetTemporalPressure() override;
-    virtual void ProgramChange(ScratchSharedPtr& NewProgram) override;
+    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
 };

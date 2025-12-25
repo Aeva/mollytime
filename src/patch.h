@@ -311,35 +311,35 @@ struct InstructionRegisters
 
     inline double& OutputRef(uint32_t OutputIndex)
     {
-        return *RegisterPtr(Output[OutputIndex]);
+        return RegisterRef(Output[OutputIndex]);
     }
 
     inline double& ClosureRef(uint32_t ClosureIndex)
     {
-        return *RegisterPtr(Closure[ClosureIndex]);
+        return RegisterRef(Closure[ClosureIndex]);
     }
 
     inline void ZeroOut()
     {
         for (std::ptrdiff_t Offset : Output)
         {
-            RegisterFile->data()[Offset] = 0.0;
+            RegisterFile->at(Offset) = 0.0;
         }
         for (std::ptrdiff_t Offset : Closure)
         {
-            RegisterFile->data()[Offset] = 0.0;
+            RegisterFile->at(Offset) = 0.0;
         }
     }
 
 private:
-    inline double* RegisterPtr(std::ptrdiff_t Offset)
+    inline double& RegisterRef(std::ptrdiff_t Offset)
     {
-        return RegisterFile->data() + Offset;
+        return RegisterFile->at(Offset);
     }
 
     inline double RegisterValue(std::ptrdiff_t Offset)
     {
-        return *RegisterPtr(Offset);
+        return RegisterRef(Offset);
     }
 
     std::vector<std::vector<std::ptrdiff_t>> Input;
@@ -356,6 +356,8 @@ struct InstructionThunk
 {
     OpCode DebugSymbol;
     InstructionRegisters Registers;
+    bool Retriggerable = false;
+
     virtual void Crank(double SampleInterval) = 0;
 
     virtual void Reset()
@@ -396,7 +398,7 @@ struct MidiNoteState
     double Pressure = 0.0;
     double Channel = -1.0;
 
-    std::vector<InstructionThunkSharedPtr> Retriggerables;
+    std::vector<uint32_t> Retriggerables;
 };
 
 
@@ -435,13 +437,13 @@ private:
     void PrintRegisters() const;
 };
 
-using ScratchSharedPtr = std::shared_ptr<Scratch>;
+using ScratchUniquePtr = std::unique_ptr<Scratch>;
 
 
 struct Patch
 {
     uint64_t Identity;
-    uint32_t MidiPolyphony = 4;
+    uint32_t MidiPolyphony = 40;
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
@@ -515,7 +517,7 @@ private:
     TileHandle ActiveProbeTile;
 
     void Recompile();
-    ScratchSharedPtr Compile();
+    ScratchUniquePtr Compile();
 
     bool Frozen = false;
 };

@@ -31,7 +31,7 @@ using TimePoint = std::chrono::time_point<Clock>;
 struct AudioThreadShared
 {
     DECLARE_TRACEABLE_MUTEX(Mutex);
-    ScratchSharedPtr PendingProgram = nullptr;
+    ScratchUniquePtr PendingProgram = nullptr;
 
     std::atomic<float> TemporalPressure = 0.0;
 };
@@ -53,7 +53,7 @@ protected:
     AudioThreadShared* BufferState = nullptr;
     double SampleInterval = 0.0;
 
-    ScratchSharedPtr Program = nullptr;
+    ScratchUniquePtr Program = nullptr;
 
     std::vector<float> FramePressure;
     int FramePressureIndex = 0;
@@ -74,7 +74,7 @@ struct AudioStream
     virtual ~AudioStream() {}
 
     virtual float GetTemporalPressure() = 0;
-    virtual void ProgramChange(ScratchSharedPtr& NewProgram) = 0;
+    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) = 0;
 };
 
 
