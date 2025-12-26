@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <mollytime version="2025.07.13">
-	<patch>
+	<patch midi_lanes="1">
 		<tile id="1" symbol="out" x="4" y="0"/>
 		<tile id="2" symbol="sin" x="-1" y="-2"/>
 		<tile id="3" symbol="sin" x="-2" y="0"/>
