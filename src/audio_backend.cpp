@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #include "audio_backend.h"
+#include "midi.h"
 
 #ifdef ENABLE_JACK
 #include "jack_stream.h"
@@ -50,6 +51,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
             Program = std::move(BufferState->PendingProgram);
             BufferState->PendingProgram = nullptr;
             ResetFramePressure();
+            Midi::Reset();
         }
 
         // Hook for gathering the audio buffer read and write pointers:
@@ -63,7 +65,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
     }
 
     TimePoint EvalStart = Clock::now();
-    if (Program)
+    if (Program && Program->Program.size() > 0)
     {
         for (int SampleIndex = 0; SampleIndex < Frame.SampleCount; ++SampleIndex)
         {

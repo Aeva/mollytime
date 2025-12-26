@@ -1,4 +1,5 @@
 #include "sdl.h"
+#include "midi.h"
 
 #include <SDL3/SDL_events.h>
 
@@ -19,6 +20,8 @@ namespace Events
         static uint32_t FrameNumber = 0;
 #endif
         std::vector<Event> Events;
+
+        static bool SentMidiReset = false;
 
         SDL_Event Next;
         while (SDL_PollEvent(&Next))
@@ -45,24 +48,45 @@ namespace Events
                     });
                     break;
                 case SDL_EVENT_KEY_DOWN:
-                    Events.push_back(
+                    if (Next.key.key == SDLK_C)
                     {
-                        .Key = 
+                        if (!SentMidiReset)
                         {
-                            EventType::KeyDown,
-                            static_cast<KeyCode>(Next.key.key)
+                            Midi::Reset();
+                            SentMidiReset = true;
                         }
-                    });
+                    }
+                    else
+                    {
+                        Events.push_back(
+                        {
+                            .Key =
+                            {
+                                EventType::KeyDown,
+                                static_cast<KeyCode>(Next.key.key)
+                            }
+                        });
+                    }
                     break;
                 case SDL_EVENT_KEY_UP:
-                    Events.push_back(
+                    if (Next.key.key == SDLK_C)
                     {
-                        .Key = 
+                        if (SentMidiReset)
                         {
-                            EventType::KeyUp,
-                            static_cast<KeyCode>(Next.key.key)
+                            SentMidiReset = false;
                         }
-                    });
+                    }
+                    else
+                    {
+                        Events.push_back(
+                        {
+                            .Key =
+                            {
+                                EventType::KeyUp,
+                                static_cast<KeyCode>(Next.key.key)
+                            }
+                        });
+                    }
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
 #if DEBUG_EVENTS

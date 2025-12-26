@@ -1444,7 +1444,11 @@ struct GateThunk : public InstructionThunk
 
         double& Gate = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
-        if (Registers.InputConnected(0))
+        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        {
+            Gate = State.Gate;
+        }
+        else if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
             {
@@ -1454,10 +1458,6 @@ struct GateThunk : public InstructionThunk
                     break;
                 }
             }
-        }
-        else
-        {
-            Gate = State.Gate;
         }
     }
 
@@ -1477,7 +1477,11 @@ struct NoteThunk : public InstructionThunk
 
         double& Note = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
-        if (Registers.InputConnected(0))
+        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        {
+            Note = State.Note;
+        }
+        else if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
             {
@@ -1487,10 +1491,6 @@ struct NoteThunk : public InstructionThunk
                     break;
                 }
             }
-        }
-        else
-        {
-            Note = State.Note;
         }
     }
 
@@ -1517,7 +1517,11 @@ struct VelocityThunk : public InstructionThunk
 
         double& Velocity = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
-        if (Registers.InputConnected(0))
+        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        {
+            Velocity = State.Velocity;
+        }
+        else if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
             {
@@ -1527,10 +1531,6 @@ struct VelocityThunk : public InstructionThunk
                     break;
                 }
             }
-        }
-        else
-        {
-            Velocity = State.Velocity;
         }
     }
 
@@ -1550,7 +1550,11 @@ struct PressureThunk : public InstructionThunk
 
         double& Pressure = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
-        if (Registers.InputConnected(0))
+        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        {
+            Pressure = State.Pressure;
+        }
+        else if (Registers.InputConnected(0))
         {
             for (double ChannelMask : Registers.InputVector(0))
             {
@@ -1560,10 +1564,6 @@ struct PressureThunk : public InstructionThunk
                     break;
                 }
             }
-        }
-        else
-        {
-            Pressure = State.Pressure;
         }
     }
 
@@ -3325,7 +3325,14 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
         if (PopMidiMessage(Message))
         {
             int32_t AssignedLane = -1;
-            if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
+            if (Message.Type == MidiMessageType::Reset)
+            {
+                for (MidiNoteState& State : MidiLanes)
+                {
+                    State = MidiNoteState();
+                }
+            }
+            else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
             {
                 bool LaneReset = false;
                 const double Note = Message.Param1;
@@ -3413,28 +3420,28 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         Thunk->Retrigger();
                     }
                 }
-            }
-            if (Message.Type == MidiMessageType::Note)
-            {
-                MidiNoteState& State = MidiLanes.at(AssignedLane);
-                const double Velocity = Message.Param2;
-                if (Velocity > 0.0)
+                if (Message.Type == MidiMessageType::Note)
                 {
-                    State.Gate = 1.0;
-                    State.Velocity = Velocity;
+                    MidiNoteState& State = MidiLanes.at(AssignedLane);
+                    const double Velocity = Message.Param2;
+                    if (Velocity > 0.0)
+                    {
+                        State.Gate = 1.0;
+                        State.Velocity = Velocity;
+                    }
+                    else
+                    {
+                        State.Gate = 0.0;
+                        State.Velocity = 0.0;
+                        State.Pressure = 0.0;
+                    }
                 }
-                else
+                else if (Message.Type == MidiMessageType::PolyPress)
                 {
-                    State.Gate = 0.0;
-                    State.Velocity = 0.0;
-                    State.Pressure = 0.0;
+                    MidiNoteState& State = MidiLanes.at(AssignedLane);
+                    const double Pressure = Message.Param2;
+                    State.Pressure = Pressure;
                 }
-            }
-            else if (Message.Type == MidiMessageType::PolyPress)
-            {
-                MidiNoteState& State = MidiLanes.at(AssignedLane);
-                const double Pressure = Message.Param2;
-                State.Pressure = Pressure;
             }
 #if 0
             else if (Message.Type == MidiMessageType::ControlChange)

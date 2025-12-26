@@ -27,6 +27,7 @@ enum class MidiMessageType : uint8_t
     Note,
     PolyPress,
     ControlChange,
+    Reset,
 };
 
 
@@ -58,6 +59,11 @@ struct MidiHandler
      */
     void ControlChange14Bit(uint8_t Control, uint16_t Value, uint8_t Channel);
 
+    /* Drop all pending midi events and generate some a fake one to tell the running audio
+     * thread to reset all polyphony voices.
+     */
+    void Reset();
+
     void EnqueueMidiMessage(MidiMessage& Message);
 
     /* MIDI serial connections run at 31250 baud, which means there's a maximum throughput of
@@ -86,6 +92,7 @@ struct MidiDriver
 
 namespace Midi
 {
+    void Reset();
     void ProcessEvents(MidiHandler* Handler);
     void Init();
     void Shutdown();

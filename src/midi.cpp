@@ -22,11 +22,13 @@
 #endif
 
 #include <utility>
+#include <atomic>
 #include <memory>
 #include <print>
 
 
 static std::unique_ptr<MidiDriver> Driver;
+static std::atomic_bool SendMidiReset = false;
 
 
 void MidiHandler::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
@@ -81,6 +83,17 @@ void MidiHandler::ControlChange14Bit(uint8_t Control, uint16_t Value, uint8_t Ch
 }
 
 
+void MidiHandler::Reset()
+{
+    TRACEABLE_SCOPE;
+
+    TRACEABLE_LOCK_GUARD(PendingMidiCrit);
+
+    PendingMidiMessages.clear();
+    PendingMidiMessages.emplace_back(MidiMessageType::Reset, 0, 0.0, 0.0);
+}
+
+
 void MidiHandler::EnqueueMidiMessage(MidiMessage& Message)
 {
     TRACEABLE_SCOPE;
@@ -110,11 +123,21 @@ bool MidiHandler::PopMidiMessage(MidiMessage& Message)
 }
 
 
+void Midi::Reset()
+{
+    SendMidiReset = true;
+}
+
+
 void Midi::ProcessEvents(MidiHandler* Handler)
 {
     if (Driver)
     {
         Driver->ProcessEvents(Handler);
+        if (SendMidiReset.exchange(false))
+        {
+            Handler->Reset();
+        }
     }
 }
 
