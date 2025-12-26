@@ -7,7 +7,7 @@
 		<tile id="4" symbol="const" x="0" y="4" value="0.0625"/>
 		<tile id="5" symbol="const" x="1" y="4" value="0.5"/>
 		<tile id="6" symbol="const" x="1" y="3" value="0.25"/>
-		<tile id="7" symbol="const" x="4" y="2" value="1.5"/>
+		<tile id="7" symbol="const" x="4" y="0" value="1.5"/>
 		<tile id="8" symbol="out" x="5" y="1"/>
 		<tile id="9" symbol="tptsvf_lowpass" x="2" y="1"/>
 		<tile id="10" symbol="saw" x="-2" y="1"/>
@@ -35,35 +35,44 @@
 		<tile id="32" symbol="const" x="-1" y="-3" value="1.0"/>
 		<tile id="33" symbol="mul" x="-2" y="-2"/>
 		<tile id="34" symbol="const" x="0" y="-3" value="0.0625"/>
-		<tile id="36" symbol="const" x="0" y="-2" value="15.0"/>
-		<tile id="39" symbol="tri" x="-1" y="-2"/>
+		<tile id="35" symbol="const" x="0" y="-2" value="15.0"/>
+		<tile id="36" symbol="tri" x="-1" y="-2"/>
+		<tile id="37" symbol="rcp" x="3" y="2"/>
+		<tile id="38" symbol="const" x="5" y="2" value="1.0"/>
+		<tile id="39" symbol="mix" x="4" y="2"/>
+		<tile id="40" symbol="tweak" x="4" y="3" value="0.25"/>
+		<tile id="41" symbol="lane_count" x="3" y="3"/>
 		<wire from="19:0" to="20:0"/>
+		<wire from="37:0" to="39:0"/>
 		<wire from="4:0" to="1:2"/>
 		<wire from="30:0" to="28:2"/>
-		<wire from="39:0" to="33:0"/>
 		<wire from="2:0" to="9:0"/>
 		<wire from="12:0" to="18:0"/>
 		<wire from="17:0" to="2:0"/>
 		<wire from="14:0" to="13:0"/>
-		<wire from="36:0" to="39:0"/>
 		<wire from="15:0" to="14:0"/>
 		<wire from="24:0" to="23:0"/>
 		<wire from="13:0" to="9:1"/>
 		<wire from="12:0" to="25:0"/>
 		<wire from="16:0" to="8:0"/>
+		<wire from="36:0" to="33:0"/>
 		<wire from="33:0" to="26:0"/>
 		<wire from="3:0" to="1:1"/>
 		<wire from="34:0" to="33:0"/>
 		<wire from="6:0" to="1:4"/>
+		<wire from="39:0" to="16:0"/>
 		<wire from="29:0" to="28:1"/>
 		<wire from="32:0" to="28:4"/>
+		<wire from="40:0" to="39:2"/>
 		<wire from="26:0" to="12:0"/>
 		<wire from="18:0" to="17:0"/>
 		<wire from="5:0" to="1:3"/>
 		<wire from="31:0" to="28:3"/>
 		<wire from="23:0" to="19:0"/>
+		<wire from="41:0" to="37:0"/>
 		<wire from="10:0" to="17:1"/>
 		<wire from="28:0" to="33:0"/>
+		<wire from="35:0" to="36:0"/>
 		<wire from="9:0" to="16:0"/>
 		<wire from="26:0" to="14:0"/>
 		<wire from="22:0" to="26:0"/>
@@ -71,6 +80,7 @@
 		<wire from="27:0" to="28:0"/>
 		<wire from="21:0" to="1:0"/>
 		<wire from="12:0" to="10:0"/>
+		<wire from="38:0" to="39:1"/>
 		<wire from="11:0" to="9:2"/>
 		<wire from="20:0" to="17:2"/>
 		<wire from="12:0" to="23:0"/>
