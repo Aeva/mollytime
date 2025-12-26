@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <mollytime version="2025.07.13">
 	<patch>
-		<tile id="1" symbol="out" x="4" y="-1"/>
+		<tile id="1" symbol="out" x="3" y="-4"/>
 		<tile id="2" symbol="note" x="-4" y="-1"/>
 		<tile id="3" symbol="gate" x="1" y="3"/>
 		<tile id="4" symbol="midi_hz" x="-3" y="-2"/>
@@ -19,82 +19,98 @@
 		<tile id="16" symbol="adsr" x="1" y="2"/>
 		<tile id="17" symbol="mul" x="0" y="-1"/>
 		<tile id="18" symbol="add_lanes" x="2" y="-1"/>
-		<tile id="19" symbol="lane_count" x="1" y="-3"/>
-		<tile id="20" symbol="mix" x="3" y="-2"/>
-		<tile id="21" symbol="rcp" x="2" y="-3"/>
-		<tile id="22" symbol="mul" x="3" y="-1"/>
-		<tile id="23" symbol="tweak" x="3" y="-3" value="0.1299999999999999"/>
-		<tile id="24" symbol="const" x="2" y="-2" value="1.0"/>
-		<tile id="25" symbol="const" x="-5" y="-4" value="24.0"/>
+		<tile id="19" symbol="lane_count" x="0" y="-4"/>
+		<tile id="20" symbol="mix" x="2" y="-3"/>
+		<tile id="21" symbol="rcp" x="1" y="-4"/>
+		<tile id="22" symbol="mul" x="2" y="-2"/>
+		<tile id="23" symbol="tweak" x="1" y="-3" value="0.16999999999999998"/>
+		<tile id="24" symbol="const" x="2" y="-4" value="1.0"/>
+		<tile id="25" symbol="const" x="-6" y="-4" value="48.0"/>
 		<tile id="26" symbol="add" x="-4" y="-4"/>
 		<tile id="27" symbol="midi_hz" x="-2" y="-4"/>
 		<tile id="28" symbol="tptsvf_lowpass" x="1" y="-1"/>
-		<tile id="29" symbol="mix" x="2" y="0"/>
+		<tile id="29" symbol="mix" x="1" y="0"/>
 		<tile id="30" symbol="clamp" x="-2" y="2"/>
-		<tile id="31" symbol="const" x="-2" y="0" value="0.0"/>
+		<tile id="31" symbol="const" x="-2" y="1" value="0.0"/>
 		<tile id="32" symbol="phase" x="-2" y="-1"/>
 		<tile id="33" symbol="pwm" x="-1" y="0"/>
 		<tile id="34" symbol="sqr_train" x="-1" y="-1"/>
-		<tile id="35" symbol="tweak" x="1" y="0" value="0.06999999999999992"/>
-		<tile id="36" symbol="tweak" x="3" y="0" value="0.07999999999999992"/>
-		<tile id="37" symbol="tweak" x="-2" y="3" value="0.03"/>
-		<tile id="38" symbol="tweak" x="0" y="3" value="0.019999999999999997"/>
-		<tile id="39" symbol="tweak" x="-2" y="4" value="0.05"/>
-		<tile id="40" symbol="tweak" x="0" y="4" value="0.22000000000000006"/>
-		<tile id="41" symbol="tweak" x="2" y="4" value="0.6600000000000004"/>
+		<tile id="35" symbol="tweak" x="0" y="0" value="0.18999999999999995"/>
+		<tile id="36" symbol="tweak" x="2" y="0" value="0.30000000000000004"/>
+		<tile id="37" symbol="tweak" x="-2" y="3" value="0.01"/>
+		<tile id="38" symbol="tweak" x="0" y="3" value="0.09"/>
+		<tile id="39" symbol="tweak" x="-2" y="4" value="0.04"/>
+		<tile id="40" symbol="tweak" x="0" y="4" value="0.13999999999999999"/>
+		<tile id="41" symbol="tweak" x="2" y="4" value="0.42000000000000015"/>
 		<tile id="42" symbol="tweak" x="4" y="4" value="0.7700000000000005"/>
-		<tile id="43" symbol="tweak" x="2" y="3" value="0.17999999999999994"/>
-		<tile id="44" symbol="tweak" x="4" y="3" value="0.03"/>
-		<tile id="45" symbol="mix" x="0" y="1"/>
-		<tile id="46" symbol="tweak" x="-1" y="1" value="0.3600000000000001"/>
-		<tile id="47" symbol="tweak" x="1" y="1" value="1.0"/>
+		<tile id="43" symbol="tweak" x="2" y="3" value="0.05999999999999992"/>
+		<tile id="44" symbol="tweak" x="4" y="3" value="0.3200000000000001"/>
+		<tile id="67" symbol="tptsvf_highpass" x="3" y="-2"/>
+		<tile id="69" symbol="mix" x="3" y="0"/>
+		<tile id="70" symbol="tweak" x="3" y="1" value="0.11999999999999995"/>
+		<tile id="71" symbol="midi_hz" x="3" y="-1"/>
+		<tile id="72" symbol="const" x="4" y="0" value="21.0"/>
+		<tile id="73" symbol="const" x="4" y="1" value="127.0"/>
+		<tile id="74" symbol="tweak" x="4" y="-2" value="0.5600000000000003"/>
+		<tile id="75" symbol="mul" x="-5" y="-4"/>
+		<tile id="76" symbol="tweak" x="-5" y="-3" value="0.3399999999999994"/>
+		<tile id="78" symbol="mix" x="-6" y="-3"/>
+		<tile id="79" symbol="tweak" x="-7" y="-3" value="0.99"/>
 		<wire from="23:0" to="20:2"/>
 		<wire from="3:0" to="16:0"/>
 		<wire from="29:0" to="28:2"/>
+		<wire from="30:0" to="78:2"/>
+		<wire from="75:0" to="26:0"/>
 		<wire from="5:0" to="17:0"/>
+		<wire from="76:0" to="78:1"/>
 		<wire from="8:0" to="11:0"/>
+		<wire from="74:0" to="67:2"/>
 		<wire from="19:0" to="21:0"/>
 		<wire from="30:0" to="29:2"/>
 		<wire from="30:0" to="33:1"/>
 		<wire from="39:0" to="15:0"/>
-		<wire from="45:0" to="17:0"/>
+		<wire from="78:0" to="75:0"/>
 		<wire from="31:0" to="30:2"/>
 		<wire from="36:0" to="29:1"/>
-		<wire from="47:0" to="45:1"/>
+		<wire from="79:0" to="78:0"/>
 		<wire from="28:0" to="18:0"/>
 		<wire from="2:0" to="4:0"/>
 		<wire from="17:0" to="28:0"/>
+		<wire from="72:0" to="69:0"/>
 		<wire from="20:0" to="22:0"/>
 		<wire from="18:0" to="22:0"/>
 		<wire from="4:0" to="5:0"/>
 		<wire from="14:0" to="16:4"/>
 		<wire from="24:0" to="20:1"/>
+		<wire from="22:0" to="67:0"/>
 		<wire from="44:0" to="13:1"/>
 		<wire from="12:0" to="16:1"/>
 		<wire from="32:0" to="33:0"/>
 		<wire from="30:0" to="12:2"/>
+		<wire from="67:0" to="1:0"/>
 		<wire from="27:0" to="28:1"/>
+		<wire from="25:0" to="75:0"/>
 		<wire from="33:0" to="34:0"/>
 		<wire from="38:0" to="12:1"/>
 		<wire from="35:0" to="29:0"/>
 		<wire from="42:0" to="14:1"/>
+		<wire from="69:0" to="71:0"/>
 		<wire from="43:0" to="13:0"/>
 		<wire from="4:0" to="32:0"/>
 		<wire from="7:0" to="8:0"/>
 		<wire from="16:0" to="17:0"/>
 		<wire from="30:0" to="13:2"/>
-		<wire from="25:0" to="26:0"/>
+		<wire from="71:0" to="67:1"/>
 		<wire from="13:0" to="16:3"/>
-		<wire from="46:0" to="45:0"/>
 		<wire from="37:0" to="12:0"/>
-		<wire from="30:0" to="45:2"/>
 		<wire from="34:0" to="17:0"/>
+		<wire from="70:0" to="69:2"/>
+		<wire from="73:0" to="69:1"/>
 		<wire from="9:0" to="10:0"/>
 		<wire from="2:0" to="26:0"/>
 		<wire from="7:0" to="9:0"/>
-		<wire from="22:0" to="1:0"/>
-		<wire from="26:0" to="27:0"/>
 		<wire from="30:0" to="14:2"/>
+		<wire from="26:0" to="27:0"/>
 		<wire from="15:0" to="16:2"/>
 		<wire from="11:0" to="30:0"/>
 		<wire from="21:0" to="20:0"/>
