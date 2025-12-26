@@ -392,6 +392,7 @@ struct MidiChannelState
 };
 #endif
 
+
 struct MidiNoteState
 {
     double Gate = 0.0;
@@ -399,8 +400,7 @@ struct MidiNoteState
     double Velocity = 0.0;
     double Pressure = 0.0;
     double Channel = -1.0;
-
-    std::vector<uint32_t> Retriggerables;
+    int64_t Age = 0;
 };
 
 
@@ -423,7 +423,8 @@ struct Scratch final : public MidiHandler
     ProbeRunningStateSharedPtr ScopeProbe;
 
     std::vector<MidiNoteState> MidiLanes;
-    int32_t NextMidiLane = -1;
+    std::vector<std::vector<uint32_t>> Retriggerables;
+    int32_t MostRecentLane = -1;
 
 #if 0
     std::array<MidiChannelState, 16> MidiChannels;

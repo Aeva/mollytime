@@ -2489,7 +2489,8 @@ ScratchUniquePtr Patch::Compile()
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
     Program->Polyphony = MidiPolyphony;
-    Program->MidiLanes.resize(MidiPolyphony, {});
+    Program->MidiLanes.resize(MidiPolyphony);
+    Program->Retriggerables.resize(MidiPolyphony);
 
     auto VisitTile = [&](TileHandle Tile) -> TilePartial&
     {
@@ -3046,7 +3047,7 @@ ScratchUniquePtr Patch::Compile()
                     assert(Program->Program[ThunkIndex] == Thunk);
                     // TODO: figure out some means of determining if the trigger is directly or indirectly
                     // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
-                    Program->MidiLanes[Lane].Retriggerables.push_back(ThunkIndex);
+                    Program->Retriggerables[Lane].push_back(ThunkIndex);
                 }
             }
 
@@ -3196,22 +3197,13 @@ void Scratch::Migrate(Scratch& Old)
     if (Polyphony == Old.Polyphony)
     {
         assert(Old.MidiLanes.size() == Old.Polyphony);
-        for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
-        {
-            const MidiNoteState& OldLane = Old.MidiLanes[Lane];
-            MidiNoteState& NewLane = MidiLanes[Lane];
-            NewLane.Gate = OldLane.Gate;
-            NewLane.Note = OldLane.Note;
-            NewLane.Velocity = OldLane.Velocity;
-            NewLane.Pressure = OldLane.Pressure;
-            NewLane.Channel = OldLane.Channel;
-        }
+        MidiLanes = Old.MidiLanes;
     }
     assert(MidiLanes.size() == Polyphony);
 
-    for (MidiNoteState& Lane : MidiLanes)
+    for (std::vector<uint32_t>& ThunkIndices : Retriggerables)
     {
-        for (uint32_t ThunkIndex : Lane.Retriggerables)
+        for (uint32_t ThunkIndex : ThunkIndices)
         {
             InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
             assert(Thunk != nullptr);
@@ -3338,54 +3330,82 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                 bool LaneReset = false;
                 const double Note = Message.Param1;
                 const int Channel = int(Message.Channel);
-                if (NextMidiLane == -1)
+                if (MostRecentLane == -1)
                 {
-                    NextMidiLane = 0;
                     AssignedLane = 0;
                     LaneReset = true;
                 }
                 else
                 {
+                    // If we have a lane that matches the note and mask, use that.
                     for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
                     {
                         const double LaneNote = MidiLanes.at(Lane).Note;
                         const int LaneChannel = int(MidiLanes.at(Lane).Channel);
                         if (Note == LaneNote && Channel == LaneChannel)
                         {
+                            LaneReset = MidiLanes.at(Lane).Velocity == 0.0;
                             AssignedLane = Lane;
                             break;
                         }
                     }
                     if (AssignedLane == -1)
                     {
-                        for (uint32_t LaneOffset = 0; LaneOffset < Polyphony; ++LaneOffset)
+                        // Otherwise select the oldest lane, prioritizing inactive lanes over active lanes.
+                        int32_t OldestLane = -1;
+                        int64_t OldestAge = -1;
+                        int32_t OldestInactiveLane = -1;
+                        int64_t OldestInactiveAge = -1;
+                        for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
                         {
-                            const int Lane = (NextMidiLane + Polyphony - LaneOffset) % Polyphony;
-                            if (MidiLanes.at(Lane).Velocity == 0.0)
+                            double Velocity = MidiLanes.at(Lane).Velocity;
+                            int64_t Age = MidiLanes.at(Lane).Age;
+                            if (Velocity == 0.0 && Age > OldestInactiveAge)
                             {
-                                LaneReset = true;
-                                AssignedLane = Lane;
-                                break;
+                                OldestInactiveLane = Lane;
+                                OldestInactiveAge = Age;
                             }
+                            if (Age > OldestAge)
+                            {
+                                OldestLane = Lane;
+                                OldestAge = Age;
+                            }
+                        }
+                        if (OldestInactiveLane > 0)
+                        {
+                            LaneReset = true;
+                            AssignedLane = OldestInactiveLane;
+                        }
+                        else if (OldestLane > 0)
+                        {
+                            LaneReset = true;
+                            AssignedLane = OldestLane;
                         }
                     }
                     if (AssignedLane == -1)
                     {
+                        // In the event that we somehow selected nothing, just pick "the next one".
                         LaneReset = true;
-                        AssignedLane = NextMidiLane;
-                        NextMidiLane = (NextMidiLane + 1) % Polyphony;
+                        AssignedLane = (MostRecentLane + 1) % Polyphony;
                     }
                 }
                 if (LaneReset)
                 {
+                    MostRecentLane = AssignedLane;
+                    for (MidiNoteState& State : MidiLanes)
+                    {
+                        ++State.Age;
+                    }
+
                     MidiNoteState& State = MidiLanes.at(AssignedLane);
                     State.Note = Note;
                     State.Gate = 0.0;
                     State.Velocity = 0.0;
                     State.Pressure = 0.0;
                     State.Channel = double(Channel);
+                    State.Age = 0;
 
-                    for (uint32_t ThunkIndex : State.Retriggerables)
+                    for (uint32_t ThunkIndex : Retriggerables[AssignedLane])
                     {
                         InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
                         assert(Thunk != nullptr);
