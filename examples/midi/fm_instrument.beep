@@ -26,6 +26,7 @@
 		<tile id="23" symbol="loud_fudge" x="0" y="3"/>
 		<tile id="24" symbol="midi_hz" x="1" y="3"/>
 		<tile id="25" symbol="note" x="2" y="3"/>
+		<tile id="26" symbol="tweak" x="-1" y="3" value="0.25000000000000006"/>
 		<wire from="22:0" to="21:0"/>
 		<wire from="2:0" to="15:0"/>
 		<wire from="15:0" to="1:0"/>
@@ -50,6 +51,7 @@
 		<wire from="4:0" to="7:0"/>
 		<wire from="11:0" to="10:0"/>
 		<wire from="7:0" to="2:0"/>
+		<wire from="26:0" to="15:0"/>
 		<wire from="23:0" to="15:0"/>
 		<wire from="12:0" to="11:0"/>
 	</patch>
