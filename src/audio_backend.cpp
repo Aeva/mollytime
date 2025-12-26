@@ -48,10 +48,13 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
             {
                 BufferState->PendingProgram->Migrate(*Program);
             }
+            else
+            {
+                Midi::Reset();
+            }
             Program = std::move(BufferState->PendingProgram);
             BufferState->PendingProgram = nullptr;
             ResetFramePressure();
-            Midi::Reset();
         }
 
         // Hook for gathering the audio buffer read and write pointers:
