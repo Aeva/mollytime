@@ -206,6 +206,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.value("CTRL", OpCode::CTRL)
 		.value("KIKI", OpCode::KIKI)
 		.value("LANE_COUNT", OpCode::LANE_COUNT)
+		.value("LEAD_LANE", OpCode::LEAD_LANE)
 		.value("ADD_LANES", OpCode::ADD_LANES)
 		.value("MIDI_HZ", OpCode::MIDI_HZ)
 		.value("LOUD_FUDGE", OpCode::LOUD_FUDGE)

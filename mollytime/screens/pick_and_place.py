@@ -72,7 +72,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             ("XD", [
                 [OpCode.GO, OpCode.QNTZ, OpCode.ISQN, None, OpCode.LANE_COUNT, None],
-                [OpCode.RNG, None, OpCode.RSQN, None, OpCode.ADD_LANES, None],
+                [OpCode.RNG, None, OpCode.RSQN, None, OpCode.ADD_LANES, OpCode.LEAD_LANE],
             ]),
             (":3", [
                 [OpCode.INV, None, OpCode.FLD, OpCode.GRAD, OpCode.SPOW, OpCode.ABS],

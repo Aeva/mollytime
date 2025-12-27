@@ -1646,6 +1646,29 @@ struct KikiThunk : public InstructionThunk
 };
 
 
+struct LeadLaneThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::LEAD_LANE, "lead\nlane", {"lane\nvalue"}, {"lead\nlane\nvalue"} };
+    Scratch* Program;
+    uint32_t Lane; // not used, required by SetMidi
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
+
+        uint32_t ReadLane = uint32_t(Program->MostRecentLane);
+        uint32_t LaneCount = Program->MidiLanes.size();
+        if (ReadLane < LaneCount)
+        {
+            double Value = Registers.CombineStridedInput(0, ReadLane, LaneCount);
+            Registers.OutputRef(0) = Value;
+        }
+    }
+
+    virtual ~LeadLaneThunk() {};
+};
+
+
 struct AddLanesThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD_LANES, "add\nlanes", {"+"}, {"="} };
@@ -1981,6 +2004,7 @@ struct SymbolInfo
         SetMidi<KikiThunk>();
 
         Set(OpCode::LANE_COUNT, "lane\ncount", {}, {"#"});
+        SetMidi<LeadLaneThunk>();
         SetBasic<AddLanesThunk>();
 
         SetTape<TapeLoopThunk>();
@@ -2089,9 +2113,15 @@ int GetClosureCount(OpCode Symbol)
 }
 
 
-bool IsOutputSymbol(const OpCode Symbol)
+static bool IsOutputSymbol(const OpCode Symbol)
 {
     return (Symbol == OpCode::OUT || Symbol == OpCode::AUX || Symbol == OpCode::SCOPE);
+};
+
+
+static bool IsLaneJoinSymbol(const OpCode Symbol)
+{
+    return (Symbol == OpCode::LEAD_LANE || Symbol == OpCode::ADD_LANES);
 };
 
 
@@ -2623,7 +2653,7 @@ ScratchUniquePtr Patch::Compile()
             {
                 Partial.Polyphony = MidiPolyphony;
             }
-            else if (Symbol == OpCode::ADD_LANES)
+            else if (IsLaneJoinSymbol(Symbol))
             {
                 Partial.Polyphony = 1;
             }
@@ -2765,7 +2795,7 @@ ScratchUniquePtr Patch::Compile()
         for (TilePartial& Partial : FlatGraph)
         {
             const OpCode Symbol = GetTileSymbol(Partial.Tile);
-            if (Symbol == OpCode::ADD_LANES)
+            if (IsLaneJoinSymbol(Symbol))
             {
                 // No virtual ports needed.
             }
@@ -2919,18 +2949,51 @@ ScratchUniquePtr Patch::Compile()
             std::vector<uint32_t>& Widths = InputWidths.emplace_back();
             Widths.reserve(ConnectedOutputs.size());
 
-            if (Symbol == OpCode::ADD_LANES)
+            if (IsLaneJoinSymbol(Symbol))
             {
-                for (PortHandle ConnectedOutput : ConnectedOutputs)
+                if (Symbol == OpCode::LEAD_LANE)
                 {
-                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
-                    TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
-                    std::ptrdiff_t BaseAddress = RegisterMap.at(ConnectedOutput);
-                    uint32_t Width = ConnectedPartial->Polyphony;
-                    for (uint32_t Offset = 0; Offset < Width; ++Offset)
+                    for (PortHandle ConnectedOutput : ConnectedOutputs)
                     {
-                        InputRegisters.push_back(BaseAddress + Offset);
-                        Widths.push_back(1);
+                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
+                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        std::ptrdiff_t BaseAddress = RegisterMap.at(ConnectedOutput);
+                        // LeadLaneThunk will read the inputs with a stride.
+                        uint32_t Width = ConnectedPartial->Polyphony;
+                        if (Width == 1)
+                        {
+                            // Monophonic inputs need to be copied to fill the full lande width.
+                            for (uint32_t Offset = 0; Offset < MidiPolyphony; ++Offset)
+                            {
+                                InputRegisters.push_back(BaseAddress);
+                                Widths.push_back(1);
+                            }
+                        }
+                        else
+                        {
+                            // Polyphonic inputs have each register connected as different input.
+                            assert(Width == MidiPolyphony);
+                            for (uint32_t Offset = 0; Offset < Width; ++Offset)
+                            {
+                                InputRegisters.push_back(BaseAddress + Offset);
+                                Widths.push_back(1);
+                            }
+                        }
+                    }
+                }
+                else if (Symbol == OpCode::ADD_LANES)
+                {
+                    for (PortHandle ConnectedOutput : ConnectedOutputs)
+                    {
+                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
+                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        std::ptrdiff_t BaseAddress = RegisterMap.at(ConnectedOutput);
+                        uint32_t Width = ConnectedPartial->Polyphony;
+                        for (uint32_t Offset = 0; Offset < Width; ++Offset)
+                        {
+                            InputRegisters.push_back(BaseAddress + Offset);
+                            Widths.push_back(1);
+                        }
                     }
                 }
             }
@@ -3096,6 +3159,11 @@ ScratchUniquePtr Patch::Compile()
                     // TODO: figure out some means of determining if the trigger is directly or indirectly
                     // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
                     Program->Retriggerables[Lane].push_back(ThunkIndex);
+                }
+
+                if (Symbol == OpCode::LEAD_LANE)
+                {
+                    break;
                 }
             }
 

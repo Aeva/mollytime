@@ -101,6 +101,7 @@ enum class OpCode : uint32_t
     CTRL,
     KIKI,
     LANE_COUNT,
+    LEAD_LANE,
     ADD_LANES,
     MIDI_HZ,
     LOUD_FUDGE,
@@ -312,6 +313,18 @@ struct InstructionRegisters
         return Result;
     }
 
+    inline double CombineStridedInput(uint32_t InputIndex, uint32_t Offset, uint32_t Stride, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    {
+        std::vector<std::ptrdiff_t>& InputRegisters = Input[InputIndex];
+        double Result = InputRegisters.size() == 0 ? Default : RegisterValue(InputRegisters[Offset]);
+        for (int Index = Offset + Stride; Index < static_cast<int>(InputRegisters.size()); Index += Stride)
+        {
+            double NextValue = RegisterValue(InputRegisters[Index]);
+            Result = Combiner(Result, NextValue);
+        }
+        return Result;
+    }
+
     inline double& OutputRef(uint32_t OutputIndex)
     {
         return RegisterRef(Output[OutputIndex]);
@@ -340,9 +353,19 @@ private:
         return RegisterFile->at(Offset);
     }
 
+    inline double& RegisterRef(std::ptrdiff_t Offset, uint32_t Lane)
+    {
+        return RegisterFile->at(Offset + std::ptrdiff_t(Lane));
+    }
+
     inline double RegisterValue(std::ptrdiff_t Offset)
     {
         return RegisterRef(Offset);
+    }
+
+    inline double RegisterValue(std::ptrdiff_t Offset, uint32_t Lane)
+    {
+        return RegisterRef(Offset + std::ptrdiff_t(Lane));
     }
 
     std::vector<std::vector<std::ptrdiff_t>> Input;
