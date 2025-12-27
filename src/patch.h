@@ -442,6 +442,7 @@ struct Scratch final : public MidiHandler
     std::map<TileHandle, std::ptrdiff_t> Inputs;
     std::map<TileHandle, std::ptrdiff_t> AuxOutputs;
 
+    bool ProbeConnected = false;
     std::ptrdiff_t ProbeInput;
     ProbeRunningStateSharedPtr OutputProbe;
     ProbeRunningStateSharedPtr ScopeProbe;

@@ -2735,13 +2735,13 @@ ScratchUniquePtr Patch::Compile()
         SortAndStep(AuxTiles);
     }
 
-    bool ProbeConnected = false;
+    Program->ProbeConnected = false;
     if (ActiveProbeTile != TileHandle(-1))
     {
         auto Found = TileSymbols.find(ActiveProbeTile);
         if (Found != TileSymbols.end())
         {
-            ProbeConnected = true;
+            Program->ProbeConnected = true;
             const OpCode Symbol = Found->second;
             if (Symbol == OpCode::SCOPE)
             {
@@ -2749,13 +2749,13 @@ ScratchUniquePtr Patch::Compile()
             }
         }
     }
-    if (!ProbeConnected)
+    if (!Program->ProbeConnected)
     {
         // The scope tile does appear to be disconnected, so force the probe values to zero
         // since they most likely will not be updated when the patch runs.
         OutputProbe->Set(0.0);
         ScopeProbe->Set(0.0);
-        Program->ProbeInput = 0;
+        Program->ProbeInput = -1;
     }
 
     // From this point on, `FlatGraph` contains entries for everything that will contribute to the compiled patch program.
@@ -3060,7 +3060,7 @@ ScratchUniquePtr Patch::Compile()
             }
 
             // This tile is also the current active probe.
-            if (Partial.Tile == ActiveProbeTile)
+            if (Program->ProbeConnected && Partial.Tile == ActiveProbeTile)
             {
                 Program->ProbeInput = OutputRegister;
             }
@@ -3315,6 +3315,9 @@ void Scratch::Migrate(Scratch& Old)
         assert(Old.MidiLanes.size() == Old.Polyphony);
         MidiLanes = Old.MidiLanes;
     }
+    // TODO: probably should always do this regardless of matching identity.
+    // The midi scheduler's running state should probably be a persistent mixin.
+    ChannelPrograms = Old.ChannelPrograms;
     assert(MidiLanes.size() == Polyphony);
 
     for (std::vector<uint32_t>& ThunkIndices : Retriggerables)
@@ -3601,7 +3604,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             OutRight = RegisterFile.at(Outputs[1]);
         }
     }
-    if (ProbeInput)
+    if (ProbeConnected)
     {
         TRACEABLE_NAMED_SCOPE("UPDATE PROBES");
         ScopeProbe->Set(RegisterFile.at(ProbeInput));
