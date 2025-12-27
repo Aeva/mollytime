@@ -99,6 +99,7 @@ enum class OpCode : uint32_t
     VELO,
     PRES,
     CTRL,
+    KIKI,
     LANE_COUNT,
     ADD_LANES,
     MIDI_HZ,
@@ -424,6 +425,7 @@ struct Scratch final : public MidiHandler
 
     std::vector<MidiNoteState> MidiLanes;
     std::vector<std::vector<uint32_t>> Retriggerables;
+    std::array<uint8_t, 16> ChannelPrograms;
     int32_t MostRecentLane = -1;
 
 #if 0

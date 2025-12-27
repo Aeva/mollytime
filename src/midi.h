@@ -27,6 +27,7 @@ enum class MidiMessageType : uint8_t
     Note,
     PolyPress,
     ControlChange,
+    ProgramChange,
     Reset,
 };
 
@@ -58,6 +59,8 @@ struct MidiHandler
     /* Handles a 14-bit control change event.
      */
     void ControlChange14Bit(uint8_t Control, uint16_t Value, uint8_t Channel);
+
+    void ProgramChange(uint8_t Program, uint8_t Channel);
 
     /* Drop all pending midi events and generate some a fake one to tell the running audio
      * thread to reset all polyphony voices.

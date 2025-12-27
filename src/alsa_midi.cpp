@@ -104,14 +104,10 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
             {
                 Handler->ControlChange14Bit(Event->data.control.param, Event->data.control.value, Event->data.control.channel);
             }
-#if 0
             else if (Event->type == SND_SEQ_EVENT_PGMCHANGE)
             {
-                // NOTE: general midi uses channels to differentiate concurrent instrument events.  Program
-                // change events apparently can be sent per-channel and do not have to be interpreted globally.
-                std::print("Channel {} change program to {}\n", Event->data.control.channel, Event->data.control.value);
+                Handler->ProgramChange(Event->data.control.value, Event->data.control.channel);
             }
-#endif
         }
     }
 }

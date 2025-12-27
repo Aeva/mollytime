@@ -83,6 +83,18 @@ void MidiHandler::ControlChange14Bit(uint8_t Control, uint16_t Value, uint8_t Ch
 }
 
 
+void MidiHandler::ProgramChange(uint8_t Program, uint8_t Channel)
+{
+    TRACEABLE_SCOPE;
+
+    MidiMessage Event;
+    Event.Type = MidiMessageType::ProgramChange;
+    Event.Channel = Channel;
+    Event.Param1 = double(Program);
+    EnqueueMidiMessage(Event);
+}
+
+
 void MidiHandler::Reset()
 {
     TRACEABLE_SCOPE;

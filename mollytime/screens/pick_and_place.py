@@ -67,7 +67,7 @@ class pick_and_place_screen(editor_screen):
                 [440, -.1, -.25, -.5, -1, -2],
             ]),
             (":O", [
-                [OpCode.IN, None, OpCode.MIDI_HZ, OpCode.NOTE, OpCode.GATE, None],
+                [OpCode.IN, None, OpCode.MIDI_HZ, OpCode.NOTE, OpCode.GATE, OpCode.KIKI],
                 [OpCode.AUX, None, OpCode.LOUD_FUDGE, OpCode.VELO, OpCode.PRES, OpCode.CTRL],
             ]),
             ("XD", [

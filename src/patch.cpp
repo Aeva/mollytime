@@ -31,6 +31,7 @@
 #include "patch.h"
 #include "moon.h"
 #include "audio_backend.h"
+#include "kiki.inl"
 
 constexpr double Tau = std::numbers::pi * 2.0;
 
@@ -1599,6 +1600,52 @@ struct ControlChangeThunk : public InstructionThunk
 };
 
 
+struct KikiThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::KIKI, "kiki", {"channel"}, {"kiki"} };
+    Scratch* Program;
+    uint32_t Lane;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("KikiThunk");
+
+        double& Kiki = Registers.OutputRef(0);
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        double Channel = -1.0;
+        if (!Registers.InputConnected(0))
+        {
+            Channel = State.Channel;
+        }
+        else if (Registers.InputConnected(0))
+        {
+            for (double ChannelMask : Registers.InputVector(0))
+            {
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Channel = State.Channel;
+                    break;
+                }
+            }
+        }
+        if (Channel >= 0.0 && Channel < 16)
+        {
+            uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(Channel)];
+            Kiki = KikiTable[ProgramNumber];
+        }
+    }
+
+    virtual void Reset() override
+    {
+        // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
+        Registers.ZeroOut();
+        Registers.OutputRef(0) = KikiTable[0];
+    }
+
+    virtual ~KikiThunk() {};
+};
+
+
 struct AddLanesThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD_LANES, "add\nlanes", {"+"}, {"="} };
@@ -1931,6 +1978,7 @@ struct SymbolInfo
         SetMidi<VelocityThunk>();
         SetMidi<PressureThunk>();
         SetMidi<ControlChangeThunk>();
+        SetMidi<KikiThunk>();
 
         Set(OpCode::LANE_COUNT, "lane\ncount", {}, {"#"});
         SetBasic<AddLanesThunk>();
@@ -2571,7 +2619,7 @@ ScratchUniquePtr Patch::Compile()
             TilePartial& Partial = VisitTile(Tile);
 
             if (Symbol == OpCode::GATE || Symbol == OpCode::NOTE || Symbol == OpCode::VELO ||
-                Symbol == OpCode::PRES || Symbol == OpCode::CTRL)
+                Symbol == OpCode::PRES || Symbol == OpCode::CTRL || Symbol == OpCode::KIKI)
             {
                 Partial.Polyphony = MidiPolyphony;
             }
@@ -3332,6 +3380,19 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     State = MidiNoteState();
                 }
             }
+            else if (Message.Type == MidiMessageType::ProgramChange)
+            {
+                ChannelPrograms[Message.Channel] = uint8_t(Message.Param1);
+                for (MidiNoteState& State : MidiLanes)
+                {
+                    if (State.Channel == Message.Channel)
+                    {
+                        State.Gate = 0.0;
+                        State.Velocity = 0.0;
+                        State.Pressure = 0.0;
+                    }
+                }
+            }
             else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
             {
                 bool LaneReset = false;
@@ -3351,7 +3412,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         const int LaneChannel = int(MidiLanes.at(Lane).Channel);
                         if (Note == LaneNote && Channel == LaneChannel)
                         {
-                            LaneReset = MidiLanes.at(Lane).Velocity == 0.0;
+                            LaneReset = MidiLanes.at(Lane).Gate == 0.0;
                             AssignedLane = Lane;
                             break;
                         }
@@ -3365,9 +3426,9 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         int64_t OldestInactiveAge = -1;
                         for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
                         {
-                            double Velocity = MidiLanes.at(Lane).Velocity;
+                            double Gate = MidiLanes.at(Lane).Gate;
                             int64_t Age = MidiLanes.at(Lane).Age;
-                            if (Velocity == 0.0 && Age > OldestInactiveAge)
+                            if (Gate == 0.0 && Age > OldestInactiveAge)
                             {
                                 OldestInactiveLane = Lane;
                                 OldestInactiveAge = Age;
@@ -3431,8 +3492,8 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     }
                     else
                     {
+                        // Leave the velocity alone so the adsr can ring out instead.
                         State.Gate = 0.0;
-                        State.Velocity = 0.0;
                         State.Pressure = 0.0;
                     }
                 }
