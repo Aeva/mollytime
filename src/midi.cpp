@@ -116,8 +116,6 @@ void MidiHandler::PitchBend(double Value, uint8_t Channel)
     Event.Channel = Channel;
     Event.Param1 = Value;
     EnqueueMidiMessage(Event);
-
-    std::print("{}\n", Event.Param1);
 }
 
 
