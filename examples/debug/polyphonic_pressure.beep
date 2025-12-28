@@ -15,8 +15,10 @@
 		<tile id="12" symbol="rcp" x="1" y="2"/>
 		<tile id="13" symbol="out" x="2" y="-1"/>
 		<tile id="14" symbol="mul" x="1" y="0"/>
+		<tile id="15" symbol="gate" x="-2" y="-1"/>
 		<wire from="10:0" to="14:0"/>
 		<wire from="9:0" to="10:1"/>
+		<wire from="15:0" to="2:0"/>
 		<wire from="5:0" to="1:0"/>
 		<wire from="2:0" to="7:0"/>
 		<wire from="11:0" to="10:2"/>
