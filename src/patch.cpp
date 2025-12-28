@@ -3013,7 +3013,7 @@ ScratchUniquePtr Patch::Compile()
                         uint32_t Width = ConnectedPartial->Polyphony;
                         if (Width == 1)
                         {
-                            // Monophonic inputs need to be copied to fill the full lande width.
+                            // Monophonic inputs need to be copied to fill the full lane width.
                             for (uint32_t Offset = 0; Offset < MidiPolyphony; ++Offset)
                             {
                                 InputRegisters.push_back(BaseAddress);
