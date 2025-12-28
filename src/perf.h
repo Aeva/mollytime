@@ -57,3 +57,9 @@ inline void PerfTrampoline(const char* Name, auto& Function, auto& ReturnVal)
 }
 
 #endif
+
+#if 0
+#define THUNK_TRACEABLE_NAMED_SCOPE(NAME) TRACEABLE_NAMED_SCOPE(NAME)
+#else
+#define THUNK_TRACEABLE_NAMED_SCOPE(NAME)
+#endif

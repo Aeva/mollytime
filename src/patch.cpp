@@ -170,7 +170,7 @@ struct SinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SinThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SinThunk");
         double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
@@ -189,7 +189,7 @@ struct SqrThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SqrThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SqrThunk");
         double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
@@ -212,7 +212,7 @@ struct TriThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("TriThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("TriThunk");
         double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
@@ -242,7 +242,7 @@ struct SawThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SawThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SawThunk");
         double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
@@ -266,7 +266,7 @@ struct NoiThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("NoiThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("NoiThunk");
         double Hz = Registers.CombineInput(0, 440.0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.ClosureRef(0);
@@ -304,7 +304,7 @@ struct PhaseThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("PhaseThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("PhaseThunk");
         double Hz = Registers.CombineInput(0, 440.0);
         double& Phase = Registers.OutputRef(0);
 
@@ -325,7 +325,7 @@ struct SinTrainThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SinTrainThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SinTrainThunk");
         double InPhase = Registers.CombineInput(0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.OutputRef(1);
@@ -344,7 +344,7 @@ struct SqrTrainThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
         double InPhase = Registers.CombineInput(0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.OutputRef(1);
@@ -367,7 +367,7 @@ struct TriTrainThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("TriTrainThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("TriTrainThunk");
         double InPhase = Registers.CombineInput(0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.OutputRef(1);
@@ -397,7 +397,7 @@ struct SawTrainThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SawTrainThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SawTrainThunk");
         double InPhase = Registers.CombineInput(0);
         double& Amplitude = Registers.OutputRef(0);
         double& Phase = Registers.OutputRef(1);
@@ -421,7 +421,7 @@ struct PhaseWidthModulationThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
         double Phase = Registers.CombineInput(0);
         double Balance = Registers.CombineInput(1);
         double& OutPhase = Registers.OutputRef(0);
@@ -453,7 +453,7 @@ struct AddThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("AddThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("AddThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
     }
 
@@ -467,7 +467,7 @@ struct MulThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("MulThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("MulThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMul);
     }
 
@@ -481,7 +481,7 @@ struct RcpThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("RcpThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("RcpThunk");
         double Divisor = Registers.CombineInput(0, 0.0, CombinerMul);
         double& Output = Registers.OutputRef(0);
 
@@ -501,7 +501,7 @@ struct PowThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("PowThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("PowThunk");
         double Base = Registers.CombineInput(0);
         double Exponent = Registers.CombineInput(1, 2.0);
         double& Output = Registers.OutputRef(0);
@@ -523,7 +523,7 @@ struct SignPreservingPowThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
         double Base = Registers.CombineInput(0);
         double Exponent = Registers.CombineInput(1, 2.0);
         double& Output = Registers.OutputRef(0);
@@ -546,7 +546,7 @@ struct MinThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("MinThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("MinThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMin);
     }
 
@@ -560,7 +560,7 @@ struct MaxThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("MaxThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("MaxThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMax);
     }
 
@@ -574,7 +574,7 @@ struct ClampThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("ClampThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("ClampThunk");
         double Sample = Registers.CombineInput(0);
         double High = Registers.CombineInput(1, 1.0, CombinerMax);
         double Low = Registers.CombineInput(2, -1.0, CombinerMin);
@@ -592,7 +592,7 @@ struct FloorThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("FloorThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("FloorThunk");
         Registers.OutputRef(0) = std::floor(Registers.CombineInput(0));
     }
 
@@ -606,7 +606,7 @@ struct CeilThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("CeilThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("CeilThunk");
         Registers.OutputRef(0) = std::ceil(Registers.CombineInput(0));
     }
 
@@ -620,7 +620,7 @@ struct RoundThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("RoundThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("RoundThunk");
         Registers.OutputRef(0) = std::round(Registers.CombineInput(0));
     }
 
@@ -634,7 +634,7 @@ struct SignThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("SignThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("SignThunk");
         double Number = Registers.CombineInput(0);
         double& Sign = Registers.OutputRef(0);
         Sign = (Number < 0.0) ? -1.0 : 1.0;
@@ -650,7 +650,7 @@ struct AbsThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("AbsThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("AbsThunk");
         Registers.OutputRef(0) = std::abs(Registers.CombineInput(0));
     }
 
@@ -664,7 +664,7 @@ struct FoldThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("FoldThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("FoldThunk");
         double Sample = Registers.CombineInput(0);
         double& Output = Registers.OutputRef(0);
 
@@ -700,7 +700,7 @@ struct InvertThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("InvertThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("InvertThunk");
         double Value = Registers.CombineInput(0);
         double& Output = Registers.OutputRef(0);
         double Sign = Value < 0.0 ? -1.0 : 1.0;
@@ -717,7 +717,7 @@ struct ToUnipolarThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0) * 0.5 + 0.5;
     }
 
@@ -731,7 +731,7 @@ struct ToBipolarThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0) * 2.0 - 1.0;
     }
 
@@ -745,7 +745,7 @@ struct MixThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("MixThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("MixThunk");
         double Left = Registers.CombineInput(0);
         double Right = Registers.CombineInput(1);
         double Alpha = Registers.CombineInput(2, 0.5);
@@ -764,7 +764,7 @@ struct StereoBalanceThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
         double Sample = Registers.CombineInput(0);
         double Balance = Registers.CombineInput(1);
         double& Left = Registers.OutputRef(0);
@@ -786,7 +786,7 @@ struct PulseThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("PulseThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("PulseThunk");
 
         double Clock = Registers.CombineInput(0);
         double& Output = Registers.OutputRef(0);
@@ -821,7 +821,7 @@ struct FlipFlopThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
         double Clock = Registers.CombineInput(0);
         double& EvenOutput = Registers.OutputRef(0);
         double& OddOutput = Registers.OutputRef(1);
@@ -868,7 +868,7 @@ struct RandomThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("RandomThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("RandomThunk");
         double Clock = Registers.CombineInput(0);
         double& Output = Registers.OutputRef(0);
         double& Latch = Registers.ClosureRef(0);
@@ -897,7 +897,7 @@ struct GradualThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("GradualThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("GradualThunk");
         if (Registers.InputConnected(0))
         {
             double Value = Registers.CombineInput(0);
@@ -948,7 +948,7 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
 
         double Sample = Registers.CombineInput(0);
         double Cutoff = Registers.CombineInput(1, 1000.0);
@@ -1086,7 +1086,7 @@ struct AdsrThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("AdsrThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("AdsrThunk");
 
         double Trigger = Registers.CombineInput(0);
         const double Attack = std::max(Registers.CombineInput(1, 0.1), 0.0);
@@ -1220,7 +1220,7 @@ struct QuantizeThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("QuantizeThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("QuantizeThunk");
 
         double Note = Registers.CombineInput(0);
         const double Root = Registers.CombineInput(1, 60.0); // defaults to Middle C
@@ -1317,7 +1317,7 @@ struct InputSequenceThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
         double Clock = Registers.CombineInput(0);
         std::vector<double> Sequence = Registers.InputVector(1);
         double Restart = Registers.CombineInput(2);
@@ -1370,7 +1370,7 @@ struct RandomSequenceThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("RandomSequenceThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("RandomSequenceThunk");
         double Clock = Registers.CombineInput(0);
 
         double& OutValue = Registers.OutputRef(0);
@@ -1441,7 +1441,7 @@ struct GateThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("GateThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
 
         double& Gate = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
@@ -1474,7 +1474,7 @@ struct NoteThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("NoteThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("NoteThunk");
 
         double& Note = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
@@ -1514,7 +1514,7 @@ struct VelocityThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("VelocityThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
 
         double& Velocity = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
@@ -1547,7 +1547,7 @@ struct PressureThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("PressureThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("PressureThunk");
 
         double& Pressure = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
@@ -1580,7 +1580,7 @@ struct ControlChangeThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
 
         double Control = Registers.CombineInput(0);
         double& Value = Registers.OutputRef(0);
@@ -1619,7 +1619,7 @@ struct KikiThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("KikiThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("KikiThunk");
 
         double& Kiki = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
@@ -1665,7 +1665,7 @@ struct PitchBendThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("PitchBendThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
 
         double& PitchBend = Registers.OutputRef(0);
         MidiNoteState& State = Program->MidiLanes.at(Lane);
@@ -1703,7 +1703,7 @@ struct LeadLaneThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
 
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
         uint32_t LaneCount = Program->MidiLanes.size();
@@ -1724,7 +1724,7 @@ struct AddLanesThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("AddLanesThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("AddLanesThunk");
         Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
     }
 
@@ -1738,7 +1738,7 @@ struct MidiToHzThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
         double Note = Registers.CombineInput(0);
         double& Output = Registers.OutputRef(0);
         Output = MidiNoteToHz(Note);
@@ -1754,7 +1754,7 @@ struct LoudnessFudgeThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
         double Hz = Registers.CombineInput(0);
         double& Output = Registers.OutputRef(0);
         Output = PerceptualAmplitudeCorrectionByHz(Hz);
@@ -1771,7 +1771,7 @@ struct BoopThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("BoopThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("BoopThunk");
         Registers.OutputRef(0) = Input->Get();
     }
 
@@ -1786,7 +1786,7 @@ struct TweakThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("TweakThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("TweakThunk");
         Registers.OutputRef(0) = Input->Get();
     }
 
@@ -1869,7 +1869,7 @@ struct TapeLoopThunk : public InstructionThunk
 
     virtual void Crank(double SampleInterval) override
     {
-        TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
+        THUNK_TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
         double Sample = Registers.CombineInput(0);
         double Offset = Registers.CombineInput(1);
         double Seconds = Registers.CombineInput(2);
