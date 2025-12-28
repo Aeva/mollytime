@@ -1581,19 +1581,30 @@ struct ControlChangeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
-#if 0
-        int Control = int(Registers.CombineInput(0));
-        int Channel = int(Registers.CombineInput(1, double(Program->MostRecentChannel)));
-        double& Output = Registers.OutputRef(0);
-        if (Channel >= 0 && Channel <= 15)
+
+        double Control = Registers.CombineInput(0);
+        double& Value = Registers.OutputRef(0);
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        double Channel = -1.0;
+        if (!Registers.InputConnected(1))
         {
-            MidiChannelState& State = Program->MidiChannels[Channel];
-            if (int(State.CtrlParam->Get()) == Control)
+            Channel = State.Channel;
+        }
+        else if (Registers.InputConnected(1))
+        {
+            for (double ChannelMask : Registers.InputVector(1))
             {
-                Output = State.CtrlValue->Get();
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Channel = State.Channel;
+                    break;
+                }
             }
         }
-#endif
+        if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
+        {
+            Value = Program->ChannelControls[uint8_t(Channel)][uint8_t(Control)];
+        }
     }
 
     virtual ~ControlChangeThunk() {};
@@ -3359,6 +3370,7 @@ void Scratch::Migrate(Scratch& Old)
     // The midi scheduler's running state should probably be a persistent mixin.
     ChannelPrograms = Old.ChannelPrograms;
     ChannelPitchBend = Old.ChannelPitchBend;
+    ChannelControls = Old.ChannelControls;
     assert(MidiLanes.size() == Polyphony);
 
     for (std::vector<uint32_t>& ThunkIndices : Retriggerables)
@@ -3630,13 +3642,11 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     State.Pressure = Pressure;
                 }
             }
-#if 0
             else if (Message.Type == MidiMessageType::ControlChange)
             {
-                State.CtrlParam->Set(Message.Param1);
-                State.CtrlValue->Set(Message.Param2);
+                uint8_t Control = uint8_t(Message.Param1);
+                ChannelControls[Message.Channel][Control] = Message.Param2;
             }
-#endif
         }
     }
     {

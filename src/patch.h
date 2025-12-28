@@ -404,20 +404,6 @@ struct InstructionThunk
 using InstructionThunkSharedPtr = std::shared_ptr<InstructionThunk>;
 
 
-#if 0
-struct MidiChannelState
-{
-    double Gate = 0.0;
-    double Note = 50.0;
-    double Velocity = 0.0;
-    double Pressure = 0.0;
-
-    double CtrlParam = 0.0;
-    double CtrlValue = 0.0;
-};
-#endif
-
-
 struct MidiNoteState
 {
     double Gate = 0.0;
@@ -452,12 +438,8 @@ struct Scratch final : public MidiHandler
     std::vector<std::vector<uint32_t>> Retriggerables;
     std::array<uint8_t, 16> ChannelPrograms;
     std::array<double, 16> ChannelPitchBend;
+    std::array<std::array<double, 128>, 16> ChannelControls;
     int32_t MostRecentLane = -1;
-
-#if 0
-    std::array<MidiChannelState, 16> MidiChannels;
-    int MostRecentChannel = 0;
-#endif
 
     void Migrate(Scratch& Old);
 
@@ -535,11 +517,6 @@ private:
     uint32_t MidiPolyphony = 20;
 
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
-
-#if 0
-    // These should only ever be set or read by the audio thread:
-    std::array<MidiChannelState, 16> MidiChannels;
-#endif
 
     // This is a cache of known output tiles for the purpose of labeling
     // audio channels.  This is updated every time the program is compiled.
