@@ -108,6 +108,14 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
             {
                 Handler->ProgramChange(Event->data.control.value, Event->data.control.channel);
             }
+            else if (Event->type == SND_SEQ_EVENT_CHANPRESS)
+            {
+                Handler->ChannelPressure(Event->data.control.value, Event->data.control.channel);
+            }
+            else if (Event->type == SND_SEQ_EVENT_PITCHBEND)
+            {
+                Handler->ChannelPressure(Event->data.control.value, Event->data.control.channel);
+            }
         }
     }
 }
