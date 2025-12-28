@@ -75,7 +75,7 @@ public:
     WasapiStream(int SampleRate);
 
     virtual float GetTemporalPressure() override;
-    virtual void ProgramChange(ScratchSharedPtr& NewProgram) override;
+    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
 };
 
 #endif

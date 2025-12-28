@@ -189,11 +189,11 @@ float WasapiStream::GetTemporalPressure()
 }
 
 
-void WasapiStream::ProgramChange(ScratchSharedPtr& NewProgram)
+void WasapiStream::ProgramChange(ScratchUniquePtr&& NewProgram)
 {
     TRACEABLE_SCOPE;
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
-    BufferState.PendingProgram = NewProgram;
+    BufferState.PendingProgram = std::move(NewProgram);
 }
 
 #endif

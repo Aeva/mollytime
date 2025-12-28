@@ -32,7 +32,6 @@ public:
     MmeApiMidiDriver();
     virtual ~MmeApiMidiDriver() override;
 
-    virtual void Reset() override;
     virtual void ProcessEvents(MidiHandler* Handler) override;
     void NewMidiInputPacket(uint32_t Packet);
 };

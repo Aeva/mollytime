@@ -120,11 +120,6 @@ void MmeApiMidiDriver::NewMidiInputPacket(uint32_t Packet)
 }
 
 
-void MmeApiMidiDriver::Reset()
-{
-}
-
-
 void MmeApiMidiDriver::ProcessEvents(MidiHandler* Handler)
 {
 	TRACEABLE_LOCK_GUARD(PendingPacketsCrit);
