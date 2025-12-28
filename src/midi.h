@@ -15,9 +15,19 @@
 
 #pragma once
 
+#ifdef MIDI_ALSA
+// Polling for MIDI events happens on the audio thread.
+#define MIDI_NEEDS_LOCKS 0
+#else
+// MIDI events are recorded wherever the OS wants.
+#define MIDI_NEEDS_LOCKS 1
+#endif
+
 #include <cstdint>
 #include <deque>
+#if MIDI_NEEDS_LOCKS
 #include <mutex>
+#endif
 
 #include "perf.h"
 
@@ -87,7 +97,9 @@ struct MidiHandler
     bool PopMidiMessage(MidiMessage& Message);
 
 private:
+#if MIDI_NEEDS_LOCKS
     DECLARE_TRACEABLE_MUTEX(PendingMidiCrit);
+#endif
     std::deque<MidiMessage> PendingMidiMessages;
 };
 

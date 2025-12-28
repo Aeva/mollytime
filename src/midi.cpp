@@ -123,7 +123,9 @@ void MidiHandler::Reset()
 {
     TRACEABLE_SCOPE;
 
+#if MIDI_NEEDS_LOCKS
     TRACEABLE_LOCK_GUARD(PendingMidiCrit);
+#endif
 
     PendingMidiMessages.clear();
     PendingMidiMessages.emplace_back(MidiMessageType::Reset, 0, 0.0, 0.0);
@@ -134,7 +136,9 @@ void MidiHandler::EnqueueMidiMessage(MidiMessage& Message)
 {
     TRACEABLE_SCOPE;
 
+#if MIDI_NEEDS_LOCKS
     TRACEABLE_LOCK_GUARD(PendingMidiCrit);
+#endif
 
     PendingMidiMessages.push_back(Message);
 }
@@ -144,7 +148,9 @@ bool MidiHandler::PopMidiMessage(MidiMessage& Message)
 {
     TRACEABLE_SCOPE;
 
+#if MIDI_NEEDS_LOCKS
     TRACEABLE_LOCK_GUARD(PendingMidiCrit);
+#endif
 
     if (PendingMidiMessages.empty())
     {
