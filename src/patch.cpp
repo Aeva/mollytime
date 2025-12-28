@@ -3464,6 +3464,16 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     }
                 }
             }
+            else if (Message.Type == MidiMessageType::ChannelPressure)
+            {
+                for (MidiNoteState& State : MidiLanes)
+                {
+                    if (State.Channel == Message.Channel)
+                    {
+                        State.Pressure = Message.Param1;
+                    }
+                }
+            }
             else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
             {
                 bool LaneReset = false;

@@ -95,6 +95,18 @@ void MidiHandler::ProgramChange(uint8_t Program, uint8_t Channel)
 }
 
 
+void MidiHandler::ChannelPressure(uint8_t Pressure, uint8_t Channel)
+{
+    TRACEABLE_SCOPE;
+
+    MidiMessage Event;
+    Event.Type = MidiMessageType::ChannelPressure;
+    Event.Channel = Channel;
+    Event.Param1 = double(Pressure) / 127.0;
+    EnqueueMidiMessage(Event);
+}
+
+
 void MidiHandler::Reset()
 {
     TRACEABLE_SCOPE;

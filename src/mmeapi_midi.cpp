@@ -150,9 +150,15 @@ void MmeApiMidiDriver::ProcessEvents(MidiHandler* Handler)
 			// Control Change
 			Handler->ControlChange7Bit(Param1, Param2, Channel);
 		}
+		else if (Message == 0xC)
+		{
+			// Program Change
+			Handler->ProgramChange(Param1, Channel);
+		}
 		else if (Message == 0xD)
 		{
 			// Channel Pressure
+			Handler->ChannelPressure(Param1, Channel);
 		}
 	}
 	PendingPackets.clear();
