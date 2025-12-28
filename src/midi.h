@@ -66,7 +66,7 @@ struct MidiHandler
 
     void ChannelPressure(uint8_t Value, uint8_t Channel);
 
-    void PitchBend(int16_t Value, uint8_t Channel);
+    void PitchBend(double Value, uint8_t Channel);
 
     /* Drop all pending midi events and generate some a fake one to tell the running audio
      * thread to reset all polyphony voices.

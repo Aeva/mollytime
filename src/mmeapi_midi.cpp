@@ -164,7 +164,10 @@ void MmeApiMidiDriver::ProcessEvents(MidiHandler* Handler)
 		{
 			// Pitch Bend
 			int16_t Value = Param1 | (Param2 << 7);
-			Handler->PitchBend(Value, Channel);
+			constexpr int16_t Split = 0x2000;
+			int16_t Divisor = (Value < Split) ? Split : (Split - 1);
+			double Bend = double(Value - Split) / double(Divisor);
+			Handler->PitchBend(Bend, Channel);
 		}
 	}
 	PendingPackets.clear();

@@ -114,7 +114,13 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
             }
             else if (Event->type == SND_SEQ_EVENT_PITCHBEND)
             {
-                Handler->ChannelPressure(Event->data.control.value, Event->data.control.channel);
+                // Alsa is cute about this and centers the value on zero for you despite the wire protocol not doing this,
+                // which means we have to handle the conversion here instead of being able to perform it generically.
+                // https://alsa-project.org/alsa-doc/alsa-lib/group___seq_middle.html#ga8da40bfd56e00ebec775e5241d86a3e3
+
+                int16_t Value = Event->data.control.value;
+                double Divisor = (Value <  0) ? 8192.0 : 8191.0;
+                Handler->PitchBend(double(Value) / Divisor, Event->data.control.channel);
             }
         }
     }
