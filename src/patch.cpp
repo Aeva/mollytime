@@ -3504,6 +3504,21 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     State = MidiNoteState();
                 }
             }
+            else if (Message.Type == MidiMessageType::ControlChange)
+            {
+                uint8_t Control = uint8_t(Message.Param1);
+                ChannelControls[Message.Channel][Control] = Message.Param2;
+                if (Control == 123 && Message.Param2 == 0.0)
+                {
+                    // All notes off.  See: http://midi.teragonaudio.com/tech/midispec/ntnoff.htm
+                    for (MidiNoteState& State : MidiLanes)
+                    {
+                        State = MidiNoteState();
+                        State.Gate = 0.0;
+                        State.Pressure = 0.0;
+                    }
+                }
+            }
             else if (Message.Type == MidiMessageType::ProgramChange)
             {
                 ChannelPrograms[Message.Channel] = uint8_t(Message.Param1);
@@ -3641,11 +3656,6 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     const double Pressure = Message.Param2;
                     State.Pressure = Pressure;
                 }
-            }
-            else if (Message.Type == MidiMessageType::ControlChange)
-            {
-                uint8_t Control = uint8_t(Message.Param1);
-                ChannelControls[Message.Channel][Control] = Message.Param2;
             }
         }
     }
