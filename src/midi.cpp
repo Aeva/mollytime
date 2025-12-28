@@ -107,6 +107,21 @@ void MidiHandler::ChannelPressure(uint8_t Pressure, uint8_t Channel)
 }
 
 
+void MidiHandler::PitchBend(int16_t Value, uint8_t Channel)
+{
+    TRACEABLE_SCOPE;
+
+    constexpr int16_t Split = 0x2000;
+    int16_t Divisor = (Value < Split) ? Split : (Split - 1);
+
+    MidiMessage Event;
+    Event.Type = MidiMessageType::PitchBend;
+    Event.Channel = Channel;
+    Event.Param1 = double(Value - Split) / double(Divisor);
+    EnqueueMidiMessage(Event);
+}
+
+
 void MidiHandler::Reset()
 {
     TRACEABLE_SCOPE;

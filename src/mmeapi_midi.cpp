@@ -160,6 +160,12 @@ void MmeApiMidiDriver::ProcessEvents(MidiHandler* Handler)
 			// Channel Pressure
 			Handler->ChannelPressure(Param1, Channel);
 		}
+		else if (Message == 0xE)
+		{
+			// Pitch Bend
+			int16_t Value = Param1 | (Param2 << 7);
+			Handler->PitchBend(Value, Channel);
+		}
 	}
 	PendingPackets.clear();
 }

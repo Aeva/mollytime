@@ -29,6 +29,7 @@ enum class MidiMessageType : uint8_t
     ControlChange,
     ProgramChange,
     ChannelPressure,
+    PitchBend,
     Reset,
 };
 
@@ -64,6 +65,8 @@ struct MidiHandler
     void ProgramChange(uint8_t Program, uint8_t Channel);
 
     void ChannelPressure(uint8_t Value, uint8_t Channel);
+
+    void PitchBend(int16_t Value, uint8_t Channel);
 
     /* Drop all pending midi events and generate some a fake one to tell the running audio
      * thread to reset all polyphony voices.

@@ -100,6 +100,7 @@ enum class OpCode : uint32_t
     PRES,
     CTRL,
     KIKI,
+    BEND,
     LANE_COUNT,
     LEAD_LANE,
     ADD_LANES,
@@ -450,6 +451,7 @@ struct Scratch final : public MidiHandler
     std::vector<MidiNoteState> MidiLanes;
     std::vector<std::vector<uint32_t>> Retriggerables;
     std::array<uint8_t, 16> ChannelPrograms;
+    std::array<double, 16> ChannelPitchBend;
     int32_t MostRecentLane = -1;
 
 #if 0

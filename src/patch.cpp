@@ -1646,6 +1646,44 @@ struct KikiThunk : public InstructionThunk
 };
 
 
+struct PitchBendThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::BEND, "bend", {"channel"}, {"bend"} };
+    Scratch* Program;
+    uint32_t Lane;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        TRACEABLE_NAMED_SCOPE("PitchBendThunk");
+
+        double& PitchBend = Registers.OutputRef(0);
+        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        double Channel = -1.0;
+        if (!Registers.InputConnected(0))
+        {
+            Channel = State.Channel;
+        }
+        else if (Registers.InputConnected(0))
+        {
+            for (double ChannelMask : Registers.InputVector(0))
+            {
+                if (int(ChannelMask) == int(State.Channel))
+                {
+                    Channel = State.Channel;
+                    break;
+                }
+            }
+        }
+        if (Channel >= 0.0 && Channel < 16)
+        {
+            PitchBend = Program->ChannelPitchBend[uint8_t(Channel)];
+        }
+    }
+
+    virtual ~PitchBendThunk() {};
+};
+
+
 struct LeadLaneThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::LEAD_LANE, "lead\nlane", {"lane\nvalue"}, {"lead\nlane\nvalue"} };
@@ -2002,6 +2040,7 @@ struct SymbolInfo
         SetMidi<PressureThunk>();
         SetMidi<ControlChangeThunk>();
         SetMidi<KikiThunk>();
+        SetMidi<PitchBendThunk>();
 
         Set(OpCode::LANE_COUNT, "lane\ncount", {}, {"#"});
         SetMidi<LeadLaneThunk>();
@@ -2649,7 +2688,8 @@ ScratchUniquePtr Patch::Compile()
             TilePartial& Partial = VisitTile(Tile);
 
             if (Symbol == OpCode::GATE || Symbol == OpCode::NOTE || Symbol == OpCode::VELO ||
-                Symbol == OpCode::PRES || Symbol == OpCode::CTRL || Symbol == OpCode::KIKI)
+                Symbol == OpCode::PRES || Symbol == OpCode::CTRL || Symbol == OpCode::KIKI ||
+                Symbol == OpCode::BEND)
             {
                 Partial.Polyphony = MidiPolyphony;
             }
@@ -3318,6 +3358,7 @@ void Scratch::Migrate(Scratch& Old)
     // TODO: probably should always do this regardless of matching identity.
     // The midi scheduler's running state should probably be a persistent mixin.
     ChannelPrograms = Old.ChannelPrograms;
+    ChannelPitchBend = Old.ChannelPitchBend;
     assert(MidiLanes.size() == Polyphony);
 
     for (std::vector<uint32_t>& ThunkIndices : Retriggerables)
@@ -3473,6 +3514,10 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         State.Pressure = Message.Param1;
                     }
                 }
+            }
+            else if (Message.Type == MidiMessageType::PitchBend)
+            {
+                ChannelPitchBend[Message.Channel] = Message.Param1;
             }
             else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
             {
