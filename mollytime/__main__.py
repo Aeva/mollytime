@@ -51,6 +51,8 @@ def main():
             dump_icon = True
         elif arg == "--vertical-inches":
             vertical_inches = float(args.pop(0))
+        elif arg == "-p":
+            mollytime.set_default_polyphony(int(args.pop(0)))
         else:
             print(f"Ignoring unknown arg: {arg}")
 

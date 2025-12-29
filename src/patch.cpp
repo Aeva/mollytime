@@ -2175,11 +2175,19 @@ static bool IsLaneJoinSymbol(const OpCode Symbol)
 };
 
 
+static uint32_t DefaultPolyphony = 4;
+void SetDefaultPolyphony(int Polyphony)
+{
+    DefaultPolyphony = uint32_t(std::max(1, Polyphony));
+}
+
+
 Patch::Patch()
     : LastAssignedTileHandle(0)
 {
     static uint64_t NextPatchIdentity = 0;
     Identity = ++NextPatchIdentity;
+    MidiPolyphony = DefaultPolyphony;
     // This forces the playing patch to clear, which is useful for the editor, but
     // probably not something we want in a future stand-alone runtime.
     Recompile();

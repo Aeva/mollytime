@@ -222,6 +222,7 @@ PYBIND11_MODULE(mollytime, m) {
 	m.def("decode_port_tile", &PortHandleTilePart);
 	m.def("decode_port_index", &PortHandlePortIndexPart);
 	m.def("get_symbol_name", &GetDefaultName);
+	m.def("set_default_polyphony", &SetDefaultPolyphony);
 
 	py::class_<Patch>(m, "Patch")
 		.def(py::init<>())

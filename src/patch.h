@@ -124,6 +124,8 @@ uint32_t DecodeSampleHandle(double WireValue);
 
 std::string GetDefaultName(OpCode Symbol);
 
+void SetDefaultPolyphony(int Polyphony);
+
 
 struct RegisterAllocation
 {
@@ -508,7 +510,7 @@ struct Patch
 
 private:
     uint64_t Identity;
-    uint32_t MidiPolyphony = 20;
+    uint32_t MidiPolyphony;
 
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
