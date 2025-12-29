@@ -282,7 +282,7 @@ struct InstructionRegisters
         Input = InInputs;
         Output = InOutputs;
         Closure = InClosures;
-        RegisterFile = InRegisterFile;
+        RegisterFile = InRegisterFile->data();
     }
 
     inline std::vector<double> InputVector(uint32_t InputIndex)
@@ -340,23 +340,23 @@ struct InstructionRegisters
     {
         for (std::ptrdiff_t Offset : Output)
         {
-            RegisterFile->at(Offset) = 0.0;
+            RegisterFile[Offset] = 0.0;
         }
         for (std::ptrdiff_t Offset : Closure)
         {
-            RegisterFile->at(Offset) = 0.0;
+            RegisterFile[Offset] = 0.0;
         }
     }
 
 private:
     inline double& RegisterRef(std::ptrdiff_t Offset)
     {
-        return RegisterFile->at(Offset);
+        return RegisterFile[Offset];
     }
 
     inline double& RegisterRef(std::ptrdiff_t Offset, uint32_t Lane)
     {
-        return RegisterFile->at(Offset + std::ptrdiff_t(Lane));
+        return RegisterFile[Offset + std::ptrdiff_t(Lane)];
     }
 
     inline double RegisterValue(std::ptrdiff_t Offset)
@@ -372,7 +372,7 @@ private:
     std::vector<std::vector<std::ptrdiff_t>> Input;
     std::vector<std::ptrdiff_t> Output;
     std::vector<std::ptrdiff_t> Closure;
-    std::vector<double>* RegisterFile;
+    double* RegisterFile;
 
     // Temporary debug holepunch:
     friend struct Patch;

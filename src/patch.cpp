@@ -1444,7 +1444,7 @@ struct GateThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
 
         double& Gate = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         if (State.Channel == -1.0 || !Registers.InputConnected(0))
         {
             Gate = State.Gate;
@@ -1477,7 +1477,7 @@ struct NoteThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("NoteThunk");
 
         double& Note = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         if (State.Channel == -1.0 || !Registers.InputConnected(0))
         {
             Note = State.Note;
@@ -1517,7 +1517,7 @@ struct VelocityThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
 
         double& Velocity = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         if (State.Channel == -1.0 || !Registers.InputConnected(0))
         {
             Velocity = State.Velocity;
@@ -1550,7 +1550,7 @@ struct PressureThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("PressureThunk");
 
         double& Pressure = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         if (State.Channel == -1.0 || !Registers.InputConnected(0))
         {
             Pressure = State.Pressure;
@@ -1584,7 +1584,7 @@ struct ControlChangeThunk : public InstructionThunk
 
         double Control = Registers.CombineInput(0);
         double& Value = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         double Channel = -1.0;
         if (!Registers.InputConnected(1))
         {
@@ -1622,7 +1622,7 @@ struct KikiThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("KikiThunk");
 
         double& Kiki = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         double Channel = -1.0;
         if (!Registers.InputConnected(0))
         {
@@ -1668,7 +1668,7 @@ struct PitchBendThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
 
         double& PitchBend = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes.at(Lane);
+        MidiNoteState& State = Program->MidiLanes[Lane];
         double Channel = -1.0;
         if (!Registers.InputConnected(0))
         {
