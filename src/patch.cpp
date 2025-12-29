@@ -2441,6 +2441,20 @@ std::string Patch::GetTileOutputName(PortHandle Port)
 }
 
 
+int Patch::GetTilePolyphony(TileHandle Tile)
+{
+    auto Found = TilePolyphony.find(Tile);
+    if (Found != TilePolyphony.end())
+    {
+        return Found->second;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+
 void Patch::Freeze()
 {
     Frozen = true;
@@ -2822,6 +2836,7 @@ ScratchUniquePtr Patch::Compile()
     }
 
     // Solve tile polyphony via propagation.
+    TilePolyphony.clear();
     for (TilePartial& Partial : FlatGraph)
     {
         if (Partial.Polyphony < 1)
@@ -2838,6 +2853,7 @@ ScratchUniquePtr Patch::Compile()
             }
         }
         TileLanes.insert_or_assign(Partial.Tile, Partial.Polyphony);
+        TilePolyphony[Partial.Tile] = Partial.Polyphony;
     }
 
     std::unordered_map<PortHandle, PortHandle> LaneMergePorts;

@@ -432,6 +432,8 @@ class program_card:
         self.tile_bg = plate_bg(self.grid_size, self.tile_color)
         self.dark_tile_bg = plate_bg(self.grid_size, parse_color("#211a17"))
         self.clip_tile = plate_bg(self.grid_size, parse_color("#F48"))
+        self.poly_tile_bg = plate_bg(self.grid_size, parse_color("#be9ad3"))
+        self.disconnected_tile_bg = plate_bg(self.grid_size, parse_color("#d1e7f0"))
 
         self.initial_placement = plate_outline(self.grid_size, parse_color("#888"))
         self.valid_placement = plate_outline(self.grid_size, parse_color("#080"))

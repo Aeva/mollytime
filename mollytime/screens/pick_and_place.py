@@ -356,7 +356,13 @@ class pick_and_place_screen(editor_screen):
                 if tile_id == self.grabbed_tile:
                     editor.initial_placement.draw(frame, rect, label)
                 else:
-                    editor.tile_bg.draw(frame, rect, label)
+                    polyphony = editor.patch.get_tile_polyphony(tile_id)
+                    if polyphony > 1:
+                        editor.poly_tile_bg.draw(frame, rect, label)
+                    elif polyphony == 0:
+                        editor.disconnected_tile_bg.draw(frame, rect, label)
+                    else:
+                        editor.tile_bg.draw(frame, rect, label)
 
             if self.grabbed_tile and not self.drop_deletes:
                 label = editor.patch.get_tile_label(self.grabbed_tile)

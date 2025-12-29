@@ -456,6 +456,9 @@ struct Patch
     std::unordered_map<TileHandle, uint32_t> TileLanes; // Tiles that have live registers, and their current widths.
     std::vector<TileHandle> ErasedTiles; // Used to erase stale registers
 
+    // Used for queries from the UI.
+    std::unordered_map<TileHandle, uint32_t> TilePolyphony;
+
     Patch();
 
     void SetPolyphony(int NewPolyphony);
@@ -481,6 +484,7 @@ struct Patch
     std::vector<PortHandle> GetTileOutputPorts(TileHandle Tile);
     std::string GetTileInputName(PortHandle Port);
     std::string GetTileOutputName(PortHandle Port);
+    int GetTilePolyphony(TileHandle Tile);
 
     void Freeze();
     void Unfreeze();

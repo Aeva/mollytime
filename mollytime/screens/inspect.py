@@ -376,7 +376,13 @@ class inspect_screen(editor_screen):
                         arc = editor.patch.get_special_input(tile_id)
                         mollytime.draw.pie(frame, (0, 0, 0), rect.center, radius, .75, -arc)
                     else:
-                        editor.tile_bg.draw(frame, rect, label)
+                        polyphony = editor.patch.get_tile_polyphony(tile_id)
+                        if polyphony > 1:
+                            editor.poly_tile_bg.draw(frame, rect, label)
+                        elif polyphony == 0:
+                            editor.disconnected_tile_bg.draw(frame, rect, label)
+                        else:
+                            editor.tile_bg.draw(frame, rect, label)
 
             for (out_port, in_port) in editor.patch.wires:
                 lhs_rect = editor.get_tile_rect(decode_port_tile(out_port))

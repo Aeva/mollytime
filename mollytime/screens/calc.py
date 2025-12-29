@@ -196,7 +196,13 @@ class calculator_screen(editor_screen):
             elif self.draw_clip and editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
                 pattern = editor.clip_tile
             else:
-                pattern = editor.tile_bg
+                polyphony = editor.patch.get_tile_polyphony(tile_id)
+                if polyphony > 1:
+                    pattern = editor.poly_tile_bg
+                elif polyphony == 0:
+                    pattern = editor.disconnected_tile_bg
+                else:
+                    pattern = editor.tile_bg
             pattern.draw(frame, rect, label)
 
         for (out_port, in_port) in editor.patch.wires:
