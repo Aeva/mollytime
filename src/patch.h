@@ -277,24 +277,35 @@ struct InstructionRegisters
         std::vector<std::vector<std::ptrdiff_t>>& InInputs,
         std::vector<std::ptrdiff_t>& InOutputs,
         std::vector<std::ptrdiff_t>& InClosures,
-        std::vector<double>* InRegisterFile)
+        std::vector<double>* RegisterFile)
     {
-        Input = InInputs;
-        Output = InOutputs;
-        Closure = InClosures;
-        RegisterFile = InRegisterFile->data();
+        Input.reserve(InInputs.size());
+        for (std::vector<std::ptrdiff_t>& InputOffsets: InInputs)
+        {
+            std::vector<double*>& InputRegisters = Input.emplace_back();
+            InputRegisters.reserve(InputOffsets.size());
+            for (std::ptrdiff_t Offset : InputOffsets)
+            {
+                InputRegisters.push_back(&(RegisterFile->at(Offset)));
+            }
+        }
+
+        Output.reserve(InOutputs.size());
+        for (std::ptrdiff_t Offset : InOutputs)
+        {
+            Output.push_back(&(RegisterFile->at(Offset)));
+        }
+
+        Closure.reserve(InClosures.size());
+        for (std::ptrdiff_t Offset : InClosures)
+        {
+            Closure.push_back(&(RegisterFile->at(Offset)));
+        }
     }
 
-    inline std::vector<double> InputVector(uint32_t InputIndex)
+    inline const std::vector<double*>& InputVector(uint32_t InputIndex)
     {
-        std::vector<std::ptrdiff_t>& Target = Input[InputIndex];
-        std::vector<double> Out;
-        Out.reserve(Target.size());
-        for (std::ptrdiff_t& Offset : Target)
-        {
-            Out.push_back(RegisterValue(Offset));
-        }
-        return Out;
+        return Input[InputIndex];
     }
 
     inline bool InputConnected(uint32_t InputIndex)
@@ -304,75 +315,54 @@ struct InstructionRegisters
 
     inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
-        std::vector<std::ptrdiff_t>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : RegisterValue(InputRegisters[0]);
+        std::vector<double*>& InputRegisters = Input[InputIndex];
+        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[0];
         for (int Index = 1; Index < static_cast<int>(InputRegisters.size()); ++Index)
         {
-            double NextValue = RegisterValue(InputRegisters[Index]);
-            Result = Combiner(Result, NextValue);
+            double* NextValue = InputRegisters[Index];
+            Result = Combiner(Result, *NextValue);
         }
         return Result;
     }
 
     inline double CombineStridedInput(uint32_t InputIndex, uint32_t Offset, uint32_t Stride, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
-        std::vector<std::ptrdiff_t>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : RegisterValue(InputRegisters[Offset]);
+        std::vector<double*>& InputRegisters = Input[InputIndex];
+        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[Offset];
         for (int Index = Offset + Stride; Index < static_cast<int>(InputRegisters.size()); Index += Stride)
         {
-            double NextValue = RegisterValue(InputRegisters[Index]);
-            Result = Combiner(Result, NextValue);
+            double* NextValue = InputRegisters[Index];
+            Result = Combiner(Result, *NextValue);
         }
         return Result;
     }
 
     inline double& OutputRef(uint32_t OutputIndex)
     {
-        return RegisterRef(Output[OutputIndex]);
+        return *Output[OutputIndex];
     }
 
     inline double& ClosureRef(uint32_t ClosureIndex)
     {
-        return RegisterRef(Closure[ClosureIndex]);
+        return *Closure[ClosureIndex];
     }
 
     inline void ZeroOut()
     {
-        for (std::ptrdiff_t Offset : Output)
+        for (double* Register : Output)
         {
-            RegisterFile[Offset] = 0.0;
+            *Register = 0.0;
         }
-        for (std::ptrdiff_t Offset : Closure)
+        for (double* Register : Closure)
         {
-            RegisterFile[Offset] = 0.0;
+            *Register = 0.0;
         }
     }
 
 private:
-    inline double& RegisterRef(std::ptrdiff_t Offset)
-    {
-        return RegisterFile[Offset];
-    }
-
-    inline double& RegisterRef(std::ptrdiff_t Offset, uint32_t Lane)
-    {
-        return RegisterFile[Offset + std::ptrdiff_t(Lane)];
-    }
-
-    inline double RegisterValue(std::ptrdiff_t Offset)
-    {
-        return RegisterRef(Offset);
-    }
-
-    inline double RegisterValue(std::ptrdiff_t Offset, uint32_t Lane)
-    {
-        return RegisterRef(Offset + std::ptrdiff_t(Lane));
-    }
-
-    std::vector<std::vector<std::ptrdiff_t>> Input;
-    std::vector<std::ptrdiff_t> Output;
-    std::vector<std::ptrdiff_t> Closure;
-    double* RegisterFile;
+    std::vector<std::vector<double*>> Input;
+    std::vector<double*> Output;
+    std::vector<double*> Closure;
 
     // Temporary debug holepunch:
     friend struct Patch;

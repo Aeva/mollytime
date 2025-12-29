@@ -1224,7 +1224,7 @@ struct QuantizeThunk : public InstructionThunk
 
         double Note = Registers.CombineInput(0);
         const double Root = Registers.CombineInput(1, 60.0); // defaults to Middle C
-        std::vector<double> Intervals = Registers.InputVector(2);
+        const std::vector<double*>& Intervals = Registers.InputVector(2);
         double& OutNote = Registers.OutputRef(0);
 
         if (Registers.InputConnected(0) && Registers.InputConnected(2))
@@ -1233,9 +1233,9 @@ struct QuantizeThunk : public InstructionThunk
             std::vector<double> Scale;
             Scale.reserve(Intervals.size() + 1);
             Scale.push_back(0.0);
-            for (double Interval : Intervals)
+            for (double* Register : Intervals)
             {
-                Interval = std::max(Interval, 0.0);
+                double Interval = std::max(*Register, 0.0);
                 if (Interval > 0.0)
                 {
                     Stride += Interval;
@@ -1319,7 +1319,7 @@ struct InputSequenceThunk : public InstructionThunk
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
         double Clock = Registers.CombineInput(0);
-        std::vector<double> Sequence = Registers.InputVector(1);
+        const std::vector<double*>& Sequence = Registers.InputVector(1);
         double Restart = Registers.CombineInput(2);
         double& OutValue = Registers.OutputRef(0);
         double& OutComplete = Registers.OutputRef(1);
@@ -1340,7 +1340,7 @@ struct InputSequenceThunk : public InstructionThunk
             // length.
             const int Period = Sequence.size();
             int Index = int(Cursor) % Period;
-            OutValue = Sequence[Index];
+            OutValue = *Sequence[Index];
 
             // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
             // Patches that use this signal to switch between sequences will want to add an extra
@@ -1451,9 +1451,9 @@ struct GateThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(0))
         {
-            for (double ChannelMask : Registers.InputVector(0))
+            for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Gate = State.Gate;
                     break;
@@ -1484,9 +1484,9 @@ struct NoteThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(0))
         {
-            for (double ChannelMask : Registers.InputVector(0))
+            for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Note = State.Note;
                     break;
@@ -1524,9 +1524,9 @@ struct VelocityThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(0))
         {
-            for (double ChannelMask : Registers.InputVector(0))
+            for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Velocity = State.Velocity;
                     break;
@@ -1557,9 +1557,9 @@ struct PressureThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(0))
         {
-            for (double ChannelMask : Registers.InputVector(0))
+            for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Pressure = State.Pressure;
                     break;
@@ -1592,9 +1592,9 @@ struct ControlChangeThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(1))
         {
-            for (double ChannelMask : Registers.InputVector(1))
+            for (const double* ChannelMask : Registers.InputVector(1))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Channel = State.Channel;
                     break;
@@ -1630,9 +1630,9 @@ struct KikiThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(0))
         {
-            for (double ChannelMask : Registers.InputVector(0))
+            for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Channel = State.Channel;
                     break;
@@ -1676,9 +1676,9 @@ struct PitchBendThunk : public InstructionThunk
         }
         else if (Registers.InputConnected(0))
         {
-            for (double ChannelMask : Registers.InputVector(0))
+            for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(ChannelMask) == int(State.Channel))
+                if (int(*ChannelMask) == int(State.Channel))
                 {
                     Channel = State.Channel;
                     break;
