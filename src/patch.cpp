@@ -3525,7 +3525,9 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             {
                 for (MidiNoteState& State : MidiLanes)
                 {
+                    double OldNote = State.Note;
                     State = MidiNoteState();
+                    State.Note = OldNote;
                 }
             }
             else if (Message.Type == MidiMessageType::ControlChange)
@@ -3537,7 +3539,9 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     // All notes off.  See: http://midi.teragonaudio.com/tech/midispec/ntnoff.htm
                     for (MidiNoteState& State : MidiLanes)
                     {
+                        double OldNote = State.Note;
                         State = MidiNoteState();
+                        State.Note = OldNote;
                         State.Gate = 0.0;
                         State.Pressure = 0.0;
                     }
