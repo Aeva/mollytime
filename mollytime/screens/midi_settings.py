@@ -218,6 +218,21 @@ class midi_settings_screen(editor_screen):
     def resize_screen(self, editor):
         self.repopulate_sidebar(editor)
 
+        grid = editor.grid_size
+        editor.settings_area.focus_x = int(grid * 1.5)
+        editor.settings_area.focus_y = int(grid * 1.5)
+        editor.settings_area.redraw()
+        anchor_x = editor.settings_area.viewport.width // 2 - int(grid * 5.5)
+        anchor_y = editor.settings_area.viewport.height // 2 - int(grid * 5.5)
+        size = grid * 2
+        self.channel_rects = []
+        for y_ in range(4):
+            for x_ in range(4):
+                x = anchor_x + x_ * grid * 3
+                y = anchor_y + y_ * grid * 3
+                rect = mollytime.Rect(x, y, size, size)
+                self.channel_rects.append(rect)
+
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
@@ -248,7 +263,15 @@ class midi_settings_screen(editor_screen):
     def on_press(self, editor, pos, event):
         self.cursor_pos = pos
 
-        if editor.side_bar_rect.collidepoint(pos):
+        if editor.play_rect.collidepoint(pos):
+            for channel, rect in enumerate(self.channel_rects):
+                if rect.collidepoint(pos):
+                    listening = editor.patch.get_channel_mask(channel)
+                    editor.patch.set_channel_mask(channel, not listening)
+                    self.update_play_area = True
+                    break
+
+        elif editor.side_bar_rect.collidepoint(pos):
             # test side bar targets
             rel_pos = (pos[0] - editor.side_bar.viewport.x, pos[1] - editor.side_bar.viewport.y)
             for rect, surface, action in self.side_bar_targets:
@@ -268,6 +291,13 @@ class midi_settings_screen(editor_screen):
             update_anything = True
 
             frame = editor.reset_settings_area()
+
+            for channel, rect in enumerate(self.channel_rects):
+                label = str(channel)
+                if editor.patch.get_channel_mask(channel):
+                    editor.selected_tile_bg.draw(frame, rect, label)
+                else:
+                    editor.tile_bg.draw(frame, rect, label)
 
         # draw sidebar
         if self.update_sidebar or self.force_redraw:

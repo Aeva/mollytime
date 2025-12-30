@@ -117,6 +117,8 @@ class settings_grid_bg(tile_viewport):
 
     def resize(self, viewport, grid):
         # gradient stuff
+        self.focus_x = 0
+        self.focus_y = 0
         self.light = (viewport.width / 2, viewport.height)
         self.light_span = math.sqrt(sum([i * i for i in self.light]))
         self.bg_ramp_x = color_ramp(parse_color("#000"), parse_color("#000"))

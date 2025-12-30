@@ -2207,6 +2207,28 @@ int Patch::GetPolyphony()
 }
 
 
+bool Patch::GetChannelMask(int Channel)
+{
+    uint16_t Mask = uint16_t(1 << Channel);
+    return (ChannelMask & Mask) == Mask;
+}
+
+
+void Patch::SetChannelMask(int Channel, bool Listen)
+{
+    uint16_t Mask = uint16_t(1 << Channel);
+    if (Listen)
+    {
+        ChannelMask |= Mask;
+    }
+    else
+    {
+        ChannelMask &= ~Mask;
+    }
+    Recompile();
+}
+
+
 TileHandle Patch::MakeTile(OpCode Symbol)
 {
     TRACEABLE_SCOPE;
@@ -2639,6 +2661,7 @@ ScratchUniquePtr Patch::Compile()
     Program->OutputProbe = OutputProbe;
     Program->ScopeProbe = ScopeProbe;
     Program->Polyphony = MidiPolyphony;
+    Program->ChannelMask = ChannelMask;
     Program->MidiLanes.resize(MidiPolyphony);
     Program->Retriggerables.resize(MidiPolyphony);
 
@@ -3381,10 +3404,6 @@ void Scratch::Migrate(Scratch& Old)
 {
     TRACEABLE_SCOPE;
 
-#if 0
-    MidiChannels = Old.MidiChannels;
-    MostRecentChannel = Old.MostRecentChannel;
-#endif
     if (Polyphony == Old.Polyphony)
     {
         assert(Old.MidiLanes.size() == Old.Polyphony);
@@ -3518,7 +3537,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
         TRACEABLE_NAMED_SCOPE("MIDI PHASE");
 
         MidiMessage Message;
-        if (PopMidiMessage(Message))
+        if (PopMidiMessage(Message) && (ChannelMask & (1 << Message.Channel)))
         {
             int32_t AssignedLane = -1;
             if (Message.Type == MidiMessageType::Reset)

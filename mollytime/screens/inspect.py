@@ -121,35 +121,34 @@ class inspect_screen(editor_screen):
 
         goto_select_icon = editor.select_target
 
-        goto_save_rect = mollytime.Rect(
+        goto_settings_rect = mollytime.Rect(
             editor.grid_size,
             3 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_settings_icon = editor.settings_target
+
+        goto_save_rect = mollytime.Rect(
+            editor.grid_size,
+            4 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_save_icon = editor.save_target
 
         goto_load_rect = mollytime.Rect(
             editor.grid_size,
-            4 * editor.grid_size * 3,
-            editor.grid_size * 2, editor.grid_size * 2)
-
-        goto_load_icon = editor.load_target
-
-        goto_settings_rect = mollytime.Rect(
-            editor.grid_size,
             5 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        goto_settings_icon = editor.settings_target
+        goto_load_icon = editor.load_target
 
         self.side_bar_targets = [
             (active_rect, active_icon, self.goto_self),
             (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen),
             (goto_select_rect, goto_select_icon, self.goto_select_screen),
+            (goto_settings_rect, goto_settings_icon, self.goto_midi_settings),
             (goto_save_rect, goto_save_icon, self.goto_save_patch),
-            (goto_load_rect, goto_load_icon, self.goto_load_patch),
-            #(goto_settings_rect, goto_settings_icon, self.goto_midi_settings)
-            ]
+            (goto_load_rect, goto_load_icon, self.goto_load_patch)]
 
     def goto_self(self, editor):
         if self.scope_target:

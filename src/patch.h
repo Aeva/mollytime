@@ -411,6 +411,7 @@ struct Scratch final : public MidiHandler
 {
     uint64_t Identity;
     uint32_t Polyphony;
+    uint16_t ChannelMask;
 
     std::vector<double> RegisterFile;
     std::map<PortHandle, RegisterAllocation> PersistentRegisters;
@@ -507,10 +508,14 @@ struct Patch
     void AddSpecialInput(TileHandle Tile, double Value);
     void AddRangeSpecialInput(TileHandle Tile, double Value, double LimitLow, double LimitHigh);
     double GetSpecialInput(TileHandle Tile);
+    bool GetChannelMask(int Channel);
+    void SetChannelMask(int Channel, bool Listen);
+
 
 private:
     uint64_t Identity;
     uint32_t MidiPolyphony;
+    uint16_t ChannelMask = 0xFFFF;
 
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 

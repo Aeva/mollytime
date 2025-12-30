@@ -264,7 +264,9 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("set_special_input", &Patch::SetSpecialInput)
 		.def("add_special_input", &Patch::AddSpecialInput)
 		.def("add_range_special_input", &Patch::AddRangeSpecialInput)
-		.def("get_special_input", &Patch::GetSpecialInput);
+		.def("get_special_input", &Patch::GetSpecialInput)
+		.def("get_channel_mask", &Patch::GetChannelMask)
+		.def("set_channel_mask", &Patch::SetChannelMask);
 
 	m.def("init_audio", &Audio::Init);
 	m.def("shutdown_audio", &Audio::Shutdown);
