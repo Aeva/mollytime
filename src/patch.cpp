@@ -2652,6 +2652,9 @@ ScratchUniquePtr Patch::Compile()
 
     std::function<void(TileHandle)> Step = [&](const TileHandle Tile) -> void
     {
+        // Recursively solve the order in which tiles are to be cranked, assign polyphony hints,
+        // and solve each tile's ordered inputs.
+
         if (!BreadCrumbs.insert(Tile).second)
         {
             return;
@@ -2833,9 +2836,8 @@ ScratchUniquePtr Patch::Compile()
 
     // From this point on, `FlatGraph` contains entries for everything that will contribute to the compiled patch program.
 
-
-    // Remove persistence information for recently erased tiles.
     {
+        // Remove persistence information for recently erased tiles.
         for (TileHandle Tile : ErasedTiles)
         {
             TileLanes.erase(Tile);
@@ -2845,23 +2847,52 @@ ScratchUniquePtr Patch::Compile()
 
     // Solve tile polyphony via propagation.
     TilePolyphony.clear();
-    for (TilePartial& Partial : FlatGraph)
     {
-        if (Partial.Polyphony < 1)
+        std::vector<TilePartial*> Unsolved;
+        for (TilePartial& Partial : FlatGraph)
         {
-            Partial.Polyphony = 1;
-            for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+            if (Partial.Polyphony < 1)
+            {
+                for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+                {
+                    for (PortHandle ConnectedPort : ConnectedOutputs)
+                    {
+                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        Partial.Polyphony = std::max(Partial.Polyphony, ConnectedPartial->Polyphony);
+                    }
+                }
+            }
+            if (Partial.Polyphony < 1)
+            {
+                // This can happen when there are graph cycles, in which case we retry solving these
+                // head tiles after we've finished a pass on the graph.  It is unclear if there is any
+                // situation where more than one retry would be needed to fully solve the graph
+                // correctly.
+                Unsolved.push_back(&Partial);
+            }
+        }
+        for (TilePartial* Partial : Unsolved)
+        {
+            // It is possible to create valid graphs with cycles where it is not possible to determine
+            // the lane width because none of the tiles have constants or midi inputs.  The correct thing
+            // to do in such a situation is to default to a lane width of one.
+            Partial->Polyphony = 1;
+            for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
             {
                 for (PortHandle ConnectedPort : ConnectedOutputs)
                 {
                     TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
                     TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
-                    Partial.Polyphony = std::max(Partial.Polyphony, ConnectedPartial->Polyphony);
+                    Partial->Polyphony = std::max(Partial->Polyphony, ConnectedPartial->Polyphony);
                 }
             }
         }
-        TileLanes.insert_or_assign(Partial.Tile, Partial.Polyphony);
-        TilePolyphony[Partial.Tile] = Partial.Polyphony;
+        for (TilePartial& Partial : FlatGraph)
+        {
+            TileLanes.insert_or_assign(Partial.Tile, Partial.Polyphony);
+            TilePolyphony[Partial.Tile] = Partial.Polyphony;
+        }
     }
 
     std::unordered_map<PortHandle, PortHandle> LaneMergePorts;
@@ -2884,6 +2915,10 @@ ScratchUniquePtr Patch::Compile()
                         TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
                         if (ConnectedPartial->Polyphony > 1)
                         {
+                            // We have an output from a polyphonic tile connected to a input port on
+                            // at least one monophonic tile.  To make this work, we create an alias
+                            // to a virtual port handle.  The presence of this alias will automatically
+                            // result in a lane add fixup tile being introduced later on.
                             PortHandle VirtualPort = MakePortHandle(0, NextVirtualPortIndex);
                             if (LaneMergePorts.insert({ConnectedPort, VirtualPort}).second)
                             {
@@ -3278,41 +3313,6 @@ ScratchUniquePtr Patch::Compile()
     {
         assert(Thunk != nullptr);
     }
-
-#if 0
-    std::print("\n\n==============================================================================\n");
-    int ThunkIndex = 0;
-    for (InstructionThunkSharedPtr& Thunk : Program->Program)
-    {
-        OpCode Symbol = Thunk->DebugSymbol;
-        std::print("THUNK {}:\n{}\n", ThunkIndex++, GetDefaultName(Symbol));
-        {
-            int InputIndex = 0;
-            for (std::vector<std::ptrdiff_t>& InputConnections : Thunk->Registers.Input)
-            {
-                std::print("\tINPUT {}:\n", InputIndex++);
-                for (std::ptrdiff_t& Register : InputConnections)
-                {
-                    std::print("\t - {}\n", Register);
-                }
-            }
-        }
-        {
-            int OutputIndex = 0;
-            for (std::ptrdiff_t& Register : Thunk->Registers.Output)
-            {
-                std::print("\tOUTPUT {}: {}\n", OutputIndex++, Register);
-            }
-        }
-        {
-            int ClosureIndex = 0;
-            for (std::ptrdiff_t& Register : Thunk->Registers.Closure)
-            {
-                std::print("\nCLOSURE {}: {}\n", ClosureIndex++, Register);
-            }
-        }
-    }
-#endif
 
     OutputTileNames.clear();
     if (OutputTiles.size() >= 2)
