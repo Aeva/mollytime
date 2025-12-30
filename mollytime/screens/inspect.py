@@ -21,6 +21,7 @@ from .common import *
 from .select import select_screen
 from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
+from .midi_settings import midi_settings_screen
 
 from .. import mollytime
 
@@ -134,12 +135,21 @@ class inspect_screen(editor_screen):
 
         goto_load_icon = editor.load_target
 
+        goto_settings_rect = mollytime.Rect(
+            editor.grid_size,
+            5 * editor.grid_size * 3,
+            editor.grid_size * 2, editor.grid_size * 2)
+
+        goto_settings_icon = editor.settings_target
+
         self.side_bar_targets = [
             (active_rect, active_icon, self.goto_self),
             (goto_move_rect, goto_move_icon, self.goto_pick_and_place_screen),
             (goto_select_rect, goto_select_icon, self.goto_select_screen),
             (goto_save_rect, goto_save_icon, self.goto_save_patch),
-            (goto_load_rect, goto_load_icon, self.goto_load_patch)]
+            (goto_load_rect, goto_load_icon, self.goto_load_patch),
+            #(goto_settings_rect, goto_settings_icon, self.goto_midi_settings)
+            ]
 
     def goto_self(self, editor):
         if self.scope_target:
@@ -221,6 +231,16 @@ class inspect_screen(editor_screen):
         patch_dir = os.path.join(patch_dir, "")
 
         mollytime.display.show_load_dialog(patch_dir)
+
+    def goto_midi_settings(self, editor):
+        overlay = midi_settings_screen(editor)
+        editor.unfreeze()
+        self.purge_events()
+        self.toggle_scope(editor, None)
+        self.update_play_area = True
+        self.update_sidebar = True
+        editor.clear_selection()
+        self.refresh_can_throttle(editor)
 
     def handle_escape(self, editor):
         if self.scope_target is None:

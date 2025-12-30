@@ -381,6 +381,10 @@ class program_card:
         self._play_area_surface = self.play_area.surface.copy()
         return self._play_area_surface
 
+    def reset_settings_area(self):
+        self._play_area_surface = self.settings_area.surface.copy()
+        return self._play_area_surface
+
     def replace_play_area(self, replacement):
         self._play_area_surface = replacement
         return self._play_area_surface
@@ -423,6 +427,9 @@ class program_card:
         self.play_rect = mollytime.Rect(0, 0, screen_w - side_bar_w, screen_h)
         self.play_area = tile_grid_bg(self.play_rect, self.grid_size)
         self._play_area_surface = self.play_area.surface.copy()
+
+        self.settings_area = settings_grid_bg(self.play_rect, self.grid_size)
+        self._settings_area = self.settings_area.surface.copy()
 
         self.side_bar_rect = mollytime.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
@@ -471,6 +478,9 @@ class program_card:
 
         self.load_target = plate_bg(self.grid_size, self.tile_color, "load\npatch")
         self.load_active = plate_bg(self.grid_size, self.select_color, "load\npatch")
+
+        self.settings_target = plate_bg(self.grid_size, self.tile_color, "midi")
+        self.settings_active = plate_bg(self.grid_size, self.select_color, "midi")
 
         self.calc_target = plate_bg(self.grid_size, self.tile_color, "calc")
         self.calc_active = plate_bg(self.grid_size, self.select_color, "calc")

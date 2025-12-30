@@ -233,6 +233,7 @@ python_files = files(
     'mollytime' / 'screens' / 'calc.py',
     'mollytime' / 'screens' / 'common.py',
     'mollytime' / 'screens' / 'inspect.py',
+    'mollytime' / 'screens' / 'midi_settings.py',
     'mollytime' / 'screens' / 'pick_and_place.py',
     'mollytime' / 'screens' / 'select.py'
 )

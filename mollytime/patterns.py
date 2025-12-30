@@ -108,6 +108,76 @@ class tile_grid_bg(tile_viewport):
                 mollytime.draw.rect(self.surface, color, rect)
 
 
+class settings_grid_bg(tile_viewport):
+
+    def __init__(self, *args, **kargs):
+        self.focus_x = 0
+        self.focus_y = 0
+        super().__init__(*args, **kargs)
+
+    def resize(self, viewport, grid):
+        # gradient stuff
+        self.light = (viewport.width / 2, viewport.height)
+        self.light_span = math.sqrt(sum([i * i for i in self.light]))
+        self.bg_ramp_x = color_ramp(parse_color("#000"), parse_color("#000"))
+        self.bg_ramp_y = color_ramp(parse_color("#112"), parse_color("#000"))
+        super().resize(viewport, grid)
+
+    def bg_color(self, tile_x, tile_y, rect):
+        weird = (rect.centery / self.viewport.h)
+        weird = weird / 3 + (1.0 - weird)
+
+        pos = (rect.centerx, rect.centery)
+        rel = [LHS - RHS for LHS, RHS in zip(pos, self.light)]
+        rel[0] *= weird
+        mag = math.sqrt(sum([i * i for i in rel]))
+
+        alpha = min(max(mag / self.light_span, 0), 1)
+        alpha *= alpha
+
+        color_x = self.bg_ramp_x.sample(alpha)
+        color_y = self.bg_ramp_y.sample(alpha)
+
+        checker = ((int(tile_x) % 2) + (int(tile_y) % 2)) % 2
+        return (color_x, color_y)[checker]
+
+    def redraw(self):
+        x_count = math.ceil(self.viewport.w / self.grid) + 1
+        y_count = math.ceil(self.viewport.h / self.grid) + 1
+
+        half_w = self.viewport.w / 2
+        half_h = self.viewport.h / 2
+        crop_min_x = -half_w + self.focus_x
+        crop_min_y = -half_h + self.focus_y
+
+        x_offset = math.floor(crop_min_x / self.grid) * self.grid - crop_min_x
+        y_offset = math.floor(crop_min_y / self.grid) * self.grid - crop_min_y
+
+        # fine grid
+        for view_tile_y in range(y_count):
+            for view_tile_x in range(x_count):
+                tile_x = crop_min_x // self.grid + view_tile_x
+                tile_y = crop_min_y // self.grid + view_tile_y
+                view_x = view_tile_x * self.grid + x_offset
+                view_y = view_tile_y * self.grid + y_offset
+                rect = mollytime.Rect(view_x, view_y, self.grid, self.grid)
+                color = self.bg_color(tile_x, tile_y, rect)
+                mollytime.draw.rect(self.surface, color, rect)
+
+        # coarse grid
+        for view_tile_y in range(-1, y_count):
+            for view_tile_x in range(-1, x_count):
+                tile_x = crop_min_x // self.grid + view_tile_x
+                tile_y = crop_min_y // self.grid + view_tile_y
+                if (tile_x % 3) != 2 or (tile_y % 3) != 2:
+                    continue
+                view_x = view_tile_x * self.grid + x_offset
+                view_y = view_tile_y * self.grid + y_offset
+                rect = mollytime.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
+                color = self.bg_color(tile_x, tile_y, rect)
+                mollytime.draw.rect(self.surface, color, rect)
+
+
 class side_bar_bg(tile_viewport):
     def resize(self, viewport, grid):
         super().resize(viewport, grid)
