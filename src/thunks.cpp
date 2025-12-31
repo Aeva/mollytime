@@ -121,7 +121,14 @@ double Roll()
 
 struct SinThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SIN, "sin", {"hz"}, {"amp"} };
+    static constexpr InstructionInfo<1, 1, 1> Info = \
+    {
+        OpCode::SIN, "sin",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"amp"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -140,7 +147,14 @@ struct SinThunk : public InstructionThunk
 
 struct SqrThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SQR, "sqr", {"hz"}, {"amp"} };
+    static constexpr InstructionInfo<1, 1, 1> Info = \
+    {
+        OpCode::SQR, "sqr",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"amp"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -163,7 +177,14 @@ struct SqrThunk : public InstructionThunk
 
 struct TriThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::TRI, "tri", {"hz"}, {"amp"} };
+    static constexpr InstructionInfo<1, 1, 1> Info = \
+    {
+        OpCode::TRI, "tri",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"amp"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -193,7 +214,14 @@ struct TriThunk : public InstructionThunk
 
 struct SawThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::SAW, "saw", {"hz"}, {"amp"} };
+    static constexpr InstructionInfo<1, 1, 1> Info = \
+    {
+        OpCode::SAW, "saw",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"amp"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -217,7 +245,14 @@ struct SawThunk : public InstructionThunk
 
 struct NoiThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 3> Info = { OpCode::NOI, "noise", {"hz"}, {"amp"} };
+    static constexpr InstructionInfo<1, 1, 3> Info = \
+    {
+        OpCode::NOI, "noise",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"amp"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -255,7 +290,14 @@ struct NoiThunk : public InstructionThunk
 
 struct PhaseThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::PHASE, "phase", {"hz"}, {"phase"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::PHASE, "phase",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"phase"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -276,7 +318,14 @@ struct PhaseThunk : public InstructionThunk
 
 struct SinTrainThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::SIN_TRAIN, "sin\ntrain", {"phase"}, {"amp", "phase"} };
+    static constexpr InstructionInfo<1, 2, 0> Info = \
+    {
+        OpCode::SIN_TRAIN, "sin\ntrain",
+        {{
+            {"phase", 0.0, InputCombiner::ADD},
+        }},
+        {"amp", "phase"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -295,7 +344,14 @@ struct SinTrainThunk : public InstructionThunk
 
 struct SqrTrainThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::SQR_TRAIN, "sqr\ntrain", {"phase"}, {"amp", "phase"} };
+    static constexpr InstructionInfo<1, 2, 0> Info = \
+    {
+        OpCode::SQR_TRAIN, "sqr\ntrain",
+        {{
+            {"phase", 0.0, InputCombiner::ADD},
+        }},
+        {"amp", "phase"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -318,7 +374,14 @@ struct SqrTrainThunk : public InstructionThunk
 
 struct TriTrainThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::TRI_TRAIN, "tri\ntrain", {"phase"}, {"amp", "phase"} };
+    static constexpr InstructionInfo<1, 2, 0> Info = \
+    {
+        OpCode::TRI_TRAIN, "tri\ntrain",
+        {{
+            {"phase", 0.0, InputCombiner::ADD},
+        }},
+        {"amp", "phase"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -348,7 +411,14 @@ struct TriTrainThunk : public InstructionThunk
 
 struct SawTrainThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 2, 0> Info = { OpCode::SAW_TRAIN, "saw\ntrain", {"phase"}, {"amp", "phase"} };
+    static constexpr InstructionInfo<1, 2, 0> Info = \
+    {
+        OpCode::SAW_TRAIN, "saw\ntrain",
+        {{
+            {"phase", 0.0, InputCombiner::ADD},
+        }},
+        {"amp", "phase"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -372,7 +442,15 @@ struct SawTrainThunk : public InstructionThunk
 
 struct PhaseWidthModulationThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::PWM, "pwm", {"phase", "bal"}, {"phase"} };
+    static constexpr InstructionInfo<2, 1, 0> Info = \
+    {
+        OpCode::PWM, "pwm",
+        {{
+            {"phase", 0.0, InputCombiner::ADD},
+            {"bal", 0.0, InputCombiner::ADD},
+        }},
+        {"phase"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -404,7 +482,14 @@ struct PhaseWidthModulationThunk : public InstructionThunk
 
 struct AddThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD, "add", {"+"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::ADD, "add",
+        {{
+            {"+", 0.0, InputCombiner::ADD},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -418,7 +503,14 @@ struct AddThunk : public InstructionThunk
 
 struct MulThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MUL, "mul", {"*"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::MUL, "mul",
+        {{
+            {"*", 0.0, InputCombiner::MUL},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -432,7 +524,14 @@ struct MulThunk : public InstructionThunk
 
 struct RcpThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::RCP, "rcp", {"#"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::RCP, "rcp",
+        {{
+            {"#", 0.0, InputCombiner::MUL},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -452,7 +551,15 @@ struct RcpThunk : public InstructionThunk
 
 struct PowThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::POW, "pow", {"n", "^"}, {"="} };
+    static constexpr InstructionInfo<2, 1, 0> Info = \
+    {
+        OpCode::POW, "pow",
+        {{
+            {"n", 0.0, InputCombiner::ADD},
+            {"^", 2.0, InputCombiner::ADD},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -474,7 +581,15 @@ struct PowThunk : public InstructionThunk
 
 struct SignPreservingPowThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::SPOW, "spow", {"n", "^"}, {"="} };
+    static constexpr InstructionInfo<2, 1, 0> Info = \
+    {
+        OpCode::SPOW, "spow",
+        {{
+            {"n", 0.0, InputCombiner::ADD},
+            {"^", 2.0, InputCombiner::ADD},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -497,7 +612,14 @@ struct SignPreservingPowThunk : public InstructionThunk
 
 struct MinThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIN, "min", {"min"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::MIN, "min",
+        {{
+            {"min", 0.0, InputCombiner::MIN},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -511,7 +633,14 @@ struct MinThunk : public InstructionThunk
 
 struct MaxThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MAX, "max", {"max"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::MAX, "max",
+        {{
+            {"max", 0.0, InputCombiner::MAX},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -525,7 +654,16 @@ struct MaxThunk : public InstructionThunk
 
 struct ClampThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::CLAMP, "clamp", {"#", "high", "low"}, {"="} };
+    static constexpr InstructionInfo<3, 1, 0> Info = \
+    {
+        OpCode::CLAMP, "clamp",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+            {"high", 1.0, InputCombiner::MAX},
+            {"low", -1.0, InputCombiner::MIN},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -543,7 +681,14 @@ struct ClampThunk : public InstructionThunk
 
 struct FloorThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::FLOOR, "floor", {"#"}, {"floor"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::FLOOR, "floor",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+        }},
+        {"floor"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -557,7 +702,14 @@ struct FloorThunk : public InstructionThunk
 
 struct CeilThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::CEIL, "ceil", {"#"}, {"ceil"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::CEIL, "ceil",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+        }},
+        {"ceil"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -571,7 +723,14 @@ struct CeilThunk : public InstructionThunk
 
 struct RoundThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ROUND, "round", {"#"}, {"rounded"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::ROUND, "round",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+        }},
+        {"rounded"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -585,7 +744,14 @@ struct RoundThunk : public InstructionThunk
 
 struct SignThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::SIGN, "sign", {"#"}, {"sign"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::SIGN, "sign",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+        }},
+        {"sign"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -601,7 +767,14 @@ struct SignThunk : public InstructionThunk
 
 struct AbsThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ABS, "abs", {"#"}, {"abs"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::ABS, "abs",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+        }},
+        {"abs"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -615,7 +788,16 @@ struct AbsThunk : public InstructionThunk
 
 struct FoldThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::FLD, "fold", {"v", "p", "n"}, {"w"} };
+    static constexpr InstructionInfo<3, 1, 0> Info = \
+    {
+        OpCode::FLD, "fold",
+        {{
+            {"v", 0.0, InputCombiner::ADD},
+            {"p", 1.0, InputCombiner::ADD},
+            {"n", 0.0, InputCombiner::ADD},
+        }},
+        {"w"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -651,7 +833,14 @@ struct FoldThunk : public InstructionThunk
 
 struct InvertThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::INV, "invert", {"#"}, {"#"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::INV, "invert",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+        }},
+        {"#"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -668,7 +857,14 @@ struct InvertThunk : public InstructionThunk
 
 struct ToUnipolarThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::STU, "bipolar\nto\nunipolar", {"bi"}, {"uni"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::STU, "bipolar\nto\nunipolar",
+        {{
+            {"bi", 0.0, InputCombiner::ADD},
+        }},
+        {"uni"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -682,7 +878,14 @@ struct ToUnipolarThunk : public InstructionThunk
 
 struct ToBipolarThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::UTS, "unipolar\nto\nbipolar", {"uni"}, {"bi"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::UTS, "unipolar\nto\nbipolar",
+        {{
+            {"uni", 0.0, InputCombiner::ADD},
+        }},
+        {"bi"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -696,7 +899,16 @@ struct ToBipolarThunk : public InstructionThunk
 
 struct MixThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::MIX, "mix", {"L", "R", "balance"}, {"="} };
+    static constexpr InstructionInfo<3, 1, 0> Info = \
+    {
+        OpCode::MIX, "mix",
+        {{
+            {"low", 0.0, InputCombiner::ADD},
+            {"high", 0.0, InputCombiner::ADD},
+            {"balance", 0.5, InputCombiner::ADD},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -715,7 +927,15 @@ struct MixThunk : public InstructionThunk
 
 struct StereoBalanceThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 2, 0> Info = { OpCode::BAL, "stereo\nbalance", {"sample", "balance"}, {"left", "right"} };
+    static constexpr InstructionInfo<2, 2, 0> Info = \
+    {
+        OpCode::BAL, "stereo\nbalance",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"balance", 0.0, InputCombiner::ADD},
+        }},
+        {"left", "right"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -737,7 +957,14 @@ struct StereoBalanceThunk : public InstructionThunk
 
 struct PulseThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::PLS, "pulse", {"clock"}, {"pulse"} };
+    static constexpr InstructionInfo<1, 1, 1> Info = \
+    {
+        OpCode::PLS, "pulse",
+        {{
+            {"clock", 0.0, InputCombiner::ADD},
+        }},
+        {"pulse"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -772,7 +999,14 @@ struct PulseThunk : public InstructionThunk
 
 struct FlipFlopThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 2, 1> Info = { OpCode::FLP, "flip\nflop", {"clock"}, {"even", "odd"} };
+    static constexpr InstructionInfo<1, 2, 1> Info = \
+    {
+        OpCode::FLP, "flip\nflop",
+        {{
+            {"clock", 0.0, InputCombiner::ADD},
+        }},
+        {"even", "odd"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -819,7 +1053,14 @@ struct FlipFlopThunk : public InstructionThunk
 
 struct RandomThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 1> Info = { OpCode::RNG, "rng", {"clock"}, {"#"} };
+    static constexpr InstructionInfo<1, 1, 1> Info = \
+    {
+        OpCode::RNG, "rng",
+        {{
+            {"clock", 0.0, InputCombiner::ADD},
+        }},
+        {"#"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -848,7 +1089,15 @@ struct RandomThunk : public InstructionThunk
 
 struct GradualThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 1> Info = { OpCode::GRAD, "grad", {"#", "rate"}, {"#"} };
+    static constexpr InstructionInfo<2, 1, 1> Info = \
+    {
+        OpCode::GRAD, "grad",
+        {{
+            {"#", 0.0, InputCombiner::ADD},
+            {"rate", 0.0, InputCombiner::ADD},
+        }},
+        {"#"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1013,31 +1262,78 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 
 struct LowpassThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Lowpass>
 {
-    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_LOWPASS, "low\npass", {"sample", "cutoff", "res"}, {"lowpass"} };
+    static constexpr InstructionInfo<3, 1, 7> Info = \
+    {
+        OpCode::TPTSVF_LOWPASS, "low\npass",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"cutoff", 1000.0, InputCombiner::ADD},
+            {"res", 0.0, InputCombiner::ADD},
+        }},
+        {"lowpass"}
+    };
 };
 
 
 struct BandpassThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Bandpass>
 {
-    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_BANDPASS, "band\npass", {"sample", "cutoff", "res"}, {"bandpass"} };
+    static constexpr InstructionInfo<3, 1, 7> Info = \
+    {
+        OpCode::TPTSVF_BANDPASS, "band\npass",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"cutoff", 1000.0, InputCombiner::ADD},
+            {"res", 0.0, InputCombiner::ADD},
+        }},
+        {"bandpass"}
+    };
 };
 
 
 struct HighpassThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Highpass>
 {
-    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_HIGHPASS, "high\npass", {"sample", "cutoff", "res"}, {"highpass"} };
+    static constexpr InstructionInfo<3, 1, 7> Info = \
+    {
+        OpCode::TPTSVF_HIGHPASS, "high\npass",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"cutoff", 1000.0, InputCombiner::ADD},
+            {"res", 0.0, InputCombiner::ADD},
+        }},
+        {"highpass"}
+    };
 };
 
 
 struct NotchThunk : public TopologyPreservingTransformStateVariableFilterThunk<FilterType::Notch>
 {
-    static constexpr InstructionInfo<3, 1, 7> Info = { OpCode::TPTSVF_NOTCH, "notch", {"sample", "cutoff", "res"}, {"notch"} };
+    static constexpr InstructionInfo<3, 1, 7> Info = \
+    {
+        OpCode::TPTSVF_NOTCH, "notch",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"cutoff", 1000.0, InputCombiner::ADD},
+            {"res", 0.0, InputCombiner::ADD},
+        }},
+        {"notch"}
+    };
 };
 
 
 struct AdsrThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<5, 1, 2> Info = { OpCode::ADSR, "adsr", {"trigger", "a", "d", "s", "r"}, {"#"} };
+    static constexpr InstructionInfo<5, 1, 2> Info = \
+    {
+        OpCode::ADSR, "adsr",
+        {{
+            {"trigger", 0.0, InputCombiner::ADD},
+            {"a", 0.1, InputCombiner::ADD},
+            {"d", 0.1, InputCombiner::ADD},
+            {"s", 1.0, InputCombiner::ADD},
+            {"r", 1.0, InputCombiner::ADD},
+        }},
+        {"#"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1171,7 +1467,16 @@ struct AdsrThunk : public InstructionThunk
 
 struct QuantizeThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 1, 0> Info = { OpCode::QNTZ, "quantize", {"note", "root", "scale"}, {"note"} };
+    static constexpr InstructionInfo<3, 1, 0> Info = \
+    {
+        OpCode::QNTZ, "quantize",
+        {{
+            {"note", 0.0, InputCombiner::ADD},
+            {"root", 60.0, InputCombiner::ADD}, // defaults to Middle C
+            {"scale", 0.0, InputCombiner::DIRECT},
+        }},
+        {"note"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1268,7 +1573,16 @@ struct QuantizeThunk : public InstructionThunk
 
 struct InputSequenceThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 2, 3> Info = { OpCode::ISQN, "input\nseq", {"clock", "input", "restart"}, {"#", "complete"} };
+    static constexpr InstructionInfo<3, 2, 3> Info = \
+    {
+        OpCode::ISQN, "input\nseq",
+        {{
+            {"clock", 0.0, InputCombiner::ADD},
+            {"input", 0.0, InputCombiner::DIRECT},
+            {"restart", 0.0, InputCombiner::ADD},
+        }},
+        {"#", "complete"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1319,7 +1633,16 @@ struct InputSequenceThunk : public InstructionThunk
 
 struct RandomSequenceThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<3, 2, 4> Info = { OpCode::RSQN, "seed\nseq", {"clock", "period", "seed"}, {"#", "complete"} };
+    static constexpr InstructionInfo<3, 2, 4> Info = \
+    {
+        OpCode::RSQN, "seed\nseq",
+        {{
+            {"clock", 0.0, InputCombiner::ADD},
+            {"period", 4.0, InputCombiner::ADD},
+            {"seed", 0.0, InputCombiner::ADD},
+        }},
+        {"#", "complete"}
+    };
 
     std::vector<double> Cache;
 
@@ -1390,7 +1713,15 @@ struct RandomSequenceThunk : public InstructionThunk
 
 struct GateThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::GATE, "gate", {"channel"}, {"gate"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::GATE, "gate",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"gate"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1423,7 +1754,15 @@ struct GateThunk : public InstructionThunk
 
 struct NoteThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::NOTE, "note", {"channel"}, {"note"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::NOTE, "note",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"note"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1463,7 +1802,15 @@ struct NoteThunk : public InstructionThunk
 
 struct VelocityThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::VELO, "velocity", {"channel"}, {"velocity"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::VELO, "velocity",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"velocity"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1496,7 +1843,15 @@ struct VelocityThunk : public InstructionThunk
 
 struct PressureThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::PRES, "pressure", {"channel"}, {"pressure"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::PRES, "pressure",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"pressure"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1529,7 +1884,16 @@ struct PressureThunk : public InstructionThunk
 
 struct ControlChangeThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 0> Info = { OpCode::CTRL, "control\nchange", {"control", "channel"}, {"value"} };
+    static constexpr InstructionInfo<2, 1, 0> Info = \
+    {
+        OpCode::CTRL, "control\nchange",
+        {{
+            {"control", 0.0, InputCombiner::ADD},
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"value"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1568,7 +1932,15 @@ struct ControlChangeThunk : public InstructionThunk
 
 struct KikiThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::KIKI, "kiki", {"channel"}, {"kiki"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::KIKI, "kiki",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"kiki"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1614,7 +1986,15 @@ struct KikiThunk : public InstructionThunk
 
 struct PitchBendThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::BEND, "bend", {"channel"}, {"bend"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::BEND, "bend",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"bend"}
+    };
+
     Scratch* Program;
     uint32_t Lane;
 
@@ -1652,7 +2032,15 @@ struct PitchBendThunk : public InstructionThunk
 
 struct LeadLaneThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::LEAD_LANE, "lead\nlane", {"lane\nvalue"}, {"lead\nlane\nvalue"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::LEAD_LANE, "lead\nlane",
+        {{
+            {"lane\nvalue", 0.0, InputCombiner::DIRECT},
+        }},
+        {"lead\nlane\nvalue"}
+    };
+
     Scratch* Program;
     uint32_t Lane; // not used, required by SetMidi
 
@@ -1675,7 +2063,14 @@ struct LeadLaneThunk : public InstructionThunk
 
 struct AddLanesThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::ADD_LANES, "add\nlanes", {"+"}, {"="} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::ADD_LANES, "add\nlanes",
+        {{
+            {"+", 0.0, InputCombiner::ADD},
+        }},
+        {"="}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1689,7 +2084,14 @@ struct AddLanesThunk : public InstructionThunk
 
 struct MidiToHzThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::MIDI_HZ, "midi\nto hz", {"note"}, {"hz"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::MIDI_HZ, "midi\nto hz",
+        {{
+            {"note", 69.0, InputCombiner::ADD}, // 440 hz
+        }},
+        {"hz"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1705,7 +2107,14 @@ struct MidiToHzThunk : public InstructionThunk
 
 struct LoudnessFudgeThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = { OpCode::LOUD_FUDGE, "loud\nfudge", {"hz"}, {"amp"} };
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::LOUD_FUDGE, "loud\nfudge",
+        {{
+            {"hz", 440.0, InputCombiner::ADD},
+        }},
+        {"amp"}
+    };
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1751,7 +2160,18 @@ struct TweakThunk : public InstructionThunk
 
 struct TapeLoopThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<4, 1, 4> Info = { OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"} };
+    static constexpr InstructionInfo<4, 1, 4> Info = \
+    {
+        OpCode::TAPE_LOOP, "tape\nloop",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"read\nstart", 0.0, InputCombiner::ADD},
+            {"length", 0.0, InputCombiner::ADD},
+            {"reset", 0.0, InputCombiner::ADD},
+        }},
+        {"sample"}
+    };
+
     std::vector<MagicTapeUniquePtr>* TapeFile;
     std::ptrdiff_t TapeIndex;
 

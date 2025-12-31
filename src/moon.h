@@ -15,12 +15,22 @@
 
 #pragma once
 
-#include "patch.h"
+#include "thunks.h"
 
 
 struct MoonThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<4, 1, 2> Info = { OpCode::MOON, "moon", {"lat", "long", "julian\ndate", "speed"}, {"altitude"} };
+    static constexpr InstructionInfo<4, 1, 2> Info = \
+    {
+        OpCode::MOON, "moon",
+        {{
+            {"lat", 41.881944, InputCombiner::ADD},
+            {"long", -87.627778, InputCombiner::ADD},
+            {"julian\ndate", -1.0, InputCombiner::ADD},
+            {"speed", 1.0, InputCombiner::ADD},
+        }},
+        {"altitude"}
+    };
 
     virtual void Crank(double SampleInterval) override;
 

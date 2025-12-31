@@ -294,12 +294,30 @@ inline double CombinerMax(double LHS, double RHS)
 using CombinerFn = decltype((CombinerAdd));
 
 
+enum class InputCombiner
+{
+    ADD,
+    MUL,
+    MIN,
+    MAX,
+    DIRECT,
+};
+
+
+struct InputInfo
+{
+    std::string_view Name;
+    double DefaultValue;
+    InputCombiner Combiner;
+};
+
+
 template<int InputCount, int OutputCount, int ClosureCount_>
 struct InstructionInfo
 {
     OpCode Symbol;
     std::string_view Name;
-    std::array<std::string_view, InputCount> InputNames;
+    std::array<InputInfo, InputCount> InputPorts;
     std::array<std::string_view, OutputCount> OutputNames;
     int ClosureCount = ClosureCount_;
 };
@@ -489,10 +507,16 @@ private:
     template<typename ThunkT>
     void SetCommon()
     {
-        DefaultNames[(int)ThunkT::Info.Symbol] = ThunkT::Info.Name;
-        InputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.InputNames.begin(), ThunkT::Info.InputNames.end());
-        OutputNames[(int)ThunkT::Info.Symbol] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
-        Closures[(int)ThunkT::Info.Symbol] = ThunkT::Info.ClosureCount;
+        const int ThunkIndex = (int)ThunkT::Info.Symbol;
+        DefaultNames[ThunkIndex] = ThunkT::Info.Name;
+        InputNames[ThunkIndex].reserve(ThunkT::Info.InputPorts.size());
+        for (const InputInfo& InputPort : ThunkT::Info.InputPorts)
+        {
+            std::string InputName = std::string(InputPort.Name);
+            InputNames[ThunkIndex].push_back(InputName);
+        }
+        OutputNames[ThunkIndex] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
+        Closures[ThunkIndex] = ThunkT::Info.ClosureCount;
     }
 
     template<typename ThunkT>
