@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="3" symbol="adsr" x="0" y="-2"/>
+		<tile id="5" symbol="mul" x="0" y="-3"/>
+		<tile id="7" symbol="out" x="5" y="-6"/>
+		<tile id="8" symbol="mul" x="5" y="-5"/>
+		<tile id="9" symbol="tweak" x="4" y="-6" value="0.7800000000000005"/>
+		<tile id="10" symbol="const" x="1" y="-2" value="0.0"/>
+		<tile id="21" symbol="mix" x="-2" y="-5"/>
+		<tile id="22" symbol="const" x="-3" y="-5" value="55.0"/>
+		<tile id="23" symbol="const" x="-3" y="-6" value="66.0"/>
+		<tile id="24" symbol="const" x="-1" y="-3" value="32.0"/>
+		<tile id="25" symbol="pow" x="-1" y="-2"/>
+		<tile id="27" symbol="saw_train" x="0" y="-4"/>
+		<tile id="29" symbol="const" x="-1" y="-6" value="110.0"/>
+		<tile id="30" symbol="tweak" x="0" y="-6" value="0.0"/>
+		<tile id="35" symbol="adsr" x="-2" y="-2"/>
+		<tile id="37" symbol="const" x="-3" y="-1" value="0.0"/>
+		<tile id="39" symbol="inv" x="-2" y="-3"/>
+		<tile id="40" symbol="const" x="-3" y="0" value="2.0"/>
+		<tile id="42" symbol="pow" x="1" y="-3"/>
+		<tile id="44" symbol="const" x="2" y="-2" value="2.0"/>
+		<tile id="45" symbol="mix" x="-1" y="-5"/>
+		<tile id="46" symbol="noi" x="-2" y="-6"/>
+		<tile id="47" symbol="const" x="-2" y="-7" value="555.0"/>
+		<tile id="49" symbol="inv" x="-3" y="-3"/>
+		<tile id="50" symbol="pow" x="-3" y="-2"/>
+		<tile id="51" symbol="const" x="-4" y="-2" value="30.0"/>
+		<tile id="53" symbol="tptsvf_highpass" x="0" y="-5"/>
+		<tile id="54" symbol="tptsvf_lowpass" x="1" y="-5"/>
+		<tile id="55" symbol="const" x="1" y="-6" value="440.0"/>
+		<tile id="56" symbol="tweak" x="1" y="-4" value="0.06999999999999992"/>
+		<tile id="58" symbol="noi" x="-4" y="-5"/>
+		<tile id="59" symbol="stu" x="-4" y="-4"/>
+		<tile id="60" symbol="const" x="-5" y="-5" value="1000.0"/>
+		<tile id="61" symbol="mul" x="-3" y="-4"/>
+		<tile id="62" symbol="mul" x="-2" y="0"/>
+		<tile id="63" symbol="tweak" x="2" y="0" value="0.96"/>
+		<tile id="64" symbol="mix" x="0" y="0"/>
+		<tile id="65" symbol="tweak" x="2" y="-1" value="0.5500000000000003"/>
+		<tile id="66" symbol="rng" x="1" y="1"/>
+		<tile id="67" symbol="pls" x="-1" y="2"/>
+		<tile id="68" symbol="add" x="-1" y="-1"/>
+		<tile id="69" symbol="out" x="7" y="-6"/>
+		<tile id="70" symbol="bal" x="6" y="-5"/>
+		<tile id="71" symbol="rng" x="6" y="2"/>
+		<tile id="75" symbol="const" x="7" y="0" value="0.75"/>
+		<tile id="76" symbol="uts" x="6" y="1"/>
+		<tile id="77" symbol="mul" x="6" y="0"/>
+		<tile id="78" symbol="add" x="5" y="2"/>
+		<tile id="79" symbol="rng" x="5" y="1"/>
+		<tile id="80" symbol="tweak" x="4" y="-3" value="0.9300000000000006"/>
+		<tile id="81" symbol="tweak" x="4" y="-4" value="1.0"/>
+		<tile id="82" symbol="mix" x="5" y="-4"/>
+		<tile id="83" symbol="adsr" x="-1" y="5"/>
+		<tile id="85" symbol="mul" x="0" y="3"/>
+		<tile id="86" symbol="const" x="1" y="3" value="0.5"/>
+		<tile id="93" symbol="tape_loop" x="-1" y="3"/>
+		<tile id="96" symbol="ceil" x="0" y="5"/>
+		<tile id="97" symbol="adsr" x="0" y="6"/>
+		<tile id="98" symbol="tweak" x="-3" y="6" value="0.09999999999999996"/>
+		<tile id="99" symbol="tweak" x="0" y="7" value="0.8099999999999998"/>
+		<tile id="100" symbol="const" x="-1" y="7" value="0.0"/>
+		<tile id="102" symbol="add" x="3" y="-5"/>
+		<tile id="103" symbol="mul" x="2" y="-5"/>
+		<tile id="104" symbol="add" x="3" y="3"/>
+		<tile id="105" symbol="mul" x="3" y="6"/>
+		<tile id="106" symbol="uts" x="5" y="8"/>
+		<tile id="107" symbol="rng" x="6" y="8"/>
+		<tile id="108" symbol="tweak" x="2" y="5" value="0.29000000000000004"/>
+		<tile id="110" symbol="const" x="7" y="4" value="220.0"/>
+		<tile id="111" symbol="sqr" x="7" y="8"/>
+		<tile id="112" symbol="const" x="8" y="8" value="10000.0"/>
+		<tile id="115" symbol="mul" x="4" y="7"/>
+		<tile id="116" symbol="tptsvf_lowpass" x="3" y="7"/>
+		<tile id="118" symbol="const" x="2" y="7" value="3520.0"/>
+		<tile id="121" symbol="tri" x="5" y="6"/>
+		<tile id="122" symbol="pls" x="-1" y="4"/>
+		<tile id="123" symbol="rng" x="5" y="4"/>
+		<tile id="124" symbol="mix" x="6" y="5"/>
+		<tile id="125" symbol="const" x="7" y="6" value="1760.0"/>
+		<tile id="126" symbol="mix" x="-2" y="6"/>
+		<tile id="127" symbol="tweak" x="-2" y="7" value="0.6500000000000004"/>
+		<tile id="128" symbol="rng" x="-2" y="4"/>
+		<tile id="129" symbol="tweak" x="3" y="8" value="0.3500000000000001"/>
+		<tile id="130" symbol="sqr" x="-4" y="2"/>
+		<tile id="131" symbol="rcp" x="-5" y="2"/>
+		<tile id="132" symbol="mix" x="-5" y="3"/>
+		<tile id="133" symbol="const" x="-6" y="3" value="1.0"/>
+		<tile id="134" symbol="const" x="-5" y="4" value="3.0"/>
+		<tile id="135" symbol="rng" x="-4" y="3"/>
+		<wire from="130:0" to="135:0"/>
+		<wire from="124:0" to="121:0"/>
+		<wire from="44:0" to="42:1"/>
+		<wire from="122:0" to="83:0"/>
+		<wire from="102:0" to="8:0"/>
+		<wire from="42:0" to="103:0"/>
+		<wire from="24:0" to="25:1"/>
+		<wire from="132:0" to="131:0"/>
+		<wire from="79:0" to="82:2"/>
+		<wire from="122:0" to="128:0"/>
+		<wire from="111:0" to="107:0"/>
+		<wire from="39:0" to="21:2"/>
+		<wire from="70:0" to="7:0"/>
+		<wire from="62:0" to="35:2"/>
+		<wire from="54:0" to="103:0"/>
+		<wire from="8:0" to="70:0"/>
+		<wire from="64:0" to="62:0"/>
+		<wire from="78:0" to="79:0"/>
+		<wire from="100:0" to="97:2"/>
+		<wire from="46:0" to="45:0"/>
+		<wire from="63:0" to="64:0"/>
+		<wire from="25:0" to="39:0"/>
+		<wire from="68:0" to="3:0"/>
+		<wire from="23:0" to="21:0"/>
+		<wire from="82:0" to="8:0"/>
+		<wire from="116:0" to="105:0"/>
+		<wire from="56:0" to="54:2"/>
+		<wire from="62:0" to="35:4"/>
+		<wire from="100:0" to="97:4"/>
+		<wire from="104:0" to="102:0"/>
+		<wire from="128:0" to="126:2"/>
+		<wire from="134:0" to="132:1"/>
+		<wire from="83:0" to="96:0"/>
+		<wire from="50:0" to="49:0"/>
+		<wire from="121:0" to="115:0"/>
+		<wire from="86:0" to="85:0"/>
+		<wire from="66:0" to="64:2"/>
+		<wire from="110:0" to="124:0"/>
+		<wire from="67:0" to="93:0"/>
+		<wire from="64:0" to="85:0"/>
+		<wire from="3:0" to="5:0"/>
+		<wire from="70:0" to="69:0"/>
+		<wire from="81:0" to="82:1"/>
+		<wire from="93:0" to="122:0"/>
+		<wire from="61:0" to="21:1"/>
+		<wire from="99:0" to="97:2"/>
+		<wire from="126:0" to="97:1"/>
+		<wire from="100:0" to="83:1"/>
+		<wire from="123:0" to="124:2"/>
+		<wire from="67:0" to="78:0"/>
+		<wire from="106:0" to="115:0"/>
+		<wire from="67:0" to="66:0"/>
+		<wire from="68:0" to="35:0"/>
+		<wire from="35:0" to="50:0"/>
+		<wire from="99:0" to="97:4"/>
+		<wire from="103:0" to="102:0"/>
+		<wire from="112:0" to="111:0"/>
+		<wire from="125:0" to="124:1"/>
+		<wire from="131:0" to="130:0"/>
+		<wire from="60:0" to="58:0"/>
+		<wire from="98:0" to="126:0"/>
+		<wire from="100:0" to="83:3"/>
+		<wire from="108:0" to="105:0"/>
+		<wire from="105:0" to="104:0"/>
+		<wire from="127:0" to="126:1"/>
+		<wire from="133:0" to="132:0"/>
+		<wire from="129:0" to="116:2"/>
+		<wire from="27:0" to="45:1"/>
+		<wire from="107:0" to="106:0"/>
+		<wire from="58:0" to="59:0"/>
+		<wire from="29:0" to="53:1"/>
+		<wire from="122:0" to="123:0"/>
+		<wire from="9:0" to="8:0"/>
+		<wire from="96:0" to="97:0"/>
+		<wire from="115:0" to="116:0"/>
+		<wire from="5:0" to="27:0"/>
+		<wire from="53:0" to="54:0"/>
+		<wire from="51:0" to="50:1"/>
+		<wire from="80:0" to="82:0"/>
+		<wire from="35:0" to="25:0"/>
+		<wire from="45:0" to="53:0"/>
+		<wire from="30:0" to="53:2"/>
+		<wire from="37:0" to="35:1"/>
+		<wire from="130:0" to="67:0"/>
+		<wire from="126:0" to="83:2"/>
+		<wire from="118:0" to="116:1"/>
+		<wire from="55:0" to="54:1"/>
+		<wire from="3:0" to="42:0"/>
+		<wire from="75:0" to="77:0"/>
+		<wire from="67:0" to="68:0"/>
+		<wire from="76:0" to="77:0"/>
+		<wire from="78:0" to="71:0"/>
+		<wire from="10:0" to="3:1"/>
+		<wire from="37:0" to="35:3"/>
+		<wire from="71:0" to="76:0"/>
+		<wire from="65:0" to="64:1"/>
+		<wire from="22:0" to="61:0"/>
+		<wire from="64:0" to="3:2"/>
+		<wire from="21:0" to="5:0"/>
+		<wire from="126:0" to="83:4"/>
+		<wire from="59:0" to="61:0"/>
+		<wire from="135:0" to="132:2"/>
+		<wire from="40:0" to="62:0"/>
+		<wire from="85:0" to="93:2"/>
+		<wire from="10:0" to="3:3"/>
+		<wire from="47:0" to="46:0"/>
+		<wire from="49:0" to="45:2"/>
+		<wire from="97:0" to="105:0"/>
+		<wire from="64:0" to="3:4"/>
+		<wire from="77:0" to="70:1"/>
+	</patch>
+</mollytime>
