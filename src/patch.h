@@ -37,7 +37,7 @@
 using TileHandle = uint32_t;
 
 // TileId is the upper DWORD, Port Index lower DWORD
-//using PortHandle = uint64_t; // TODO: defined in thunks.h for now
+using PortHandle = uint64_t;
 
 using WireHandle = std::tuple<PortHandle, PortHandle>;
 
@@ -82,7 +82,8 @@ struct Scratch final : public MidiHandler
 
     std::vector<double> RegisterFile;
     std::map<PortHandle, RegisterAllocation> PersistentRegisters;
-    std::unordered_map<PortHandle, std::vector<MagicTapeUniquePtr>> Tapes;
+    std::vector<MagicTapeUniquePtr> TapeFile;
+    std::map<PortHandle, RegisterAllocation> PersistentTapes;
 
     std::vector<InstructionThunkSharedPtr> Program;
     std::vector<std::ptrdiff_t> Outputs;
@@ -104,7 +105,6 @@ struct Scratch final : public MidiHandler
     void Migrate(Scratch& Old);
 
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
-    MagicTape* FindTape(PortHandle Port, uint32_t Lane);
 
 private:
     void PrintRegisters() const;

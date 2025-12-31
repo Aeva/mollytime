@@ -30,10 +30,6 @@
 #include "perf.h"
 
 
-// TODO: ideally the thunks don't know about this, but TapeLoops needs it for the moment.
-using PortHandle = uint64_t;
-
-
 enum class OpCode : uint32_t
 {
     GO = 0,
@@ -459,12 +455,11 @@ using MidiCreateAndConnectFn = std::function<
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
         std::vector<double>* RegisterFile,
-        struct Scratch* Program,
+        std::vector<MagicTapeUniquePtr>* TapeFile,
+        std::ptrdiff_t TapeIndex,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
-        std::vector<std::ptrdiff_t>& Closures,
-        PortHandle Port,
-        uint32_t Lane)>;
+        std::vector<std::ptrdiff_t>& Closures)>;
 
 
 struct SymbolInfo
@@ -553,15 +548,14 @@ private:
     {
         SetCommon<ThunkT>();
         TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures, PortHandle Port, uint32_t Lane)
+            std::vector<double>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
-            Thunk->Program = Program;
-            Thunk->Port = Port;
-            Thunk->Lane = Lane;
+            Thunk->TapeFile = TapeFile;
+            Thunk->TapeIndex = TapeIndex;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }

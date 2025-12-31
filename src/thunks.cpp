@@ -1752,9 +1752,8 @@ struct TweakThunk : public InstructionThunk
 struct TapeLoopThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<4, 1, 4> Info = { OpCode::TAPE_LOOP, "tape\nloop", {"sample", "read\nstart", "length", "reset"}, {"sample"} };
-    Scratch* Program;
-    PortHandle Port;
-    uint32_t Lane;
+    std::vector<MagicTapeUniquePtr>* TapeFile;
+    std::ptrdiff_t TapeIndex;
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1772,7 +1771,11 @@ struct TapeLoopThunk : public InstructionThunk
         uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
         uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
 
-        BlankTape* Tape = (BlankTape*)Program->FindTape(Port, Lane);
+        BlankTape* Tape;
+        {
+            MagicTapeUniquePtr& Found = TapeFile->at(TapeIndex);
+            Tape = (BlankTape*)Found.get();
+        }
 
         if (!Tape)
         {
