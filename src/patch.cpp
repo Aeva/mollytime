@@ -552,7 +552,8 @@ ScratchUniquePtr Patch::Compile()
     struct TilePartial
     {
         TileHandle Tile;
-        uint32_t Polyphony = 0; // Zero indicates to inherit from inputs.
+        bool DynamicPolyphony; // True indicates the tile's polyphony is determined via propagation, not by its symbol.
+        uint32_t Polyphony = 1;
 
         // This is NOT redundant to Patch::ByInput because its elements are ordered,
         // and that ordering is determined at compile time (e.g. by OpCode::GO).
@@ -582,6 +583,8 @@ ScratchUniquePtr Patch::Compile()
         return Partial;
     };
 
+    bool GraphHasCycles = false;
+
     std::function<void(TileHandle)> Step = [&](const TileHandle Tile) -> void
     {
         // Recursively solve the order in which tiles are to be cranked, assign polyphony hints,
@@ -589,6 +592,7 @@ ScratchUniquePtr Patch::Compile()
 
         if (!BreadCrumbs.insert(Tile).second)
         {
+            GraphHasCycles = true;
             return;
         }
 
@@ -596,6 +600,7 @@ ScratchUniquePtr Patch::Compile()
         if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::LANE_COUNT || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
         {
             TilePartial& Partial = VisitTile(Tile);
+            Partial.DynamicPolyphony = false;
             Partial.Polyphony = 1;
             return;
         }
@@ -642,6 +647,7 @@ ScratchUniquePtr Patch::Compile()
         else if (IsOutputSymbol(Symbol))
         {
             TilePartial& Partial = VisitTile(Tile);
+            Partial.DynamicPolyphony = false;
             Partial.Polyphony = 1;
             std::vector<PortHandle>& Input0 = Partial.Inputs.emplace_back();
 
@@ -659,16 +665,19 @@ ScratchUniquePtr Patch::Compile()
                 Symbol == OpCode::PRES || Symbol == OpCode::CTRL || Symbol == OpCode::KIKI ||
                 Symbol == OpCode::BEND)
             {
+                Partial.DynamicPolyphony = false;
                 Partial.Polyphony = MidiPolyphony;
             }
             else if (IsLaneJoinSymbol(Symbol))
             {
+                Partial.DynamicPolyphony = false;
                 Partial.Polyphony = 1;
             }
             else
             {
                 // Inherit from inputs.
-                Partial.Polyphony = 0;
+                Partial.DynamicPolyphony = true;
+                Partial.Polyphony = 1;
             }
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -780,43 +789,28 @@ ScratchUniquePtr Patch::Compile()
     // Solve tile polyphony via propagation.
     TilePolyphony.clear();
     {
-        std::vector<TilePartial*> Unsolved;
-        for (TilePartial& Partial : FlatGraph)
+        // We need to run multiple times when there are graph cycles to fully propagate the required
+        // polyphony.  It is unclear if there is any situation where more than one retry would be needed
+        // to fully solve the graph correctly.
+        uint32_t IterationCount = GraphHasCycles ? 2 : 1;
+        // It is possible to create valid graphs with cycles where it is not possible to determine
+        // the lane width because none of the tiles have constants or midi inputs.  The correct thing
+        // to do in such a situation is to default to a lane width of one.
+        for (uint32_t Iteration = 0; Iteration < IterationCount; ++Iteration)
         {
-            if (Partial.Polyphony < 1)
+            for (TilePartial& Partial : FlatGraph)
             {
-                for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+                if (Partial.DynamicPolyphony)
                 {
-                    for (PortHandle ConnectedPort : ConnectedOutputs)
+                    for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
                     {
-                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
-                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
-                        Partial.Polyphony = std::max(Partial.Polyphony, ConnectedPartial->Polyphony);
+                        for (PortHandle ConnectedPort : ConnectedOutputs)
+                        {
+                            TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                            TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                            Partial.Polyphony = std::max(Partial.Polyphony, ConnectedPartial->Polyphony);
+                        }
                     }
-                }
-            }
-            if (Partial.Polyphony < 1)
-            {
-                // This can happen when there are graph cycles, in which case we retry solving these
-                // head tiles after we've finished a pass on the graph.  It is unclear if there is any
-                // situation where more than one retry would be needed to fully solve the graph
-                // correctly.
-                Unsolved.push_back(&Partial);
-            }
-        }
-        for (TilePartial* Partial : Unsolved)
-        {
-            // It is possible to create valid graphs with cycles where it is not possible to determine
-            // the lane width because none of the tiles have constants or midi inputs.  The correct thing
-            // to do in such a situation is to default to a lane width of one.
-            Partial->Polyphony = 1;
-            for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
-            {
-                for (PortHandle ConnectedPort : ConnectedOutputs)
-                {
-                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
-                    TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
-                    Partial->Polyphony = std::max(Partial->Polyphony, ConnectedPartial->Polyphony);
                 }
             }
         }
