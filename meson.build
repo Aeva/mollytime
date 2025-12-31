@@ -215,6 +215,7 @@ source_files += files(
     'src' / 'sdl_mouse.cpp',
     'src' / 'sdl_rect.cpp',
     'src' / 'sdl_time.cpp',
+    'src' / 'thunks.cpp',
     'src' / 'wasapi_stream.cpp'
 )
 
