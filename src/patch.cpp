@@ -336,7 +336,7 @@ std::vector<PortHandle> Patch::GetTileInputPorts(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
-    size_t Count = SymbolInfoMap.InputNames[(int)Symbol].size();
+    size_t Count = SymbolInfoMap.Inputs[(int)Symbol].size();
     std::vector<PortHandle> Handles;
     Handles.reserve(Count);
     for (int PortIndex = 0; PortIndex < static_cast<int>(Count); ++PortIndex)
@@ -362,12 +362,18 @@ std::vector<PortHandle> Patch::GetTileOutputPorts(TileHandle Tile)
 }
 
 
-std::string Patch::GetTileInputName(PortHandle Port)
+InputInfo Patch::GetTileInputInfo(PortHandle Port)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(PortHandleTilePart(Port));
     uint32_t PortIndex = PortHandlePortIndexPart(Port);
-    return SymbolInfoMap.InputNames[(int)Symbol][PortIndex];
+    return SymbolInfoMap.Inputs[(int)Symbol][PortIndex];
+}
+
+
+std::string Patch::GetTileInputName(PortHandle Port)
+{
+    return GetTileInputInfo(Port).Name;
 }
 
 
@@ -605,7 +611,7 @@ ScratchUniquePtr Patch::Compile()
             return;
         }
 
-        const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
+        const size_t InputCount = SymbolInfoMap.Inputs[(int)Symbol].size();
 
         // Recurse first to populate everything sequentally.
         for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -822,8 +828,11 @@ ScratchUniquePtr Patch::Compile()
     }
 
     std::unordered_map<PortHandle, PortHandle> LaneMergePorts;
+    std::unordered_map<PortHandle, PortHandle> InputCombinerPorts;
     {
         uint32_t NextVirtualPortIndex = 0;
+
+        // Solve lane merging port aliases.
         for (TilePartial& Partial : FlatGraph)
         {
             const OpCode Symbol = GetTileSymbol(Partial.Tile);
@@ -855,6 +864,33 @@ ScratchUniquePtr Patch::Compile()
                 }
             }
         }
+
+        std::vector<TilePartial> FlatGraphWithCombiners;
+        FlatGraphWithCombiners.reserve(FlatGraph.size());
+
+        // Solve combiners.
+        for (TilePartial& Partial : FlatGraph)
+        {
+            const OpCode Symbol = GetTileSymbol(Partial.Tile);
+            uint32_t InputIndex = 0;
+            for (const InputInfo& Input : SymbolInfoMap.Inputs[(int)Symbol])
+            {
+                if (Input.Combiner != InputCombiner::NONE)
+                {
+                    PortHandle InputPort = MakePortHandle(Partial.Tile, InputIndex);
+                    PortHandle VirtualPort = MakePortHandle(0, NextVirtualPortIndex);
+                    if (InputCombinerPorts.insert({InputPort, VirtualPort}).second)
+                    {
+                        // TODO: Insert new partials for combiners and rewrite existing ones so the thunk generation code
+                        // does not need to be updated.  And by insert I mean append to FlatGraphWithCombiners.
+                        ++NextVirtualPortIndex;
+                    }
+                }
+                ++InputIndex;
+            }
+            FlatGraphWithCombiners.push_back(Partial);
+        }
+        std::swap(FlatGraph, FlatGraphWithCombiners);
     }
 
     std::map<PortHandle, std::ptrdiff_t> RegisterMap;
@@ -901,7 +937,7 @@ ScratchUniquePtr Patch::Compile()
         }
         else if (IsOutputSymbol(Symbol))
         {
-            const size_t InputCount = SymbolInfoMap.InputNames[(int)Symbol].size();
+            const size_t InputCount = SymbolInfoMap.Inputs[(int)Symbol].size();
             const size_t ConnectedInputCount = (InputCount > 0) ? ByInput.at(MakePortHandle(Tile, 0)).size() : 0;
             if (ConnectedInputCount != 1)
             {

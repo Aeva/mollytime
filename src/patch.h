@@ -152,6 +152,7 @@ struct Patch
 
     std::vector<PortHandle> GetTileInputPorts(TileHandle Tile);
     std::vector<PortHandle> GetTileOutputPorts(TileHandle Tile);
+    InputInfo GetTileInputInfo(PortHandle Port);
     std::string GetTileInputName(PortHandle Port);
     std::string GetTileOutputName(PortHandle Port);
     int GetTilePolyphony(TileHandle Tile);

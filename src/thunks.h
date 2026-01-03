@@ -296,6 +296,7 @@ using CombinerFn = decltype((CombinerAdd));
 
 enum class InputCombiner
 {
+    NONE,
     ADD,
     MUL,
     MIN,
@@ -306,7 +307,7 @@ enum class InputCombiner
 
 struct InputInfo
 {
-    std::string_view Name;
+    std::string Name;
     double DefaultValue;
     InputCombiner Combiner;
 };
@@ -320,6 +321,7 @@ struct InstructionInfo
     std::array<InputInfo, InputCount> InputPorts;
     std::array<std::string_view, OutputCount> OutputNames;
     int ClosureCount = ClosureCount_;
+    bool AutoCombiners = false; // TODO: this is a temporary opt-in mechanism for the new system, will eventually be removed.
 };
 
 
@@ -483,7 +485,7 @@ using TapeCreateAndConnectFn = std::function<
 struct SymbolInfo
 {
     std::vector<std::string> DefaultNames;
-    std::vector<std::vector<std::string>> InputNames;
+    std::vector<std::vector<InputInfo>> Inputs;
     std::vector<std::vector<std::string>> OutputNames;
     std::vector<int> Closures;
 
@@ -496,10 +498,15 @@ struct SymbolInfo
 
 private:
     void Set(OpCode Symbol, std::string Name,
-             std::vector<std::string> Inputs, std::vector<std::string> Outputs, int HiddenOutputs = 0)
+             std::vector<std::string> InInputs, std::vector<std::string> Outputs, int HiddenOutputs = 0)
     {
         DefaultNames[(int)Symbol] = Name;
-        InputNames[(int)Symbol] = Inputs;
+        Inputs[(int)Symbol].reserve(Inputs.size());
+        for (std::string& InputName : InInputs)
+        {
+            // TODO: aux, out, and scope should use the ADD combiner.
+            Inputs[(int)Symbol].push_back({ InputName, 0.0, InputCombiner::NONE });
+        }
         OutputNames[(int)Symbol] = Outputs;
         Closures[(int)Symbol] = HiddenOutputs;
     }
@@ -509,11 +516,14 @@ private:
     {
         const int ThunkIndex = (int)ThunkT::Info.Symbol;
         DefaultNames[ThunkIndex] = ThunkT::Info.Name;
-        InputNames[ThunkIndex].reserve(ThunkT::Info.InputPorts.size());
-        for (const InputInfo& InputPort : ThunkT::Info.InputPorts)
+        Inputs[ThunkIndex] = std::vector<InputInfo>(ThunkT::Info.InputPorts.begin(), ThunkT::Info.InputPorts.end());
+        if (!ThunkT::Info.AutoCombiners)
         {
-            std::string InputName = std::string(InputPort.Name);
-            InputNames[ThunkIndex].push_back(InputName);
+            // TODO: this is a fallback for stuff that hasn't been converted yet
+            for (InputInfo& InputPort : Inputs[ThunkIndex])
+            {
+                InputPort.Combiner = InputCombiner::NONE;
+            }
         }
         OutputNames[ThunkIndex] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
         Closures[ThunkIndex] = ThunkT::Info.ClosureCount;
