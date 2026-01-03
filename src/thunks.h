@@ -294,7 +294,7 @@ inline double CombinerMax(double LHS, double RHS)
 using CombinerFn = decltype((CombinerAdd));
 
 
-enum class InputCombiner
+enum class PortCombiner
 {
     NONE,
     ADD,
@@ -302,6 +302,8 @@ enum class InputCombiner
     MIN,
     MAX,
     DIRECT,
+    LANE_MERGE,
+    LANE_SPREAD,
 };
 
 
@@ -309,7 +311,7 @@ struct InputInfo
 {
     std::string Name;
     double DefaultValue;
-    InputCombiner Combiner;
+    PortCombiner Combiner;
 };
 
 
@@ -505,7 +507,7 @@ private:
         for (std::string& InputName : InInputs)
         {
             // TODO: aux, out, and scope should use the ADD combiner.
-            Inputs[(int)Symbol].push_back({ InputName, 0.0, InputCombiner::NONE });
+            Inputs[(int)Symbol].push_back({ InputName, 0.0, PortCombiner::NONE });
         }
         OutputNames[(int)Symbol] = Outputs;
         Closures[(int)Symbol] = HiddenOutputs;
@@ -522,7 +524,7 @@ private:
             // TODO: this is a fallback for stuff that hasn't been converted yet
             for (InputInfo& InputPort : Inputs[ThunkIndex])
             {
-                InputPort.Combiner = InputCombiner::NONE;
+                InputPort.Combiner = PortCombiner::NONE;
             }
         }
         OutputNames[ThunkIndex] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());

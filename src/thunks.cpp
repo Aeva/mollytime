@@ -125,7 +125,7 @@ struct SinThunk : public InstructionThunk
     {
         OpCode::SIN, "sin",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"},
         true,
@@ -152,7 +152,7 @@ struct SqrThunk : public InstructionThunk
     {
         OpCode::SQR, "sqr",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"}
     };
@@ -182,7 +182,7 @@ struct TriThunk : public InstructionThunk
     {
         OpCode::TRI, "tri",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"}
     };
@@ -219,7 +219,7 @@ struct SawThunk : public InstructionThunk
     {
         OpCode::SAW, "saw",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"}
     };
@@ -250,7 +250,7 @@ struct NoiThunk : public InstructionThunk
     {
         OpCode::NOI, "noise",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"}
     };
@@ -295,7 +295,7 @@ struct PhaseThunk : public InstructionThunk
     {
         OpCode::PHASE, "phase",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"phase"}
     };
@@ -323,7 +323,7 @@ struct SinTrainThunk : public InstructionThunk
     {
         OpCode::SIN_TRAIN, "sin\ntrain",
         {{
-            {"phase", 0.0, InputCombiner::ADD},
+            {"phase", 0.0, PortCombiner::ADD},
         }},
         {"amp", "phase"}
     };
@@ -349,7 +349,7 @@ struct SqrTrainThunk : public InstructionThunk
     {
         OpCode::SQR_TRAIN, "sqr\ntrain",
         {{
-            {"phase", 0.0, InputCombiner::ADD},
+            {"phase", 0.0, PortCombiner::ADD},
         }},
         {"amp", "phase"}
     };
@@ -379,7 +379,7 @@ struct TriTrainThunk : public InstructionThunk
     {
         OpCode::TRI_TRAIN, "tri\ntrain",
         {{
-            {"phase", 0.0, InputCombiner::ADD},
+            {"phase", 0.0, PortCombiner::ADD},
         }},
         {"amp", "phase"}
     };
@@ -416,7 +416,7 @@ struct SawTrainThunk : public InstructionThunk
     {
         OpCode::SAW_TRAIN, "saw\ntrain",
         {{
-            {"phase", 0.0, InputCombiner::ADD},
+            {"phase", 0.0, PortCombiner::ADD},
         }},
         {"amp", "phase"}
     };
@@ -447,8 +447,8 @@ struct PhaseWidthModulationThunk : public InstructionThunk
     {
         OpCode::PWM, "pwm",
         {{
-            {"phase", 0.0, InputCombiner::ADD},
-            {"bal", 0.0, InputCombiner::ADD},
+            {"phase", 0.0, PortCombiner::ADD},
+            {"bal", 0.0, PortCombiner::ADD},
         }},
         {"phase"}
     };
@@ -487,7 +487,7 @@ struct AddThunk : public InstructionThunk
     {
         OpCode::ADD, "add",
         {{
-            {"+", 0.0, InputCombiner::ADD},
+            {"+", 0.0, PortCombiner::ADD},
         }},
         {"="}
     };
@@ -508,7 +508,7 @@ struct MulThunk : public InstructionThunk
     {
         OpCode::MUL, "mul",
         {{
-            {"*", 0.0, InputCombiner::MUL},
+            {"*", 0.0, PortCombiner::MUL},
         }},
         {"="}
     };
@@ -529,7 +529,7 @@ struct RcpThunk : public InstructionThunk
     {
         OpCode::RCP, "rcp",
         {{
-            {"#", 0.0, InputCombiner::MUL},
+            {"#", 0.0, PortCombiner::MUL},
         }},
         {"="}
     };
@@ -556,8 +556,8 @@ struct PowThunk : public InstructionThunk
     {
         OpCode::POW, "pow",
         {{
-            {"n", 0.0, InputCombiner::ADD},
-            {"^", 2.0, InputCombiner::ADD},
+            {"n", 0.0, PortCombiner::ADD},
+            {"^", 2.0, PortCombiner::ADD},
         }},
         {"="}
     };
@@ -586,8 +586,8 @@ struct SignPreservingPowThunk : public InstructionThunk
     {
         OpCode::SPOW, "spow",
         {{
-            {"n", 0.0, InputCombiner::ADD},
-            {"^", 2.0, InputCombiner::ADD},
+            {"n", 0.0, PortCombiner::ADD},
+            {"^", 2.0, PortCombiner::ADD},
         }},
         {"="}
     };
@@ -617,7 +617,7 @@ struct MinThunk : public InstructionThunk
     {
         OpCode::MIN, "min",
         {{
-            {"min", 0.0, InputCombiner::MIN},
+            {"min", 0.0, PortCombiner::MIN},
         }},
         {"="}
     };
@@ -638,7 +638,7 @@ struct MaxThunk : public InstructionThunk
     {
         OpCode::MAX, "max",
         {{
-            {"max", 0.0, InputCombiner::MAX},
+            {"max", 0.0, PortCombiner::MAX},
         }},
         {"="}
     };
@@ -659,9 +659,9 @@ struct ClampThunk : public InstructionThunk
     {
         OpCode::CLAMP, "clamp",
         {{
-            {"#", 0.0, InputCombiner::ADD},
-            {"high", 1.0, InputCombiner::MAX},
-            {"low", -1.0, InputCombiner::MIN},
+            {"#", 0.0, PortCombiner::ADD},
+            {"high", 1.0, PortCombiner::MAX},
+            {"low", -1.0, PortCombiner::MIN},
         }},
         {"="}
     };
@@ -686,7 +686,7 @@ struct FloorThunk : public InstructionThunk
     {
         OpCode::FLOOR, "floor",
         {{
-            {"#", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
         }},
         {"floor"}
     };
@@ -707,7 +707,7 @@ struct CeilThunk : public InstructionThunk
     {
         OpCode::CEIL, "ceil",
         {{
-            {"#", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
         }},
         {"ceil"}
     };
@@ -728,7 +728,7 @@ struct RoundThunk : public InstructionThunk
     {
         OpCode::ROUND, "round",
         {{
-            {"#", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
         }},
         {"rounded"}
     };
@@ -749,7 +749,7 @@ struct SignThunk : public InstructionThunk
     {
         OpCode::SIGN, "sign",
         {{
-            {"#", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
         }},
         {"sign"}
     };
@@ -772,7 +772,7 @@ struct AbsThunk : public InstructionThunk
     {
         OpCode::ABS, "abs",
         {{
-            {"#", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
         }},
         {"abs"}
     };
@@ -793,9 +793,9 @@ struct FoldThunk : public InstructionThunk
     {
         OpCode::FLD, "fold",
         {{
-            {"v", 0.0, InputCombiner::ADD},
-            {"p", 1.0, InputCombiner::ADD},
-            {"n", 0.0, InputCombiner::ADD},
+            {"v", 0.0, PortCombiner::ADD},
+            {"p", 1.0, PortCombiner::ADD},
+            {"n", 0.0, PortCombiner::ADD},
         }},
         {"w"}
     };
@@ -838,7 +838,7 @@ struct InvertThunk : public InstructionThunk
     {
         OpCode::INV, "invert",
         {{
-            {"#", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
         }},
         {"#"}
     };
@@ -862,7 +862,7 @@ struct ToUnipolarThunk : public InstructionThunk
     {
         OpCode::STU, "bipolar\nto\nunipolar",
         {{
-            {"bi", 0.0, InputCombiner::ADD},
+            {"bi", 0.0, PortCombiner::ADD},
         }},
         {"uni"}
     };
@@ -883,7 +883,7 @@ struct ToBipolarThunk : public InstructionThunk
     {
         OpCode::UTS, "unipolar\nto\nbipolar",
         {{
-            {"uni", 0.0, InputCombiner::ADD},
+            {"uni", 0.0, PortCombiner::ADD},
         }},
         {"bi"}
     };
@@ -904,9 +904,9 @@ struct MixThunk : public InstructionThunk
     {
         OpCode::MIX, "mix",
         {{
-            {"low", 0.0, InputCombiner::ADD},
-            {"high", 0.0, InputCombiner::ADD},
-            {"balance", 0.5, InputCombiner::ADD},
+            {"low", 0.0, PortCombiner::ADD},
+            {"high", 0.0, PortCombiner::ADD},
+            {"balance", 0.5, PortCombiner::ADD},
         }},
         {"="}
     };
@@ -932,8 +932,8 @@ struct StereoBalanceThunk : public InstructionThunk
     {
         OpCode::BAL, "stereo\nbalance",
         {{
-            {"sample", 0.0, InputCombiner::ADD},
-            {"balance", 0.0, InputCombiner::ADD},
+            {"sample", 0.0, PortCombiner::ADD},
+            {"balance", 0.0, PortCombiner::ADD},
         }},
         {"left", "right"}
     };
@@ -962,7 +962,7 @@ struct PulseThunk : public InstructionThunk
     {
         OpCode::PLS, "pulse",
         {{
-            {"clock", 0.0, InputCombiner::ADD},
+            {"clock", 0.0, PortCombiner::ADD},
         }},
         {"pulse"}
     };
@@ -1004,7 +1004,7 @@ struct FlipFlopThunk : public InstructionThunk
     {
         OpCode::FLP, "flip\nflop",
         {{
-            {"clock", 0.0, InputCombiner::ADD},
+            {"clock", 0.0, PortCombiner::ADD},
         }},
         {"even", "odd"}
     };
@@ -1058,7 +1058,7 @@ struct RandomThunk : public InstructionThunk
     {
         OpCode::RNG, "rng",
         {{
-            {"clock", 0.0, InputCombiner::ADD},
+            {"clock", 0.0, PortCombiner::ADD},
         }},
         {"#"}
     };
@@ -1094,8 +1094,8 @@ struct GradualThunk : public InstructionThunk
     {
         OpCode::GRAD, "grad",
         {{
-            {"#", 0.0, InputCombiner::ADD},
-            {"rate", 0.0, InputCombiner::ADD},
+            {"#", 0.0, PortCombiner::ADD},
+            {"rate", 0.0, PortCombiner::ADD},
         }},
         {"#"}
     };
@@ -1267,9 +1267,9 @@ struct LowpassThunk : public TopologyPreservingTransformStateVariableFilterThunk
     {
         OpCode::TPTSVF_LOWPASS, "low\npass",
         {{
-            {"sample", 0.0, InputCombiner::ADD},
-            {"cutoff", 1000.0, InputCombiner::ADD},
-            {"res", 0.0, InputCombiner::ADD},
+            {"sample", 0.0, PortCombiner::ADD},
+            {"cutoff", 1000.0, PortCombiner::ADD},
+            {"res", 0.0, PortCombiner::ADD},
         }},
         {"lowpass"}
     };
@@ -1282,9 +1282,9 @@ struct BandpassThunk : public TopologyPreservingTransformStateVariableFilterThun
     {
         OpCode::TPTSVF_BANDPASS, "band\npass",
         {{
-            {"sample", 0.0, InputCombiner::ADD},
-            {"cutoff", 1000.0, InputCombiner::ADD},
-            {"res", 0.0, InputCombiner::ADD},
+            {"sample", 0.0, PortCombiner::ADD},
+            {"cutoff", 1000.0, PortCombiner::ADD},
+            {"res", 0.0, PortCombiner::ADD},
         }},
         {"bandpass"}
     };
@@ -1297,9 +1297,9 @@ struct HighpassThunk : public TopologyPreservingTransformStateVariableFilterThun
     {
         OpCode::TPTSVF_HIGHPASS, "high\npass",
         {{
-            {"sample", 0.0, InputCombiner::ADD},
-            {"cutoff", 1000.0, InputCombiner::ADD},
-            {"res", 0.0, InputCombiner::ADD},
+            {"sample", 0.0, PortCombiner::ADD},
+            {"cutoff", 1000.0, PortCombiner::ADD},
+            {"res", 0.0, PortCombiner::ADD},
         }},
         {"highpass"}
     };
@@ -1312,9 +1312,9 @@ struct NotchThunk : public TopologyPreservingTransformStateVariableFilterThunk<F
     {
         OpCode::TPTSVF_NOTCH, "notch",
         {{
-            {"sample", 0.0, InputCombiner::ADD},
-            {"cutoff", 1000.0, InputCombiner::ADD},
-            {"res", 0.0, InputCombiner::ADD},
+            {"sample", 0.0, PortCombiner::ADD},
+            {"cutoff", 1000.0, PortCombiner::ADD},
+            {"res", 0.0, PortCombiner::ADD},
         }},
         {"notch"}
     };
@@ -1327,11 +1327,11 @@ struct AdsrThunk : public InstructionThunk
     {
         OpCode::ADSR, "adsr",
         {{
-            {"trigger", 0.0, InputCombiner::ADD},
-            {"a", 0.1, InputCombiner::ADD},
-            {"d", 0.1, InputCombiner::ADD},
-            {"s", 1.0, InputCombiner::ADD},
-            {"r", 1.0, InputCombiner::ADD},
+            {"trigger", 0.0, PortCombiner::ADD},
+            {"a", 0.1, PortCombiner::ADD},
+            {"d", 0.1, PortCombiner::ADD},
+            {"s", 1.0, PortCombiner::ADD},
+            {"r", 1.0, PortCombiner::ADD},
         }},
         {"#"}
     };
@@ -1472,9 +1472,9 @@ struct QuantizeThunk : public InstructionThunk
     {
         OpCode::QNTZ, "quantize",
         {{
-            {"note", 0.0, InputCombiner::ADD},
-            {"root", 60.0, InputCombiner::ADD}, // defaults to Middle C
-            {"scale", 0.0, InputCombiner::DIRECT},
+            {"note", 0.0, PortCombiner::ADD},
+            {"root", 60.0, PortCombiner::ADD}, // defaults to Middle C
+            {"scale", 0.0, PortCombiner::DIRECT},
         }},
         {"note"}
     };
@@ -1578,9 +1578,9 @@ struct InputSequenceThunk : public InstructionThunk
     {
         OpCode::ISQN, "input\nseq",
         {{
-            {"clock", 0.0, InputCombiner::ADD},
-            {"input", 0.0, InputCombiner::DIRECT},
-            {"restart", 0.0, InputCombiner::ADD},
+            {"clock", 0.0, PortCombiner::ADD},
+            {"input", 0.0, PortCombiner::DIRECT},
+            {"restart", 0.0, PortCombiner::ADD},
         }},
         {"#", "complete"}
     };
@@ -1638,9 +1638,9 @@ struct RandomSequenceThunk : public InstructionThunk
     {
         OpCode::RSQN, "seed\nseq",
         {{
-            {"clock", 0.0, InputCombiner::ADD},
-            {"period", 4.0, InputCombiner::ADD},
-            {"seed", 0.0, InputCombiner::ADD},
+            {"clock", 0.0, PortCombiner::ADD},
+            {"period", 4.0, PortCombiner::ADD},
+            {"seed", 0.0, PortCombiner::ADD},
         }},
         {"#", "complete"}
     };
@@ -1732,7 +1732,7 @@ struct GateThunk : public InstructionThunk
     {
         OpCode::GATE, "gate",
         {{
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"gate"}
     };
@@ -1773,7 +1773,7 @@ struct NoteThunk : public InstructionThunk
     {
         OpCode::NOTE, "note",
         {{
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"note"}
     };
@@ -1821,7 +1821,7 @@ struct VelocityThunk : public InstructionThunk
     {
         OpCode::VELO, "velocity",
         {{
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"velocity"}
     };
@@ -1862,7 +1862,7 @@ struct PressureThunk : public InstructionThunk
     {
         OpCode::PRES, "pressure",
         {{
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"pressure"}
     };
@@ -1903,8 +1903,8 @@ struct ControlChangeThunk : public InstructionThunk
     {
         OpCode::CTRL, "control\nchange",
         {{
-            {"control", 0.0, InputCombiner::ADD},
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"control", 0.0, PortCombiner::ADD},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"value"}
     };
@@ -1951,7 +1951,7 @@ struct KikiThunk : public InstructionThunk
     {
         OpCode::KIKI, "kiki",
         {{
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"kiki"}
     };
@@ -2005,7 +2005,7 @@ struct PitchBendThunk : public InstructionThunk
     {
         OpCode::BEND, "bend",
         {{
-            {"channel", 0.0, InputCombiner::DIRECT},
+            {"channel", 0.0, PortCombiner::DIRECT},
         }},
         {"bend"}
     };
@@ -2051,7 +2051,7 @@ struct LeadLaneThunk : public InstructionThunk
     {
         OpCode::LEAD_LANE, "lead\nlane",
         {{
-            {"lane\nvalue", 0.0, InputCombiner::DIRECT},
+            {"lane\nvalue", 0.0, PortCombiner::DIRECT},
         }},
         {"lead\nlane\nvalue"}
     };
@@ -2082,7 +2082,7 @@ struct AddLanesThunk : public InstructionThunk
     {
         OpCode::ADD_LANES, "add\nlanes",
         {{
-            {"+", 0.0, InputCombiner::ADD},
+            {"+", 0.0, PortCombiner::ADD},
         }},
         {"="}
     };
@@ -2103,7 +2103,7 @@ struct MidiToHzThunk : public InstructionThunk
     {
         OpCode::MIDI_HZ, "midi\nto hz",
         {{
-            {"note", 69.0, InputCombiner::ADD}, // 440 hz
+            {"note", 69.0, PortCombiner::ADD}, // 440 hz
         }},
         {"hz"}
     };
@@ -2126,7 +2126,7 @@ struct LoudnessFudgeThunk : public InstructionThunk
     {
         OpCode::LOUD_FUDGE, "loud\nfudge",
         {{
-            {"hz", 440.0, InputCombiner::ADD},
+            {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"}
     };
@@ -2179,10 +2179,10 @@ struct TapeLoopThunk : public InstructionThunk
     {
         OpCode::TAPE_LOOP, "tape\nloop",
         {{
-            {"sample", 0.0, InputCombiner::ADD},
-            {"read\nstart", 0.0, InputCombiner::ADD},
-            {"length", 0.0, InputCombiner::ADD},
-            {"reset", 0.0, InputCombiner::ADD},
+            {"sample", 0.0, PortCombiner::ADD},
+            {"read\nstart", 0.0, PortCombiner::ADD},
+            {"length", 0.0, PortCombiner::ADD},
+            {"reset", 0.0, PortCombiner::ADD},
         }},
         {"sample"}
     };
