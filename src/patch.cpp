@@ -417,11 +417,11 @@ bool Patch::GetFrozen()
 void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
 {
     TRACEABLE_SCOPE;
-    if (!ByOutput.contains(OutputPort))
+    if (ByOutput.find(OutputPort) == ByOutput.end())
     {
         throw std::range_error(fmt::format("Fatal error: {} is not a known output port!\n", OutputPort));
     }
-    if (!ByInput.contains(InputPort))
+    if (ByInput.find(InputPort) == ByInput.end())
     {
         throw std::range_error(fmt::format("Fatal error: {} is not a known input port!\n", InputPort));
     }
@@ -448,7 +448,7 @@ void Patch::Disconnect(PortHandle OutputPort, PortHandle InputPort)
 void Patch::ToggleConnection(PortHandle OutputPort, PortHandle InputPort)
 {
     TRACEABLE_SCOPE;
-    if (Wires.contains({OutputPort, InputPort}))
+    if (Wires.find({OutputPort, InputPort}) != Wires.end())
     {
         Disconnect(OutputPort, InputPort);
     }
@@ -961,8 +961,8 @@ ScratchUniquePtr Patch::Compile()
             std::ptrdiff_t BaseOffset = TapeCount;
             uint32_t LaneCount = Partial->Polyphony;
 
-            auto Result = Program->PersistentTapes.try_emplace(Port, BaseOffset, LaneCount);
-            assert(Result.second == true);
+            const auto [_, WasInserted] = Program->PersistentTapes.insert({ Port, { BaseOffset, LaneCount } });
+            assert(WasInserted == true);
 
             TapeCount += LaneCount;
         }
