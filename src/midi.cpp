@@ -129,7 +129,7 @@ void MidiHandler::Reset()
 #endif
 
     PendingMidiMessages.clear();
-    PendingMidiMessages.emplace_back(MidiMessageType::Reset, 0, 0.0, 0.0);
+    PendingMidiMessages.push_back({ MidiMessageType::Reset, 0, 0.0, 0.0 });
 }
 
 
