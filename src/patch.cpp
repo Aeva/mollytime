@@ -964,16 +964,14 @@ ScratchUniquePtr Patch::Compile()
                                 FixupPartial->Tile = 0;
                                 FixupPartial->Combiner = Combiner;
                                 FixupPartial->DynamicPolyphony = false;
-                                FixupPartial->Polyphony = Partial->Polyphony;
+                                FixupPartial->Polyphony = std::max(Partial->Polyphony, ConnectedPartial->Polyphony);
                                 FixupPartial->Inputs = { { ConnectedPort }, };
-                                //std::vector<PortHandle>& MergeInputs0 = FixupPartial->Inputs.emplace_back();
-                                //MergeInputs0.push_back(ConnectedPort);
                                 FixupPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
                             }
                             assert(FixupPartial->Tile == 0);
                             assert(FixupPartial->Combiner == Combiner);
                             assert(FixupPartial->DynamicPolyphony == false);
-                            assert(FixupPartial->Polyphony == Partial->Polyphony);
+                            assert(FixupPartial->Polyphony > 1);
                             assert(FixupPartial->Inputs.size() == 1);
                             assert(FixupPartial->Inputs[0].size() == 1);
                             assert(FixupPartial->Outputs.size() == 1);
@@ -1249,6 +1247,43 @@ ScratchUniquePtr Patch::Compile()
             if (Partial->Combiner == PortCombiner::NONE)
             {
                 // This is a non-virtual thunk.
+                const OpCode Symbol = GetTileSymbol(Partial->Tile);
+
+                if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::LANE_COUNT)
+                {
+                    // No thunks are created for these symbols.
+                    continue;
+                }
+                else if (IsOutputSymbol(Symbol))
+                {
+                    std::ptrdiff_t OutputRegister = 0;
+
+                    if (Inputs[0].size() == 0)
+                    {
+                        OutputRegister = RegisterMap.at(MakePortHandle(Partial->Tile, 0));
+                    }
+                    else
+                    {
+                        assert(Inputs[0].size() == 1);
+                        OutputRegister = Inputs[0][0];
+                    }
+
+                    // Collect the patch output registers.
+                    if (Symbol == OpCode::OUT)
+                    {
+                        Program->Outputs.push_back(OutputRegister);
+                    }
+                    else if (Symbol == OpCode::AUX)
+                    {
+                        Program->AuxOutputs[Partial->Tile] = OutputRegister;
+                    }
+
+                    // This tile is also the current active probe.
+                    if (Program->ProbeConnected && Partial->Tile == ActiveProbeTile)
+                    {
+                        Program->ProbeInput = OutputRegister;
+                    }
+                }
             }
             else if (Partial->Combiner == PortCombiner::LANE_MERGE)
             {
@@ -1648,7 +1683,7 @@ void Scratch::Migrate(Scratch& Old)
         }
     }
 
-    constexpr bool EnableDebugLogging = false;
+    constexpr bool EnableDebugLogging = true;
 
     if (EnableDebugLogging)
     {
