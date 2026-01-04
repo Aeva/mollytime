@@ -1711,6 +1711,20 @@ struct RandomSequenceThunk : public InstructionThunk
 };
 
 
+static inline bool ChannelMatch(int Mask, int Channel)
+{
+    if (Mask < 0 && -Mask != Channel)
+    {
+        return true;
+    }
+    else if (Mask >= 0 && Mask == Channel)
+    {
+        return true;
+    }
+    return false;
+}
+
+
 struct GateThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = \
@@ -1739,7 +1753,7 @@ struct GateThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Gate = State.Gate;
                     break;
@@ -1780,7 +1794,7 @@ struct NoteThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Note = State.Note;
                     break;
@@ -1828,7 +1842,7 @@ struct VelocityThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Velocity = State.Velocity;
                     break;
@@ -1869,7 +1883,7 @@ struct PressureThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Pressure = State.Pressure;
                     break;
@@ -1913,7 +1927,7 @@ struct ControlChangeThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(1))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Channel = State.Channel;
                     break;
@@ -1959,7 +1973,7 @@ struct KikiThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Channel = State.Channel;
                     break;
@@ -2013,7 +2027,7 @@ struct PitchBendThunk : public InstructionThunk
         {
             for (const double* ChannelMask : Registers.InputVector(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
                 {
                     Channel = State.Channel;
                     break;
