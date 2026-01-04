@@ -930,7 +930,6 @@ ScratchUniquePtr Patch::Compile()
         uint32_t NextVirtualPortIndex = 0;
         std::vector<TilePartialSharedPtr> NextFlatGraph;
 
-        // Create virtual partials for lane merging and splitting.
         NextFlatGraph.reserve(FlatGraph.size());
         for (TilePartialSharedPtr Partial : FlatGraph)
         {
@@ -941,6 +940,8 @@ ScratchUniquePtr Patch::Compile()
             }
             else
             {
+                // Create virtual partials for lane merging and splitting.
+
                 for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
                 {
                     for (PortHandle& ConnectedPort : ConnectedOutputs)
@@ -982,19 +983,30 @@ ScratchUniquePtr Patch::Compile()
                 }
             }
 
+            // Create virtual partials for input combining.
+            if (Symbol == OpCode::OUT)
+            {
+                if (Partial->Inputs[0].size() > 1)
+                {
+                    TilePartialSharedPtr CombinerPartial = std::make_shared<TilePartial>();
+                    NextFlatGraph.push_back(CombinerPartial);
+                    CombinerPartial->Tile = 0;
+                    CombinerPartial->Combiner = PortCombiner::ADD;
+                    CombinerPartial->DynamicPolyphony = false;
+                    CombinerPartial->Polyphony = Partial->Polyphony;
+                    CombinerPartial->Inputs = { Partial->Inputs[0], };
+                    CombinerPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
+                    Partial->Inputs = { { CombinerPartial->Outputs[0] }, };
+                }
+            }
+            else
+            {
+                // TODO: input combiner rewrites
+            }
+
             NextFlatGraph.push_back(Partial);
         }
         std::swap(FlatGraph, NextFlatGraph);
-#if 0
-        // Create virtual partials for input combining.
-        NextFlatGraph.clear();
-        NextFlatGraph.reserve(FlatGraph.size());
-        for (TilePartialSharedPtr Partial : FlatGraph)
-        {
-            // TODO!
-        }
-        std::swap(FlatGraph, NextFlatGraph);
-#endif
     }
 
     // Output registers can't be allocated in tandem with thunk generation, as graphs can have cycles.
@@ -1303,6 +1315,38 @@ ScratchUniquePtr Patch::Compile()
                     }
                 }
             }
+            else if (Partial->Combiner == PortCombiner::ADD)
+            {
+                assert(Inputs.size() == 1);
+                assert(Inputs[0].size() > 1);
+                assert(Outputs.size() == 1);
+                Program->Program.push_back(
+                    CombinerThunk<PortCombiner::ADD>::CreateAndConnect(Partial->DefaultValue, RegisterFile, Inputs, Outputs, Partial->Polyphony));
+            }
+            else if (Partial->Combiner == PortCombiner::MUL)
+            {
+                assert(Inputs.size() == 1);
+                assert(Inputs[0].size() > 1);
+                assert(Outputs.size() == 1);
+                Program->Program.push_back(
+                    CombinerThunk<PortCombiner::MUL>::CreateAndConnect(Partial->DefaultValue, RegisterFile, Inputs, Outputs, Partial->Polyphony));
+            }
+            else if (Partial->Combiner == PortCombiner::MIN)
+            {
+                assert(Inputs.size() == 1);
+                assert(Inputs[0].size() > 1);
+                assert(Outputs.size() == 1);
+                Program->Program.push_back(
+                    CombinerThunk<PortCombiner::MIN>::CreateAndConnect(Partial->DefaultValue, RegisterFile, Inputs, Outputs, Partial->Polyphony));
+            }
+            else if (Partial->Combiner == PortCombiner::MAX)
+            {
+                assert(Inputs.size() == 1);
+                assert(Inputs[0].size() > 1);
+                assert(Outputs.size() == 1);
+                Program->Program.push_back(
+                    CombinerThunk<PortCombiner::MAX>::CreateAndConnect(Partial->DefaultValue, RegisterFile, Inputs, Outputs, Partial->Polyphony));
+            }
             else if (Partial->Combiner == PortCombiner::LANE_MERGE)
             {
                 // TODO: in this case, there is one input port and one output port.  The input port is polyphonic, and
@@ -1355,6 +1399,7 @@ ScratchUniquePtr Patch::Compile()
 
                     if (IsLaneJoinSymbol(Symbol))
                     {
+// TODO: still need to adapt one or both of these:
                         if (Symbol == OpCode::LEAD_LANE)
                         {
                             for (PortHandle ConnectedOutput : ConnectedOutputs)
