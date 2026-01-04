@@ -700,6 +700,7 @@ ScratchUniquePtr Patch::Compile()
             TilePartialSharedPtr Partial = VisitTile(Tile);
             Partial->DynamicPolyphony = false;
             Partial->Polyphony = 1;
+            Partial->Outputs = { MakePortHandle(Tile, 0) };
             return;
         }
 
@@ -990,78 +991,11 @@ ScratchUniquePtr Patch::Compile()
         NextFlatGraph.reserve(FlatGraph.size());
         for (TilePartialSharedPtr Partial : FlatGraph)
         {
+            // TODO!
         }
         std::swap(FlatGraph, NextFlatGraph);
 #endif
     }
-
-#if 0
-    std::unordered_map<PortHandle, PortHandle> LaneMergePorts;
-    std::unordered_map<PortHandle, PortHandle> InputCombinerPorts;
-    {
-        uint32_t NextVirtualPortIndex = 0;
-
-        // Solve lane merging port aliases.
-        for (TilePartialSharedPtr Partial : FlatGraph)
-        {
-            const OpCode Symbol = GetTileSymbol(Partial->Tile);
-            if (IsLaneJoinSymbol(Symbol))
-            {
-                // No virtual ports needed.
-            }
-            else if (Partial->Polyphony == 1)
-            {
-                for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
-                {
-                    for (PortHandle ConnectedPort : ConnectedOutputs)
-                    {
-                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
-                        TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
-                        if (ConnectedPartial->Polyphony > 1)
-                        {
-                            // We have an output from a polyphonic tile connected to a input port on
-                            // at least one monophonic tile.  To make this work, we create an alias
-                            // to a virtual port handle.  The presence of this alias will automatically
-                            // result in a lane add fixup tile being introduced later on.
-                            PortHandle VirtualPort = MakePortHandle(0, NextVirtualPortIndex);
-                            if (LaneMergePorts.insert({ConnectedPort, VirtualPort}).second)
-                            {
-                                ++NextVirtualPortIndex;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        std::vector<TilePartialSharedPtr> FlatGraphWithCombiners;
-        FlatGraphWithCombiners.reserve(FlatGraph.size());
-
-        // Solve combiners.
-        for (TilePartialSharedPtr Partial : FlatGraph)
-        {
-            const OpCode Symbol = GetTileSymbol(Partial->Tile);
-            uint32_t InputIndex = 0;
-            for (const InputInfo& Input : SymbolInfoMap.Inputs[(int)Symbol])
-            {
-                if (Input.Combiner != PortCombiner::NONE)
-                {
-                    PortHandle InputPort = MakePortHandle(Partial->Tile, InputIndex);
-                    PortHandle VirtualPort = MakePortHandle(0, NextVirtualPortIndex);
-                    if (InputCombinerPorts.insert({InputPort, VirtualPort}).second)
-                    {
-                        // TODO: Insert new partials for combiners and rewrite existing ones so the thunk generation code
-                        // does not need to be updated.  And by insert I mean append to FlatGraphWithCombiners.
-                        ++NextVirtualPortIndex;
-                    }
-                }
-                ++InputIndex;
-            }
-            FlatGraphWithCombiners.push_back(Partial);
-        }
-        std::swap(FlatGraph, FlatGraphWithCombiners);
-    }
-#endif
 
     // Output registers can't be allocated in tandem with thunk generation, as graphs can have cycles.
     // Likewise, we need to allocate registers for everything we want to persist between patch generations,
@@ -1140,15 +1074,6 @@ ScratchUniquePtr Patch::Compile()
                     // persistent, which can be used to save on allocating extra closure registers.
                     PortHandle OutputPort = MakePortHandle(Tile, PortIndex);
                     AllocatePersistentRegister(OutputPort, Lanes);
-#if 0
-                    auto Found = LaneMergePorts.find(OutputPort);
-                    if (Found != LaneMergePorts.end())
-                    {
-                        // A monophonic tile requires a temporary register for the merged output.
-                        PortHandle VirtualPort = Found->second;
-                        AllocateRegister(VirtualPort, 1);
-                    }
-#endif
                 }
 
                 for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
