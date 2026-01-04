@@ -24,7 +24,8 @@
 #include "audio_backend.h"
 #include "kiki.inl"
 
-constexpr double Tau = std::numbers::pi * 2.0;
+constexpr double Pi = 3.141592653589793;    // Not standard until C++20 😔
+constexpr double Tau = Pi * 2.0;
 
 static std::random_device RandomDevice;
 static std::mt19937 RandomGenerator{ RandomDevice() };
