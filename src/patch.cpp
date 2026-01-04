@@ -1284,6 +1284,99 @@ ScratchUniquePtr Patch::Compile()
                         Program->ProbeInput = OutputRegister;
                     }
                 }
+                else
+                {
+                    const size_t ClosureCount = GetClosureCount(Symbol);
+                    std::vector<std::ptrdiff_t> Closures;
+                    Closures.reserve(ClosureCount);
+                    for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
+                    {
+                        PortHandle ClosurePort = MakeClosureHandle(Partial->Tile, ClosureIndex);
+                        Closures.push_back(RegisterMap.at(ClosurePort));
+                    }
+
+                    for (uint32_t Lane = 0; Lane < Partial->Polyphony; ++Lane)
+                    {
+                        if (Lane > 0)
+                        {
+                            for (uint32_t InputIndex = 0; InputIndex < Inputs.size(); ++InputIndex)
+                            {
+                                std::vector<std::ptrdiff_t>& InputRegisters = Inputs[InputIndex];
+                                for (uint32_t Connection = 0; Connection < InputRegisters.size(); ++Connection)
+                                {
+                                    ++(InputRegisters[Connection]);
+                                }
+                            }
+                            for (std::ptrdiff_t& OutputRegister : Outputs)
+                            {
+                                ++OutputRegister;
+                            }
+                            for (std::ptrdiff_t& ClosureRegister : Closures)
+                            {
+                                ++ClosureRegister;
+                            }
+                        }
+
+                        InstructionThunkSharedPtr Thunk = nullptr;
+                        {
+                            auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
+                            if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
+                            {
+                                Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures);
+                                Program->Program.push_back(Thunk);
+                            }
+                        }
+
+                        if (Thunk == nullptr)
+                        {
+                            auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
+                            if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
+                            {
+                                Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
+                                Program->Program.push_back(Thunk);
+                            }
+                        }
+
+                        if (Thunk == nullptr)
+                        {
+                            auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
+                            if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
+                            {
+                                Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures, Lane);
+                                Program->Program.push_back(Thunk);
+                            }
+                        }
+
+                        if (Thunk == nullptr)
+                        {
+                            auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
+                            if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
+                            {
+                                PortHandle Port = MakePortHandle(Partial->Tile, 0);
+                                RegisterAllocation& TapeAllocation = Program->PersistentTapes.at(Port);
+                                std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset + Lane;
+                                Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
+                                Program->Program.push_back(Thunk);
+                            }
+                        }
+
+                        assert(Thunk != nullptr);
+                        if (Partial->Polyphony > 1 && Symbol == OpCode::ADSR)
+                        {
+                            Thunk->Retriggerable = true;
+                            uint32_t ThunkIndex = Program->Program.size() - 1;
+                            assert(Program->Program[ThunkIndex] == Thunk);
+                            // TODO: figure out some means of determining if the trigger is directly or indirectly
+                            // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
+                            Program->Retriggerables[Lane].push_back(ThunkIndex);
+                        }
+
+                        if (Symbol == OpCode::LEAD_LANE)
+                        {
+                            break;
+                        }
+                    }
+                }
             }
             else if (Partial->Combiner == PortCombiner::LANE_MERGE)
             {
@@ -1317,6 +1410,7 @@ ScratchUniquePtr Patch::Compile()
             {
                 // TODO: in this case, the partial represents a basic input combiner.  There are two or more inputs, and one output.
                 // The inputs and outputs all have the same lane count (polyphonic or otherwise).
+                throw std::runtime_error("not yet implemented.\n");
             }
 #if 0
             else
