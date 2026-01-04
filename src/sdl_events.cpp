@@ -8,6 +8,8 @@
 #include <fmt/format.h>
 #endif
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignore "-Wc++20-designator"
 
 namespace Events
 {
@@ -351,3 +353,5 @@ namespace Events
         return Events;
     }
 }
+
+#pragma clang diagnostic pop
