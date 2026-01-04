@@ -548,6 +548,46 @@ double Patch::GetSpecialInput(TileHandle Tile)
 }
 
 
+template <PortCombiner Combiner>
+struct CombinerThunk : public InstructionThunk
+{
+    uint32_t Lanes;
+    double DefaultValue;
+
+    static CreateAndConnect(
+        double DefaultValue,
+        std::vector<double>* RegisterFile,
+        std::vector<std::vector<std::ptrdiff_t>>& Inputs,
+        std::vector<std::ptrdiff_t>& Outputs,
+        uint32_t Lanes)
+    {
+        std::vector<std::ptrdiff_t> Closures;
+        auto Thunk = std::make_shared<CombinerThunk>();
+        Thunk->Lanes = Lanes;
+        Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+        Thunk->Reset();
+        return std::static_pointer_cast<InstructionThunk>(Thunk);
+    }
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("CombinerThunk");
+
+        if (Combiner == PortCombiner::LANE_MERGE)
+        {
+
+        }
+    }
+
+    virtual void Reset() override
+    {
+        Registers.OutputRef(0) = DefaultValue;
+    }
+
+    virtual ~CombinerThunk() {};
+};
+
+
 ScratchUniquePtr Patch::Compile()
 {
     TRACEABLE_SCOPE;
