@@ -1,7 +1,6 @@
 __pycache__/
 .cache/
 *.so
-*.lib
 *.pdb
 *.pyd
 *.kate-swp
