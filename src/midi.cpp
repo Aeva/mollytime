@@ -15,9 +15,9 @@
 
 #include "midi.h"
 
-#ifdef MIDI_ALSA
+#if defined(MIDI_ALSA)
 #include "alsa_midi.h"
-#elifdef MIDI_MMEAPI
+#elif defined(MIDI_MMEAPI)
 #include "mmeapi_midi.h"
 #endif
 
@@ -186,9 +186,9 @@ void Midi::ProcessEvents(MidiHandler* Handler)
 
 void Midi::Init()
 {
-#ifdef MIDI_ALSA
+#if defined(MIDI_ALSA)
     Driver = std::make_unique<AlsaMidiDriver>();
-#elifdef MIDI_MMEAPI
+#elif defined(MIDI_MMEAPI)
     Driver = std::make_unique<MmeApiMidiDriver>();
 #else
     std::println("No MIDI driver is available.");

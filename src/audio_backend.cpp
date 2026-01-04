@@ -16,9 +16,9 @@
 #include "audio_backend.h"
 #include "midi.h"
 
-#ifdef ENABLE_JACK
+#if defined(ENABLE_JACK)
 #include "jack_stream.h"
-#elifdef AUDIO_WASAPI
+#elif defined(AUDIO_WASAPI)
 #include "wasapi_stream.h"
 #endif
 
@@ -160,9 +160,9 @@ AudioStream* Audio::GetStream()
 
 void Audio::Init(int SampleRate)
 {
-#ifdef ENABLE_JACK
+#if defined(ENABLE_JACK)
     Stream = std::make_unique<JackStream>(SampleRate);
-#elifdef AUDIO_WASAPI
+#elif defined(AUDIO_WASAPI)
     Stream = std::make_unique<WasapiStream>(SampleRate);
 #else
     std::println("No audio stream implementation is available.");
