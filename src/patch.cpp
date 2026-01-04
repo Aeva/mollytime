@@ -983,11 +983,14 @@ ScratchUniquePtr Patch::Compile()
                 }
             }
 
+#if 1
             // Create virtual partials for input combining.
             if (Symbol == OpCode::OUT)
             {
                 if (Partial->Inputs[0].size() > 1)
                 {
+                    // TODO: probaably remove this and go back to having the thunk generation emit an ADD for the >2
+                    // connected outputs special case for the output tile
                     TilePartialSharedPtr CombinerPartial = std::make_shared<TilePartial>();
                     NextFlatGraph.push_back(CombinerPartial);
                     CombinerPartial->Tile = 0;
@@ -1001,8 +1004,30 @@ ScratchUniquePtr Patch::Compile()
             }
             else
             {
-                // TODO: input combiner rewrites
+                // TODO: This feels like the wrong approach.  The whole point of this feature is making it so we can
+                // quasi-simd the thunks so they can operate either on a single lane or an array of them.  Lane spread
+                // and lane merge ensure that the inputs are all the same width, so it isn't really necessary to pull
+                // the combiners out of the thunks, we just need to go and convert them all to be variably-polyphonic.
+                uint32_t InputIndex = 0;
+                for (const InputInfo& Info : SymbolInfoMap.Inputs[(int)Symbol])
+                {
+                    if (Partial->Inputs[InputIndex].size() > 1 &&
+                        Info.Combiner >= PortCombiner::ADD && Info.Combiner <= PortCombiner::MAX)
+                    {
+                        TilePartialSharedPtr CombinerPartial = std::make_shared<TilePartial>();
+                        NextFlatGraph.push_back(CombinerPartial);
+                        CombinerPartial->Tile = 0;
+                        CombinerPartial->Combiner = Info.Combiner;
+                        CombinerPartial->DynamicPolyphony = false;
+                        CombinerPartial->Polyphony = Partial->Polyphony;
+                        CombinerPartial->Inputs = { Partial->Inputs[0], };
+                        CombinerPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
+                        Partial->Inputs = { { CombinerPartial->Outputs[0] }, };
+                    }
+                    ++InputIndex;
+                }
             }
+#endif
 
             NextFlatGraph.push_back(Partial);
         }

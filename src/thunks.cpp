@@ -128,7 +128,7 @@ struct SinThunk : public InstructionThunk
             {"hz", 440.0, PortCombiner::ADD},
         }},
         {"amp"},
-        true,
+        true
     };
 
     virtual void Crank(double SampleInterval) override
@@ -489,7 +489,8 @@ struct AddThunk : public InstructionThunk
         {{
             {"+", 0.0, PortCombiner::ADD},
         }},
-        {"="}
+        {"="},
+        true
     };
 
     virtual void Crank(double SampleInterval) override
@@ -510,7 +511,8 @@ struct MulThunk : public InstructionThunk
         {{
             {"*", 0.0, PortCombiner::MUL},
         }},
-        {"="}
+        {"="},
+        true
     };
 
     virtual void Crank(double SampleInterval) override
