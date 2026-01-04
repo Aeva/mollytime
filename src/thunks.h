@@ -172,7 +172,7 @@ struct BlankTape : public MagicTape
             }
             Alpha = std::min(std::max(Alpha, 0.0), 1.0);
             size_t Index = size_t(double(Samples.size() - 1) * Alpha);
-            return std::min(std::max(Index, 0zu), Samples.size());
+            return std::min(std::max(Index, static_cast<size_t>(0)), Samples.size());
         }
         else
         {
