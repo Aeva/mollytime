@@ -3,13 +3,13 @@
 
 #include <SDL3/SDL_render.h>
 
+#include <fmt/format.h>
+
 #include <cmath>
 #include <numbers>
 #include <algorithm>
 #include <cassert>
-#include <format>
 #include <stdexcept>
-#include <print>
 
 
 constexpr double Tau = std::numbers::pi * 2.0;
@@ -57,7 +57,7 @@ namespace Draw
     {
         if (!SDL_GetRenderOutputSize(GetRenderer(), &Width, &Height))
         {
-            throw std::runtime_error(std::format("Failed to get renderer output size. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to get renderer output size. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -68,13 +68,13 @@ namespace Draw
         Handle = std::make_shared<TextureCaddy>(SDL_CreateTextureFromSurface(GetRenderer(), Surface));
         if (!GetTexture())
         {
-            throw std::runtime_error(std::format("Failed to create texture from surface. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to create texture from surface. SDL error: {}", SDL_GetError()));
         }
 
         float WidthF, HeightF;
         if (!SDL_GetTextureSize(GetTexture(), &WidthF, &HeightF))
         {
-            throw std::runtime_error(std::format("Failed to get texture size. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to get texture size. SDL error: {}", SDL_GetError()));
         }
 
         Width = static_cast<int>(WidthF);
@@ -99,7 +99,7 @@ namespace Draw
 
         if (!GetTexture())
         {
-            throw std::runtime_error(std::format("Failed to create texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to create texture. SDL error: {}", SDL_GetError()));
         }
 
         SetBlendMode();
@@ -136,7 +136,7 @@ namespace Draw
     {
         if (!SDL_SetTextureAlphaModFloat(GetTexture(), Alpha))
         {
-            throw std::runtime_error(std::format("Failed to set texture alpha. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set texture alpha. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -170,7 +170,7 @@ namespace Draw
 
         if (!SDL_SetTextureBlendMode(GetTexture(), BlendMode))
         {
-            throw std::runtime_error(std::format("Failed to set blend mode. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set blend mode. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -180,17 +180,17 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Draw::GetRenderer(), GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
         if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
-            throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
 
         if (!SDL_RenderClear(Draw::GetRenderer()))
         {
-            throw std::runtime_error(std::format("Failed to fill texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to fill texture. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -208,7 +208,7 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Draw::GetRenderer(), GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
         // we intentionally set this blend mode in hopes of overriding the current pixel colors
@@ -218,7 +218,7 @@ namespace Draw
         SDL_BlendMode TextureBlendMode;
         if (!SDL_GetTextureBlendMode(GetTexture(), &TextureBlendMode))
         {
-            throw std::runtime_error(std::format("Failed to access texture blend mode. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to access texture blend mode. SDL error: {}", SDL_GetError()));
         }
         if (TextureBlendMode == SDL_BLENDMODE_BLEND_PREMULTIPLIED)
         {
@@ -230,12 +230,12 @@ namespace Draw
 
         if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
-            throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
 
         if (!SDL_RenderFillRect(Draw::GetRenderer(), &FloatRect))
         {
-            throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to render rect. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -259,12 +259,12 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Draw::GetRenderer(), GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
         
         if (!SDL_RenderTexture(Draw::GetRenderer(), Source.GetTexture(), &SourceRect, &DestRect))
         {
-            throw std::runtime_error(std::format("Failed to render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to render texture. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -296,13 +296,13 @@ namespace Draw
         Renderer = SDL_CreateRenderer(Display::GetWindow(), nullptr);
         if (Renderer == nullptr)
         {
-            throw std::runtime_error(std::format("Failed to initialize renderer. SDL error: {}\n", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to initialize renderer. SDL error: {}\n", SDL_GetError()));
         }
 
         int VsyncMode = 1;
         if (!SDL_SetRenderVSync(Renderer, VsyncMode))
         {
-            std::print("Vsync mode possibly unsupported.  SDL error: {}\n", SDL_GetError());
+            fmt::print("Vsync mode possibly unsupported.  SDL error: {}\n", SDL_GetError());
         }
         else
         {
@@ -310,10 +310,10 @@ namespace Draw
             switch (VsyncMode)
             {
             case SDL_RENDERER_VSYNC_DISABLED:
-                std::print("Vsync is not available on this system.\n");
+                fmt::print("Vsync is not available on this system.\n");
                 break;
             case SDL_RENDERER_VSYNC_ADAPTIVE:
-                std::print("Adaptive vsync is enabled.  Late frames will tear.\n");
+                fmt::print("Adaptive vsync is enabled.  Late frames will tear.\n");
                 break;
             default:
                 break;
@@ -327,7 +327,7 @@ namespace Draw
 
         if (!SDL_RenderPresent(Renderer))
         {
-            throw std::runtime_error(std::format("Failed to present renderer. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to present renderer. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -347,7 +347,7 @@ namespace Draw
         int Height = 0;
         if (!SDL_GetRenderOutputSize(Renderer, &Width, &Height))
         {
-            throw std::runtime_error(std::format("Failed to get renderer output size. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to get renderer output size. SDL error: {}", SDL_GetError()));
         }
         return Width > 1 && Height > 1;
     }
@@ -402,30 +402,30 @@ namespace Draw
 
             if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
             {
-                throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
             }
 
             if (!SDL_RenderGeometry(Renderer, nullptr, Vertices, 6, nullptr, 0))
             {
-                throw std::runtime_error(std::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to render polygon. SDL error: {}", SDL_GetError()));
             }
         }
         else
         {
             if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
             {
-                throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
             }
 
             glm::vec3 RGB = Color.Eval(ColorSpace::sRGB) * Alpha;
             if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
             {
-                throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to set render color. SDL error: {}", SDL_GetError()));
             }
 
             if (!SDL_RenderLine(Renderer, static_cast<float>(X1), static_cast<float>(Y1), static_cast<float>(X2), static_cast<float>(Y2)))
             {
-                throw std::runtime_error(std::format("Failed to render line. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to render line. SDL error: {}", SDL_GetError()));
             }
         }
 
@@ -446,7 +446,7 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
         if (Alpha < 1.0f)
@@ -464,7 +464,7 @@ namespace Draw
         glm::vec3 RGB = Color.Eval(ColorSpace::sRGB);
         if (!SDL_SetRenderDrawColorFloat(Draw::GetRenderer(), RGB.x, RGB.y, RGB.z, Alpha))
         {
-            throw std::runtime_error(std::format("Failed to set render color. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render color. SDL error: {}", SDL_GetError()));
         }
 
         const bool Fill = BorderWidth <= 0;
@@ -472,7 +472,7 @@ namespace Draw
         {
             if (!SDL_RenderFillRect(Renderer, &FloatRect))
             {
-                throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to render rect. SDL error: {}", SDL_GetError()));
             }
         }
         else
@@ -481,7 +481,7 @@ namespace Draw
             {
                 if (!SDL_RenderRect(Renderer, &FloatRect))
                 {
-                    throw std::runtime_error(std::format("Failed to render rect. SDL error: {}", SDL_GetError()));
+                    throw std::runtime_error(fmt::format("Failed to render rect. SDL error: {}", SDL_GetError()));
                 }
                 FloatRect.x += 1.0f;
                 FloatRect.y += 1.0f;
@@ -638,12 +638,12 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
         if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size() - 3))
         {
-            throw std::runtime_error(std::format("Failed to render pie. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to render pie. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -679,12 +679,12 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
         if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
-            throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -698,12 +698,12 @@ namespace Draw
 
         if (!SDL_SetRenderTarget(Renderer, Texture.GetTexture()))
         {
-            throw std::runtime_error(std::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
         if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
         {
-            throw std::runtime_error(std::format("Failed to render circle. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
     }
 

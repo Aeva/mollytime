@@ -22,8 +22,10 @@
 #include "wasapi_stream.h"
 #endif
 
+#include <fmt/format.h>
+
 #include <memory>
-#include <print>
+
 
 
 static std::unique_ptr<AudioStream> Stream;
@@ -165,7 +167,7 @@ void Audio::Init(int SampleRate)
 #elif defined(AUDIO_WASAPI)
     Stream = std::make_unique<WasapiStream>(SampleRate);
 #else
-    std::println("No audio stream implementation is available.");
+    fmt::println("No audio stream implementation is available.");
     Stream = std::make_unique<StubStream>();
 #endif
 }

@@ -20,6 +20,8 @@
 
 #include <cassert>
 
+#include <fmt/format.h>
+
 #include <jack/jack.h>
 
 static int OnProcess(jack_nframes_t FrameCount, void *UserData)
@@ -94,7 +96,7 @@ JackStream::JackStream(int SampleRate) :
     JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
     if (JackClient == nullptr)
     {
-        throw std::runtime_error(std::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
+        throw std::runtime_error(fmt::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
     }
     if (JackStatus & JackNameNotUnique)
     {
@@ -106,7 +108,7 @@ JackStream::JackStream(int SampleRate) :
     int process_callback_status = jack_set_process_callback(JackClient, OnProcess, &RealTimeThread);
     if(process_callback_status != 0)
     {
-        throw std::runtime_error(std::format("jack_set_process_callback() failed, error code = {}\n", process_callback_status));
+        throw std::runtime_error(fmt::format("jack_set_process_callback() failed, error code = {}\n", process_callback_status));
     }
     
     // Now that that's taken care of, we can register output ports...
@@ -217,7 +219,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         {
             if (!BufferState.InputPorts.contains(Tile))
             {
-                std::string Name = std::format("in {}", Tile);
+                std::string Name = fmt::format("in {}", Tile);
                 jack_port_t* JackPort = jack_port_register(
                     JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
                 if (JackPort)
@@ -233,7 +235,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         {
             if (!BufferState.AuxOutPorts.contains(Tile))
             {
-                std::string Name = std::format("aux {}", Tile);
+                std::string Name = fmt::format("aux {}", Tile);
                 jack_port_t* JackPort = jack_port_register(
                     JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
                 if (JackPort)

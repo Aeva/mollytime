@@ -17,6 +17,8 @@
 #include <stdexcept>
 #include <algorithm>
 
+#include <fmt/format.h>
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
@@ -53,13 +55,13 @@ static int ColorPointGetItem(ColorPoint& Color, int Index)
 		return std::min(std::max(int(Color.Channels[Index] * 255.0f), 0), 255);
 	}
 
-	throw pybind11::index_error(std::format("Index out of range: {}\n", Index));
+	throw pybind11::index_error(fmt::format("Index out of range: {}\n", Index));
 }
 
 
 static std::string ColorPointRepr(ColorPoint& Color)
 {
-	return std::format("<ColorPoint {}: ({}, {}, {})>",
+	return fmt::format("<ColorPoint {}: ({}, {}, {})>",
 		ColorSpaceName(Color.Encoding),
 		Color.Channels[0], Color.Channels[1], Color.Channels[2]);
 }
@@ -84,7 +86,7 @@ static ColorPoint PyParseColor(std::string ColorString)
 	StatusCode Result = ParseColor(ColorString, Color);
 	if (Result != StatusCode::PASS)
 	{
-		throw std::domain_error(std::format("Invalid color string \"{}\"\n", ColorString));
+		throw std::domain_error(fmt::format("Invalid color string \"{}\"\n", ColorString));
 	}
 	return Color;
 }

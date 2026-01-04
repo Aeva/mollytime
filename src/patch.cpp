@@ -15,7 +15,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <print>
+
+#include <fmt/format.h>
 
 #include "errors.h"
 #include "patch.h"
@@ -156,7 +157,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
             // 32 bit TileId values allow 4294967295 calls to MakeTile before the patch becomes uneditable.
             // If you hit MakeTile every second, it would take about 136 years before it becomes cashed out.
             // Should this somehow prove to be a problem, consider adding an id recycling system.
-            throw std::runtime_error(std::format("Fatal error: TileId collision on {}!\n", AllocatedHandle));
+            throw std::runtime_error(fmt::format("Fatal error: TileId collision on {}!\n", AllocatedHandle));
         }
     }
     for (PortHandle Port : GetTileInputPorts(AllocatedHandle))
@@ -188,7 +189,7 @@ TileHandle Patch::MakeTile(double Constant)
     auto Result = TileConstants.try_emplace(AllocatedHandle, Constant);
     if (!Result.second)
     {
-        throw std::runtime_error(std::format("Unusual fatal error: cannot initialize constant tile {}!\n", AllocatedHandle));
+        throw std::runtime_error(fmt::format("Unusual fatal error: cannot initialize constant tile {}!\n", AllocatedHandle));
     }
     ReplaceConstantOutput(AllocatedHandle, Constant);
     return AllocatedHandle;
@@ -252,11 +253,11 @@ std::string Patch::GetTileName(TileHandle Tile)
 
     if (Symbol == OpCode::IN)
     {
-        return std::format("in {}", Tile);
+        return fmt::format("in {}", Tile);
     }
     else if (Symbol == OpCode::AUX)
     {
-        return std::format("aux {}", Tile);
+        return fmt::format("aux {}", Tile);
     }
     else if (Symbol == OpCode::OUT)
     {
@@ -305,7 +306,7 @@ void Patch::SetConstant(TileHandle Tile, double NewValue)
     }
     else
     {
-        throw std::runtime_error(std::format("Attempted to assign a value to non-constant tile {}!\n", Tile));
+        throw std::runtime_error(fmt::format("Attempted to assign a value to non-constant tile {}!\n", Tile));
     }
 }
 
@@ -323,7 +324,7 @@ std::string Patch::GetTileLabel(TileHandle Tile)
     OpCode Symbol = GetTileSymbol(Tile);
     if (Symbol == OpCode::CONST)
     {
-        return std::format("{}", GetConstant(Tile));
+        return fmt::format("{}", GetConstant(Tile));
     }
     else
     {
@@ -418,11 +419,11 @@ void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
     TRACEABLE_SCOPE;
     if (!ByOutput.contains(OutputPort))
     {
-        throw std::range_error(std::format("Fatal error: {} is not a known output port!\n", OutputPort));
+        throw std::range_error(fmt::format("Fatal error: {} is not a known output port!\n", OutputPort));
     }
     if (!ByInput.contains(InputPort))
     {
-        throw std::range_error(std::format("Fatal error: {} is not a known input port!\n", InputPort));
+        throw std::range_error(fmt::format("Fatal error: {} is not a known input port!\n", InputPort));
     }
 
     ByInput[InputPort].insert(OutputPort);
@@ -1304,11 +1305,11 @@ void Scratch::PrintRegisters() const
             PortHandle Port = Found->second;
             TileHandle Tile = PortHandleTilePart(Port);
             int32_t Index = (int32_t)PortHandlePortIndexPart(Port);
-            std::print("    {:>4}: {:^8.4} ({}:{})\n", Register, Value, Tile, Index);
+            fmt::print("    {:>4}: {:^8.4} ({}:{})\n", Register, Value, Tile, Index);
         }
         else
         {
-            std::print("    {:>4}: {:^8.4}\n", Register, Value);
+            fmt::print("    {:>4}: {:^8.4}\n", Register, Value);
         }
     }
 }
@@ -1344,10 +1345,10 @@ void Scratch::Migrate(Scratch& Old)
 
     if (EnableDebugLogging)
     {
-        std::print("\n\n==============================================================================\n");
-        std::print("Old register file:\n");
+        fmt::print("\n\n==============================================================================\n");
+        fmt::print("Old register file:\n");
         Old.PrintRegisters();
-        std::print("\nRunning migration:\n");
+        fmt::print("\nRunning migration:\n");
     }
 
     for (auto const& [Port, NewAllocation] : PersistentRegisters)
@@ -1357,7 +1358,7 @@ void Scratch::Migrate(Scratch& Old)
         {
             if (EnableDebugLogging)
             {
-                std::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
+                fmt::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
             }
 
             const RegisterAllocation& OldAllocation = Found->second;
@@ -1365,7 +1366,7 @@ void Scratch::Migrate(Scratch& Old)
             {
                 if (EnableDebugLogging)
                 {
-                    std::print(" (copy, no resize)\n");
+                    fmt::print(" (copy, no resize)\n");
                 }
 
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
@@ -1375,7 +1376,7 @@ void Scratch::Migrate(Scratch& Old)
                     {
                         const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
                         const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
-                        std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        fmt::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
                     RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
                 }
@@ -1384,7 +1385,7 @@ void Scratch::Migrate(Scratch& Old)
             {
                 if (EnableDebugLogging)
                 {
-                    std::print(" (mono -> poly resize)\n");
+                    fmt::print(" (mono -> poly resize)\n");
                 }
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                 {
@@ -1393,7 +1394,7 @@ void Scratch::Migrate(Scratch& Old)
                     {
                         const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
                         const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
-                        std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        fmt::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
                     RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
                 }
@@ -1405,13 +1406,13 @@ void Scratch::Migrate(Scratch& Old)
                 // zero, but some thunks will set different default values for their ports.
                 if (EnableDebugLogging)
                 {
-                    std::print(" (poly->mono RESET)\n");
+                    fmt::print(" (poly->mono RESET)\n");
                 }
             }
 
             if (EnableDebugLogging)
             {
-                std::print("\n");
+                fmt::print("\n");
             }
         }
         else
@@ -1420,7 +1421,7 @@ void Scratch::Migrate(Scratch& Old)
             // handling is required.
             if (EnableDebugLogging)
             {
-                std::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
+                fmt::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
             }
         }
     }
@@ -1444,8 +1445,8 @@ void Scratch::Migrate(Scratch& Old)
 
     if (EnableDebugLogging)
     {
-        std::print("\nMigration complete!\n");
-        std::print("\nNew register file:\n");
+        fmt::print("\nMigration complete!\n");
+        fmt::print("\nNew register file:\n");
         PrintRegisters();
     }
 }

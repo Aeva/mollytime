@@ -5,7 +5,7 @@
 
 #define DEBUG_EVENTS 0
 #if DEBUG_EVENTS
-#include <print>
+#include <fmt/format.h>
 #endif
 
 
@@ -90,7 +90,7 @@ namespace Events
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
 #if DEBUG_EVENTS
-                    std::print("{}: {} MOUSE {} DOWN: {}, {}\n",
+                    fmt::print("{}: {} MOUSE {} DOWN: {}, {}\n",
                                FrameNumber,
                                Next.button.timestamp,
                                Next.button.which,
@@ -114,7 +114,7 @@ namespace Events
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
 #if DEBUG_EVENTS
-                    std::print("{}: {} MOUSE {} UP: {}, {}\n",
+                    fmt::print("{}: {} MOUSE {} UP: {}, {}\n",
                                FrameNumber,
                                Next.button.timestamp,
                                Next.button.which,
@@ -138,7 +138,7 @@ namespace Events
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
 #if DEBUG_EVENTS
-                    std::print("{}: {} MOUSE {} MOTION: {}, {}\n",
+                    fmt::print("{}: {} MOUSE {} MOTION: {}, {}\n",
                                FrameNumber,
                                Next.motion.timestamp,
                                Next.motion.which,
@@ -175,7 +175,7 @@ namespace Events
                     break;
                 case SDL_EVENT_FINGER_DOWN:
 #if DEBUG_EVENTS
-                    std::print("{}: {} FINGER {}({}) DOWN: {}, {}, pressure: {}\n",
+                    fmt::print("{}: {} FINGER {}({}) DOWN: {}, {}, pressure: {}\n",
                                FrameNumber,
                                Next.tfinger.timestamp,
                                Next.tfinger.touchID,
@@ -198,7 +198,7 @@ namespace Events
                     break;
                 case SDL_EVENT_FINGER_UP:
 #if DEBUG_EVENTS
-                    std::print("{}: {} FINGER {}({}) UP: {}, {}, pressure: {}\n",
+                    fmt::print("{}: {} FINGER {}({}) UP: {}, {}, pressure: {}\n",
                                FrameNumber,
                                Next.tfinger.timestamp,
                                Next.tfinger.touchID,
@@ -221,7 +221,7 @@ namespace Events
                     break;
                 case SDL_EVENT_FINGER_MOTION:
 #if DEBUG_EVENTS
-                    std::print("{}: {} FINGER {}({}) MOVE: {}, {}, pressure: {}\n",
+                    fmt::print("{}: {} FINGER {}({}) MOVE: {}, {}, pressure: {}\n",
                                FrameNumber,
                                Next.tfinger.timestamp,
                                Next.tfinger.touchID,
@@ -244,7 +244,7 @@ namespace Events
                     break;
                 case SDL_EVENT_PEN_DOWN:
 #if DEBUG_EVENTS
-                    std::print("{}: {} PEN {} DOWN: {}, {}\n",
+                    fmt::print("{}: {} PEN {} DOWN: {}, {}\n",
                                FrameNumber,
                                Next.ptouch.timestamp,
                                Next.ptouch.which,
@@ -265,7 +265,7 @@ namespace Events
                     break;
                 case SDL_EVENT_PEN_UP:
 #if DEBUG_EVENTS
-                    std::print("{}: {} PEN {} UP: {}, {}\n",
+                    fmt::print("{}: {} PEN {} UP: {}, {}\n",
                                FrameNumber,
                                Next.ptouch.timestamp,
                                Next.ptouch.which,
@@ -286,7 +286,7 @@ namespace Events
                     break;
                 case SDL_EVENT_PEN_MOTION:
 #if DEBUG_EVENTS
-                    std::print("{}: {} PEN {} MOVE: {}, {}\n",
+                    fmt::print("{}: {} PEN {} MOVE: {}, {}\n",
                                FrameNumber,
                                Next.pmotion.timestamp,
                                Next.pmotion.which,
@@ -333,7 +333,7 @@ namespace Events
                             Label = "squeeze";
                             break;
                     }
-                    std::print("{}: {} PEN {} AXIS: {}, {}, {}: {}\n",
+                    fmt::print("{}: {} PEN {} AXIS: {}, {}, {}: {}\n",
                                FrameNumber,
                                Next.paxis.timestamp,
                                Next.paxis.which,

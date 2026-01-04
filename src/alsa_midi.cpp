@@ -16,8 +16,7 @@
 #ifdef MIDI_ALSA
 
 #include "alsa_midi.h"
-#include <format>
-#include <print>
+#include <fmt/format.h>
 #include <alsa/asoundlib.h>
 
 
@@ -39,7 +38,7 @@ AlsaMidiDriver::AlsaMidiDriver()
     }
     else
     {
-        std::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
+        fmt::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
         SeqHandle = nullptr;
     }
 }
