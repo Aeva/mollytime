@@ -642,6 +642,9 @@ ScratchUniquePtr Patch::Compile()
 
         uint32_t Polyphony = 1;
 
+        // Only used by combiners
+        double DefaultValue = 0.0;
+
         // This is NOT redundant to Patch::ByInput, because its elements are ordered,
         // that ordering is determined at compile time (e.g. by OpCode::GO), and because
         // lange merges and input combiners can replace entries in this list.
@@ -672,6 +675,7 @@ ScratchUniquePtr Patch::Compile()
     {
         TilePartialSharedPtr Partial = std::make_shared<TilePartial>();
         FlatGraph.push_back(Partial);
+        PartialByTile[Tile] = Partial;
         Partial->Tile = Tile;
         Partial->Combiner = PortCombiner::NONE;
         return Partial;
@@ -921,7 +925,7 @@ ScratchUniquePtr Patch::Compile()
     }
 
     {
-        std::unordered_map<PortHandle, TilePartialSharedPtr> LaneMergePartials;
+        std::unordered_map<PortHandle, TilePartialSharedPtr> LaneFixupPartials;
         uint32_t NextVirtualPortIndex = 0;
         std::vector<TilePartialSharedPtr> NextFlatGraph;
 
@@ -934,7 +938,7 @@ ScratchUniquePtr Patch::Compile()
             {
                 // No virtual ports needed.
             }
-            else if (Partial->Polyphony == 1)
+            else
             {
                 for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
                 {
@@ -942,35 +946,44 @@ ScratchUniquePtr Patch::Compile()
                     {
                         TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
                         TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
-                        if (ConnectedPartial->Polyphony > 1)
+                        if (Partial->Polyphony != ConnectedPartial->Polyphony)
                         {
-                            // We have an output from a polyphonic tile connected to a input port on
-                            // at least one monophonic tile.  To make this work, we create an alias
-                            // to a virtual port handle.  The presence of this alias will automatically
-                            // result in a lane add fixup tile being introduced later on.
+                            // This is a graph edge where a polyphonic tile is connected to a monophonic
+                            // tile or vice versa.  To make this work, we will add a partial to insert a
+                            // combiner to either merge or spread values across lanes.  The actual register
+                            // allocation will happen later.
 
-                            TilePartialSharedPtr& MergePartial = LaneMergePartials[ConnectedPort];
-                            if (MergePartial == nullptr)
+                            const PortCombiner Combiner = (Partial->Polyphony == 1) ? PortCombiner::LANE_MERGE : PortCombiner::LANE_SPREAD;
+
+                            TilePartialSharedPtr& FixupPartial = LaneFixupPartials[ConnectedPort];
+                            if (FixupPartial == nullptr)
                             {
                                 // There is no lane merge for this port yet, so we need to set it up here.
-                                MergePartial = std::make_shared<TilePartial>();
-                                NextFlatGraph.push_back(MergePartial);
-                                MergePartial->Tile = 0;
-                                MergePartial->Combiner = PortCombiner::LANE_MERGE;
-                                MergePartial->DynamicPolyphony = false;
-                                MergePartial->Polyphony = 1;
-                                std::vector<PortHandle>& MergeInputs0 = MergePartial->Inputs.emplace_back();
-                                MergeInputs0.push_back(ConnectedPort);
-                                MergePartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
+                                FixupPartial = std::make_shared<TilePartial>();
+                                NextFlatGraph.push_back(FixupPartial);
+                                FixupPartial->Tile = 0;
+                                FixupPartial->Combiner = Combiner;
+                                FixupPartial->DynamicPolyphony = false;
+                                FixupPartial->Polyphony = Partial->Polyphony;
+                                FixupPartial->Inputs = { { ConnectedPort }, };
+                                //std::vector<PortHandle>& MergeInputs0 = FixupPartial->Inputs.emplace_back();
+                                //MergeInputs0.push_back(ConnectedPort);
+                                FixupPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
                             }
-                            assert(MergePartial->Tile == 0);
-                            assert(MergePartial->Combiner == PortCombiner::LANE_MERGE);
-                            ConnectedPort = MergePartial->Outputs[0];
+                            assert(FixupPartial->Tile == 0);
+                            assert(FixupPartial->Combiner == Combiner);
+                            assert(FixupPartial->DynamicPolyphony == false);
+                            assert(FixupPartial->Polyphony == Partial->Polyphony);
+                            assert(FixupPartial->Inputs.size() == 1);
+                            assert(FixupPartial->Inputs[0].size() == 1);
+                            assert(FixupPartial->Outputs.size() == 1);
+                            ConnectedPort = FixupPartial->Outputs[0];
                         }
                     }
                 }
             }
-            // TODO: else if (Partial->Polyphony > 1)
+
+            NextFlatGraph.push_back(Partial);
         }
         std::swap(FlatGraph, NextFlatGraph);
 #if 0
