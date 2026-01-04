@@ -189,7 +189,7 @@ namespace Display
     std::vector<Size> ListModes(int DisplayIndex)
     {
         const std::vector<SDL_DisplayID> DisplayIds = GetDisplayIds();
-        if (DisplayIndex < 0 || DisplayIndex >= std::ssize(DisplayIds))
+        if (DisplayIndex < 0 || DisplayIndex >= static_cast<ptrdiff_t>(DisplayIds.size()))
         {
             // std::span doesn't have bounds-checked `.at()` until C++26...
             throw std::out_of_range(fmt::format("Display index out of range. Expected >= 0, < {}.", DisplayIds.size()));
