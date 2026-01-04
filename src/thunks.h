@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <tuple>
 #include <array>
@@ -381,6 +382,36 @@ struct InstructionRegisters
         return Result;
     }
 
+    inline void CombineInputLanes(uint32_t InputIndex, uint32_t OutputIndex, uint32_t Lanes, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    {
+        std::vector<double*>& InputRegisters = Input[InputIndex];
+        if (InputRegisters.size() == 0)
+        {
+            double* OutBaseAddress = OutputPtr(OutputIndex);
+            for (uint32_t Lane = 0; Lane < Lanes; ++Lane)
+            {
+                OutBaseAddress[Lane] = Default;
+            }
+        }
+        else
+        {
+            uint32_t Lane;
+            double* OutBaseAddress = OutputPtr(OutputIndex);
+            for (Lane = 0; Lane < Lanes; ++Lane)
+            {
+                OutBaseAddress[Lane] = 0.0;
+            }
+            for (int Index = 0; Index < static_cast<int>(InputRegisters.size()); ++Index)
+            {
+                double* InBaseAddress = InputRegisters[Index];
+                for (Lane = 0; Lane < Lanes; ++Lane)
+                {
+                    OutBaseAddress[Lane] = Combiner(OutBaseAddress[Lane], InBaseAddress[Lane]);
+                }
+            }
+        }
+    }
+
     inline double CombineStridedInput(uint32_t InputIndex, uint32_t Offset, uint32_t Stride, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         std::vector<double*>& InputRegisters = Input[InputIndex];
@@ -391,6 +422,17 @@ struct InstructionRegisters
             Result = Combiner(Result, *NextValue);
         }
         return Result;
+    }
+
+    inline double* InputPtr(uint32_t InputIndex)
+    {
+        assert(Input[InputIndex].size() == 1);
+        return Input[InputIndex][0];
+    }
+
+    inline double* OutputPtr(uint32_t OutputIndex)
+    {
+        return Output[OutputIndex];
     }
 
     inline double& OutputRef(uint32_t OutputIndex)

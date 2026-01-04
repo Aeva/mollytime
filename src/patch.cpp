@@ -554,7 +554,7 @@ struct CombinerThunk : public InstructionThunk
     uint32_t Lanes;
     double DefaultValue;
 
-    static CreateAndConnect(
+    static InstructionThunkSharedPtr CreateAndConnect(
         double DefaultValue,
         std::vector<double>* RegisterFile,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
@@ -573,9 +573,43 @@ struct CombinerThunk : public InstructionThunk
     {
         THUNK_TRACEABLE_NAMED_SCOPE("CombinerThunk");
 
-        if (Combiner == PortCombiner::LANE_MERGE)
+        if (Combiner == PortCombiner::ADD)
         {
-
+            Registers.CombineInputLanes(0, 0, Lanes, DefaultValue, CombinerAdd);
+        }
+        else if (Combiner == PortCombiner::MUL)
+        {
+            Registers.CombineInputLanes(0, 0, Lanes, DefaultValue, CombinerMul);
+        }
+        else if (Combiner == PortCombiner::MIN)
+        {
+            Registers.CombineInputLanes(0, 0, Lanes, DefaultValue, CombinerMin);
+        }
+        else if (Combiner == PortCombiner::MAX)
+        {
+            Registers.CombineInputLanes(0, 0, Lanes, DefaultValue, CombinerMax);
+        }
+        else if (Combiner == PortCombiner::LANE_MERGE)
+        {
+            double* BaseAddress = Registers.InputPtr(0);
+            Registers.OutputRef(0) = BaseAddress[0];
+            for (uint32_t Lane = 1; Lane < Lanes; ++Lane)
+            {
+                Registers.OutputRef(0) += BaseAddress[Lane];
+            }
+        }
+        else if (Combiner == PortCombiner::LANE_SPREAD)
+        {
+            double Value = *Registers.InputPtr(0);
+            double* BaseAddress = Registers.OutputPtr(0);
+            for (uint32_t Lane = 0; Lane < Lanes; ++Lane)
+            {
+                BaseAddress[Lane] = Value;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(std::format("Invalid combiner! {}\n", (uint32_t)Combiner));
         }
     }
 
@@ -617,7 +651,7 @@ ScratchUniquePtr Patch::Compile()
         // and input combiner thunks will
         std::vector<PortHandle> Outputs;
     };
-    using std::shared_ptr<TilePartial> = TilePartialSharedPtr;
+    using TilePartialSharedPtr = std::shared_ptr<TilePartial>;
     std::vector<TilePartialSharedPtr> FlatGraph;
     std::unordered_map<TileHandle, TilePartialSharedPtr> PartialByTile;
     FlatGraph.reserve(TileSymbols.size());
@@ -634,7 +668,7 @@ ScratchUniquePtr Patch::Compile()
     Program->MidiLanes.resize(MidiPolyphony);
     Program->Retriggerables.resize(MidiPolyphony);
 
-    auto VisitTile = [&](TileHandle Tile) -> TilePartial
+    auto VisitTile = [&](TileHandle Tile) -> TilePartialSharedPtr
     {
         TilePartialSharedPtr Partial = std::make_shared<TilePartial>();
         FlatGraph.push_back(Partial);
@@ -710,7 +744,7 @@ ScratchUniquePtr Patch::Compile()
             TilePartialSharedPtr Partial = VisitTile(Tile);
             Partial->DynamicPolyphony = false;
             Partial->Polyphony = 1;
-            std::vector<PortHandle>& Input0 = Partial.Inputs.emplace_back();
+            std::vector<PortHandle>& Input0 = Partial->Inputs.emplace_back();
 
             const PortHandle InputHandle = MakePortHandle(Tile, 0);
             for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
@@ -929,7 +963,7 @@ ScratchUniquePtr Patch::Compile()
                                 MergeInputs0.push_back(ConnectedPort);
                                 MergePartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
                             }
-                            assert(MergePartial->Tile == 0;
+                            assert(MergePartial->Tile == 0);
                             assert(MergePartial->Combiner == PortCombiner::LANE_MERGE);
                             ConnectedPort = MergePartial->Outputs[0];
                         }
@@ -938,7 +972,7 @@ ScratchUniquePtr Patch::Compile()
             }
             // TODO: else if (Partial->Polyphony > 1)
         }
-        std::swap(FlatGraph, FlatGraphWithCombiners);
+        std::swap(FlatGraph, NextFlatGraph);
 #if 0
         // Create virtual partials for input combining.
         NextFlatGraph.clear();
@@ -946,7 +980,7 @@ ScratchUniquePtr Patch::Compile()
         for (TilePartialSharedPtr Partial : FlatGraph)
         {
         }
-        std::swap(FlatGraph, FlatGraphWithCombiners);
+        std::swap(FlatGraph, NextFlatGraph);
 #endif
     }
 
@@ -1186,7 +1220,7 @@ ScratchUniquePtr Patch::Compile()
                 std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
                 InputRegisters.reserve(ConnectedOutputs.size());
 
-                for (PortHandle ConnectedOutput : ConnectOutput)
+                for (PortHandle ConnectedOutput : ConnectedOutputs)
                 {
                     InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
                 }
@@ -1196,8 +1230,7 @@ ScratchUniquePtr Patch::Compile()
             Outputs.reserve(Partial->Outputs.size());
             for (PortHandle Output : Partial->Outputs)
             {
-                std::ptrdiff_t BaseAddress = RegisterMap.at(Output);
-                InputRegisters.push_back(RegisterMap.at(Output));
+                Outputs.push_back(RegisterMap.at(Output));
             }
 
             if (Partial->Combiner == PortCombiner::NONE)
@@ -1211,7 +1244,9 @@ ScratchUniquePtr Patch::Compile()
                 // input lanes, which are consecutive in the register file from the base address.
                 assert(Inputs.size() == 1);
                 assert(Inputs[0].size() == 1);
-                assert(Outputs[0].size() == 1);
+                assert(Outputs.size() == 1);
+                Program->Program.push_back(
+                    CombinerThunk<PortCombiner::LANE_MERGE>::CreateAndConnect(0.0, RegisterFile, Inputs, Outputs, Partial->Polyphony));
             }
             else if (Partial->Combiner == PortCombiner::LANE_SPREAD)
             {
@@ -1220,7 +1255,9 @@ ScratchUniquePtr Patch::Compile()
                 // polyphonic thunks do not have to have any special switching logic to handle monophonic inputs.
                 assert(Inputs.size() == 1);
                 assert(Inputs[0].size() == 1);
-                assert(Outputs[0].size() == 1);
+                assert(Outputs.size() == 1);
+                Program->Program.push_back(
+                    CombinerThunk<PortCombiner::LANE_SPREAD>::CreateAndConnect(0.0, RegisterFile, Inputs, Outputs, Partial->Polyphony));
             }
             else if (Partial->Combiner == PortCombiner::DIRECT)
             {

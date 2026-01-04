@@ -24,10 +24,10 @@ struct MoonThunk : public InstructionThunk
     {
         OpCode::MOON, "moon",
         {{
-            {"lat", 41.881944, InputCombiner::ADD},
-            {"long", -87.627778, InputCombiner::ADD},
-            {"julian\ndate", -1.0, InputCombiner::ADD},
-            {"speed", 1.0, InputCombiner::ADD},
+            {"lat", 41.881944, PortCombiner::ADD},
+            {"long", -87.627778, PortCombiner::ADD},
+            {"julian\ndate", -1.0, PortCombiner::ADD},
+            {"speed", 1.0, PortCombiner::ADD},
         }},
         {"altitude"}
     };
