@@ -27,6 +27,14 @@
 #include <cmath>
 #include <functional>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#define BOOST_ATOMIC_NO_LIB
+#include <boost/atomic.hpp>
+#undef BOOST_ATOMIC_NO_LIB
+#pragma clang diagnostic pop
+
 #include "perf.h"
 
 
@@ -125,7 +133,7 @@ struct AtomicRunningState
     }
 
 private:
-    std::atomic<double> Sample;
+    boost::atomic_double_t Sample;
 };
 
 using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
