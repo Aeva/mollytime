@@ -68,6 +68,19 @@ python_install = py.find_installation(pure : false)
 python = python_install.full_path()
 
 # ---
+# fmt
+
+fmt_include = 'third_party' / 'fmt-12.1.0' / 'include'
+include_dirs += include_directories(fmt_include)
+source_files += files('third_party' / 'fmt-12.1.0' / 'src' / 'fmt.cc')
+
+# ---
+# "get boost"
+
+boost_dir = 'third_party' / 'boost_1_90_0'
+include_dirs += include_directories(boost_dir)
+
+# ---
 # GLM
 
 glm_include = 'third_party' / 'glm-0.9.9.8'
