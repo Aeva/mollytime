@@ -55,9 +55,9 @@ double EncodeSampleHandle(uint32_t SampleHandle)
 #if 0
     const uint64_t NaN = (0xffful << 51);
     uint64_t Encoded = NaN | uint64_t(SampleHandle);
-    return std::bit_cast<double, uint64_t>(Encoded);
+    return bit_cast<double, uint64_t>(Encoded);
 #endif
-    return std::bit_cast<double, uint64_t>(uint64_t(SampleHandle));
+    return bit_cast<double, uint64_t>(uint64_t(SampleHandle));
 }
 
 

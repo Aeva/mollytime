@@ -592,3 +592,14 @@ private:
         };
     }
 };
+
+template<typename To, typename From>
+static inline To bit_cast(const From& FromValue) noexcept {
+    static_assert(sizeof(To) == sizeof(From));
+    static_assert(std::is_trivially_copyable_v<To>);
+    static_assert(std::is_trivially_copyable_v<From>);
+
+    To ToValue;
+    memcpy(&ToValue, &FromValue, sizeof(From));
+    return ToValue;
+}

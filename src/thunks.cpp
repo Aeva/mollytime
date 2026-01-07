@@ -2189,8 +2189,8 @@ struct TapeLoopThunk : public InstructionThunk
         double& LastReset = Registers.ClosureRef(2);
         double& LastOffset = Registers.ClosureRef(3);
 
-        uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
-        uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
+        uint64_t ReadIndex = bit_cast<uint64_t, double>(ReadHead);
+        uint64_t WriteIndex = bit_cast<uint64_t, double>(WriteHead);
 
         BlankTape* Tape;
         {
@@ -2239,10 +2239,10 @@ struct TapeLoopThunk : public InstructionThunk
             LastReset = Reset;
 
             Output = Tape->ReadAndAdvance(ReadIndex);
-            ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
+            ReadHead = bit_cast<double, uint64_t>(ReadIndex);
 
             Tape->WriteAndAdvance(WriteIndex, Sample);
-            WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
+            WriteHead = bit_cast<double, uint64_t>(WriteIndex);
         }
     }
 
