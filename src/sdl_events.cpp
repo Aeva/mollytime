@@ -9,7 +9,7 @@
 #endif
 
 #pragma clang diagnostic push
-#pragma clang diagnostic ignore "-Wc++20-designator"
+#pragma clang diagnostic ignored "-Wc++20-designator"
 
 namespace Events
 {
