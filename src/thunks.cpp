@@ -1607,7 +1607,7 @@ struct InputSequenceThunk : public InstructionThunk
             // Modulating the index happens at the start of this thunk, because the patch may
             // have been modified between calls, which could result in the sequence changing
             // length.
-            const int Period = Sequence.size();
+            const int Period = static_cast<int>(Sequence.size());
             int Index = int(Cursor) % Period;
             OutValue = *Sequence[Index];
 
@@ -1674,7 +1674,7 @@ struct RandomSequenceThunk : public InstructionThunk
                 }
                 Cache.resize(Period);
                 std::mt19937 Generator;
-                Generator.seed(Seed);
+                Generator.seed(static_cast<std::mt19937::result_type>(Seed));
                 double Low = Generator.min();
                 double Scale = 1.0 / (Generator.max() - Low);
                 for (double& Sample : Cache)
@@ -2049,7 +2049,7 @@ struct LeadLaneThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
 
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
-        uint32_t LaneCount = Program->MidiLanes.size();
+        uint32_t LaneCount = static_cast<uint32_t>(Program->MidiLanes.size());
         if (ReadLane < LaneCount)
         {
             double Value = Registers.CombineStridedInput(0, ReadLane, LaneCount);

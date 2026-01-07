@@ -105,7 +105,10 @@ namespace Draw
     }
 
     Texture::Texture(const Size& Size) :
-        Texture(std::get<0>(Size), std::get<1>(Size))
+        Texture(
+            static_cast<int>(std::get<0>(Size)),
+            static_cast<int>(std::get<1>(Size))
+        )
     { }
 
     float Texture::GetWidth() const
@@ -375,7 +378,7 @@ namespace Draw
 
         if (Width > 1.0)
         {
-            float Radius = Width * 0.5;
+            float Radius = Width * 0.5f;
             glm::vec2 PointA = GLMPoint(Start);
             glm::vec2 PointB = GLMPoint(End);
             glm::vec2 Offset = glm::normalize(PointB - PointA) * Radius;
@@ -612,7 +615,7 @@ namespace Draw
         {
             float Alpha = float(Index) / float(Count - 1);
             Alpha = Rotation + Alpha * Arc;
-            const float Angle = Tau * Alpha;
+            const float Angle = static_cast<float>(Tau) * Alpha;
             Points[Index] = { std::cos(Angle), -std::sin(Angle) };
         }
         return Points;
@@ -640,7 +643,7 @@ namespace Draw
             throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size() - 3))
+        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), static_cast<int>(Vertices.size()), Indices.data(), static_cast<int>(Indices.size() - 3)))
         {
             throw std::runtime_error(fmt::format("Failed to render pie. SDL error: {}", SDL_GetError()));
         }
@@ -653,7 +656,7 @@ namespace Draw
         for (int Index = 0; Index < Count; ++Index)
         {
             const float Alpha = float(Index) / float(Count);
-            const float Angle = Tau * Alpha;
+            const float Angle = static_cast<float>(Tau) * Alpha;
             Points[Index] = { std::cos(Angle), -std::sin(Angle) };
         }
         return Points;
@@ -681,7 +684,7 @@ namespace Draw
             throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
+        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), static_cast<int>(Vertices.size()), Indices.data(), static_cast<int>(Indices.size())))
         {
             throw std::runtime_error(fmt::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }
@@ -700,7 +703,7 @@ namespace Draw
             throw std::runtime_error(fmt::format("Failed to set render texture. SDL error: {}", SDL_GetError()));
         }
 
-        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), Vertices.size(), Indices.data(), Indices.size()))
+        if (!SDL_RenderGeometry(Renderer, nullptr, Vertices.data(), static_cast<int>(Vertices.size()), Indices.data(), static_cast<int>(Indices.size())))
         {
             throw std::runtime_error(fmt::format("Failed to render circle. SDL error: {}", SDL_GetError()));
         }

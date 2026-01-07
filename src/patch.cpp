@@ -510,7 +510,7 @@ void Patch::SetActiveProbe(TileHandle Tile)
 
 void Patch::ClearActiveProbe()
 {
-    TileHandle Tile = -1;
+    TileHandle Tile = static_cast<uint32_t>(-1);
     Patch::SetActiveProbe(Tile);
 }
 
@@ -1202,7 +1202,7 @@ ScratchUniquePtr Patch::Compile()
                 if (Partial.Polyphony > 1 && Symbol == OpCode::ADSR)
                 {
                     Thunk->Retriggerable = true;
-                    uint32_t ThunkIndex = Program->Program.size() - 1;
+                    uint32_t ThunkIndex = static_cast<uint32_t>(Program->Program.size() - 1);
                     assert(Program->Program[ThunkIndex] == Thunk);
                     // TODO: figure out some means of determining if the trigger is directly or indirectly
                     // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
@@ -1294,12 +1294,12 @@ void Scratch::PrintRegisters() const
     std::unordered_map<uint32_t, PortHandle> PortsByRegisterOffset;
     for (auto const& [Port, Allocation] : PersistentRegisters)
     {
-        PortsByRegisterOffset[Allocation.BaseOffset] = Port;
+        PortsByRegisterOffset[static_cast<uint32_t>(Allocation.BaseOffset)] = Port;
     }
     for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)RegisterFile.size(); ++Register)
     {
         const double Value = RegisterFile.at(Register);
-        auto Found = PortsByRegisterOffset.find(Register);
+        auto Found = PortsByRegisterOffset.find(static_cast<uint32_t>(Register));
         if (Found != PortsByRegisterOffset.end())
         {
             PortHandle Port = Found->second;
@@ -1375,7 +1375,7 @@ void Scratch::Migrate(Scratch& Old)
                     if (EnableDebugLogging)
                     {
                         const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
-                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
+                        const uint32_t WriteOffset = static_cast<uint32_t>(NewAllocation.BaseOffset) + Lane;
                         fmt::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
                     RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
@@ -1393,7 +1393,7 @@ void Scratch::Migrate(Scratch& Old)
                     if (EnableDebugLogging)
                     {
                         const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
-                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
+                        const uint32_t WriteOffset = static_cast<uint32_t>(NewAllocation.BaseOffset) + Lane;
                         fmt::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
                     RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
@@ -1640,13 +1640,13 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
     {
         if (Outputs.size() == 1)
         {
-            OutLeft = RegisterFile.at(Outputs[0]);
-            OutRight = RegisterFile.at(Outputs[0]);
+            OutLeft = static_cast<float>(RegisterFile.at(Outputs[0]));
+            OutRight = static_cast<float>(RegisterFile.at(Outputs[0]));
         }
         else if (Outputs.size() > 1)
         {
-            OutLeft = RegisterFile.at(Outputs[0]);
-            OutRight = RegisterFile.at(Outputs[1]);
+            OutLeft = static_cast<float>(RegisterFile.at(Outputs[0]));
+            OutRight = static_cast<float>(RegisterFile.at(Outputs[1]));
         }
     }
     if (ProbeConnected)

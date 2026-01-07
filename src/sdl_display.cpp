@@ -180,7 +180,7 @@ namespace Display
                 throw std::runtime_error(fmt::format("Failed to get display mode. SDL error: {}", SDL_GetError()));
             }
 
-            Sizes.emplace_back(DisplayMode->w, DisplayMode->h);
+            Sizes.emplace_back(static_cast<float>(DisplayMode->w), static_cast<float>(DisplayMode->h));
         }
 
         return Sizes;
@@ -202,7 +202,7 @@ namespace Display
         for(SDL_DisplayMode* Mode : DisplayModes)
         {
             assert(Mode != nullptr);
-            Sizes.emplace_back(Mode->w, Mode->h);
+            Sizes.emplace_back(static_cast<float>(Mode->w), static_cast<float>(Mode->h));
         }
 
         return Sizes;
