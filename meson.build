@@ -72,7 +72,7 @@ python = python_install.full_path()
 
 fmt_include = 'third_party' / 'fmt-12.1.0' / 'include'
 include_dirs += include_directories(fmt_include)
-source_files += files('third_party' / 'fmt-12.1.0' / 'src' / 'fmt.cc')
+source_files += files('third_party' / 'fmt-12.1.0' / 'src' / 'format.cc')
 
 # ---
 # "get boost"
