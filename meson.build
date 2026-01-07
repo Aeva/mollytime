@@ -1,7 +1,7 @@
 project('mollytime', 'cpp',
     meson_version : '>=1.3.0',
     default_options : [
-        'cpp_std=c++23,c++latest',
+        'cpp_std=c++17',
         'warning_level=3'   # GCC-style: `-Wall -Wextra -pedantic`; MSVC-style: `/W4`
     ]
 )
