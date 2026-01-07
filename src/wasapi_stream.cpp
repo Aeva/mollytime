@@ -18,7 +18,6 @@
 #include "wasapi_stream.h"
 
 #include <cassert>
-#include <span>
 
 
 #define CheckHResult winrt::check_hresult

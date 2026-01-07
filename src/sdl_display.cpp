@@ -11,7 +11,6 @@
 #include <fmt/format.h>
 
 #include <cassert>
-#include <span>
 #include <stdexcept>
 #include <string>
 
