@@ -6,7 +6,6 @@
 #include <fmt/format.h>
 
 #include <cmath>
-#include <numbers>
 #include <algorithm>
 #include <cassert>
 #include <stdexcept>
