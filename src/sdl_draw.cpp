@@ -626,8 +626,8 @@ namespace Draw
         std::vector<Point> PieTemplate = UnitPie(32, Angle, Arc);
         std::vector<Point> Points;
         Points.reserve(PieTemplate.size());
-        const auto [CenterX, CenterY] = Center;
-        for (const auto [UnitX, UnitY] : PieTemplate)
+        const auto& [CenterX, CenterY] = Center;
+        for (const auto& [UnitX, UnitY] : PieTemplate)
         {
             Points.emplace_back(UnitX * Radius + CenterX, UnitY * Radius + CenterY);
         }
@@ -667,8 +667,8 @@ namespace Draw
         static std::vector<Point> CircleTemplate = UnitCircle(8);
         std::vector<Point> Points;
         Points.reserve(CircleTemplate.size());
-        const auto [CenterX, CenterY] = Center;
-        for (const auto [UnitX, UnitY] : CircleTemplate)
+        const auto& [CenterX, CenterY] = Center;
+        for (const auto& [UnitX, UnitY] : CircleTemplate)
         {
             Points.emplace_back(UnitX * Radius + CenterX, UnitY * Radius + CenterY);
         }
