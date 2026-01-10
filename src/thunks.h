@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <tuple>
 #include <array>
@@ -387,6 +388,18 @@ struct InstructionRegisters
             Result = Combiner(Result, *NextValue);
         }
         return Result;
+    }
+
+
+    inline double* InputPtr(uint32_t InputIndex)
+    {
+        assert(Input[InputIndex].size() == 1);
+        return Input[InputIndex][0];
+    }
+
+    inline double* OutputPtr(uint32_t OutputIndex)
+    {
+        return Output[OutputIndex];
     }
 
     inline double& OutputRef(uint32_t OutputIndex)

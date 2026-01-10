@@ -542,6 +542,45 @@ double Patch::GetSpecialInput(TileHandle Tile)
 }
 
 
+struct LaneScatterThunk : public InstructionThunk
+{
+    uint32_t Lanes;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("LaneScatterThunk");
+        double Value = *Registers.InputPtr(0);
+        double* BaseAddress = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Lanes; ++Lane)
+        {
+            BaseAddress[Lane] = Value;
+        }
+    };
+
+    virtual ~LaneScatterThunk() {};
+};
+
+
+struct LaneMergeThunk : public InstructionThunk
+{
+    uint32_t Lanes;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("LaneMergeThunk");
+        double* BaseAddress = Registers.InputPtr(0);
+        double& Value = Registers.OutputRef(0);
+        Value = BaseAddress[0];
+        for (uint32_t Lane = 1; Lane < Lanes; ++Lane)
+        {
+            Value = BaseAddress[Lane];
+        }
+    };
+
+    virtual ~LaneMergeThunk() {};
+};
+
+
 ScratchUniquePtr Patch::Compile()
 {
     TRACEABLE_SCOPE;
@@ -549,9 +588,17 @@ ScratchUniquePtr Patch::Compile()
     std::set<TileHandle> BreadCrumbs;
     std::map<TileHandle, std::vector<PortHandle>> InputSequences;
 
+    enum class PartialType
+    {
+        TILE = 0,
+        LANE_SCATTER,
+        LANE_MERGE,
+    };
+
     struct TilePartial
     {
-        TileHandle Tile;
+        PartialType Type;
+        TileHandle Tile; // Must be non-zero if the type is PartialType::TILE, and zero otherwise.
         bool DynamicPolyphony; // True indicates the tile's polyphony is determined via propagation, not by its symbol.
         uint32_t Polyphony = 1;
 
@@ -559,8 +606,10 @@ ScratchUniquePtr Patch::Compile()
         // and that ordering is determined at compile time (e.g. by OpCode::GO).
         std::vector<std::vector<PortHandle>> Inputs;
     };
-    std::vector<TilePartial> FlatGraph;
-    std::unordered_map<TileHandle, TilePartial*> PartialByTile;
+    using TilePartialSharedPtr = std::shared_ptr<TilePartial>;
+
+    std::vector<TilePartialSharedPtr> FlatGraph;
+    std::unordered_map<TileHandle, TilePartialSharedPtr> PartialByTile;
     FlatGraph.reserve(TileSymbols.size());
 
     assert(MidiPolyphony > 0);
@@ -575,11 +624,13 @@ ScratchUniquePtr Patch::Compile()
     Program->MidiLanes.resize(MidiPolyphony);
     Program->Retriggerables.resize(MidiPolyphony);
 
-    auto VisitTile = [&](TileHandle Tile) -> TilePartial&
+    auto VisitTile = [&](TileHandle Tile) -> TilePartialSharedPtr
     {
-        TilePartial& Partial = FlatGraph.emplace_back();
-        Partial.Tile = Tile;
-        PartialByTile[Tile] = &Partial;
+        TilePartialSharedPtr Partial = std::make_shared<TilePartial>();
+        FlatGraph.push_back(Partial);
+        PartialByTile[Tile] = Partial;
+        Partial->Type = PartialType::TILE;
+        Partial->Tile = Tile;
         return Partial;
     };
 
@@ -599,9 +650,9 @@ ScratchUniquePtr Patch::Compile()
         const OpCode Symbol = GetTileSymbol(Tile);
         if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::LANE_COUNT || Symbol == OpCode::BOOP || Symbol == OpCode::TWEAK)
         {
-            TilePartial& Partial = VisitTile(Tile);
-            Partial.DynamicPolyphony = false;
-            Partial.Polyphony = 1;
+            TilePartialSharedPtr Partial = VisitTile(Tile);
+            Partial->DynamicPolyphony = false;
+            Partial->Polyphony = 1;
             return;
         }
 
@@ -646,10 +697,10 @@ ScratchUniquePtr Patch::Compile()
         }
         else if (IsOutputSymbol(Symbol))
         {
-            TilePartial& Partial = VisitTile(Tile);
-            Partial.DynamicPolyphony = false;
-            Partial.Polyphony = 1;
-            std::vector<PortHandle>& Input0 = Partial.Inputs.emplace_back();
+            TilePartialSharedPtr Partial = VisitTile(Tile);
+            Partial->DynamicPolyphony = false;
+            Partial->Polyphony = 1;
+            std::vector<PortHandle>& Input0 = Partial->Inputs.emplace_back();
 
             const PortHandle InputHandle = MakePortHandle(Tile, 0);
             for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
@@ -659,30 +710,30 @@ ScratchUniquePtr Patch::Compile()
         }
         else
         {
-            TilePartial& Partial = VisitTile(Tile);
+            TilePartialSharedPtr Partial = VisitTile(Tile);
 
             if (Symbol == OpCode::GATE || Symbol == OpCode::NOTE || Symbol == OpCode::VELO ||
                 Symbol == OpCode::PRES || Symbol == OpCode::CTRL || Symbol == OpCode::KIKI ||
                 Symbol == OpCode::BEND)
             {
-                Partial.DynamicPolyphony = false;
-                Partial.Polyphony = MidiPolyphony;
+                Partial->DynamicPolyphony = false;
+                Partial->Polyphony = MidiPolyphony;
             }
             else if (IsLaneJoinSymbol(Symbol))
             {
-                Partial.DynamicPolyphony = false;
-                Partial.Polyphony = 1;
+                Partial->DynamicPolyphony = false;
+                Partial->Polyphony = 1;
             }
             else
             {
                 // Inherit from inputs.
-                Partial.DynamicPolyphony = true;
-                Partial.Polyphony = 1;
+                Partial->DynamicPolyphony = true;
+                Partial->Polyphony = 1;
             }
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
             {
-                std::vector<PortHandle>& PortInputs = Partial.Inputs.emplace_back();
+                std::vector<PortHandle>& PortInputs = Partial->Inputs.emplace_back();
                 PortHandle InputHandle = MakePortHandle(Tile, PortIndex);
                 for (PortHandle ConnectedOutput : ByInput.at(InputHandle))
                 {
@@ -798,47 +849,55 @@ ScratchUniquePtr Patch::Compile()
         // to do in such a situation is to default to a lane width of one.
         for (uint32_t Iteration = 0; Iteration < IterationCount; ++Iteration)
         {
-            for (TilePartial& Partial : FlatGraph)
+            for (TilePartialSharedPtr& Partial : FlatGraph)
             {
-                if (Partial.DynamicPolyphony)
+                assert(Partial->Type == PartialType::TILE);
+                assert(Partial->Tile != 0);
+
+                if (Partial->DynamicPolyphony)
                 {
-                    for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+                    for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
                     {
                         for (PortHandle ConnectedPort : ConnectedOutputs)
                         {
                             TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
-                            TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
-                            Partial.Polyphony = std::max(Partial.Polyphony, ConnectedPartial->Polyphony);
+                            TilePartialSharedPtr& ConnectedPartial = PartialByTile.at(ConnectedTile);
+                            Partial->Polyphony = std::max(Partial->Polyphony, ConnectedPartial->Polyphony);
                         }
                     }
                 }
             }
         }
-        for (TilePartial& Partial : FlatGraph)
+        for (TilePartialSharedPtr& Partial : FlatGraph)
         {
-            TileLanes.insert_or_assign(Partial.Tile, Partial.Polyphony);
-            TilePolyphony[Partial.Tile] = Partial.Polyphony;
+            TileLanes.insert_or_assign(Partial->Tile, Partial->Polyphony);
+            TilePolyphony[Partial->Tile] = Partial->Polyphony;
         }
     }
 
     std::unordered_map<PortHandle, PortHandle> LaneMergePorts;
     {
+        std::unordered_map<PortHandle, TilePartialSharedPtr> LaneFixupPartials;
         uint32_t NextVirtualPortIndex = 0;
-        for (TilePartial& Partial : FlatGraph)
+
+        std::vector<TilePartialSharedPtr> NextFlatGraph;
+        NextFlatGraph.reserve(FlatGraph.size());
+
+        for (TilePartialSharedPtr& Partial : FlatGraph)
         {
-            const OpCode Symbol = GetTileSymbol(Partial.Tile);
+            const OpCode Symbol = GetTileSymbol(Partial->Tile);
             if (IsLaneJoinSymbol(Symbol))
             {
                 // No virtual ports needed.
             }
-            else if (Partial.Polyphony == 1)
+            else if (Partial->Polyphony == 1)
             {
-                for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+                for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
                 {
                     for (PortHandle ConnectedPort : ConnectedOutputs)
                     {
                         TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
-                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
                         if (ConnectedPartial->Polyphony > 1)
                         {
                             // We have an output from a polyphonic tile connected to a input port on
@@ -955,7 +1014,7 @@ ScratchUniquePtr Patch::Compile()
         for (TileHandle Tile : TapeTiles)
         {
             PortHandle Port = MakePortHandle(Tile, 0);
-            TilePartial* Partial = PartialByTile.at(Tile);
+            TilePartialSharedPtr Partial = PartialByTile.at(Tile);
 
             std::ptrdiff_t BaseOffset = TapeCount;
             uint32_t LaneCount = Partial->Polyphony;
@@ -973,19 +1032,19 @@ ScratchUniquePtr Patch::Compile()
     }
 
     // Emit thunks, and adjust default values.
-    for (TilePartial& Partial : FlatGraph)
+    for (TilePartialSharedPtr& Partial : FlatGraph)
     {
-        const OpCode Symbol = GetTileSymbol(Partial.Tile);
+        const OpCode Symbol = GetTileSymbol(Partial->Tile);
         std::vector<double>* RegisterFile = &(Program->RegisterFile);
         std::vector<MagicTapeUniquePtr>* TapeFile = &(Program->TapeFile);
 
         std::vector<std::vector<std::ptrdiff_t>> Inputs;
-        Inputs.reserve(Partial.Inputs.size());
+        Inputs.reserve(Partial->Inputs.size());
 
         std::vector<std::vector<uint32_t>> InputWidths;
-        InputWidths.reserve(Partial.Inputs.size());
+        InputWidths.reserve(Partial->Inputs.size());
 
-        for (std::vector<PortHandle>& ConnectedOutputs : Partial.Inputs)
+        for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
         {
             std::vector<std::ptrdiff_t>& InputRegisters = Inputs.emplace_back();
             InputRegisters.reserve(ConnectedOutputs.size());
@@ -1000,7 +1059,7 @@ ScratchUniquePtr Patch::Compile()
                     for (PortHandle ConnectedOutput : ConnectedOutputs)
                     {
                         TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
-                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
                         std::ptrdiff_t BaseAddress = RegisterMap.at(ConnectedOutput);
                         // LeadLaneThunk will read the inputs with a stride.
                         uint32_t Width = ConnectedPartial->Polyphony;
@@ -1030,7 +1089,7 @@ ScratchUniquePtr Patch::Compile()
                     for (PortHandle ConnectedOutput : ConnectedOutputs)
                     {
                         TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
-                        TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                        TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
                         std::ptrdiff_t BaseAddress = RegisterMap.at(ConnectedOutput);
                         uint32_t Width = ConnectedPartial->Polyphony;
                         for (uint32_t Offset = 0; Offset < Width; ++Offset)
@@ -1041,7 +1100,7 @@ ScratchUniquePtr Patch::Compile()
                     }
                 }
             }
-            else if (Partial.Polyphony == 1)
+            else if (Partial->Polyphony == 1)
             {
                 for (PortHandle ConnectedOutput : ConnectedOutputs)
                 {
@@ -1060,7 +1119,7 @@ ScratchUniquePtr Patch::Compile()
                 {
                     InputRegisters.push_back(RegisterMap.at(ConnectedOutput));
                     TileHandle ConnectedTile = PortHandleTilePart(ConnectedOutput);
-                    TilePartial* ConnectedPartial = PartialByTile.at(ConnectedTile);
+                    TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
                     Widths.push_back(ConnectedPartial->Polyphony);
                 }
             }
@@ -1084,7 +1143,7 @@ ScratchUniquePtr Patch::Compile()
             }
             else
             {
-                OutputRegister = RegisterMap.at(MakePortHandle(Partial.Tile, 0));
+                OutputRegister = RegisterMap.at(MakePortHandle(Partial->Tile, 0));
                 Outputs = { OutputRegister };
                 if (Inputs[0].size() > 1)
                 {
@@ -1100,11 +1159,11 @@ ScratchUniquePtr Patch::Compile()
             }
             else if (Symbol == OpCode::AUX)
             {
-                Program->AuxOutputs[Partial.Tile] = OutputRegister;
+                Program->AuxOutputs[Partial->Tile] = OutputRegister;
             }
 
             // This tile is also the current active probe.
-            if (Program->ProbeConnected && Partial.Tile == ActiveProbeTile)
+            if (Program->ProbeConnected && Partial->Tile == ActiveProbeTile)
             {
                 Program->ProbeInput = OutputRegister;
             }
@@ -1117,18 +1176,18 @@ ScratchUniquePtr Patch::Compile()
             Outputs.reserve(OutputCount);
             for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
             {
-                PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
+                PortHandle OutputPort = MakePortHandle(Partial->Tile, PortIndex);
                 Outputs.push_back(RegisterMap.at(OutputPort));
             }
 
             Closures.reserve(ClosureCount);
             for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
             {
-                PortHandle ClosurePort = MakeClosureHandle(Partial.Tile, ClosureIndex);
+                PortHandle ClosurePort = MakeClosureHandle(Partial->Tile, ClosureIndex);
                 Closures.push_back(RegisterMap.at(ClosurePort));
             }
 
-            for (uint32_t Lane = 0; Lane < Partial.Polyphony; ++Lane)
+            for (uint32_t Lane = 0; Lane < Partial->Polyphony; ++Lane)
             {
                 if (Lane > 0)
                 {
@@ -1138,7 +1197,7 @@ ScratchUniquePtr Patch::Compile()
                         for (uint32_t Connection = 0; Connection < InputRegisters.size(); ++Connection)
                         {
                             // TODO: assert that this matches if the width is not 1
-                            if (InputWidths[InputIndex][Connection] == Partial.Polyphony)
+                            if (InputWidths[InputIndex][Connection] == Partial->Polyphony)
                             {
                                 ++(InputRegisters[Connection]);
                             }
@@ -1169,7 +1228,7 @@ ScratchUniquePtr Patch::Compile()
                     auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
                     if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                     {
-                        Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial.Tile]);
+                        Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
                         Program->Program.push_back(Thunk);
                     }
                 }
@@ -1189,7 +1248,7 @@ ScratchUniquePtr Patch::Compile()
                     auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
                     if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                     {
-                        PortHandle Port = MakePortHandle(Partial.Tile, 0);
+                        PortHandle Port = MakePortHandle(Partial->Tile, 0);
                         RegisterAllocation& TapeAllocation = Program->PersistentTapes.at(Port);
                         std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset + Lane;
                         Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
@@ -1198,7 +1257,7 @@ ScratchUniquePtr Patch::Compile()
                 }
 
                 assert(Thunk != nullptr);
-                if (Partial.Polyphony > 1 && Symbol == OpCode::ADSR)
+                if (Partial->Polyphony > 1 && Symbol == OpCode::ADSR)
                 {
                     Thunk->Retriggerable = true;
                     uint32_t ThunkIndex = Program->Program.size() - 1;
@@ -1214,11 +1273,11 @@ ScratchUniquePtr Patch::Compile()
                 }
             }
 
-            if (Partial.Polyphony > 1)
+            if (Partial->Polyphony > 1)
             {
                 for (int PortIndex = 0; PortIndex < static_cast<int>(OutputCount); ++PortIndex)
                 {
-                    PortHandle OutputPort = MakePortHandle(Partial.Tile, PortIndex);
+                    PortHandle OutputPort = MakePortHandle(Partial->Tile, PortIndex);
 
                     auto Found = LaneMergePorts.find(OutputPort);
                     if (Found != LaneMergePorts.end())
@@ -1229,8 +1288,8 @@ ScratchUniquePtr Patch::Compile()
                         std::ptrdiff_t ResultAddress = RegisterMap.at(VirtualPort);
 
                         std::vector<std::ptrdiff_t> MergeLanes;
-                        MergeLanes.reserve(Partial.Polyphony);
-                        for (std::ptrdiff_t Lane = 0; Lane < (std::ptrdiff_t)Partial.Polyphony; ++Lane)
+                        MergeLanes.reserve(Partial->Polyphony);
+                        for (std::ptrdiff_t Lane = 0; Lane < (std::ptrdiff_t)Partial->Polyphony; ++Lane)
                         {
                             MergeLanes.push_back(PolyphonicBaseAddress + Lane);
                         }
