@@ -934,56 +934,79 @@ ScratchUniquePtr Patch::Compile()
         for (TilePartialSharedPtr Partial : FlatGraph)
         {
             const OpCode Symbol = GetTileSymbol(Partial->Tile);
+            uint32_t InPolyphony = Partial->Polyphony;
             if (IsLaneJoinSymbol(Symbol))
             {
-                // No virtual ports needed.
-            }
-            else
-            {
-                // Create virtual partials for lane merging and splitting.
+                assert(Partial->Polyphony == 1);
+                uint32_t MaxConnectedPolyphony = 1;
 
-                for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
+                assert(Partial->Inputs.size() == 1);
+                std::vector<PortHandle>& Input0 = Partial->Inputs[0];
+                for (PortHandle& ConnectedPort : Input0)
                 {
-                    for (PortHandle& ConnectedPort : ConnectedOutputs)
+                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                    TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
+                    if (ConnectedPartial->Polyphony > 1)
                     {
-                        TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
-                        TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
-                        if (Partial->Polyphony != ConnectedPartial->Polyphony)
+                        MaxConnectedPolyphony = ConnectedPartial->Polyphony;
+                        break;
+                    }
+                }
+                if (MaxConnectedPolyphony == 1)
+                {
+                    // Turn this partial into a monophonic ADD.
+                    InPolyphony = 1;
+                    Partial->Tile = 0;
+                    Partial->Combiner = PortCombiner::ADD;
+                }
+                else
+                {
+                    // This tile remains an explicit polyphonic lane merge.
+                    InPolyphony = MaxConnectedPolyphony;
+                }
+            }
+
+            // Create virtual partials for lane merging and splitting.
+            for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
+            {
+                for (PortHandle& ConnectedPort : ConnectedOutputs)
+                {
+                    TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                    TilePartialSharedPtr ConnectedPartial = PartialByTile.at(ConnectedTile);
+                    if (InPolyphony != ConnectedPartial->Polyphony)
+                    {
+                        // This is a graph edge where a polyphonic tile is connected to a monophonic
+                        // tile or vice versa.  To make this work, we will add a partial to insert a
+                        // combiner to either merge or spread values across lanes.  The actual register
+                        // allocation will happen later.
+
+                        const PortCombiner Combiner = (InPolyphony == 1) ? PortCombiner::LANE_MERGE : PortCombiner::LANE_SPREAD;
+
+                        TilePartialSharedPtr& FixupPartial = LaneFixupPartials[ConnectedPort];
+                        if (FixupPartial == nullptr)
                         {
-                            // This is a graph edge where a polyphonic tile is connected to a monophonic
-                            // tile or vice versa.  To make this work, we will add a partial to insert a
-                            // combiner to either merge or spread values across lanes.  The actual register
-                            // allocation will happen later.
-
-                            const PortCombiner Combiner = (Partial->Polyphony == 1) ? PortCombiner::LANE_MERGE : PortCombiner::LANE_SPREAD;
-
-                            TilePartialSharedPtr& FixupPartial = LaneFixupPartials[ConnectedPort];
-                            if (FixupPartial == nullptr)
-                            {
-                                // There is no lane merge for this port yet, so we need to set it up here.
-                                FixupPartial = std::make_shared<TilePartial>();
-                                NextFlatGraph.push_back(FixupPartial);
-                                FixupPartial->Tile = 0;
-                                FixupPartial->Combiner = Combiner;
-                                FixupPartial->DynamicPolyphony = false;
-                                FixupPartial->Polyphony = std::max(Partial->Polyphony, ConnectedPartial->Polyphony);
-                                FixupPartial->Inputs = { { ConnectedPort }, };
-                                FixupPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
-                            }
-                            assert(FixupPartial->Tile == 0);
-                            assert(FixupPartial->Combiner == Combiner);
-                            assert(FixupPartial->DynamicPolyphony == false);
-                            assert(FixupPartial->Polyphony > 1);
-                            assert(FixupPartial->Inputs.size() == 1);
-                            assert(FixupPartial->Inputs[0].size() == 1);
-                            assert(FixupPartial->Outputs.size() == 1);
-                            ConnectedPort = FixupPartial->Outputs[0];
+                            // There is no lane merge for this port yet, so we need to set it up here.
+                            FixupPartial = std::make_shared<TilePartial>();
+                            NextFlatGraph.push_back(FixupPartial);
+                            FixupPartial->Tile = 0;
+                            FixupPartial->Combiner = Combiner;
+                            FixupPartial->DynamicPolyphony = false;
+                            FixupPartial->Polyphony = std::max(InPolyphony, ConnectedPartial->Polyphony);
+                            FixupPartial->Inputs = { { ConnectedPort }, };
+                            FixupPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
                         }
+                        assert(FixupPartial->Tile == 0);
+                        assert(FixupPartial->Combiner == Combiner);
+                        assert(FixupPartial->DynamicPolyphony == false);
+                        assert(FixupPartial->Polyphony > 1);
+                        assert(FixupPartial->Inputs.size() == 1);
+                        assert(FixupPartial->Inputs[0].size() == 1);
+                        assert(FixupPartial->Outputs.size() == 1);
+                        ConnectedPort = FixupPartial->Outputs[0];
                     }
                 }
             }
 
-#if 1
             // Create virtual partials for input combining.
             if (Symbol == OpCode::OUT)
             {
@@ -1002,32 +1025,11 @@ ScratchUniquePtr Patch::Compile()
                     Partial->Inputs = { { CombinerPartial->Outputs[0] }, };
                 }
             }
-            else
-            {
-                // TODO: This feels like the wrong approach.  The whole point of this feature is making it so we can
-                // quasi-simd the thunks so they can operate either on a single lane or an array of them.  Lane spread
-                // and lane merge ensure that the inputs are all the same width, so it isn't really necessary to pull
-                // the combiners out of the thunks, we just need to go and convert them all to be variably-polyphonic.
-                uint32_t InputIndex = 0;
-                for (const InputInfo& Info : SymbolInfoMap.Inputs[(int)Symbol])
-                {
-                    if (Partial->Inputs[InputIndex].size() > 1 &&
-                        Info.Combiner >= PortCombiner::ADD && Info.Combiner <= PortCombiner::MAX)
-                    {
-                        TilePartialSharedPtr CombinerPartial = std::make_shared<TilePartial>();
-                        NextFlatGraph.push_back(CombinerPartial);
-                        CombinerPartial->Tile = 0;
-                        CombinerPartial->Combiner = Info.Combiner;
-                        CombinerPartial->DynamicPolyphony = false;
-                        CombinerPartial->Polyphony = Partial->Polyphony;
-                        CombinerPartial->Inputs = { Partial->Inputs[0], };
-                        CombinerPartial->Outputs = { MakePortHandle(0, NextVirtualPortIndex++) };
-                        Partial->Inputs = { { CombinerPartial->Outputs[0] }, };
-                    }
-                    ++InputIndex;
-                }
-            }
-#endif
+            // NOTE: Originally the idea was to have input combiners be translated into additional thunks.  However,
+            // we only really need to generate fixup partials for gather and scatter operations on monophonic/polyphonic
+            // connections.  Once the lane count is guaranteed to be uniform across a given thunk's ports, the crank
+            // functions and combiners can be rewritten to be variably-polyphonic.  This is probably cheaper than
+            // adding in even more virtual function calls to the running patch.
 
             NextFlatGraph.push_back(Partial);
         }
@@ -1206,10 +1208,14 @@ ScratchUniquePtr Patch::Compile()
                 Outputs.push_back(RegisterMap.at(Output));
             }
 
-            if (Partial->Combiner == PortCombiner::NONE)
+            if (Partial->Combiner == PortCombiner::NONE || Partial->Combiner == PortCombiner::ADD)
             {
-                // This is a non-virtual thunk.
-                const OpCode Symbol = GetTileSymbol(Partial->Tile);
+                const bool IsVirtual = Partial->Combiner != PortCombiner::NONE;
+                if (IsVirtual)
+                {
+                    assert(Partial->Combiner == PortCombiner::ADD);
+                }
+                const OpCode Symbol = IsVirtual ? OpCode::ADD : GetTileSymbol(Partial->Tile);
 
                 if (Symbol == OpCode::CONST || Symbol == OpCode::IN || Symbol == OpCode::LANE_COUNT)
                 {
@@ -1340,14 +1346,22 @@ ScratchUniquePtr Patch::Compile()
                     }
                 }
             }
+            /*
             else if (Partial->Combiner == PortCombiner::ADD)
             {
                 assert(Inputs.size() == 1);
-                assert(Inputs[0].size() > 1);
                 assert(Outputs.size() == 1);
-                Program->Program.push_back(
-                    CombinerThunk<PortCombiner::ADD>::CreateAndConnect(Partial->DefaultValue, RegisterFile, Inputs, Outputs, Partial->Polyphony));
-            }
+                if (Inputs[0].size() > 1)
+                {
+                    Program->Program.push_back(
+                        CombinerThunk<PortCombiner::ADD>::CreateAndConnect(Partial->DefaultValue, RegisterFile, Inputs, Outputs, Partial->Polyphony));
+                }
+                else
+                {
+                    // TODO: splice this partial out or just dont emit anything
+                    assert(Inputs[0].size() > 1);
+                }
+            }*/
             else if (Partial->Combiner == PortCombiner::MUL)
             {
                 assert(Inputs.size() == 1);

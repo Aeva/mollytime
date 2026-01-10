@@ -305,6 +305,7 @@ enum class PortCombiner
     DIRECT,
     LANE_MERGE,
     LANE_SPREAD,
+    DELETED,
 };
 
 
@@ -324,7 +325,6 @@ struct InstructionInfo
     std::array<InputInfo, InputCount> InputPorts;
     std::array<std::string_view, OutputCount> OutputNames;
     int ClosureCount = ClosureCount_;
-    bool AutoCombiners = false; // TODO: this is a temporary opt-in mechanism for the new system, will eventually be removed.
 };
 
 
@@ -373,11 +373,25 @@ struct InstructionRegisters
     inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         std::vector<double*>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[0];
-        for (int Index = 1; Index < static_cast<int>(InputRegisters.size()); ++Index)
+        const uint32_t InputCount = uint32_t(InputRegisters.size());
+        double Result = (InputCount == 0) ? Default : *InputRegisters[0];
+        for (uint32_t Index = 1; Index < InputCount; ++Index)
         {
             double* NextValue = InputRegisters[Index];
             Result = Combiner(Result, *NextValue);
+        }
+        return Result;
+    }
+
+    inline double CombineLaneInput(uint32_t InputIndex, uint32_t Lane, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    {
+        std::vector<double*>& InputRegisters = Input[InputIndex];
+        const uint32_t InputCount = uint32_t(InputRegisters.size());
+        double Result = (InputCount == 0) ? Default : InputRegisters[0][Lane];
+        for (uint32_t Index = 1; Index < InputCount; ++Index)
+        {
+            double* NextValue = InputRegisters[Index];
+            Result = Combiner(Result, NextValue[Lane]);
         }
         return Result;
     }
@@ -410,18 +424,6 @@ struct InstructionRegisters
                 }
             }
         }
-    }
-
-    inline double CombineStridedInput(uint32_t InputIndex, uint32_t Offset, uint32_t Stride, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
-    {
-        std::vector<double*>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[Offset];
-        for (int Index = Offset + Stride; Index < static_cast<int>(InputRegisters.size()); Index += Stride)
-        {
-            double* NextValue = InputRegisters[Index];
-            Result = Combiner(Result, *NextValue);
-        }
-        return Result;
     }
 
     inline double* InputPtr(uint32_t InputIndex)
@@ -561,9 +563,9 @@ private:
         const int ThunkIndex = (int)ThunkT::Info.Symbol;
         DefaultNames[ThunkIndex] = ThunkT::Info.Name;
         Inputs[ThunkIndex] = std::vector<InputInfo>(ThunkT::Info.InputPorts.begin(), ThunkT::Info.InputPorts.end());
-        if (!ThunkT::Info.AutoCombiners)
+        /*if (!ThunkT::Info.AutoCombiners)*/
         {
-            // TODO: this is a fallback for stuff that hasn't been converted yet
+            // TODO: todo rip out this stuff, this was a bad idea
             for (InputInfo& InputPort : Inputs[ThunkIndex])
             {
                 InputPort.Combiner = PortCombiner::NONE;

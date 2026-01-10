@@ -127,8 +127,7 @@ struct SinThunk : public InstructionThunk
         {{
             {"hz", 440.0, PortCombiner::ADD},
         }},
-        {"amp"},
-        true
+        {"amp"}
     };
 
     virtual void Crank(double SampleInterval) override
@@ -489,8 +488,7 @@ struct AddThunk : public InstructionThunk
         {{
             {"+", 0.0, PortCombiner::ADD},
         }},
-        {"="},
-        true
+        {"="}
     };
 
     virtual void Crank(double SampleInterval) override
@@ -511,8 +509,7 @@ struct MulThunk : public InstructionThunk
         {{
             {"*", 0.0, PortCombiner::MUL},
         }},
-        {"="},
-        true
+        {"="}
     };
 
     virtual void Crank(double SampleInterval) override
@@ -2053,7 +2050,7 @@ struct LeadLaneThunk : public InstructionThunk
     {
         OpCode::LEAD_LANE, "lead\nlane",
         {{
-            {"lane\nvalue", 0.0, PortCombiner::DIRECT},
+            {"lane\nvalue", 0.0, PortCombiner::ADD},
         }},
         {"lead\nlane\nvalue"}
     };
@@ -2069,7 +2066,7 @@ struct LeadLaneThunk : public InstructionThunk
         uint32_t LaneCount = Program->MidiLanes.size();
         if (ReadLane < LaneCount)
         {
-            double Value = Registers.CombineStridedInput(0, ReadLane, LaneCount);
+            double Value = Registers.CombineLaneInput(0, ReadLane);
             Registers.OutputRef(0) = Value;
         }
     }
