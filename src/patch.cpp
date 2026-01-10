@@ -1167,7 +1167,7 @@ ScratchUniquePtr Patch::Compile()
             std::ptrdiff_t BaseOffset = TapeCount;
             uint32_t LaneCount = Partial->Polyphony;
 
-            auto Result = Program->PersistentTapes.try_emplace(Port, BaseOffset, LaneCount);
+            [[maybe_unused]] auto Result = Program->PersistentTapes.try_emplace(Port, BaseOffset, LaneCount);
             assert(Result.second == true);
 
             TapeCount += LaneCount;
@@ -1678,10 +1678,12 @@ ScratchUniquePtr Patch::Compile()
         }
     }
 
+#ifndef NDEBUG
     for (InstructionThunkSharedPtr& Thunk : Program->Program)
     {
         assert(Thunk != nullptr);
     }
+#endif
 
     OutputTileNames.clear();
     if (OutputTiles.size() >= 2)
@@ -1762,6 +1764,7 @@ void Scratch::Migrate(Scratch& Old)
     ChannelControls = Old.ChannelControls;
     assert(MidiLanes.size() == Polyphony);
 
+#ifndef NDEBUG
     for (std::vector<uint32_t>& ThunkIndices : Retriggerables)
     {
         for (uint32_t ThunkIndex : ThunkIndices)
@@ -1771,6 +1774,7 @@ void Scratch::Migrate(Scratch& Old)
             assert(Thunk->Retriggerable);
         }
     }
+#endif
 
     constexpr bool EnableDebugLogging = true;
 
