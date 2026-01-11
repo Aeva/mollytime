@@ -464,15 +464,15 @@ struct InstructionRegisters
         return ClosurePtr(ClosureIndex)[Lane];
     }
 
-    inline void ZeroOut()
+    inline void ZeroOut(uint32_t Lane)
     {
         for (double* Register : Output)
         {
-            *Register = 0.0;
+            Register[Lane] = 0.0;
         }
         for (double* Register : Closure)
         {
-            *Register = 0.0;
+            Register[Lane] = 0.0;
         }
     }
 
@@ -508,6 +508,11 @@ struct InstructionThunk
         return false;
     }
 
+    virtual bool LaneJoiner()
+    {
+        return false;
+    }
+
     template<typename ThunkT>
     inline void CrankLanes(ThunkT Thunk)
     {
@@ -521,7 +526,11 @@ struct InstructionThunk
 
     virtual void Reset()
     {
-        Registers.ZeroOut();
+        assert(!LaneJoiner());
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.ZeroOut(Lane);
+        });
     }
 
     virtual void Retrigger(uint32_t Lane)

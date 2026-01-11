@@ -568,6 +568,11 @@ struct LaneScatterThunk : public InstructionThunk
 
 struct LaneMergeThunk : public InstructionThunk
 {
+    virtual bool LaneJoiner() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LaneMergeThunk");
@@ -579,6 +584,12 @@ struct LaneMergeThunk : public InstructionThunk
             Value += BaseAddress[Lane];
         }
     };
+
+    virtual void Reset() override
+    {
+        const uint32_t Lane = 0;
+        Registers.ZeroOut(Lane);
+    }
 
     virtual ~LaneMergeThunk() {};
 };
@@ -978,12 +989,18 @@ ScratchUniquePtr Patch::Compile()
     // Likewise, we need to allocate registers for everything we want to persist between patch generations,
     // not just the registers needed for the current version of a patch.
     std::map<PortHandle, std::ptrdiff_t> RegisterMap;
+#ifndef NDEBUG
+    std::map<PortHandle, uint32_t> RegisterWidths;
+#endif
     {
         auto AllocateRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
         {
             std::ptrdiff_t Offset = Program->RegisterFile.size();
             Program->RegisterFile.insert(Program->RegisterFile.end(), Lanes, InitialValue);
             RegisterMap[Port] = Offset;
+#ifndef NDEBUG
+            RegisterWidths[Port] = Lanes;
+#endif
             return Offset;
         };
         auto AllocatePersistentRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
@@ -1146,6 +1163,53 @@ ScratchUniquePtr Patch::Compile()
                 Outputs.push_back(RegisterMap.at(Output));
             }
 
+#ifndef NDEBUG
+            std::vector<uint32_t> OutputWidths;
+            OutputWidths.reserve(Partial->Outputs.size());
+            for (PortHandle Output : Partial->Outputs)
+            {
+                OutputWidths.push_back(RegisterWidths.at(Output));
+            }
+            auto AppendThunk = [&](InstructionThunkSharedPtr Thunk) -> void
+            {
+                assert(Thunk != nullptr);
+                if (OutputWidths.size() > 0)
+                {
+                    uint32_t ExpectedPolyphony = Thunk->LaneJoiner() ? 1 : Thunk->Registers.Polyphony;
+                    uint32_t MaxWidth = 0;
+                    uint32_t MinWidth = uint32_t(-1);
+                    for (const uint32_t OutputWidth : OutputWidths)
+                    {
+                        MaxWidth = std::max(MaxWidth, OutputWidth);
+                        MinWidth = std::min(MinWidth, OutputWidth);
+                    }
+                    for (const uint32_t OutputWidth : OutputWidths)
+                    {
+                        if (OutputWidth != MaxWidth)
+                        {
+                            std::print(
+                                "thunk \"{}\" somehow has a mix of monophonic and polyphonic outputs!\n",
+                                Thunk->DebugName);
+                        }
+                    }
+                    if (MaxWidth != ExpectedPolyphony)
+                    {
+                        std::print(
+                            "thunk \"{}\" expects output width {}, but its outputs are {}!\n",
+                            Thunk->DebugName, ExpectedPolyphony, MaxWidth);
+                    }
+                    assert(MinWidth == MaxWidth);
+                    assert(MaxWidth == ExpectedPolyphony);
+                }
+                Program->Program.push_back(Thunk);
+            };
+#else
+            auto AppendThunk = [&](InstructionThunkSharedPtr Thunk) -> void
+            {
+                Program->Program.push_back(Thunk);
+            };
+#endif
+
             if (Partial->Type == PartialType::TILE || Partial->Type == PartialType::ADD_TILE)
             {
                 const bool IsVirtual = Partial->Tile == 0;
@@ -1178,7 +1242,7 @@ ScratchUniquePtr Patch::Compile()
                             static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
                             InstructionThunkSharedPtr Thunk = AddCreateAndConnect(RegisterFile, Inputs, Outputs, Closures);
                             Thunk->Registers.Polyphony = 1;
-                            Program->Program.push_back(Thunk);
+                            AppendThunk(Thunk);
                         }
                     }
 
@@ -1238,7 +1302,7 @@ ScratchUniquePtr Patch::Compile()
                             {
                                 Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures);
                                 Thunk->Registers.Polyphony = Partial->Polyphony;
-                                Program->Program.push_back(Thunk);
+                                AppendThunk(Thunk);
                             }
                         }
 
@@ -1249,7 +1313,7 @@ ScratchUniquePtr Patch::Compile()
                             {
                                 Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
                                 Thunk->Registers.Polyphony = 1;
-                                Program->Program.push_back(Thunk);
+                                AppendThunk(Thunk);
                             }
                         }
 
@@ -1260,7 +1324,7 @@ ScratchUniquePtr Patch::Compile()
                             {
                                 Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures);
                                 Thunk->Registers.Polyphony = MidiPolyphony;
-                                Program->Program.push_back(Thunk);
+                                AppendThunk(Thunk);
                             }
                         }
 
@@ -1274,7 +1338,7 @@ ScratchUniquePtr Patch::Compile()
                                 std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset + Lane;
                                 Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
                                 Thunk->Registers.Polyphony = Partial->Polyphony;
-                                Program->Program.push_back(Thunk);
+                                AppendThunk(Thunk);
                             }
                         }
 
@@ -1314,7 +1378,7 @@ ScratchUniquePtr Patch::Compile()
                 Thunk->Registers.Polyphony = MidiPolyphony;
                 Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
                 Thunk->Reset();
-                Program->Program.push_back(Thunk);
+                AppendThunk(Thunk);
             }
             else
             {
@@ -1325,7 +1389,7 @@ ScratchUniquePtr Patch::Compile()
                 Thunk->Registers.Polyphony = MidiPolyphony;
                 Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
                 Thunk->Reset();
-                Program->Program.push_back(Thunk);
+                AppendThunk(Thunk);
             }
         }
     }
