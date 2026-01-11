@@ -1258,8 +1258,10 @@ ScratchUniquePtr Patch::Compile()
                             auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
                             if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                             {
-                                Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures, Lane);
+                                Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures);
+                                Thunk->Registers.Polyphony = MidiPolyphony;
                                 Program->Program.push_back(Thunk);
+                                break;
                             }
                         }
 

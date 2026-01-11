@@ -329,7 +329,7 @@ struct InstructionInfo
 
 struct InstructionRegisters
 {
-    uint32_t Polyphony;
+    uint32_t Polyphony = 1;
 
     inline void Connect(
         std::vector<std::vector<std::ptrdiff_t>>& InInputs,
@@ -383,6 +383,7 @@ struct InstructionRegisters
         return Result;
     }
 
+    // TODO: name is misleading, this is basically only useful for AddLanesThunk
     inline double CombinePolyphonicInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         std::vector<double*>& InputRegisters = Input[InputIndex];
@@ -524,8 +525,7 @@ using MidiCreateAndConnectFn = std::function<
         struct Scratch* Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
-        std::vector<std::ptrdiff_t>& Closures,
-        uint32_t Lane)>;
+        std::vector<std::ptrdiff_t>& Closures)>;
 
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
@@ -595,13 +595,12 @@ private:
     {
         SetCommon<ThunkT>();
         MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures, uint32_t Lane)
+            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->Program = Program;
-            Thunk->Lane = Lane;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }

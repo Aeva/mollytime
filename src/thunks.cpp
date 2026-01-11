@@ -1737,26 +1737,28 @@ struct GateThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
 
-        double& Gate = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Gate = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Gate = State.Gate;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                Gate[Lane] = State.Gate;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Gate = State.Gate;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Gate[Lane] = State.Gate;
+                        break;
+                    }
                 }
             }
         }
@@ -1778,26 +1780,28 @@ struct NoteThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("NoteThunk");
 
-        double& Note = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Note = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Note = State.Note;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                Note[Lane] = State.Note;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Note = State.Note;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Note[Lane] = State.Note;
+                        break;
+                    }
                 }
             }
         }
@@ -1826,26 +1830,28 @@ struct VelocityThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
 
-        double& Velocity = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Velocity = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Velocity = State.Velocity;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                Velocity[Lane] = State.Velocity;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Velocity = State.Velocity;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Velocity[Lane] = State.Velocity;
+                        break;
+                    }
                 }
             }
         }
@@ -1867,26 +1873,28 @@ struct PressureThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PressureThunk");
 
-        double& Pressure = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Pressure = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Pressure = State.Pressure;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                Pressure[Lane] = State.Pressure;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Pressure = State.Pressure;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Pressure[Lane] = State.Pressure;
+                        break;
+                    }
                 }
             }
         }
@@ -1909,34 +1917,36 @@ struct ControlChangeThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
 
-        double Control = Registers.CombineInput(0);
-        double& Value = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        double Channel = -1.0;
-        if (!Registers.InputConnected(1))
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Channel = State.Channel;
-        }
-        else if (Registers.InputConnected(1))
-        {
-            for (const double* ChannelMask : Registers.InputVector(1))
+            double Control = Registers.CombineLaneInput(0, Lane);
+            double* Value = Registers.OutputPtr(0);
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            double Channel = -1.0;
+            if (!Registers.InputConnected(1))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                Channel = State.Channel;
+            }
+            else if (Registers.InputConnected(1))
+            {
+                for (const double* ChannelMask : Registers.InputVector(1))
                 {
-                    Channel = State.Channel;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Channel = State.Channel;
+                        break;
+                    }
                 }
             }
-        }
-        if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
-        {
-            Value = Program->ChannelControls[uint8_t(Channel)][uint8_t(Control)];
+            if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
+            {
+                Value[Lane] = Program->ChannelControls[uint8_t(Channel)][uint8_t(Control)];
+            }
         }
     }
 
@@ -1956,34 +1966,36 @@ struct KikiThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("KikiThunk");
 
-        double& Kiki = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        double Channel = -1.0;
-        if (!Registers.InputConnected(0))
+        double* Kiki = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Channel = State.Channel;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            double Channel = -1.0;
+            if (!Registers.InputConnected(0))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                Channel = State.Channel;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Channel = State.Channel;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Channel = State.Channel;
+                        break;
+                    }
                 }
             }
-        }
-        if (Channel >= 0.0 && Channel < 16)
-        {
-            uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(Channel)];
-            Kiki = KikiTable[ProgramNumber];
+            if (Channel >= 0.0 && Channel < 16)
+            {
+                uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(Channel)];
+                Kiki[Lane] = KikiTable[ProgramNumber];
+            }
         }
     }
 
@@ -2010,33 +2022,30 @@ struct PitchBendThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
 
-        double& PitchBend = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        double Channel = -1.0;
-        if (!Registers.InputConnected(0))
+        double* PitchBend = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Channel = State.Channel;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (ChannelMatch(int(*ChannelMask), int(State.Channel)))
+                PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Channel = State.Channel;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
+                        break;
+                    }
                 }
             }
-        }
-        if (Channel >= 0.0 && Channel < 16)
-        {
-            PitchBend = Program->ChannelPitchBend[uint8_t(Channel)];
         }
     }
 
@@ -2056,15 +2065,13 @@ struct LeadLaneThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane; // not used, required by SetMidi
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
 
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
-        uint32_t LaneCount = Program->MidiLanes.size();
-        if (ReadLane < LaneCount)
+        if (ReadLane < Registers.Polyphony)
         {
             double Value = Registers.CombineLaneInput(0, ReadLane);
             Registers.OutputRef(0) = Value;
