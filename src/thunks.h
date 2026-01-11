@@ -329,7 +329,7 @@ struct InstructionInfo
 
 struct InstructionRegisters
 {
-    uint32_t Polyphony = 1;
+    uint32_t Polyphony = 0;
 
     inline void Connect(
         std::vector<std::vector<std::ptrdiff_t>>& InInputs,
@@ -412,8 +412,9 @@ struct InstructionRegisters
         }
     }
 
-    inline double CombineLaneInput(uint32_t InputIndex, uint32_t Lane, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    inline double CombineLaneInput(uint32_t Lane, uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
+        assert(Lane < Polyphony);
         std::vector<double*>& InputRegisters = Input[InputIndex];
         const uint32_t InputCount = uint32_t(InputRegisters.size());
         double Result = (InputCount == 0) ? Default : InputRegisters[0][Lane];
@@ -441,9 +442,26 @@ struct InstructionRegisters
         return *Output[OutputIndex];
     }
 
+    inline double& OutputRef(uint32_t Lane, uint32_t OutputIndex)
+    {
+        assert(Lane < Polyphony);
+        return OutputPtr(OutputIndex)[Lane];
+    }
+
+    inline double* ClosurePtr(uint32_t ClosureIndex)
+    {
+        return Closure[ClosureIndex];
+    }
+
     inline double& ClosureRef(uint32_t ClosureIndex)
     {
         return *Closure[ClosureIndex];
+    }
+
+    inline double& ClosureRef(uint32_t Lane, uint32_t ClosureIndex)
+    {
+        assert(Lane < Polyphony);
+        return ClosurePtr(ClosureIndex)[Lane];
     }
 
     inline void ZeroOut()
@@ -485,6 +503,20 @@ struct InstructionThunk
     InstructionRegisters Registers;
     bool Retriggerable = false;
 
+    virtual bool Polyphonic()
+    {
+        return false;
+    }
+
+    template<typename ThunkT>
+    inline void CrankLanes(ThunkT Thunk)
+    {
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
+        {
+            Thunk(Lane);
+        }
+    };
+
     virtual void Crank(double SampleInterval) = 0;
 
     virtual void Reset()
@@ -492,7 +524,7 @@ struct InstructionThunk
         Registers.ZeroOut();
     }
 
-    virtual void Retrigger()
+    virtual void Retrigger(uint32_t Lane)
     {
     }
 

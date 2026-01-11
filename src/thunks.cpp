@@ -130,15 +130,23 @@ struct SinThunk : public InstructionThunk
         {"amp"}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.ClosureRef(0);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.ClosureRef(Lane, 0);
 
-        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        Amplitude = std::sin(Phase * Tau);
+            Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+            Amplitude = std::sin(Phase * Tau);
+        });
     }
 
     virtual ~SinThunk() {};
@@ -491,10 +499,18 @@ struct AddThunk : public InstructionThunk
         {"="}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerAdd);
+        });
     }
 
     virtual ~AddThunk() {};
@@ -512,10 +528,18 @@ struct MulThunk : public InstructionThunk
         {"="}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MulThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMul);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMul);
+        });
     }
 
     virtual ~MulThunk() {};
@@ -533,16 +557,24 @@ struct RcpThunk : public InstructionThunk
         {"="}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RcpThunk");
-        double Divisor = Registers.CombineInput(0, 0.0, CombinerMul);
-        double& Output = Registers.OutputRef(0);
-
-        if (Divisor != 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Output = 1.0 / Divisor;
-        }
+            double Divisor = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMul);
+            double& Output = Registers.OutputRef(Lane, 0);
+
+            if (Divisor != 0.0)
+            {
+                Output = 1.0 / Divisor;
+            }
+        });
     }
 
     virtual ~RcpThunk() {};
@@ -642,10 +674,18 @@ struct MaxThunk : public InstructionThunk
         {"="}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MaxThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMax);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMax);
+        });
     }
 
     virtual ~MaxThunk() {};
@@ -1335,129 +1375,136 @@ struct AdsrThunk : public InstructionThunk
         {"#"}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AdsrThunk");
-
-        double Trigger = Registers.CombineInput(0);
-        const double Attack = std::max(Registers.CombineInput(1, 0.1), 0.0);
-        const double Decay = std::max(Registers.CombineInput(2, 0.1), 0.0);
-        const double Sustain = std::min(std::max(Registers.CombineInput(3, 1.0), 0.0), 1.0);
-        const double Release = std::max(Registers.CombineInput(4, 1.0), 0.0);
-
-        double& Amplitude = Registers.OutputRef(0);
-        double& LastTrigger = Registers.ClosureRef(0);
-        double& Mode = Registers.ClosureRef(1);
-
-        // Use simple rates of change for attack, decay, and release.  These
-        // input parameters are the number of seconds it takes to transit one
-        // unit of amplitude.  Effectively `abs(Rise / Run)`, where Rise is
-        // amplitude, and Run is seconds.
-        const double AttackRate = 1.0 / Attack;
-        const double DecayRate = 1.0 / Decay;
-        const double ReleaseRate = 1.0 / Release;
-
-        auto BeginAttack = [&]()
+        CrankLanes([&](uint32_t Lane)
         {
-            Mode = 3.0;
-        };
+            double Trigger = Registers.CombineLaneInput(Lane, 0);
+            const double Attack = std::max(Registers.CombineLaneInput(Lane, 1, 0.1), 0.0);
+            const double Decay = std::max(Registers.CombineLaneInput(Lane, 2, 0.1), 0.0);
+            const double Sustain = std::min(std::max(Registers.CombineLaneInput(Lane, 3, 1.0), 0.0), 1.0);
+            const double Release = std::max(Registers.CombineLaneInput(Lane, 4, 1.0), 0.0);
 
-        auto BeginDecayToSustain = [&]()
-        {
-            Mode = 2.0;
-        };
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& LastTrigger = Registers.ClosureRef(Lane, 0);
+            double& Mode = Registers.ClosureRef(Lane, 1);
 
-        auto BeginDecayToRelease = [&]()
-        {
-            Mode = 1.0;
-        };
+            // Use simple rates of change for attack, decay, and release.  These
+            // input parameters are the number of seconds it takes to transit one
+            // unit of amplitude.  Effectively `abs(Rise / Run)`, where Rise is
+            // amplitude, and Run is seconds.
+            const double AttackRate = 1.0 / Attack;
+            const double DecayRate = 1.0 / Decay;
+            const double ReleaseRate = 1.0 / Release;
 
-        auto BeginRelease = [&]()
-        {
-            Mode = 0.0;
-        };
-
-        if (Trigger >= 1.0 && LastTrigger <= 0.0)
-        {
-            BeginAttack();
-        }
-        else if (Trigger <= 0.0 && LastTrigger >= 1.0)
-        {
-            // Note this is comparing divisors, so larger Rate values are faster:
-            if (Amplitude > Sustain && DecayRate > ReleaseRate)
+            auto BeginAttack = [&]()
             {
-                // If Amplitude is above the Sustain threshold, and the decay rate is faster
-                // than the release rate, use the decay rate until the Amplitude is no longer
-                // above the Sustain threshold.
-                BeginDecayToRelease();
+                Mode = 3.0;
+            };
+
+            auto BeginDecayToSustain = [&]()
+            {
+                Mode = 2.0;
+            };
+
+            auto BeginDecayToRelease = [&]()
+            {
+                Mode = 1.0;
+            };
+
+            auto BeginRelease = [&]()
+            {
+                Mode = 0.0;
+            };
+
+            if (Trigger >= 1.0 && LastTrigger <= 0.0)
+            {
+                BeginAttack();
+            }
+            else if (Trigger <= 0.0 && LastTrigger >= 1.0)
+            {
+                // Note this is comparing divisors, so larger Rate values are faster:
+                if (Amplitude > Sustain && DecayRate > ReleaseRate)
+                {
+                    // If Amplitude is above the Sustain threshold, and the decay rate is faster
+                    // than the release rate, use the decay rate until the Amplitude is no longer
+                    // above the Sustain threshold.
+                    BeginDecayToRelease();
+                }
+                else
+                {
+                    // Begin release.  Amplitude is assumed to be below the sustain threshold, or
+                    // it doesn't matter because the Release's rate is faster than decay's.
+                    BeginRelease();
+                }
+            }
+
+            if (Mode == 3.0 && Attack == 0.0)
+            {
+                // If Attack is zero, then Amplitude rises to one immediately.
+                Amplitude = 1.0;
+            }
+            else if ((Mode == 1.0 || Mode == 2.0) && (Decay == 0.0 || Sustain == 1.0))
+            {
+                // If Decay is zero, then Amplitude drops to Sustain immediately.
+                // If Sustain is one, then Decay is not applied.
+                Amplitude = std::min(Amplitude, Sustain);
+            }
+            else if (Mode == 0.0 && Release == 0.0)
+            {
+                // If Release is zero, then Amplitude drops to zero immediately.
+                // the release transition occurs.
+                Amplitude = 0.0;
             }
             else
             {
-                // Begin release.  Amplitude is assumed to be below the sustain threshold, or
-                // it doesn't matter because the Release's rate is faster than decay's.
+                double Rate;
+                switch (int(Mode))
+                {
+                case 3:
+                    Rate = AttackRate;
+                    break;
+                case 2:
+                case 1:
+                    Rate = DecayRate;
+                    break;
+                case 0:
+                default:
+                    Rate = ReleaseRate;
+                }
+
+                // Apply the rate of change appropriate for the current phase.
+                const double Direction = (Mode == 3.0) ? 1.0 : -1.0;
+                Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
+            }
+
+            if (Mode == 3.0 && Amplitude == 1.0)
+            {
+                BeginDecayToSustain();
+            }
+            else if (Mode == 2.0 && Amplitude < Sustain)
+            {
+                Amplitude = Sustain;
+            }
+            else if (Mode == 1.0 && Amplitude <= Sustain)
+            {
                 BeginRelease();
             }
-        }
 
-        if (Mode == 3.0 && Attack == 0.0)
-        {
-            // If Attack is zero, then Amplitude rises to one immediately.
-            Amplitude = 1.0;
-        }
-        else if ((Mode == 1.0 || Mode == 2.0) && (Decay == 0.0 || Sustain == 1.0))
-        {
-            // If Decay is zero, then Amplitude drops to Sustain immediately.
-            // If Sustain is one, then Decay is not applied.
-            Amplitude = std::min(Amplitude, Sustain);
-        }
-        else if (Mode == 0.0 && Release == 0.0)
-        {
-            // If Release is zero, then Amplitude drops to zero immediately.
-            // the release transition occurs.
-            Amplitude = 0.0;
-        }
-        else
-        {
-            double Rate;
-            switch (int(Mode))
-            {
-            case 3:
-                Rate = AttackRate;
-                break;
-            case 2:
-            case 1:
-                Rate = DecayRate;
-                break;
-            case 0:
-            default:
-                Rate = ReleaseRate;
-            }
-
-            // Apply the rate of change appropriate for the current phase.
-            const double Direction = (Mode == 3.0) ? 1.0 : -1.0;
-            Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
-        }
-
-        if (Mode == 3.0 && Amplitude == 1.0)
-        {
-            BeginDecayToSustain();
-        }
-        else if (Mode == 2.0 && Amplitude < Sustain)
-        {
-            Amplitude = Sustain;
-        }
-        else if (Mode == 1.0 && Amplitude <= Sustain)
-        {
-            BeginRelease();
-        }
-
-        LastTrigger = Trigger;
+            LastTrigger = Trigger;
+        });
     }
 
-    virtual void Retrigger() override
+    virtual void Retrigger(uint32_t Lane) override
     {
         // If the adsr is currently held it will retrigger this frame.
-        double& LastTrigger = Registers.ClosureRef(0);
+        double& LastTrigger = Registers.ClosureRef(Lane, 0);
         LastTrigger = 0.0;
     }
 
@@ -1738,6 +1785,11 @@ struct GateThunk : public InstructionThunk
 
     Scratch* Program;
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
@@ -1780,6 +1832,11 @@ struct NoteThunk : public InstructionThunk
     };
 
     Scratch* Program;
+
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1831,6 +1888,11 @@ struct VelocityThunk : public InstructionThunk
 
     Scratch* Program;
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
@@ -1873,6 +1935,11 @@ struct PressureThunk : public InstructionThunk
     };
 
     Scratch* Program;
+
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1918,13 +1985,18 @@ struct ControlChangeThunk : public InstructionThunk
 
     Scratch* Program;
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
 
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            double Control = Registers.CombineLaneInput(0, Lane);
+            double Control = Registers.CombineLaneInput(Lane, 0);
             double* Value = Registers.OutputPtr(0);
             MidiNoteState& State = Program->MidiLanes[Lane];
             double Channel = -1.0;
@@ -1966,6 +2038,11 @@ struct KikiThunk : public InstructionThunk
     };
 
     Scratch* Program;
+
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2023,6 +2100,11 @@ struct PitchBendThunk : public InstructionThunk
 
     Scratch* Program;
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
@@ -2066,6 +2148,11 @@ struct LeadLaneThunk : public InstructionThunk
 
     Scratch* Program;
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
@@ -2073,7 +2160,7 @@ struct LeadLaneThunk : public InstructionThunk
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
         if (ReadLane < Registers.Polyphony)
         {
-            double Value = Registers.CombineLaneInput(0, ReadLane);
+            double Value = Registers.CombineLaneInput(ReadLane, 0);
             Registers.OutputRef(0) = Value;
         }
     }
@@ -2092,6 +2179,11 @@ struct AddLanesThunk : public InstructionThunk
         }},
         {"="}
     };
+
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2114,12 +2206,20 @@ struct MidiToHzThunk : public InstructionThunk
         {"hz"}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
-        double Note = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        Output = MidiNoteToHz(Note);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Note = Registers.CombineLaneInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            Output = MidiNoteToHz(Note);
+        });
     }
 
     virtual ~MidiToHzThunk() {};
@@ -2137,12 +2237,20 @@ struct LoudnessFudgeThunk : public InstructionThunk
         {"amp"}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
-        double Hz = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        Output = PerceptualAmplitudeCorrectionByHz(Hz);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Hz = Registers.CombineLaneInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            Output = PerceptualAmplitudeCorrectionByHz(Hz);
+        });
     }
 
     virtual ~LoudnessFudgeThunk() {};

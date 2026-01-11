@@ -551,14 +551,12 @@ double Patch::GetSpecialInput(TileHandle Tile)
 
 struct LaneScatterThunk : public InstructionThunk
 {
-    uint32_t Lanes;
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LaneScatterThunk");
         double Value = *Registers.InputPtr(0);
         double* BaseAddress = Registers.OutputPtr(0);
-        for (uint32_t Lane = 0; Lane < Lanes; ++Lane)
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             BaseAddress[Lane] = Value;
         }
@@ -570,15 +568,13 @@ struct LaneScatterThunk : public InstructionThunk
 
 struct LaneMergeThunk : public InstructionThunk
 {
-    uint32_t Lanes;
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LaneMergeThunk");
         double* BaseAddress = Registers.InputPtr(0);
         double& Value = Registers.OutputRef(0);
         Value = BaseAddress[0];
-        for (uint32_t Lane = 1; Lane < Lanes; ++Lane)
+        for (uint32_t Lane = 1; Lane < Registers.Polyphony; ++Lane)
         {
             Value += BaseAddress[Lane];
         }
@@ -1180,7 +1176,9 @@ ScratchUniquePtr Patch::Compile()
                         {
                             std::vector<std::ptrdiff_t> Closures;
                             static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
-                            Program->Program.push_back(AddCreateAndConnect(RegisterFile, Inputs, Outputs, Closures));
+                            InstructionThunkSharedPtr Thunk = AddCreateAndConnect(RegisterFile, Inputs, Outputs, Closures);
+                            Thunk->Registers.Polyphony = 1;
+                            Program->Program.push_back(Thunk);
                         }
                     }
 
@@ -1239,6 +1237,7 @@ ScratchUniquePtr Patch::Compile()
                             if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                             {
                                 Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures);
+                                Thunk->Registers.Polyphony = Partial->Polyphony;
                                 Program->Program.push_back(Thunk);
                             }
                         }
@@ -1249,6 +1248,7 @@ ScratchUniquePtr Patch::Compile()
                             if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                             {
                                 Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
+                                Thunk->Registers.Polyphony = 1;
                                 Program->Program.push_back(Thunk);
                             }
                         }
@@ -1261,7 +1261,6 @@ ScratchUniquePtr Patch::Compile()
                                 Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures);
                                 Thunk->Registers.Polyphony = MidiPolyphony;
                                 Program->Program.push_back(Thunk);
-                                break;
                             }
                         }
 
@@ -1274,6 +1273,7 @@ ScratchUniquePtr Patch::Compile()
                                 RegisterAllocation& TapeAllocation = Program->PersistentTapes.at(Port);
                                 std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset + Lane;
                                 Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
+                                Thunk->Registers.Polyphony = Partial->Polyphony;
                                 Program->Program.push_back(Thunk);
                             }
                         }
@@ -1294,14 +1294,14 @@ ScratchUniquePtr Patch::Compile()
                             // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
                             Program->Retriggerables[Lane].push_back(ThunkIndex);
                         }
-                        else if (Symbol == OpCode::LEAD_LANE)
-                        {
-                            break;
-                        }
                         else if (Symbol == OpCode::ADD_LANES)
                         {
                             assert(Partial->Polyphony);
                             Thunk->Registers.Polyphony = MidiPolyphony;
+                        }
+                        if (Partial->Polyphony == 1 || Thunk->Polyphonic())
+                        {
+                            break;
                         }
                     }
                 }
@@ -1311,7 +1311,7 @@ ScratchUniquePtr Patch::Compile()
                 std::vector<std::ptrdiff_t> Closures;
                 std::shared_ptr<LaneScatterThunk> Thunk = std::make_shared<LaneScatterThunk>();
                 Thunk->SetDebugName("Lane Fixup (Scatter)");
-                Thunk->Lanes = MidiPolyphony;
+                Thunk->Registers.Polyphony = MidiPolyphony;
                 Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
                 Thunk->Reset();
                 Program->Program.push_back(Thunk);
@@ -1322,7 +1322,7 @@ ScratchUniquePtr Patch::Compile()
                 std::vector<std::ptrdiff_t> Closures;
                 std::shared_ptr<LaneMergeThunk> Thunk = std::make_shared<LaneMergeThunk>();
                 Thunk->SetDebugName("Lane Fixup (Merge)");
-                Thunk->Lanes = MidiPolyphony;
+                Thunk->Registers.Polyphony = MidiPolyphony;
                 Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
                 Thunk->Reset();
                 Program->Program.push_back(Thunk);
@@ -1360,6 +1360,7 @@ ScratchUniquePtr Patch::Compile()
         for (InstructionThunkSharedPtr& Thunk : Program->Program)
         {
             assert(Thunk != nullptr);
+            assert(Thunk->Registers.Polyphony > 0);
             std::print("{} {}:\n", ThunkIndex++, Thunk->DebugName);
         }
     }
@@ -1694,7 +1695,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
                         assert(Thunk != nullptr);
                         assert(Thunk->Retriggerable);
-                        Thunk->Retrigger();
+                        Thunk->Retrigger(AssignedLane);
                     }
                 }
                 if (Message.Type == MidiMessageType::Note)
