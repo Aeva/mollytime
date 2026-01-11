@@ -27,6 +27,9 @@
 #include <memory>
 #include <cmath>
 #include <functional>
+#ifndef NDEBUG
+#include <algorithm>
+#endif
 
 #include "perf.h"
 
@@ -436,7 +439,18 @@ private:
 
 struct InstructionThunk
 {
-    OpCode DebugSymbol;
+#ifndef NDEBUG
+    std::string DebugName;
+    void SetDebugName(const std::string& InDebugName)
+    {
+        DebugName = InDebugName;
+        std::replace(DebugName.begin(), DebugName.end(), '\n', ' ');
+    }
+#else
+    void SetDebugName(const std::string& InDebugName)
+    {
+    }
+#endif
     InstructionRegisters Registers;
     bool Retriggerable = false;
 
@@ -540,7 +554,6 @@ private:
             std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -555,7 +568,6 @@ private:
             std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures, uint32_t Lane)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->Program = Program;
@@ -572,7 +584,6 @@ private:
             std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->Input = SpecialInput;
@@ -588,7 +599,6 @@ private:
             std::vector<double>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->TapeFile = TapeFile;
