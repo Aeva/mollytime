@@ -371,20 +371,8 @@ struct InstructionRegisters
         return Input[InputIndex].size() > 0;
     }
 
-    inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
-    {
-        std::vector<double*>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[0];
-        for (int Index = 1; Index < static_cast<int>(InputRegisters.size()); ++Index)
-        {
-            double* NextValue = InputRegisters[Index];
-            Result = Combiner(Result, *NextValue);
-        }
-        return Result;
-    }
-
-    // TODO: name is misleading, this is basically only useful for AddLanesThunk
-    inline double CombinePolyphonicInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    // NOTE: This is basically only useful for AddLanesThunk
+    inline double CombineAcrossInputLanes(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         std::vector<double*>& InputRegisters = Input[InputIndex];
         const uint32_t InputCount = uint32_t(InputRegisters.size());
@@ -412,7 +400,7 @@ struct InstructionRegisters
         }
     }
 
-    inline double CombineLaneInput(uint32_t Lane, uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    inline double CombineInput(uint32_t Lane, uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         assert(Lane < Polyphony);
         std::vector<double*>& InputRegisters = Input[InputIndex];

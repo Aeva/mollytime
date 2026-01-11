@@ -32,6 +32,11 @@ struct MoonThunk : public InstructionThunk
         {"altitude"}
     };
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override;
 
     virtual ~MoonThunk() {};

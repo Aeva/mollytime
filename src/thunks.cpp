@@ -140,7 +140,7 @@ struct SinThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SinThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.ClosureRef(Lane, 0);
 
@@ -174,7 +174,7 @@ struct SqrThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SqrThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.ClosureRef(Lane, 0);
 
@@ -212,7 +212,7 @@ struct TriThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("TriThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.ClosureRef(Lane, 0);
 
@@ -257,7 +257,7 @@ struct SawThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SawThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.ClosureRef(Lane, 0);
 
@@ -296,7 +296,7 @@ struct NoiThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("NoiThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.ClosureRef(Lane, 0);
             double& HighAmp = Registers.ClosureRef(Lane, 1);
@@ -349,7 +349,7 @@ struct PhaseThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0, 440.0);
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
             double& Phase = Registers.OutputRef(Lane, 0);
 
             Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
@@ -385,7 +385,7 @@ struct SinTrainThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SinTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineLaneInput(Lane, 0);
+            double InPhase = Registers.CombineInput(Lane, 0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.OutputRef(Lane, 1);
 
@@ -419,7 +419,7 @@ struct SqrTrainThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineLaneInput(Lane, 0);
+            double InPhase = Registers.CombineInput(Lane, 0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.OutputRef(Lane, 1);
 
@@ -457,7 +457,7 @@ struct TriTrainThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("TriTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineLaneInput(Lane, 0);
+            double InPhase = Registers.CombineInput(Lane, 0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.OutputRef(Lane, 1);
 
@@ -502,7 +502,7 @@ struct SawTrainThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SawTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineLaneInput(Lane, 0);
+            double InPhase = Registers.CombineInput(Lane, 0);
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& Phase = Registers.OutputRef(Lane, 1);
 
@@ -542,8 +542,8 @@ struct PhaseWidthModulationThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Phase = Registers.CombineLaneInput(Lane, 0);
-            double Balance = Registers.CombineLaneInput(Lane, 1);
+            double Phase = Registers.CombineInput(Lane, 0);
+            double Balance = Registers.CombineInput(Lane, 1);
             double& OutPhase = Registers.OutputRef(Lane, 0);
 
             const double Pivot = (Balance * 0.5 + 0.5);
@@ -589,7 +589,7 @@ struct AddThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("AddThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerAdd);
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerAdd);
         });
     }
 
@@ -618,7 +618,7 @@ struct MulThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("MulThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMul);
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerMul);
         });
     }
 
@@ -647,7 +647,7 @@ struct RcpThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("RcpThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Divisor = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMul);
+            double Divisor = Registers.CombineInput(Lane, 0, 0.0, CombinerMul);
             double& Output = Registers.OutputRef(Lane, 0);
 
             if (Divisor != 0.0)
@@ -683,8 +683,8 @@ struct PowThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("PowThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Base = Registers.CombineLaneInput(Lane, 0);
-            double Exponent = Registers.CombineLaneInput(Lane, 1, 2.0);
+            double Base = Registers.CombineInput(Lane, 0);
+            double Exponent = Registers.CombineInput(Lane, 1, 2.0);
             double& Output = Registers.OutputRef(Lane, 0);
 
             double Result = std::pow(Base, Exponent);
@@ -721,8 +721,8 @@ struct SignPreservingPowThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Base = Registers.CombineLaneInput(Lane, 0);
-            double Exponent = Registers.CombineLaneInput(Lane, 1, 2.0);
+            double Base = Registers.CombineInput(Lane, 0);
+            double Exponent = Registers.CombineInput(Lane, 1, 2.0);
             double& Output = Registers.OutputRef(Lane, 0);
 
             double Sign = Base >= 0.0 ? 1.0 : -1.0;
@@ -759,7 +759,7 @@ struct MinThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("MinThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMin);
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerMin);
         });
     }
 
@@ -788,7 +788,7 @@ struct MaxThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("MaxThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0, 0.0, CombinerMax);
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerMax);
         });
     }
 
@@ -819,9 +819,9 @@ struct ClampThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("ClampThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineLaneInput(Lane, 0);
-            double High = Registers.CombineLaneInput(Lane, 1, 1.0, CombinerMax);
-            double Low = Registers.CombineLaneInput(Lane, 2, -1.0, CombinerMin);
+            double Sample = Registers.CombineInput(Lane, 0);
+            double High = Registers.CombineInput(Lane, 1, 1.0, CombinerMax);
+            double Low = Registers.CombineInput(Lane, 2, -1.0, CombinerMin);
             double& Output = Registers.OutputRef(Lane, 0);
             Output = std::max(std::min(Sample, High), Low);
         });
@@ -852,7 +852,7 @@ struct FloorThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("FloorThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = std::floor(Registers.CombineLaneInput(Lane, 0));
+            Registers.OutputRef(Lane, 0) = std::floor(Registers.CombineInput(Lane, 0));
         });
     }
 
@@ -881,7 +881,7 @@ struct CeilThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("CeilThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = std::ceil(Registers.CombineLaneInput(Lane, 0));
+            Registers.OutputRef(Lane, 0) = std::ceil(Registers.CombineInput(Lane, 0));
         });
     }
 
@@ -910,7 +910,7 @@ struct RoundThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("RoundThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = std::round(Registers.CombineLaneInput(Lane, 0));
+            Registers.OutputRef(Lane, 0) = std::round(Registers.CombineInput(Lane, 0));
         });
     }
 
@@ -939,7 +939,7 @@ struct SignThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("SignThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Number = Registers.CombineLaneInput(Lane, 0);
+            double Number = Registers.CombineInput(Lane, 0);
             double& Sign = Registers.OutputRef(Lane, 0);
             Sign = (Number < 0.0) ? -1.0 : 1.0;
         });
@@ -970,7 +970,7 @@ struct AbsThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("AbsThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = std::abs(Registers.CombineLaneInput(Lane, 0));
+            Registers.OutputRef(Lane, 0) = std::abs(Registers.CombineInput(Lane, 0));
         });
     }
 
@@ -1001,19 +1001,19 @@ struct FoldThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("FoldThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineLaneInput(Lane, 0);
+            double Sample = Registers.CombineInput(Lane, 0);
             double& Output = Registers.OutputRef(Lane, 0);
 
             double Threshold;
             if (Sample < 0.0 && Registers.InputConnected(2))
             {
                 // Use the negative threshold input.
-                Threshold = Registers.CombineLaneInput(Lane, 2);
+                Threshold = Registers.CombineInput(Lane, 2);
             }
             else
             {
                 // Use the positive threshold input or default to 1.
-                Threshold = Registers.CombineLaneInput(Lane, 1, 1.0);
+                Threshold = Registers.CombineInput(Lane, 1, 1.0);
             }
 
             double Sign = Sample < 0.0 ? -1.0 : 1.0;
@@ -1052,7 +1052,7 @@ struct InvertThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("InvertThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Value = Registers.CombineLaneInput(Lane, 0);
+            double Value = Registers.CombineInput(Lane, 0);
             double& Output = Registers.OutputRef(Lane, 0);
             double Sign = Value < 0.0 ? -1.0 : 1.0;
             Output = (1.0 - std::abs(Value)) * Sign;
@@ -1084,7 +1084,7 @@ struct ToUnipolarThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0) * 0.5 + 0.5;
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0) * 0.5 + 0.5;
         });
     }
 
@@ -1113,7 +1113,7 @@ struct ToBipolarThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            Registers.OutputRef(Lane, 0) = Registers.CombineLaneInput(Lane, 0) * 2.0 - 1.0;
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0) * 2.0 - 1.0;
         });
     }
 
@@ -1144,9 +1144,9 @@ struct MixThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("MixThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Left = Registers.CombineLaneInput(Lane, 0);
-            double Right = Registers.CombineLaneInput(Lane, 1);
-            double Alpha = Registers.CombineLaneInput(Lane, 2, 0.5);
+            double Left = Registers.CombineInput(Lane, 0);
+            double Right = Registers.CombineInput(Lane, 1);
+            double Alpha = Registers.CombineInput(Lane, 2, 0.5);
             double& Output = Registers.OutputRef(Lane, 0);
 
             Output = (1.0 - Alpha) * Left + Alpha * Right;
@@ -1179,8 +1179,8 @@ struct StereoBalanceThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineLaneInput(Lane, 0);
-            double Balance = Registers.CombineLaneInput(Lane, 1);
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Balance = Registers.CombineInput(Lane, 1);
             double& Left = Registers.OutputRef(Lane, 0);
             double& Right = Registers.OutputRef(Lane, 1);
 
@@ -1216,7 +1216,7 @@ struct PulseThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("PulseThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineLaneInput(Lane, 0);
+            double Clock = Registers.CombineInput(Lane, 0);
             double& Output = Registers.OutputRef(Lane, 0);
             double& Latch = Registers.ClosureRef(Lane, 0);
 
@@ -1265,7 +1265,7 @@ struct FlipFlopThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineLaneInput(Lane, 0);
+            double Clock = Registers.CombineInput(Lane, 0);
             double& EvenOutput = Registers.OutputRef(Lane, 0);
             double& OddOutput = Registers.OutputRef(Lane, 1);
             double& Latch = Registers.ClosureRef(Lane, 0);
@@ -1327,7 +1327,7 @@ struct RandomThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("RandomThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineLaneInput(Lane, 0);
+            double Clock = Registers.CombineInput(Lane, 0);
             double& Output = Registers.OutputRef(Lane, 0);
             double& Latch = Registers.ClosureRef(Lane, 0);
 
@@ -1374,8 +1374,8 @@ struct GradualThunk : public InstructionThunk
         {
             if (Registers.InputConnected(0))
             {
-                double Value = Registers.CombineLaneInput(Lane, 0);
-                double Rate = Registers.CombineLaneInput(Lane, 1);
+                double Value = Registers.CombineInput(Lane, 0);
+                double Rate = Registers.CombineInput(Lane, 1);
                 double& Pos = Registers.OutputRef(Lane, 0);
                 double& Initialized = Registers.ClosureRef(Lane, 0);
 
@@ -1431,9 +1431,9 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
         THUNK_TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineLaneInput(Lane, 0);
-            double Cutoff = Registers.CombineLaneInput(Lane, 1, 1000.0);
-            double Resonance = Registers.CombineLaneInput(Lane, 2);
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Cutoff = Registers.CombineInput(Lane, 1, 1000.0);
+            double Resonance = Registers.CombineInput(Lane, 2);
             double& Output = Registers.OutputRef(Lane, 0);
             double& LastCutoff = Registers.ClosureRef(Lane, 0);
             double& LastResonance = Registers.ClosureRef(Lane, 1);
@@ -1626,11 +1626,11 @@ struct AdsrThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("AdsrThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Trigger = Registers.CombineLaneInput(Lane, 0);
-            const double Attack = std::max(Registers.CombineLaneInput(Lane, 1, 0.1), 0.0);
-            const double Decay = std::max(Registers.CombineLaneInput(Lane, 2, 0.1), 0.0);
-            const double Sustain = std::min(std::max(Registers.CombineLaneInput(Lane, 3, 1.0), 0.0), 1.0);
-            const double Release = std::max(Registers.CombineLaneInput(Lane, 4, 1.0), 0.0);
+            double Trigger = Registers.CombineInput(Lane, 0);
+            const double Attack = std::max(Registers.CombineInput(Lane, 1, 0.1), 0.0);
+            const double Decay = std::max(Registers.CombineInput(Lane, 2, 0.1), 0.0);
+            const double Sustain = std::min(std::max(Registers.CombineInput(Lane, 3, 1.0), 0.0), 1.0);
+            const double Release = std::max(Registers.CombineInput(Lane, 4, 1.0), 0.0);
 
             double& Amplitude = Registers.OutputRef(Lane, 0);
             double& LastTrigger = Registers.ClosureRef(Lane, 0);
@@ -1776,8 +1776,8 @@ struct QuantizeThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("QuantizeThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Note = Registers.CombineLaneInput(Lane, 0);
-            const double Root = Registers.CombineLaneInput(Lane, 1, 60.0); // defaults to Middle C
+            double Note = Registers.CombineInput(Lane, 0);
+            const double Root = Registers.CombineInput(Lane, 1, 60.0); // defaults to Middle C
             const std::vector<double*>& Intervals = Registers.InputVector(2);
             double& OutNote = Registers.OutputRef(Lane, 0);
 
@@ -1889,9 +1889,9 @@ struct InputSequenceThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineLaneInput(Lane, 0);
+            double Clock = Registers.CombineInput(Lane, 0);
             const std::vector<double*>& Sequence = Registers.InputVector(1);
-            double Restart = Registers.CombineLaneInput(Lane, 2);
+            double Restart = Registers.CombineInput(Lane, 2);
             double& OutValue = Registers.OutputRef(Lane, 0);
             double& OutComplete = Registers.OutputRef(Lane, 1);
             double& LastClock = Registers.ClosureRef(Lane, 0);
@@ -1965,7 +1965,7 @@ struct RandomSequenceThunk : public InstructionThunk
 
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineLaneInput(Lane, 0);
+            double Clock = Registers.CombineInput(Lane, 0);
 
             double& OutValue = Registers.OutputRef(Lane, 0);
             double& OutComplete = Registers.OutputRef(Lane, 1);
@@ -1978,8 +1978,8 @@ struct RandomSequenceThunk : public InstructionThunk
 
             if (LastClock <= 0.0 && Clock >= 1.0)
             {
-                int Period = std::max(int(Registers.CombineLaneInput(Lane, 1, 4.0)), 1);
-                double Seed = Registers.CombineLaneInput(Lane, 2);
+                int Period = std::max(int(Registers.CombineInput(Lane, 1, 4.0)), 1);
+                double Seed = Registers.CombineInput(Lane, 2);
 
                 const bool Reset = Period != int(LastPeriod) || Seed != LastSeed;
                 if (Reset || int(LaneCache.size()) != Period)
@@ -2271,7 +2271,7 @@ struct ControlChangeThunk : public InstructionThunk
 
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            double Control = Registers.CombineLaneInput(Lane, 0);
+            double Control = Registers.CombineInput(Lane, 0);
             double* Value = Registers.OutputPtr(0);
             MidiNoteState& State = Program->MidiLanes[Lane];
             double Channel = -1.0;
@@ -2443,7 +2443,7 @@ struct LeadLaneThunk : public InstructionThunk
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
         if (ReadLane < Registers.Polyphony)
         {
-            double Value = Registers.CombineLaneInput(ReadLane, 0);
+            double Value = Registers.CombineInput(ReadLane, 0);
             Registers.OutputRef(0) = Value;
         }
     }
@@ -2482,7 +2482,7 @@ struct AddLanesThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddLanesThunk");
-        Registers.OutputRef(0) = Registers.CombinePolyphonicInput(0, 0.0, CombinerAdd);
+        Registers.OutputRef(0) = Registers.CombineAcrossInputLanes(0, 0.0, CombinerAdd);
     }
 
     virtual void Reset() override
@@ -2516,7 +2516,7 @@ struct MidiToHzThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Note = Registers.CombineLaneInput(Lane, 0);
+            double Note = Registers.CombineInput(Lane, 0);
             double& Output = Registers.OutputRef(Lane, 0);
             Output = MidiNoteToHz(Note);
         });
@@ -2547,7 +2547,7 @@ struct LoudnessFudgeThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineLaneInput(Lane, 0);
+            double Hz = Registers.CombineInput(Lane, 0);
             double& Output = Registers.OutputRef(Lane, 0);
             Output = PerceptualAmplitudeCorrectionByHz(Hz);
         });
@@ -2616,10 +2616,10 @@ struct TapeLoopThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineLaneInput(Lane, 0);
-            double Offset = Registers.CombineLaneInput(Lane, 1);
-            double Seconds = Registers.CombineLaneInput(Lane, 2);
-            double Reset = Registers.CombineLaneInput(Lane, 3);
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Offset = Registers.CombineInput(Lane, 1);
+            double Seconds = Registers.CombineInput(Lane, 2);
+            double Reset = Registers.CombineInput(Lane, 3);
             double& Output = Registers.OutputRef(Lane, 0);
             double& ReadHead = Registers.ClosureRef(Lane, 0);
             double& WriteHead = Registers.ClosureRef(Lane, 1);
