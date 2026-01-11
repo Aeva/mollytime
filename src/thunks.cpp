@@ -2606,74 +2606,82 @@ struct TapeLoopThunk : public InstructionThunk
     std::vector<MagicTapeUniquePtr>* TapeFile;
     std::ptrdiff_t TapeIndex;
 
+    virtual bool Polyphonic() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
-        double Sample = Registers.CombineInput(0);
-        double Offset = Registers.CombineInput(1);
-        double Seconds = Registers.CombineInput(2);
-        double Reset = Registers.CombineInput(3);
-        double& Output = Registers.OutputRef(0);
-        double& ReadHead = Registers.ClosureRef(0);
-        double& WriteHead = Registers.ClosureRef(1);
-        double& LastReset = Registers.ClosureRef(2);
-        double& LastOffset = Registers.ClosureRef(3);
-
-        uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
-        uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
-
-        BlankTape* Tape;
+        CrankLanes([&](uint32_t Lane)
         {
-            MagicTapeUniquePtr& Found = TapeFile->at(TapeIndex);
-            Tape = (BlankTape*)Found.get();
-        }
+            double Sample = Registers.CombineLaneInput(Lane, 0);
+            double Offset = Registers.CombineLaneInput(Lane, 1);
+            double Seconds = Registers.CombineLaneInput(Lane, 2);
+            double Reset = Registers.CombineLaneInput(Lane, 3);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double& ReadHead = Registers.ClosureRef(Lane, 0);
+            double& WriteHead = Registers.ClosureRef(Lane, 1);
+            double& LastReset = Registers.ClosureRef(Lane, 2);
+            double& LastOffset = Registers.ClosureRef(Lane, 3);
 
-        if (!Tape)
-        {
-            return;
-        }
+            uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
+            uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
 
-        auto ResetOffset = [&]()
-        {
-            if (Tape->Samples.size() > 0)
+            BlankTape* Tape;
             {
-                ReadIndex = Tape->FindSample(Offset);
-                ReadIndex = (ReadIndex + WriteIndex) % Tape->Samples.size();
+                MagicTapeUniquePtr& Found = TapeFile->at(TapeIndex + Lane);
+                Tape = (BlankTape*)Found.get();
             }
-            else
+
+            if (!Tape)
             {
-                ReadIndex = 0;
+                return;
             }
-            LastOffset = Offset;
-        };
 
-        if (Seconds != Tape->Seconds)
-        {
-            Tape->Reset(Seconds);
-            WriteIndex = 0;
-            ResetOffset();
-        }
+            auto ResetOffset = [&]()
+            {
+                if (Tape->Samples.size() > 0)
+                {
+                    ReadIndex = Tape->FindSample(Offset);
+                    ReadIndex = (ReadIndex + WriteIndex) % Tape->Samples.size();
+                }
+                else
+                {
+                    ReadIndex = 0;
+                }
+                LastOffset = Offset;
+            };
 
-        if (Tape->Samples.size() > 0)
-        {
-            if (LastReset <= 0.0 && Reset >= 1.0)
+            if (Seconds != Tape->Seconds)
             {
                 Tape->Reset(Seconds);
                 WriteIndex = 0;
                 ResetOffset();
             }
-            else if (Offset != LastOffset)
+
+            if (Tape->Samples.size() > 0)
             {
-                ResetOffset();
+                if (LastReset <= 0.0 && Reset >= 1.0)
+                {
+                    Tape->Reset(Seconds);
+                    WriteIndex = 0;
+                    ResetOffset();
+                }
+                else if (Offset != LastOffset)
+                {
+                    ResetOffset();
+                }
+                LastReset = Reset;
+
+                Output = Tape->ReadAndAdvance(ReadIndex);
+                ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
+
+                Tape->WriteAndAdvance(WriteIndex, Sample);
+                WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
             }
-            LastReset = Reset;
-
-            Output = Tape->ReadAndAdvance(ReadIndex);
-            ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
-
-            Tape->WriteAndAdvance(WriteIndex, Sample);
-            WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
-        }
+        });
     }
 
     virtual ~TapeLoopThunk() {};

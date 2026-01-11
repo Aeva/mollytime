@@ -1335,7 +1335,7 @@ ScratchUniquePtr Patch::Compile()
                             {
                                 PortHandle Port = MakePortHandle(Partial->Tile, 0);
                                 RegisterAllocation& TapeAllocation = Program->PersistentTapes.at(Port);
-                                std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset + Lane;
+                                std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset;
                                 Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
                                 Thunk->Registers.Polyphony = Partial->Polyphony;
                                 AppendThunk(Thunk);
