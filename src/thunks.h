@@ -329,6 +329,8 @@ struct InstructionInfo
 
 struct InstructionRegisters
 {
+    uint32_t Polyphony;
+
     inline void Connect(
         std::vector<std::vector<std::ptrdiff_t>>& InInputs,
         std::vector<std::ptrdiff_t>& InOutputs,
@@ -381,18 +383,46 @@ struct InstructionRegisters
         return Result;
     }
 
-    inline double CombineStridedInput(uint32_t InputIndex, uint32_t Offset, uint32_t Stride, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    inline double CombinePolyphonicInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         std::vector<double*>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[Offset];
-        for (int Index = Offset + Stride; Index < static_cast<int>(InputRegisters.size()); Index += Stride)
+        const uint32_t InputCount = uint32_t(InputRegisters.size());
+        if (InputCount == 0)
+        {
+            return Default;
+        }
+        else
+        {
+            double* Cursor = InputRegisters[0];
+            double Accumulator = Cursor[0];
+            for (uint32_t Lane = 1; Lane < Polyphony; ++Lane)
+            {
+                Accumulator = Combiner(Accumulator, Cursor[Lane]);
+            }
+            for (uint32_t Index = 1; Index < InputCount; ++Index)
+            {
+                Cursor = InputRegisters[Index];
+                for (uint32_t Lane = 1; Lane < Polyphony; ++Lane)
+                {
+                    Accumulator = Combiner(Accumulator, Cursor[Lane]);
+                }
+            }
+            return Accumulator;
+        }
+    }
+
+    inline double CombineLaneInput(uint32_t InputIndex, uint32_t Lane, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    {
+        std::vector<double*>& InputRegisters = Input[InputIndex];
+        const uint32_t InputCount = uint32_t(InputRegisters.size());
+        double Result = (InputCount == 0) ? Default : InputRegisters[0][Lane];
+        for (uint32_t Index = 1; Index < InputCount; ++Index)
         {
             double* NextValue = InputRegisters[Index];
-            Result = Combiner(Result, *NextValue);
+            Result = Combiner(Result, NextValue[Lane]);
         }
         return Result;
     }
-
 
     inline double* InputPtr(uint32_t InputIndex)
     {

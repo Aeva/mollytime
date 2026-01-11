@@ -1283,7 +1283,6 @@ ScratchUniquePtr Patch::Compile()
                             Thunk->SetDebugName(TileName);
                         }
 #endif
-
                         if (Partial->Polyphony > 1 && Symbol == OpCode::ADSR)
                         {
                             Thunk->Retriggerable = true;
@@ -1293,10 +1292,14 @@ ScratchUniquePtr Patch::Compile()
                             // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
                             Program->Retriggerables[Lane].push_back(ThunkIndex);
                         }
-
-                        if (Symbol == OpCode::LEAD_LANE)
+                        else if (Symbol == OpCode::LEAD_LANE)
                         {
                             break;
+                        }
+                        else if (Symbol == OpCode::ADD_LANES)
+                        {
+                            assert(Partial->Polyphony);
+                            Thunk->Registers.Polyphony = MidiPolyphony;
                         }
                     }
                 }
@@ -1429,7 +1432,7 @@ void Scratch::Migrate(Scratch& Old)
     }
 #endif
 
-    constexpr bool EnableDebugLogging = true;
+    constexpr bool EnableDebugLogging = false;
 
     if (EnableDebugLogging)
     {

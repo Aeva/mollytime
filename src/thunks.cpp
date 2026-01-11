@@ -2066,7 +2066,7 @@ struct LeadLaneThunk : public InstructionThunk
         uint32_t LaneCount = Program->MidiLanes.size();
         if (ReadLane < LaneCount)
         {
-            double Value = Registers.CombineStridedInput(0, ReadLane, LaneCount);
+            double Value = Registers.CombineLaneInput(0, ReadLane);
             Registers.OutputRef(0) = Value;
         }
     }
@@ -2089,7 +2089,7 @@ struct AddLanesThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddLanesThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
+        Registers.OutputRef(0) = Registers.CombinePolyphonicInput(0, 0.0, CombinerAdd);
     }
 
     virtual ~AddLanesThunk() {};
