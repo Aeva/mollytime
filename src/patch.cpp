@@ -580,7 +580,7 @@ struct LaneMergeThunk : public InstructionThunk
         Value = BaseAddress[0];
         for (uint32_t Lane = 1; Lane < Lanes; ++Lane)
         {
-            Value = BaseAddress[Lane];
+            Value += BaseAddress[Lane];
         }
     };
 
