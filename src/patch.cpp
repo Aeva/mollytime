@@ -84,7 +84,7 @@ static bool IsLaneJoinSymbol(const OpCode Symbol)
 };
 
 
-static uint32_t DefaultPolyphony = 4;
+static uint32_t DefaultPolyphony = 32;
 void SetDefaultPolyphony(int Polyphony)
 {
     DefaultPolyphony = uint32_t(std::max(1, Polyphony));
