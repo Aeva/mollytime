@@ -130,11 +130,6 @@ struct SinThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinThunk");
@@ -163,11 +158,6 @@ struct SqrThunk : public InstructionThunk
         }},
         {"amp"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -201,11 +191,6 @@ struct TriThunk : public InstructionThunk
         }},
         {"amp"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -247,11 +232,6 @@ struct SawThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SawThunk");
@@ -285,11 +265,6 @@ struct NoiThunk : public InstructionThunk
         }},
         {"amp"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -339,11 +314,6 @@ struct PhaseThunk : public InstructionThunk
         {"phase"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseThunk");
@@ -375,11 +345,6 @@ struct SinTrainThunk : public InstructionThunk
         {"amp", "phase"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinTrainThunk");
@@ -408,11 +373,6 @@ struct SqrTrainThunk : public InstructionThunk
         }},
         {"amp", "phase"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -446,11 +406,6 @@ struct TriTrainThunk : public InstructionThunk
         }},
         {"amp", "phase"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -492,11 +447,6 @@ struct SawTrainThunk : public InstructionThunk
         {"amp", "phase"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SawTrainThunk");
@@ -531,11 +481,6 @@ struct PhaseWidthModulationThunk : public InstructionThunk
         }},
         {"phase"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -579,11 +524,6 @@ struct AddThunk : public InstructionThunk
         {"="}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddThunk");
@@ -608,11 +548,6 @@ struct MulThunk : public InstructionThunk
         {"="}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MulThunk");
@@ -636,11 +571,6 @@ struct RcpThunk : public InstructionThunk
         }},
         {"="}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -672,11 +602,6 @@ struct PowThunk : public InstructionThunk
         }},
         {"="}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -711,11 +636,6 @@ struct SignPreservingPowThunk : public InstructionThunk
         {"="}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
@@ -749,11 +669,6 @@ struct MinThunk : public InstructionThunk
         {"="}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MinThunk");
@@ -777,11 +692,6 @@ struct MaxThunk : public InstructionThunk
         }},
         {"="}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -808,11 +718,6 @@ struct ClampThunk : public InstructionThunk
         }},
         {"="}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -842,11 +747,6 @@ struct FloorThunk : public InstructionThunk
         {"floor"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FloorThunk");
@@ -870,11 +770,6 @@ struct CeilThunk : public InstructionThunk
         }},
         {"ceil"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -900,11 +795,6 @@ struct RoundThunk : public InstructionThunk
         {"rounded"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RoundThunk");
@@ -928,11 +818,6 @@ struct SignThunk : public InstructionThunk
         }},
         {"sign"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -960,11 +845,6 @@ struct AbsThunk : public InstructionThunk
         {"abs"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AbsThunk");
@@ -990,11 +870,6 @@ struct FoldThunk : public InstructionThunk
         }},
         {"w"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1042,11 +917,6 @@ struct InvertThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InvertThunk");
@@ -1074,11 +944,6 @@ struct ToUnipolarThunk : public InstructionThunk
         {"uni"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
@@ -1102,11 +967,6 @@ struct ToBipolarThunk : public InstructionThunk
         }},
         {"bi"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1133,11 +993,6 @@ struct MixThunk : public InstructionThunk
         }},
         {"="}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1168,11 +1023,6 @@ struct StereoBalanceThunk : public InstructionThunk
         }},
         {"left", "right"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1205,11 +1055,6 @@ struct PulseThunk : public InstructionThunk
         }},
         {"pulse"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1254,11 +1099,6 @@ struct FlipFlopThunk : public InstructionThunk
         }},
         {"even", "odd"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1317,11 +1157,6 @@ struct RandomThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RandomThunk");
@@ -1361,11 +1196,6 @@ struct GradualThunk : public InstructionThunk
         }},
         {"#"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1420,11 +1250,6 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     // Adapted from https://github.com/michaeldonovan/VAStateVariableFilter/
     // which in turn was adapted from https://github.com/JordanTHarris/VAStateVariableFilter/
     // Additional useful information: https://mastodon.gamedev.place/@rygorous/115082511872070814
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -1616,11 +1441,6 @@ struct AdsrThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AdsrThunk");
@@ -1766,11 +1586,6 @@ struct QuantizeThunk : public InstructionThunk
         {"note"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("QuantizeThunk");
@@ -1879,11 +1694,6 @@ struct InputSequenceThunk : public InstructionThunk
         {"#", "complete"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
@@ -1948,11 +1758,6 @@ struct RandomSequenceThunk : public InstructionThunk
     };
 
     std::vector<std::vector<double>> Cache;
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2057,11 +1862,6 @@ struct GateThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
@@ -2104,11 +1904,6 @@ struct NoteThunk : public InstructionThunk
     };
 
     Scratch* Program;
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2163,11 +1958,6 @@ struct VelocityThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
@@ -2210,11 +2000,6 @@ struct PressureThunk : public InstructionThunk
     };
 
     Scratch* Program;
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2259,11 +2044,6 @@ struct ControlChangeThunk : public InstructionThunk
     };
 
     Scratch* Program;
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2313,11 +2093,6 @@ struct KikiThunk : public InstructionThunk
     };
 
     Scratch* Program;
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2378,11 +2153,6 @@ struct PitchBendThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
@@ -2426,11 +2196,6 @@ struct LeadLaneThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual bool LaneJoiner() override
     {
         return true;
@@ -2441,16 +2206,17 @@ struct LeadLaneThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
 
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
+        constexpr uint32_t WriteLane = 0;
         if (ReadLane < Registers.Polyphony)
         {
             double Value = Registers.CombineInput(ReadLane, 0);
-            Registers.OutputRef(0) = Value;
+            Registers.OutputRef(WriteLane, 0) = Value;
         }
     }
 
     virtual void Reset() override
     {
-        const uint32_t Lane = 0;
+        constexpr uint32_t Lane = 0;
         Registers.ZeroOut(Lane);
     }
 
@@ -2469,11 +2235,6 @@ struct AddLanesThunk : public InstructionThunk
         {"="}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual bool LaneJoiner() override
     {
         return true;
@@ -2482,12 +2243,13 @@ struct AddLanesThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddLanesThunk");
-        Registers.OutputRef(0) = Registers.CombineAcrossInputLanes(0, 0.0, CombinerAdd);
+        constexpr uint32_t WriteLane = 0;
+        Registers.OutputRef(WriteLane, 0) = Registers.CombineAcrossInputLanes(0, 0.0, CombinerAdd);
     }
 
     virtual void Reset() override
     {
-        const uint32_t Lane = 0;
+        constexpr uint32_t Lane = 0;
         Registers.ZeroOut(Lane);
     }
 
@@ -2505,11 +2267,6 @@ struct MidiToHzThunk : public InstructionThunk
         }},
         {"hz"}
     };
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {
@@ -2537,11 +2294,6 @@ struct LoudnessFudgeThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
-
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
@@ -2565,7 +2317,7 @@ struct BoopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("BoopThunk");
-        const uint32_t Lane = 0;
+        constexpr uint32_t Lane = 0;
         Registers.OutputRef(Lane, 0) = Input->Get();
     }
 
@@ -2581,7 +2333,7 @@ struct TweakThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TweakThunk");
-        const uint32_t Lane = 0;
+        constexpr uint32_t Lane = 0;
         Registers.OutputRef(Lane, 0) = Input->Get();
     }
 
@@ -2605,11 +2357,6 @@ struct TapeLoopThunk : public InstructionThunk
 
     std::vector<MagicTapeUniquePtr>* TapeFile;
     std::ptrdiff_t TapeIndex;
-
-    virtual bool Polyphonic() override
-    {
-        return true;
-    }
 
     virtual void Crank(double SampleInterval) override
     {

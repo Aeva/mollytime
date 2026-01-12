@@ -425,15 +425,10 @@ struct InstructionRegisters
         return Output[OutputIndex];
     }
 
-    inline double& OutputRef(uint32_t OutputIndex)
-    {
-        return *Output[OutputIndex];
-    }
-
     inline double& OutputRef(uint32_t Lane, uint32_t OutputIndex)
     {
         assert(Lane < Polyphony);
-        return OutputPtr(OutputIndex)[Lane];
+        return Output[OutputIndex][Lane];
     }
 
     inline double* ClosurePtr(uint32_t ClosureIndex)
@@ -441,15 +436,10 @@ struct InstructionRegisters
         return Closure[ClosureIndex];
     }
 
-    inline double& ClosureRef(uint32_t ClosureIndex)
-    {
-        return *Closure[ClosureIndex];
-    }
-
     inline double& ClosureRef(uint32_t Lane, uint32_t ClosureIndex)
     {
         assert(Lane < Polyphony);
-        return ClosurePtr(ClosureIndex)[Lane];
+        return Closure[ClosureIndex][Lane];
     }
 
     inline void ZeroOut(uint32_t Lane)
@@ -490,11 +480,6 @@ struct InstructionThunk
 #endif
     InstructionRegisters Registers;
     bool Retriggerable = false;
-
-    virtual bool Polyphonic()
-    {
-        return false;
-    }
 
     virtual bool LaneJoiner()
     {

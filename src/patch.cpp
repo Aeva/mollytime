@@ -577,7 +577,7 @@ struct LaneMergeThunk : public InstructionThunk
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LaneMergeThunk");
         double* BaseAddress = Registers.InputPtr(0);
-        double& Value = Registers.OutputRef(0);
+        double& Value = Registers.OutputRef(0, 0);
         Value = BaseAddress[0];
         for (uint32_t Lane = 1; Lane < Registers.Polyphony; ++Lane)
         {
@@ -642,7 +642,7 @@ ScratchUniquePtr Patch::Compile()
     Program->Polyphony = MidiPolyphony;
     Program->ChannelMask = ChannelMask;
     Program->MidiLanes.resize(MidiPolyphony);
-    Program->Retriggerables.resize(MidiPolyphony);
+    Program->Retriggerables = {};
 
     auto VisitTile = [&](TileHandle Tile) -> TilePartialSharedPtr
     {
@@ -1273,100 +1273,74 @@ ScratchUniquePtr Patch::Compile()
                         Closures.push_back(RegisterMap.at(ClosurePort));
                     }
 
-                    for (uint32_t Lane = 0; Lane < Partial->Polyphony; ++Lane)
+                    InstructionThunkSharedPtr Thunk = nullptr;
                     {
-                        if (Lane > 0)
+                        auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
+                        if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
                         {
-                            for (uint32_t InputIndex = 0; InputIndex < Inputs.size(); ++InputIndex)
-                            {
-                                std::vector<std::ptrdiff_t>& InputRegisters = Inputs[InputIndex];
-                                for (uint32_t Connection = 0; Connection < InputRegisters.size(); ++Connection)
-                                {
-                                    ++(InputRegisters[Connection]);
-                                }
-                            }
-                            for (std::ptrdiff_t& OutputRegister : Outputs)
-                            {
-                                ++OutputRegister;
-                            }
-                            for (std::ptrdiff_t& ClosureRegister : Closures)
-                            {
-                                ++ClosureRegister;
-                            }
+                            Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures);
+                            Thunk->Registers.Polyphony = Partial->Polyphony;
+                            AppendThunk(Thunk);
                         }
+                    }
 
-                        InstructionThunkSharedPtr Thunk = nullptr;
+                    if (Thunk == nullptr)
+                    {
+                        auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
+                        if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
                         {
-                            auto Found = SymbolInfoMap.BasicCreateAndConnect.find((int)Symbol);
-                            if (Found != SymbolInfoMap.BasicCreateAndConnect.end())
-                            {
-                                Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures);
-                                Thunk->Registers.Polyphony = Partial->Polyphony;
-                                AppendThunk(Thunk);
-                            }
+                            Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
+                            Thunk->Registers.Polyphony = 1;
+                            AppendThunk(Thunk);
                         }
+                    }
 
-                        if (Thunk == nullptr)
+                    if (Thunk == nullptr)
+                    {
+                        auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
+                        if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
                         {
-                            auto Found = SymbolInfoMap.WidgetCreateAndConnect.find((int)Symbol);
-                            if (Found != SymbolInfoMap.WidgetCreateAndConnect.end())
-                            {
-                                Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
-                                Thunk->Registers.Polyphony = 1;
-                                AppendThunk(Thunk);
-                            }
-                        }
-
-                        if (Thunk == nullptr)
-                        {
-                            auto Found = SymbolInfoMap.MidiCreateAndConnect.find((int)Symbol);
-                            if (Found != SymbolInfoMap.MidiCreateAndConnect.end())
-                            {
-                                Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures);
-                                Thunk->Registers.Polyphony = MidiPolyphony;
-                                AppendThunk(Thunk);
-                            }
-                        }
-
-                        if (Thunk == nullptr)
-                        {
-                            auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
-                            if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
-                            {
-                                PortHandle Port = MakePortHandle(Partial->Tile, 0);
-                                RegisterAllocation& TapeAllocation = Program->PersistentTapes.at(Port);
-                                std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset;
-                                Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
-                                Thunk->Registers.Polyphony = Partial->Polyphony;
-                                AppendThunk(Thunk);
-                            }
-                        }
-
-                        assert(Thunk != nullptr);
-#ifndef NDEBUG
-                        {
-                            const std::string TileName = GetTileLabel(Partial->Tile);
-                            Thunk->SetDebugName(TileName);
-                        }
-#endif
-                        if (Partial->Polyphony > 1 && Symbol == OpCode::ADSR)
-                        {
-                            Thunk->Retriggerable = true;
-                            uint32_t ThunkIndex = Program->Program.size() - 1;
-                            assert(Program->Program[ThunkIndex] == Thunk);
-                            // TODO: figure out some means of determining if the trigger is directly or indirectly
-                            // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
-                            Program->Retriggerables[Lane].push_back(ThunkIndex);
-                        }
-                        else if (Symbol == OpCode::ADD_LANES)
-                        {
-                            assert(Partial->Polyphony);
+                            Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures);
                             Thunk->Registers.Polyphony = MidiPolyphony;
+                            AppendThunk(Thunk);
                         }
-                        if (Partial->Polyphony == 1 || Thunk->Polyphonic())
+                    }
+
+                    if (Thunk == nullptr)
+                    {
+                        auto Found = SymbolInfoMap.TapeCreateAndConnect.find((int)Symbol);
+                        if (Found != SymbolInfoMap.TapeCreateAndConnect.end())
                         {
-                            break;
+                            PortHandle Port = MakePortHandle(Partial->Tile, 0);
+                            RegisterAllocation& TapeAllocation = Program->PersistentTapes.at(Port);
+                            std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset;
+                            Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
+                            Thunk->Registers.Polyphony = Partial->Polyphony;
+                            AppendThunk(Thunk);
                         }
+                    }
+
+                    assert(Thunk != nullptr);
+#ifndef NDEBUG
+                    {
+                        const std::string TileName = GetTileLabel(Partial->Tile);
+                        Thunk->SetDebugName(TileName);
+                    }
+#endif
+                    if (Symbol == OpCode::ADSR)
+                    {
+                        assert(Partial->Polyphony > 1);
+                        Thunk->Retriggerable = true;
+                        uint32_t ThunkIndex = Program->Program.size() - 1;
+                        assert(Program->Program[ThunkIndex] == Thunk);
+                        // TODO: figure out some means of determining if the trigger is directly or indirectly
+                        // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
+                        Program->Retriggerables.push_back(ThunkIndex);
+                    }
+                    else if (Symbol == OpCode::ADD_LANES)
+                    {
+                        assert(Partial->Polyphony);
+                        Thunk->Registers.Polyphony = MidiPolyphony;
                     }
                 }
             }
@@ -1488,14 +1462,11 @@ void Scratch::Migrate(Scratch& Old)
     assert(MidiLanes.size() == Polyphony);
 
 #ifndef NDEBUG
-    for (std::vector<uint32_t>& ThunkIndices : Retriggerables)
+    for (uint32_t ThunkIndex : Retriggerables)
     {
-        for (uint32_t ThunkIndex : ThunkIndices)
-        {
-            InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
-            assert(Thunk != nullptr);
-            assert(Thunk->Retriggerable);
-        }
+        InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
+        assert(Thunk != nullptr);
+        assert(Thunk->Retriggerable);
     }
 #endif
 
@@ -1754,7 +1725,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     State.Channel = double(Channel);
                     State.Age = 0;
 
-                    for (uint32_t ThunkIndex : Retriggerables[AssignedLane])
+                    for (uint32_t ThunkIndex : Retriggerables)
                     {
                         InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
                         assert(Thunk != nullptr);
