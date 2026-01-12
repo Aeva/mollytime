@@ -87,7 +87,7 @@ WasapiRealTimeThread::WasapiRealTimeThread(WasapiThreadShared* WasapiBufferState
     // Calculate the sample interval from the reported clock frequency.
     uint64_t ClockFrequency;
     CheckHResult(AudioClock->GetFrequency(&ClockFrequency)); // bytes per second
-    SampleInterval = double(sizeof(double)) / double(ClockFrequency);
+    SampleInterval = AudioSample(sizeof(AudioSample)) / AudioSample(ClockFrequency);
 
     // Ready to go! Start streaming in separate thread.
     AudioClient->Start();

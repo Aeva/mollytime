@@ -83,7 +83,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
             // Copy the applicable input samples into the patch's input registers:
             for (auto [ReadPtr, WritePtr] : Frame.InPtrs)
             {
-                *WritePtr = double(ReadPtr[SampleIndex]);
+                *WritePtr = AudioSample(ReadPtr[SampleIndex]);
             }
 
             // Advance the program by one frame:
@@ -116,9 +116,9 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
     // Hook for notifying the audio API that the data is ready, should it require such a thing.
     EndFrame(Frame);
 
-    const std::chrono::duration<double> EvalDelta = EvalEnd - EvalStart;
-    const std::chrono::duration<double> Interval(SampleInterval * double(Frame.SampleCount));
-    const double Pressure = EvalDelta.count() / Interval.count();
+    const std::chrono::duration<AudioSample> EvalDelta = EvalEnd - EvalStart;
+    const std::chrono::duration<AudioSample> Interval(SampleInterval * AudioSample(Frame.SampleCount));
+    const AudioSample Pressure = EvalDelta.count() / Interval.count();
     FramePressure[FramePressureIndex++] = float(Pressure);
 
     FramePressureCount = std::max(FramePressureIndex, FramePressureCount);

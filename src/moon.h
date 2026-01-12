@@ -32,7 +32,7 @@ struct MoonThunk : public InstructionThunk
         {"altitude"}
     };
 
-    virtual void Crank(double SampleInterval) override;
+    virtual void Crank(AudioSample SampleInterval) override;
 
     virtual ~MoonThunk() {};
 };

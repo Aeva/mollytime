@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-double KikiTable[128] = \
+float KikiTable[128] = \
 {
     0.8125,
     0.5384615384615384,

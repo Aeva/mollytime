@@ -166,7 +166,7 @@ void MmeApiMidiDriver::ProcessEvents(MidiHandler* Handler)
 			int16_t Value = Param1 | (Param2 << 7);
 			constexpr int16_t Split = 0x2000;
 			int16_t Divisor = (Value < Split) ? Split : (Split - 1);
-			double Bend = double(Value - Split) / double(Divisor);
+			AudioSample Bend = AudioSample(Value - Split) / AudioSample(Divisor);
 			Handler->PitchBend(Bend, Channel);
 		}
 	}

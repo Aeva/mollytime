@@ -42,8 +42,8 @@ struct FramePointers
     int SampleCount = 0;
     float* OutLeft = nullptr;
     float* OutRight = nullptr;
-    std::vector<std::tuple<float*, double*>> InPtrs;
-    std::vector<std::tuple<double*, float*>> AuxPtrs;
+    std::vector<std::tuple<float*, AudioSample*>> InPtrs;
+    std::vector<std::tuple<AudioSample*, float*>> AuxPtrs;
 };
 
 
@@ -51,7 +51,7 @@ struct RealTimeAudioThread
 {
 protected:
     AudioThreadShared* BufferState = nullptr;
-    double SampleInterval = 0.0;
+    AudioSample SampleInterval = 0.0;
 
     ScratchUniquePtr Program = nullptr;
 

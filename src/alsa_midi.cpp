@@ -119,8 +119,8 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
                 // https://alsa-project.org/alsa-doc/alsa-lib/group___seq_middle.html#ga8da40bfd56e00ebec775e5241d86a3e3
 
                 int16_t Value = Event->data.control.value;
-                double Divisor = (Value <  0) ? 8192.0 : 8191.0;
-                Handler->PitchBend(double(Value) / Divisor, Event->data.control.channel);
+                AudioSample Divisor = (Value <  0) ? 8192.0f : 8191.0f;
+                Handler->PitchBend(AudioSample(Value) / Divisor, Event->data.control.channel);
             }
         }
     }

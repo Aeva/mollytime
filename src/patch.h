@@ -47,8 +47,8 @@ TileHandle PortHandleTilePart(PortHandle Handle);
 uint32_t PortHandlePortIndexPart(PortHandle Handle);
 
 
-double EncodeSampleHandle(uint32_t SampleHandle);
-uint32_t DecodeSampleHandle(double WireValue);
+AudioSample EncodeSampleHandle(uint32_t SampleHandle);
+uint32_t DecodeSampleHandle(AudioSample WireValue);
 
 
 std::string GetDefaultName(OpCode Symbol);
@@ -65,11 +65,11 @@ struct RegisterAllocation
 
 struct MidiNoteState
 {
-    double Gate = 0.0;
-    double Note = 50.0;
-    double Velocity = 0.0;
-    double Pressure = 0.0;
-    double Channel = -1.0;
+    AudioSample Gate = 0.0;
+    AudioSample Note = 50.0;
+    AudioSample Velocity = 0.0;
+    AudioSample Pressure = 0.0;
+    AudioSample Channel = -1.0;
     int64_t Age = 0;
 };
 
@@ -80,7 +80,7 @@ struct Scratch final : public MidiHandler
     uint32_t Polyphony;
     uint16_t ChannelMask;
 
-    std::vector<double> RegisterFile;
+    std::vector<AudioSample> RegisterFile;
     std::map<PortHandle, RegisterAllocation> PersistentRegisters;
     std::vector<MagicTapeUniquePtr> TapeFile;
     std::map<PortHandle, RegisterAllocation> PersistentTapes;
@@ -98,13 +98,13 @@ struct Scratch final : public MidiHandler
     std::vector<MidiNoteState> MidiLanes;
     std::vector<uint32_t> Retriggerables;
     std::array<uint8_t, 16> ChannelPrograms;
-    std::array<double, 16> ChannelPitchBend;
-    std::array<std::array<double, 128>, 16> ChannelControls;
+    std::array<AudioSample, 16> ChannelPitchBend;
+    std::array<std::array<AudioSample, 128>, 16> ChannelControls;
     int32_t MostRecentLane = -1;
 
     void Migrate(Scratch& Old);
 
-    void Crank(double SampleInterval, float& OutLeft, float& OutRight);
+    void Crank(AudioSample SampleInterval, float& OutLeft, float& OutRight);
 
 private:
     void PrintRegisters() const;
@@ -116,7 +116,7 @@ using ScratchUniquePtr = std::unique_ptr<Scratch>;
 struct Patch
 {
     std::unordered_map<TileHandle, OpCode> TileSymbols;
-    std::unordered_map<TileHandle, double> TileConstants;
+    std::unordered_map<TileHandle, AudioSample> TileConstants;
     std::unordered_map<TileHandle, std::string> TileNames;
 
     std::set<WireHandle> Wires;
@@ -135,7 +135,7 @@ struct Patch
     int GetPolyphony();
 
     TileHandle MakeTile(OpCode Symbol);
-    TileHandle MakeTile(double Constant);
+    TileHandle MakeTile(AudioSample Constant);
     void EraseTile(TileHandle Tile);
 
     std::vector<TileHandle> GetAllTileHandles();
@@ -145,8 +145,8 @@ struct Patch
     std::string GetTileName(TileHandle Tile);
     void SetTileName(TileHandle Tile, std::string NewName);
 
-    double GetConstant(TileHandle Tile);
-    void SetConstant(TileHandle Tile, double NewValue);
+    AudioSample GetConstant(TileHandle Tile);
+    void SetConstant(TileHandle Tile, AudioSample NewValue);
 
     std::string GetTileLabel(TileHandle Tile);
 
@@ -167,14 +167,14 @@ struct Patch
     bool CanConnect(TileHandle OutputTile, TileHandle InputTile);
     std::optional<WireHandle> GetImplicitWire(TileHandle OutputTile, TileHandle InputTile);
 
-    std::tuple<double, double> ReadOutputProbe();
-    std::tuple<double, double> ReadScopeProbe();
+    std::tuple<AudioSample, AudioSample> ReadOutputProbe();
+    std::tuple<AudioSample, AudioSample> ReadScopeProbe();
     void SetActiveProbe(TileHandle Tile);
     void ClearActiveProbe();
-    void SetSpecialInput(TileHandle Tile, double Value);
-    void AddSpecialInput(TileHandle Tile, double Value);
-    void AddRangeSpecialInput(TileHandle Tile, double Value, double LimitLow, double LimitHigh);
-    double GetSpecialInput(TileHandle Tile);
+    void SetSpecialInput(TileHandle Tile, AudioSample Value);
+    void AddSpecialInput(TileHandle Tile, AudioSample Value);
+    void AddRangeSpecialInput(TileHandle Tile, AudioSample Value, AudioSample LimitLow, AudioSample LimitHigh);
+    AudioSample GetSpecialInput(TileHandle Tile);
     bool GetChannelMask(int Channel);
     void SetChannelMask(int Channel, bool Listen);
 
@@ -184,7 +184,7 @@ private:
     uint32_t MidiPolyphony;
     uint16_t ChannelMask = 0xFFFF;
 
-    void ReplaceConstantOutput(TileHandle Tile, double NewValue);
+    void ReplaceConstantOutput(TileHandle Tile, AudioSample NewValue);
 
     // This is a cache of known output tiles for the purpose of labeling
     // audio channels.  This is updated every time the program is compiled.

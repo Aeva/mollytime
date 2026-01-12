@@ -49,14 +49,14 @@ uint32_t PortHandlePortIndexPart(PortHandle Handle)
 }
 
 
-double EncodeSampleHandle(uint32_t SampleHandle)
+AudioSample EncodeSampleHandle(uint32_t SampleHandle)
 {
 #if 0
     const uint64_t NaN = (0xffful << 51);
     uint64_t Encoded = NaN | uint64_t(SampleHandle);
-    return std::bit_cast<double, uint64_t>(Encoded);
+    return std::bit_cast<AudioSample, uint64_t>(Encoded);
 #endif
-    return std::bit_cast<double, uint64_t>(uint64_t(SampleHandle));
+    return std::bit_cast<AudioSample, uint32_t>(SampleHandle);
 }
 
 
@@ -181,7 +181,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
 }
 
 
-TileHandle Patch::MakeTile(double Constant)
+TileHandle Patch::MakeTile(AudioSample Constant)
 {
     TRACEABLE_SCOPE;
     const TileHandle AllocatedHandle = MakeTile(OpCode::CONST);
@@ -287,14 +287,14 @@ void Patch::SetTileName(TileHandle Tile, std::string NewName)
 }
 
 
-double Patch::GetConstant(TileHandle Tile)
+AudioSample Patch::GetConstant(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     return TileConstants.at(Tile);
 }
 
 
-void Patch::SetConstant(TileHandle Tile, double NewValue)
+void Patch::SetConstant(TileHandle Tile, AudioSample NewValue)
 {
     TRACEABLE_SCOPE;
     OpCode Symbol = GetTileSymbol(Tile);
@@ -310,7 +310,7 @@ void Patch::SetConstant(TileHandle Tile, double NewValue)
 }
 
 
-void Patch::ReplaceConstantOutput(TileHandle Tile, double NewValue)
+void Patch::ReplaceConstantOutput(TileHandle Tile, AudioSample NewValue)
 {
     TRACEABLE_SCOPE;
     Recompile();
@@ -490,14 +490,14 @@ std::optional<WireHandle> Patch::GetImplicitWire(TileHandle OutputTile, TileHand
 }
 
 
-std::tuple<double, double> Patch::ReadOutputProbe()
+std::tuple<AudioSample, AudioSample> Patch::ReadOutputProbe()
 {
     TRACEABLE_SCOPE;
     return OutputProbe->Get();
 }
 
 
-std::tuple<double, double> Patch::ReadScopeProbe()
+std::tuple<AudioSample, AudioSample> Patch::ReadScopeProbe()
 {
     TRACEABLE_SCOPE;
     return ScopeProbe->Get();
@@ -521,28 +521,28 @@ void Patch::ClearActiveProbe()
 }
 
 
-void Patch::SetSpecialInput(TileHandle Tile, double Value)
+void Patch::SetSpecialInput(TileHandle Tile, AudioSample Value)
 {
     TRACEABLE_SCOPE;
     SpecialInputs[Tile]->Set(Value);
 }
 
 
-void Patch::AddSpecialInput(TileHandle Tile, double Value)
+void Patch::AddSpecialInput(TileHandle Tile, AudioSample Value)
 {
     TRACEABLE_SCOPE;
     SpecialInputs[Tile]->Add(Value);
 }
 
 
-void Patch::AddRangeSpecialInput(TileHandle Tile, double Value, double LimitLow, double LimitHigh)
+void Patch::AddRangeSpecialInput(TileHandle Tile, AudioSample Value, AudioSample LimitLow, AudioSample LimitHigh)
 {
     TRACEABLE_SCOPE;
     SpecialInputs[Tile]->Add(Value, LimitLow, LimitHigh);
 }
 
 
-double Patch::GetSpecialInput(TileHandle Tile)
+AudioSample Patch::GetSpecialInput(TileHandle Tile)
 {
     TRACEABLE_SCOPE;
     return SpecialInputs[Tile]->Get();
@@ -551,11 +551,11 @@ double Patch::GetSpecialInput(TileHandle Tile)
 
 struct LaneScatterThunk : public InstructionThunk
 {
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LaneScatterThunk");
-        double Value = *Registers.InputPtr(0);
-        double* BaseAddress = Registers.OutputPtr(0);
+        AudioSample Value = *Registers.InputPtr(0);
+        AudioSample* BaseAddress = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             BaseAddress[Lane] = Value;
@@ -573,11 +573,11 @@ struct LaneMergeThunk : public InstructionThunk
         return true;
     }
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LaneMergeThunk");
-        double* BaseAddress = Registers.InputPtr(0);
-        double& Value = Registers.OutputRef(0, 0);
+        AudioSample* BaseAddress = Registers.InputPtr(0);
+        AudioSample& Value = Registers.OutputRef(0, 0);
         Value = BaseAddress[0];
         for (uint32_t Lane = 1; Lane < Registers.Polyphony; ++Lane)
         {
@@ -993,7 +993,7 @@ ScratchUniquePtr Patch::Compile()
     std::map<PortHandle, uint32_t> RegisterWidths;
 #endif
     {
-        auto AllocateRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
+        auto AllocateRegister = [&](PortHandle Port, uint32_t Lanes, AudioSample InitialValue = 0.0) -> std::ptrdiff_t
         {
             std::ptrdiff_t Offset = Program->RegisterFile.size();
             Program->RegisterFile.insert(Program->RegisterFile.end(), Lanes, InitialValue);
@@ -1003,7 +1003,7 @@ ScratchUniquePtr Patch::Compile()
 #endif
             return Offset;
         };
-        auto AllocatePersistentRegister = [&](PortHandle Port, uint32_t Lanes, double InitialValue = 0.0) -> std::ptrdiff_t
+        auto AllocatePersistentRegister = [&](PortHandle Port, uint32_t Lanes, AudioSample InitialValue = 0.0) -> std::ptrdiff_t
         {
             std::ptrdiff_t Offset = AllocateRegister(Port, Lanes, InitialValue);
             Program->PersistentRegisters[Port] = { Offset, Lanes };
@@ -1023,13 +1023,13 @@ ScratchUniquePtr Patch::Compile()
             if (Symbol == OpCode::CONST)
             {
                 // A temporary register is fine here, because this should never be overwritten.
-                const double ConstantValue = GetConstant(Tile);
+                const AudioSample ConstantValue = GetConstant(Tile);
                 AllocateRegister(MakePortHandle(Tile, 0), Lanes, ConstantValue);
             }
             else if (Symbol == OpCode::LANE_COUNT)
             {
                 // A temporary register is fine here, because this should never be overwritten.
-                AllocateRegister(MakePortHandle(Tile, 0), Lanes, double(MidiPolyphony));
+                AllocateRegister(MakePortHandle(Tile, 0), Lanes, AudioSample(MidiPolyphony));
             }
             else if (Symbol == OpCode::IN)
             {
@@ -1137,7 +1137,7 @@ ScratchUniquePtr Patch::Compile()
 
     // Emit thunks, and adjust default values.
     {
-        std::vector<double>* RegisterFile = &(Program->RegisterFile);
+        std::vector<AudioSample>* RegisterFile = &(Program->RegisterFile);
         std::vector<MagicTapeUniquePtr>* TapeFile = &(Program->TapeFile);
 
         for (TilePartialSharedPtr& Partial : FlatGraph)
@@ -1428,7 +1428,7 @@ void Scratch::PrintRegisters() const
     }
     for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)RegisterFile.size(); ++Register)
     {
-        const double Value = RegisterFile.at(Register);
+        const AudioSample Value = RegisterFile.at(Register);
         auto Found = PortsByRegisterOffset.find(Register);
         if (Found != PortsByRegisterOffset.end())
         {
@@ -1500,10 +1500,10 @@ void Scratch::Migrate(Scratch& Old)
 
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                 {
-                    const double MigratedValue = Old.RegisterFile.at(OldAllocation.BaseOffset + Lane);
+                    const AudioSample MigratedValue = Old.RegisterFile.at(OldAllocation.BaseOffset + Lane);
                     if (EnableDebugLogging)
                     {
-                        const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
+                        const AudioSample StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
                         const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
                         std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
@@ -1518,10 +1518,10 @@ void Scratch::Migrate(Scratch& Old)
                 }
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                 {
-                    const double MigratedValue = Old.RegisterFile.at(OldAllocation.BaseOffset);
+                    const AudioSample MigratedValue = Old.RegisterFile.at(OldAllocation.BaseOffset);
                     if (EnableDebugLogging)
                     {
-                        const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
+                        const AudioSample StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
                         const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
                         std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
@@ -1581,7 +1581,7 @@ void Scratch::Migrate(Scratch& Old)
 }
 
 
-void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
+void Scratch::Crank(AudioSample SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
     assert(MidiLanes.size() == Polyphony);
@@ -1596,7 +1596,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             {
                 for (MidiNoteState& State : MidiLanes)
                 {
-                    double OldNote = State.Note;
+                    AudioSample OldNote = State.Note;
                     State = MidiNoteState();
                     State.Note = OldNote;
                 }
@@ -1610,7 +1610,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     // All notes off.  See: http://midi.teragonaudio.com/tech/midispec/ntnoff.htm
                     for (MidiNoteState& State : MidiLanes)
                     {
-                        double OldNote = State.Note;
+                        AudioSample OldNote = State.Note;
                         State = MidiNoteState();
                         State.Note = OldNote;
                         State.Gate = 0.0;
@@ -1648,7 +1648,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
             {
                 bool LaneReset = false;
-                const double Note = Message.Param1;
+                const AudioSample Note = Message.Param1;
                 const int Channel = int(Message.Channel);
                 if (MostRecentLane == -1)
                 {
@@ -1660,7 +1660,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     // If we have a lane that matches the note and mask, use that.
                     for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
                     {
-                        const double LaneNote = MidiLanes.at(Lane).Note;
+                        const AudioSample LaneNote = MidiLanes.at(Lane).Note;
                         const int LaneChannel = int(MidiLanes.at(Lane).Channel);
                         if (Note == LaneNote && Channel == LaneChannel)
                         {
@@ -1678,7 +1678,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                         int64_t OldestInactiveAge = -1;
                         for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
                         {
-                            double Gate = MidiLanes.at(Lane).Gate;
+                            AudioSample Gate = MidiLanes.at(Lane).Gate;
                             int64_t Age = MidiLanes.at(Lane).Age;
                             if (Gate == 0.0 && Age > OldestInactiveAge)
                             {
@@ -1722,7 +1722,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                     State.Gate = 0.0;
                     State.Velocity = 0.0;
                     State.Pressure = 0.0;
-                    State.Channel = double(Channel);
+                    State.Channel = AudioSample(Channel);
                     State.Age = 0;
 
                     for (uint32_t ThunkIndex : Retriggerables)
@@ -1736,7 +1736,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                 if (Message.Type == MidiMessageType::Note)
                 {
                     MidiNoteState& State = MidiLanes.at(AssignedLane);
-                    const double Velocity = Message.Param2;
+                    const AudioSample Velocity = Message.Param2;
                     if (Velocity > 0.0)
                     {
                         State.Gate = 1.0;
@@ -1752,7 +1752,7 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
                 else if (Message.Type == MidiMessageType::PolyPress)
                 {
                     MidiNoteState& State = MidiLanes.at(AssignedLane);
-                    const double Pressure = Message.Param2;
+                    const AudioSample Pressure = Message.Param2;
                     State.Pressure = Pressure;
                 }
             }

@@ -232,7 +232,7 @@ PYBIND11_MODULE(mollytime, m) {
 		{
 			return Self.MakeTile(Symbol);
 		})
-		.def("make_constant", [](Patch& Self, double Value) -> TileHandle
+		.def("make_constant", [](Patch& Self, AudioSample Value) -> TileHandle
 		{
 			return Self.MakeTile(Value);
 		})

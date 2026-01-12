@@ -24,98 +24,98 @@
 #include "audio_backend.h"
 #include "kiki.inl"
 
-constexpr double Tau = std::numbers::pi * 2.0;
+constexpr AudioSample Tau = float(std::numbers::pi * 2.0);
 
 static std::random_device RandomDevice;
 static std::mt19937 RandomGenerator{ RandomDevice() };
-const double RngScale = 1.0 / double(RandomGenerator.max());
+const AudioSample RngScale = 1.0 / AudioSample(RandomGenerator.max());
 
-double Roll()
+AudioSample Roll()
 {
     // Returns between 0.0 and 1.0, inclusive.
-    return double(RandomGenerator()) * RngScale;
+    return AudioSample(RandomGenerator()) * RngScale;
 }
 
 
 // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
-/* constexpr */ double MidiNoteToHz(double Note)
+/* constexpr */ AudioSample MidiNoteToHz(AudioSample Note)
 {
-    double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
+    AudioSample Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
     return Hz;
 }
 
 
 // NOTE: std::log2 not constexpr until C++26, and Clang 2c doesn't have it yet
-/* constexpr */ double HzToMidiNote(double Hz)
+/* constexpr */ AudioSample HzToMidiNote(AudioSample Hz)
 {
     if (Hz <= 0.0)
     {
         return 0.0;
     }
-    double Note = std::log2(Hz / 440.0) * 12.0 + 69.0;
+    AudioSample Note = std::log2(Hz / 440.0) * 12.0 + 69.0;
     return Note;
 }
 
 
 // NOTE: std::log10 not constexpr until C++26, and Clang 2c doesn't have it yet
-/* constexpr */ double AmplitudeToDecibels(double Amplitude)
+/* constexpr */ AudioSample AmplitudeToDecibels(AudioSample Amplitude)
 {
     // https://stackoverflow.com/questions/2445756/how-can-i-calculate-audio-db-level/9812267#9812267
-    double dB = 20.0 * std::log10(Amplitude);
+    AudioSample dB = 20.0 * std::log10(Amplitude);
     return dB;
 }
 
 
 // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
-/* constexpr */ double DecibelsToAmplitude(double dB)
+/* constexpr */ AudioSample DecibelsToAmplitude(AudioSample dB)
 {
-    double Amplitude = std::pow(10.0, dB / 20.0);
+    AudioSample Amplitude = std::pow(10.0, dB / 20.0);
     return Amplitude;
 }
 
 
 // NOTE: Not constexpr until required C++26 features land.  See above notes
-/* constexpr */ double PerceptualAmplitudeCorrectionByMidiNoteInner(double Note)
+/* constexpr */ AudioSample PerceptualAmplitudeCorrectionByMidiNoteInner(AudioSample Note)
 {
     // https://merveilles.town/@cancel/114848900879804284
-    const double Peak = AmplitudeToDecibels(1.0);
-    const double CutCenter = 95.0; // HzToMidiNote(2000.0), approximately
-    const double LowEdge = CutCenter - 6.0;
-    const double HighEdge = CutCenter + 6.0;
-    double dB = Peak;
-    double NearestEdge = (Note < CutCenter) ? LowEdge : HighEdge;
-    double EdgeDistance = std::abs(Note - NearestEdge);
+    const AudioSample Peak = AmplitudeToDecibels(1.0);
+    const AudioSample CutCenter = 95.0; // HzToMidiNote(2000.0), approximately
+    const AudioSample LowEdge = CutCenter - 6.0;
+    const AudioSample HighEdge = CutCenter + 6.0;
+    AudioSample dB = Peak;
+    AudioSample NearestEdge = (Note < CutCenter) ? LowEdge : HighEdge;
+    AudioSample EdgeDistance = std::abs(Note - NearestEdge);
     if (Note >= LowEdge && Note <= HighEdge)
     {
-        double Offset = std::min(EdgeDistance, 1.0);
+        AudioSample Offset = std::min(EdgeDistance, 1.0f);
         dB -= 3.0 * Offset;
     }
     else
     {
-        double Offset = EdgeDistance / 12.0;
+        AudioSample Offset = EdgeDistance / 12.0;
         dB += 4.5 * Offset;
     }
     return DecibelsToAmplitude(dB);
 }
 
 // NOTE: Not constexpr until required C++26 features land.  See above notes
-/* constexpr */ double PerceptualAmplitudeCorrectionByMidiNote(double Note)
+/* constexpr */ AudioSample PerceptualAmplitudeCorrectionByMidiNote(AudioSample Note)
 {
     // TODO: Make this constexpr once the required C++26 features land
-    static const double Scale = 1.0 / PerceptualAmplitudeCorrectionByMidiNoteInner(HzToMidiNote(50.0));
+    static const AudioSample Scale = 1.0 / PerceptualAmplitudeCorrectionByMidiNoteInner(HzToMidiNote(50.0));
 
     return PerceptualAmplitudeCorrectionByMidiNoteInner(Note) * Scale;
 }
 
 // NOTE: Not constexpr until required C++26 features land.  See above notes
-/* constexpr */ double PerceptualAmplitudeCorrectionByHz(double Hz)
+/* constexpr */ AudioSample PerceptualAmplitudeCorrectionByHz(AudioSample Hz)
 {
     if (Hz <= 0.0)
     {
         return 0.0;
     }
-    const double Note = HzToMidiNote(Hz);
-    return std::min(PerceptualAmplitudeCorrectionByMidiNote(Note), 1.0);
+    const AudioSample Note = HzToMidiNote(Hz);
+    return std::min(PerceptualAmplitudeCorrectionByMidiNote(Note), 1.0f);
 }
 
 
@@ -130,14 +130,14 @@ struct SinThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0, 440.0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.ClosureRef(Lane, 0);
+            AudioSample Hz = Registers.CombineInput(Lane, 0, 440.0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.ClosureRef(Lane, 0);
 
             Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
             Amplitude = std::sin(Phase * Tau);
@@ -159,14 +159,14 @@ struct SqrThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SqrThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0, 440.0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.ClosureRef(Lane, 0);
+            AudioSample Hz = Registers.CombineInput(Lane, 0, 440.0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.ClosureRef(Lane, 0);
 
             Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
             if (Phase < 0.0)
@@ -192,23 +192,23 @@ struct TriThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TriThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0, 440.0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.ClosureRef(Lane, 0);
+            AudioSample Hz = Registers.CombineInput(Lane, 0, 440.0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.ClosureRef(Lane, 0);
 
             Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
             if (Phase < 0.0)
             {
                 Phase += 1.0;
             }
-            double Sign = Phase < 0.5 ? 1.0 : -1.0;
-            double IntegerPart = 0.0;
-            double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+            AudioSample Sign = Phase < 0.5 ? 1.0 : -1.0;
+            AudioSample IntegerPart = 0.0;
+            AudioSample Alpha = std::modf(Phase * 4.0, &IntegerPart);
             if (int(IntegerPart) % 2 == 1)
             {
                 Alpha = 1.0 - Alpha;
@@ -232,14 +232,14 @@ struct SawThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SawThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0, 440.0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.ClosureRef(Lane, 0);
+            AudioSample Hz = Registers.CombineInput(Lane, 0, 440.0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.ClosureRef(Lane, 0);
 
             Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
             if (Phase < 0.0)
@@ -266,16 +266,16 @@ struct NoiThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("NoiThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0, 440.0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.ClosureRef(Lane, 0);
-            double& HighAmp = Registers.ClosureRef(Lane, 1);
-            double& LowAmp = Registers.ClosureRef(Lane, 2);
+            AudioSample Hz = Registers.CombineInput(Lane, 0, 440.0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.ClosureRef(Lane, 0);
+            AudioSample& HighAmp = Registers.ClosureRef(Lane, 1);
+            AudioSample& LowAmp = Registers.ClosureRef(Lane, 2);
 
             int Before = int(Phase * 4.0);
             Phase += Hz * SampleInterval;
@@ -294,7 +294,7 @@ struct NoiThunk : public InstructionThunk
                 }
             }
             Phase = std::fmod(Phase, 1.0);
-            double Alpha = std::sin(Phase * Tau) * .5 + .5;
+            AudioSample Alpha = std::sin(Phase * Tau) * .5 + .5;
             Amplitude = LowAmp * (1.0 - Alpha) + HighAmp * Alpha;
         });
     }
@@ -314,13 +314,13 @@ struct PhaseThunk : public InstructionThunk
         {"phase"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0, 440.0);
-            double& Phase = Registers.OutputRef(Lane, 0);
+            AudioSample Hz = Registers.CombineInput(Lane, 0, 440.0);
+            AudioSample& Phase = Registers.OutputRef(Lane, 0);
 
             Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
             if (Phase < 0.0)
@@ -345,14 +345,14 @@ struct SinTrainThunk : public InstructionThunk
         {"amp", "phase"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineInput(Lane, 0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.OutputRef(Lane, 1);
+            AudioSample InPhase = Registers.CombineInput(Lane, 0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.OutputRef(Lane, 1);
 
             Phase = std::fmod(InPhase, 1.0);
             Amplitude = std::sin(Phase * Tau);
@@ -374,14 +374,14 @@ struct SqrTrainThunk : public InstructionThunk
         {"amp", "phase"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineInput(Lane, 0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.OutputRef(Lane, 1);
+            AudioSample InPhase = Registers.CombineInput(Lane, 0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.OutputRef(Lane, 1);
 
             Phase = std::fmod(InPhase, 1.0);
             if (Phase < 0.0)
@@ -407,23 +407,23 @@ struct TriTrainThunk : public InstructionThunk
         {"amp", "phase"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TriTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineInput(Lane, 0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.OutputRef(Lane, 1);
+            AudioSample InPhase = Registers.CombineInput(Lane, 0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.OutputRef(Lane, 1);
 
             Phase = std::fmod(InPhase, 1.0);
             if (Phase < 0.0)
             {
                 Phase += 1.0;
             }
-            double Sign = Phase < 0.5 ? 1.0 : -1.0;
-            double IntegerPart = 0.0;
-            double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+            AudioSample Sign = Phase < 0.5 ? 1.0 : -1.0;
+            AudioSample IntegerPart = 0.0;
+            AudioSample Alpha = std::modf(Phase * 4.0, &IntegerPart);
             if (int(IntegerPart) % 2 == 1)
             {
                 Alpha = 1.0 - Alpha;
@@ -447,14 +447,14 @@ struct SawTrainThunk : public InstructionThunk
         {"amp", "phase"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SawTrainThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double InPhase = Registers.CombineInput(Lane, 0);
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& Phase = Registers.OutputRef(Lane, 1);
+            AudioSample InPhase = Registers.CombineInput(Lane, 0);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& Phase = Registers.OutputRef(Lane, 1);
 
             Phase = std::fmod(InPhase, 1.0);
             if (Phase < 0.0)
@@ -482,26 +482,26 @@ struct PhaseWidthModulationThunk : public InstructionThunk
         {"phase"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Phase = Registers.CombineInput(Lane, 0);
-            double Balance = Registers.CombineInput(Lane, 1);
-            double& OutPhase = Registers.OutputRef(Lane, 0);
+            AudioSample Phase = Registers.CombineInput(Lane, 0);
+            AudioSample Balance = Registers.CombineInput(Lane, 1);
+            AudioSample& OutPhase = Registers.OutputRef(Lane, 0);
 
-            const double Pivot = (Balance * 0.5 + 0.5);
+            const AudioSample Pivot = (Balance * 0.5 + 0.5);
             Phase = std::fmod(Phase, 1.0);
 
             if (Phase <= Pivot && Pivot > 0.0)
             {
-                const double Alpha = Phase / Pivot;
+                const AudioSample Alpha = Phase / Pivot;
                 Phase = Alpha * 0.5;
             }
             else if (Phase >= Pivot && Pivot < 1.0)
             {
-                const double Alpha = (Phase - Pivot) / (1.0 - Pivot);
+                const AudioSample Alpha = (Phase - Pivot) / (1.0 - Pivot);
                 Phase = 0.5 + Alpha * 0.5;
             }
 
@@ -524,7 +524,7 @@ struct AddThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddThunk");
         CrankLanes([&](uint32_t Lane)
@@ -548,7 +548,7 @@ struct MulThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MulThunk");
         CrankLanes([&](uint32_t Lane)
@@ -572,13 +572,13 @@ struct RcpThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RcpThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Divisor = Registers.CombineInput(Lane, 0, 0.0, CombinerMul);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Divisor = Registers.CombineInput(Lane, 0, 0.0, CombinerMul);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
 
             if (Divisor != 0.0)
             {
@@ -603,16 +603,16 @@ struct PowThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PowThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Base = Registers.CombineInput(Lane, 0);
-            double Exponent = Registers.CombineInput(Lane, 1, 2.0);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Base = Registers.CombineInput(Lane, 0);
+            AudioSample Exponent = Registers.CombineInput(Lane, 1, 2.0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
 
-            double Result = std::pow(Base, Exponent);
+            AudioSample Result = std::pow(Base, Exponent);
             if (std::isfinite(Result))
             {
                 Output = Result;
@@ -636,17 +636,17 @@ struct SignPreservingPowThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Base = Registers.CombineInput(Lane, 0);
-            double Exponent = Registers.CombineInput(Lane, 1, 2.0);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Base = Registers.CombineInput(Lane, 0);
+            AudioSample Exponent = Registers.CombineInput(Lane, 1, 2.0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
 
-            double Sign = Base >= 0.0 ? 1.0 : -1.0;
-            double Result = std::pow(std::abs(Base), Exponent);
+            AudioSample Sign = Base >= 0.0 ? 1.0 : -1.0;
+            AudioSample Result = std::pow(std::abs(Base), Exponent);
             if (std::isfinite(Result))
             {
                 Output = Result * Sign;
@@ -669,7 +669,7 @@ struct MinThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MinThunk");
         CrankLanes([&](uint32_t Lane)
@@ -693,7 +693,7 @@ struct MaxThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MaxThunk");
         CrankLanes([&](uint32_t Lane)
@@ -719,15 +719,15 @@ struct ClampThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ClampThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineInput(Lane, 0);
-            double High = Registers.CombineInput(Lane, 1, 1.0, CombinerMax);
-            double Low = Registers.CombineInput(Lane, 2, -1.0, CombinerMin);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Sample = Registers.CombineInput(Lane, 0);
+            AudioSample High = Registers.CombineInput(Lane, 1, 1.0, CombinerMax);
+            AudioSample Low = Registers.CombineInput(Lane, 2, -1.0, CombinerMin);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
             Output = std::max(std::min(Sample, High), Low);
         });
     }
@@ -747,7 +747,7 @@ struct FloorThunk : public InstructionThunk
         {"floor"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FloorThunk");
         CrankLanes([&](uint32_t Lane)
@@ -771,7 +771,7 @@ struct CeilThunk : public InstructionThunk
         {"ceil"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("CeilThunk");
         CrankLanes([&](uint32_t Lane)
@@ -795,7 +795,7 @@ struct RoundThunk : public InstructionThunk
         {"rounded"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RoundThunk");
         CrankLanes([&](uint32_t Lane)
@@ -819,13 +819,13 @@ struct SignThunk : public InstructionThunk
         {"sign"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SignThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Number = Registers.CombineInput(Lane, 0);
-            double& Sign = Registers.OutputRef(Lane, 0);
+            AudioSample Number = Registers.CombineInput(Lane, 0);
+            AudioSample& Sign = Registers.OutputRef(Lane, 0);
             Sign = (Number < 0.0) ? -1.0 : 1.0;
         });
     }
@@ -845,7 +845,7 @@ struct AbsThunk : public InstructionThunk
         {"abs"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AbsThunk");
         CrankLanes([&](uint32_t Lane)
@@ -871,15 +871,15 @@ struct FoldThunk : public InstructionThunk
         {"w"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FoldThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineInput(Lane, 0);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Sample = Registers.CombineInput(Lane, 0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
 
-            double Threshold;
+            AudioSample Threshold;
             if (Sample < 0.0 && Registers.InputConnected(2))
             {
                 // Use the negative threshold input.
@@ -891,8 +891,8 @@ struct FoldThunk : public InstructionThunk
                 Threshold = Registers.CombineInput(Lane, 1, 1.0);
             }
 
-            double Sign = Sample < 0.0 ? -1.0 : 1.0;
-            Threshold = std::min(std::max(std::abs(Threshold), 0.0), 1.0);
+            AudioSample Sign = Sample < 0.0 ? -1.0 : 1.0;
+            Threshold = std::min(std::max(std::abs(Threshold), 0.0f), 1.0f);
             Sample = std::abs(Sample);
             if (Sample > Threshold)
             {
@@ -917,14 +917,14 @@ struct InvertThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InvertThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Value = Registers.CombineInput(Lane, 0);
-            double& Output = Registers.OutputRef(Lane, 0);
-            double Sign = Value < 0.0 ? -1.0 : 1.0;
+            AudioSample Value = Registers.CombineInput(Lane, 0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Sign = Value < 0.0 ? -1.0 : 1.0;
             Output = (1.0 - std::abs(Value)) * Sign;
         });
     }
@@ -944,7 +944,7 @@ struct ToUnipolarThunk : public InstructionThunk
         {"uni"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
         CrankLanes([&](uint32_t Lane)
@@ -968,7 +968,7 @@ struct ToBipolarThunk : public InstructionThunk
         {"bi"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
         CrankLanes([&](uint32_t Lane)
@@ -994,15 +994,15 @@ struct MixThunk : public InstructionThunk
         {"="}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MixThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Left = Registers.CombineInput(Lane, 0);
-            double Right = Registers.CombineInput(Lane, 1);
-            double Alpha = Registers.CombineInput(Lane, 2, 0.5);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Left = Registers.CombineInput(Lane, 0);
+            AudioSample Right = Registers.CombineInput(Lane, 1);
+            AudioSample Alpha = Registers.CombineInput(Lane, 2, 0.5);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
 
             Output = (1.0 - Alpha) * Left + Alpha * Right;
         });
@@ -1024,18 +1024,18 @@ struct StereoBalanceThunk : public InstructionThunk
         {"left", "right"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineInput(Lane, 0);
-            double Balance = Registers.CombineInput(Lane, 1);
-            double& Left = Registers.OutputRef(Lane, 0);
-            double& Right = Registers.OutputRef(Lane, 1);
+            AudioSample Sample = Registers.CombineInput(Lane, 0);
+            AudioSample Balance = Registers.CombineInput(Lane, 1);
+            AudioSample& Left = Registers.OutputRef(Lane, 0);
+            AudioSample& Right = Registers.OutputRef(Lane, 1);
 
-            double Alpha = std::min(std::max(Balance, -1.0), 1.0) * 0.5 + 0.5;
-            double InvA = 1.0 - Alpha;
+            AudioSample Alpha = std::min(std::max(Balance, -1.0f), 1.0f) * 0.5f + 0.5f;
+            AudioSample InvA = 1.0 - Alpha;
             Left = Sample * InvA;
             Right = Sample * Alpha;
         });
@@ -1056,14 +1056,14 @@ struct PulseThunk : public InstructionThunk
         {"pulse"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PulseThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineInput(Lane, 0);
-            double& Output = Registers.OutputRef(Lane, 0);
-            double& Latch = Registers.ClosureRef(Lane, 0);
+            AudioSample Clock = Registers.CombineInput(Lane, 0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
+            AudioSample& Latch = Registers.ClosureRef(Lane, 0);
 
             if (Registers.InputConnected(0))
             {
@@ -1100,18 +1100,18 @@ struct FlipFlopThunk : public InstructionThunk
         {"even", "odd"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineInput(Lane, 0);
-            double& EvenOutput = Registers.OutputRef(Lane, 0);
-            double& OddOutput = Registers.OutputRef(Lane, 1);
-            double& Latch = Registers.ClosureRef(Lane, 0);
+            AudioSample Clock = Registers.CombineInput(Lane, 0);
+            AudioSample& EvenOutput = Registers.OutputRef(Lane, 0);
+            AudioSample& OddOutput = Registers.OutputRef(Lane, 1);
+            AudioSample& Latch = Registers.ClosureRef(Lane, 0);
 
-            const double LastEven = EvenOutput;
-            const double LastOdd = OddOutput;
+            const AudioSample LastEven = EvenOutput;
+            const AudioSample LastOdd = OddOutput;
             if (LastEven == LastOdd)
             {
                 EvenOutput = 1.0;
@@ -1157,14 +1157,14 @@ struct RandomThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RandomThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineInput(Lane, 0);
-            double& Output = Registers.OutputRef(Lane, 0);
-            double& Latch = Registers.ClosureRef(Lane, 0);
+            AudioSample Clock = Registers.CombineInput(Lane, 0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
+            AudioSample& Latch = Registers.ClosureRef(Lane, 0);
 
             if (Registers.InputConnected(0))
             {
@@ -1197,17 +1197,17 @@ struct GradualThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GradualThunk");
         CrankLanes([&](uint32_t Lane)
         {
             if (Registers.InputConnected(0))
             {
-                double Value = Registers.CombineInput(Lane, 0);
-                double Rate = Registers.CombineInput(Lane, 1);
-                double& Pos = Registers.OutputRef(Lane, 0);
-                double& Initialized = Registers.ClosureRef(Lane, 0);
+                AudioSample Value = Registers.CombineInput(Lane, 0);
+                AudioSample Rate = Registers.CombineInput(Lane, 1);
+                AudioSample& Pos = Registers.OutputRef(Lane, 0);
+                AudioSample& Initialized = Registers.ClosureRef(Lane, 0);
 
                 Rate *= SampleInterval;
 
@@ -1218,8 +1218,8 @@ struct GradualThunk : public InstructionThunk
                 }
                 else
                 {
-                    double Delta = Value - Pos;
-                    double Sign = (Delta < 0.0) ? -1.0 : 1.0;
+                    AudioSample Delta = Value - Pos;
+                    AudioSample Sign = (Delta < 0.0) ? -1.0 : 1.0;
                     Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
                     Pos += Delta;
                 }
@@ -1251,23 +1251,23 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     // which in turn was adapted from https://github.com/JordanTHarris/VAStateVariableFilter/
     // Additional useful information: https://mastodon.gamedev.place/@rygorous/115082511872070814
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineInput(Lane, 0);
-            double Cutoff = Registers.CombineInput(Lane, 1, 1000.0);
-            double Resonance = Registers.CombineInput(Lane, 2);
-            double& Output = Registers.OutputRef(Lane, 0);
-            double& LastCutoff = Registers.ClosureRef(Lane, 0);
-            double& LastResonance = Registers.ClosureRef(Lane, 1);
-            double& Gain = Registers.ClosureRef(Lane, 2);
-            double& FeedbackDamping = Registers.ClosureRef(Lane, 3);
+            AudioSample Sample = Registers.CombineInput(Lane, 0);
+            AudioSample Cutoff = Registers.CombineInput(Lane, 1, 1000.0);
+            AudioSample Resonance = Registers.CombineInput(Lane, 2);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
+            AudioSample& LastCutoff = Registers.ClosureRef(Lane, 0);
+            AudioSample& LastResonance = Registers.ClosureRef(Lane, 1);
+            AudioSample& Gain = Registers.ClosureRef(Lane, 2);
+            AudioSample& FeedbackDamping = Registers.ClosureRef(Lane, 3);
             // TODO: ShelfGain can be factored out for most specializations of this class
-            double& ShelfGain = Registers.ClosureRef(Lane, 4);
-            double& z1_A = Registers.ClosureRef(Lane, 5); // state variables (z^-1)
-            double& z2_A = Registers.ClosureRef(Lane, 6);
+            AudioSample& ShelfGain = Registers.ClosureRef(Lane, 4);
+            AudioSample& z1_A = Registers.ClosureRef(Lane, 5); // state variables (z^-1)
+            AudioSample& z2_A = Registers.ClosureRef(Lane, 6);
 
             // TODO: Is this section actually worth the two extra RunningState vars and the branch?
             if (Cutoff != LastCutoff || Resonance != LastResonance)
@@ -1276,14 +1276,14 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
                 LastResonance = Resonance;
 
                 // prewarp the cutoff (for bilinear-transform filters)
-                double wd = Cutoff * Tau;
-                double T = SampleInterval;
-                double wa = (2.0 / T) * std::tan(wd * T / 2.0);
+                AudioSample wd = Cutoff * Tau;
+                AudioSample T = SampleInterval;
+                AudioSample wa = (2.0 / T) * std::tan(wd * T / 2.0);
 
                 // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value of Q.
-                // This is the highest double precision value where integers can be exactly represented,
+                // This is the highest AudioSample precision value where integers can be exactly represented,
                 // which serves no other purpose than to be an improbably high value.
-                double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Resonance, 0.0), 1.0))), std::pow(2.0, 53.0));
+                AudioSample Q = std::min(1.0f / (2.0f * (1.0f - std::min(std::max(Resonance, 0.0f), 1.0f))), std::pow(2.0f, 53.0f));
 
                 // Calculate g (gain element of integrator)
                 Gain = wa * T / 2.0;
@@ -1295,22 +1295,22 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
                 //ShelfGain = ShelfGain; ????????
             }
 
-            double HP = (Sample - (2.0 * FeedbackDamping + Gain) * z1_A - z2_A) /
+            AudioSample HP = (Sample - (2.0 * FeedbackDamping + Gain) * z1_A - z2_A) /
                 (1.0 + (2.0 * FeedbackDamping * Gain) + Gain * Gain);
 
-            double BP = HP * Gain + z1_A;
+            AudioSample BP = HP * Gain + z1_A;
 
-            double LP = BP * Gain + z2_A;
+            AudioSample LP = BP * Gain + z2_A;
 
-            double UBP = 2.0 * FeedbackDamping * BP;
+            AudioSample UBP = 2.0 * FeedbackDamping * BP;
 
-            double BShelf = Sample + UBP * ShelfGain;
+            AudioSample BShelf = Sample + UBP * ShelfGain;
 
-            double Notch = Sample - UBP;
+            AudioSample Notch = Sample - UBP;
 
-            double AP = Sample - (4.0 * FeedbackDamping * BP);
+            AudioSample AP = Sample - (4.0 * FeedbackDamping * BP);
 
-            double Peak = LP - HP;
+            AudioSample Peak = LP - HP;
 
             z1_A = Gain * HP + BP;
             z2_A = Gain * BP + LP;
@@ -1441,28 +1441,28 @@ struct AdsrThunk : public InstructionThunk
         {"#"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AdsrThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Trigger = Registers.CombineInput(Lane, 0);
-            const double Attack = std::max(Registers.CombineInput(Lane, 1, 0.1), 0.0);
-            const double Decay = std::max(Registers.CombineInput(Lane, 2, 0.1), 0.0);
-            const double Sustain = std::min(std::max(Registers.CombineInput(Lane, 3, 1.0), 0.0), 1.0);
-            const double Release = std::max(Registers.CombineInput(Lane, 4, 1.0), 0.0);
+            AudioSample Trigger = Registers.CombineInput(Lane, 0);
+            const AudioSample Attack = std::max(Registers.CombineInput(Lane, 1, 0.1f), 0.0f);
+            const AudioSample Decay = std::max(Registers.CombineInput(Lane, 2, 0.1f), 0.0f);
+            const AudioSample Sustain = std::min(std::max(Registers.CombineInput(Lane, 3, 1.0f), 0.0f), 1.0f);
+            const AudioSample Release = std::max(Registers.CombineInput(Lane, 4, 1.0f), 0.0f);
 
-            double& Amplitude = Registers.OutputRef(Lane, 0);
-            double& LastTrigger = Registers.ClosureRef(Lane, 0);
-            double& Mode = Registers.ClosureRef(Lane, 1);
+            AudioSample& Amplitude = Registers.OutputRef(Lane, 0);
+            AudioSample& LastTrigger = Registers.ClosureRef(Lane, 0);
+            AudioSample& Mode = Registers.ClosureRef(Lane, 1);
 
             // Use simple rates of change for attack, decay, and release.  These
             // input parameters are the number of seconds it takes to transit one
             // unit of amplitude.  Effectively `abs(Rise / Run)`, where Rise is
             // amplitude, and Run is seconds.
-            const double AttackRate = 1.0 / Attack;
-            const double DecayRate = 1.0 / Decay;
-            const double ReleaseRate = 1.0 / Release;
+            const AudioSample AttackRate = 1.0f / Attack;
+            const AudioSample DecayRate = 1.0f / Decay;
+            const AudioSample ReleaseRate = 1.0f / Release;
 
             auto BeginAttack = [&]()
             {
@@ -1525,7 +1525,7 @@ struct AdsrThunk : public InstructionThunk
             }
             else
             {
-                double Rate;
+                AudioSample Rate;
                 switch (int(Mode))
                 {
                 case 3:
@@ -1541,8 +1541,8 @@ struct AdsrThunk : public InstructionThunk
                 }
 
                 // Apply the rate of change appropriate for the current phase.
-                const double Direction = (Mode == 3.0) ? 1.0 : -1.0;
-                Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
+                const AudioSample Direction = (Mode == 3.0f) ? 1.0f : -1.0f;
+                Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0f), 1.0f);
             }
 
             if (Mode == 3.0 && Amplitude == 1.0)
@@ -1565,7 +1565,7 @@ struct AdsrThunk : public InstructionThunk
     virtual void Retrigger(uint32_t Lane) override
     {
         // If the adsr is currently held it will retrigger this frame.
-        double& LastTrigger = Registers.ClosureRef(Lane, 0);
+        AudioSample& LastTrigger = Registers.ClosureRef(Lane, 0);
         LastTrigger = 0.0;
     }
 
@@ -1586,25 +1586,25 @@ struct QuantizeThunk : public InstructionThunk
         {"note"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("QuantizeThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Note = Registers.CombineInput(Lane, 0);
-            const double Root = Registers.CombineInput(Lane, 1, 60.0); // defaults to Middle C
-            const std::vector<double*>& Intervals = Registers.InputVector(2);
-            double& OutNote = Registers.OutputRef(Lane, 0);
+            AudioSample Note = Registers.CombineInput(Lane, 0);
+            const AudioSample Root = Registers.CombineInput(Lane, 1, 60.0); // defaults to Middle C
+            const std::vector<AudioSample*>& Intervals = Registers.InputVector(2);
+            AudioSample& OutNote = Registers.OutputRef(Lane, 0);
 
             if (Registers.InputConnected(0) && Registers.InputConnected(2))
             {
-                double Stride = 0.0;
-                std::vector<double> Scale;
+                AudioSample Stride = 0.0;
+                std::vector<AudioSample> Scale;
                 Scale.reserve(Intervals.size() + 1);
                 Scale.push_back(0.0);
-                for (double* Register : Intervals)
+                for (AudioSample* Register : Intervals)
                 {
-                    double Interval = std::max(Register[Lane], 0.0);
+                    AudioSample Interval = std::max(Register[Lane], 0.0f);
                     if (Interval > 0.0)
                     {
                         Stride += Interval;
@@ -1618,7 +1618,7 @@ struct QuantizeThunk : public InstructionThunk
                     return;
                 }
 
-                double Shift = 0.0;
+                AudioSample Shift = 0.0;
                 Note -= Root;
                 while (Note < 0.0)
                 {
@@ -1633,15 +1633,15 @@ struct QuantizeThunk : public InstructionThunk
 
 #if 1
                 {
-                    double Alpha = Note / Stride;
+                    AudioSample Alpha = Note / Stride;
                     int IndexLow = 0;
                     int IndexHigh = 0;
-                    double AlphaLow = 0.0;
-                    double AlphaHigh = 1.0;
+                    AudioSample AlphaLow = 0.0;
+                    AudioSample AlphaHigh = 1.0;
                     for (int Index = 1; Index < int(Scale.size()); ++Index)
                     {
                         IndexHigh = int(Index);
-                        AlphaHigh = double(Index) / double(Scale.size() - 1);
+                        AlphaHigh = AudioSample(Index) / AudioSample(Scale.size() - 1);
                         if (AlphaLow <= Alpha && Alpha <= AlphaHigh)
                         {
                             break;
@@ -1657,8 +1657,8 @@ struct QuantizeThunk : public InstructionThunk
                 }
 #endif
 
-                double Low = 0.0;
-                double High = 0.0;
+                AudioSample Low = 0.0;
+                AudioSample High = 0.0;
                 for (int Index = 0; Index < int(Scale.size()) - 1; ++Index)
                 {
                     Low = Scale[Index];
@@ -1694,19 +1694,19 @@ struct InputSequenceThunk : public InstructionThunk
         {"#", "complete"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineInput(Lane, 0);
-            const std::vector<double*>& Sequence = Registers.InputVector(1);
-            double Restart = Registers.CombineInput(Lane, 2);
-            double& OutValue = Registers.OutputRef(Lane, 0);
-            double& OutComplete = Registers.OutputRef(Lane, 1);
-            double& LastClock = Registers.ClosureRef(Lane, 0);
-            double& LastRestart = Registers.ClosureRef(Lane, 1);
-            double& Cursor = Registers.ClosureRef(Lane, 2);
+            AudioSample Clock = Registers.CombineInput(Lane, 0);
+            const std::vector<AudioSample*>& Sequence = Registers.InputVector(1);
+            AudioSample Restart = Registers.CombineInput(Lane, 2);
+            AudioSample& OutValue = Registers.OutputRef(Lane, 0);
+            AudioSample& OutComplete = Registers.OutputRef(Lane, 1);
+            AudioSample& LastClock = Registers.ClosureRef(Lane, 0);
+            AudioSample& LastRestart = Registers.ClosureRef(Lane, 1);
+            AudioSample& Cursor = Registers.ClosureRef(Lane, 2);
 
             if (LastRestart <= 0.0 && Restart >= 1.0)
             {
@@ -1731,10 +1731,10 @@ struct InputSequenceThunk : public InstructionThunk
                 // back to this sequence.  In other words, the way of constructing a patch that chains
                 // sequences that was most obvious to me always skips the last note in each sequence.
                 // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
-                OutComplete = double(Index == (Period - 1));
+                OutComplete = AudioSample(Index == (Period - 1));
 
                 Index = (Index + 1);
-                Cursor = double(Index);
+                Cursor = AudioSample(Index);
             }
             LastClock = Clock;
         });
@@ -1757,9 +1757,9 @@ struct RandomSequenceThunk : public InstructionThunk
         {"#", "complete"}
     };
 
-    std::vector<std::vector<double>> Cache;
+    std::vector<std::vector<AudioSample>> Cache;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RandomSequenceThunk");
 
@@ -1770,27 +1770,27 @@ struct RandomSequenceThunk : public InstructionThunk
 
         CrankLanes([&](uint32_t Lane)
         {
-            double Clock = Registers.CombineInput(Lane, 0);
+            AudioSample Clock = Registers.CombineInput(Lane, 0);
 
-            double& OutValue = Registers.OutputRef(Lane, 0);
-            double& OutComplete = Registers.OutputRef(Lane, 1);
-            double& LastClock = Registers.ClosureRef(Lane, 0);
-            double& LastPeriod = Registers.ClosureRef(Lane, 1);
-            double& LastSeed = Registers.ClosureRef(Lane, 2);
-            double& Cursor = Registers.ClosureRef(Lane, 3);
+            AudioSample& OutValue = Registers.OutputRef(Lane, 0);
+            AudioSample& OutComplete = Registers.OutputRef(Lane, 1);
+            AudioSample& LastClock = Registers.ClosureRef(Lane, 0);
+            AudioSample& LastPeriod = Registers.ClosureRef(Lane, 1);
+            AudioSample& LastSeed = Registers.ClosureRef(Lane, 2);
+            AudioSample& Cursor = Registers.ClosureRef(Lane, 3);
 
-            std::vector<double>& LaneCache = Cache[Lane];
+            std::vector<AudioSample>& LaneCache = Cache[Lane];
 
             if (LastClock <= 0.0 && Clock >= 1.0)
             {
                 int Period = std::max(int(Registers.CombineInput(Lane, 1, 4.0)), 1);
-                double Seed = Registers.CombineInput(Lane, 2);
+                AudioSample Seed = Registers.CombineInput(Lane, 2);
 
                 const bool Reset = Period != int(LastPeriod) || Seed != LastSeed;
                 if (Reset || int(LaneCache.size()) != Period)
                 {
                     LastSeed = Seed;
-                    LastPeriod = double(Period);
+                    LastPeriod = AudioSample(Period);
                     if (Reset)
                     {
                         Cursor = 0.0;
@@ -1798,9 +1798,9 @@ struct RandomSequenceThunk : public InstructionThunk
                     LaneCache.resize(Period);
                     std::mt19937 Generator;
                     Generator.seed(Seed);
-                    double Low = Generator.min();
-                    double Scale = 1.0 / (Generator.max() - Low);
-                    for (double& Sample : LaneCache)
+                    AudioSample Low = AudioSample(Generator.min());
+                    AudioSample Scale = 1.0f / (AudioSample(Generator.max()) - Low);
+                    for (AudioSample& Sample : LaneCache)
                     {
                         Sample = (Generator() - Low) * Scale;
                     }
@@ -1817,10 +1817,10 @@ struct RandomSequenceThunk : public InstructionThunk
                 // back to this sequence.  In other words, the way of constructing a patch that chains
                 // sequences that was most obvious to me always skips the last note in each sequence.
                 // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
-                OutComplete = double(Index == (Period - 1));
+                OutComplete = AudioSample(Index == (Period - 1));
 
                 Index = (Index + 1) % Period;
-                Cursor = double(Index);
+                Cursor = AudioSample(Index);
             }
             else
             {
@@ -1862,11 +1862,11 @@ struct GateThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
 
-        double* Gate = Registers.OutputPtr(0);
+        AudioSample* Gate = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
@@ -1876,7 +1876,7 @@ struct GateThunk : public InstructionThunk
             }
             else if (Registers.InputConnected(0))
             {
-                for (const double* ChannelMask : Registers.InputVector(0))
+                for (const AudioSample* ChannelMask : Registers.InputVector(0))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -1905,11 +1905,11 @@ struct NoteThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("NoteThunk");
 
-        double* Note = Registers.OutputPtr(0);
+        AudioSample* Note = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
@@ -1919,7 +1919,7 @@ struct NoteThunk : public InstructionThunk
             }
             else if (Registers.InputConnected(0))
             {
-                for (const double* ChannelMask : Registers.InputVector(0))
+                for (const AudioSample* ChannelMask : Registers.InputVector(0))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -1958,11 +1958,11 @@ struct VelocityThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
 
-        double* Velocity = Registers.OutputPtr(0);
+        AudioSample* Velocity = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
@@ -1972,7 +1972,7 @@ struct VelocityThunk : public InstructionThunk
             }
             else if (Registers.InputConnected(0))
             {
-                for (const double* ChannelMask : Registers.InputVector(0))
+                for (const AudioSample* ChannelMask : Registers.InputVector(0))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -2001,11 +2001,11 @@ struct PressureThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PressureThunk");
 
-        double* Pressure = Registers.OutputPtr(0);
+        AudioSample* Pressure = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
@@ -2015,7 +2015,7 @@ struct PressureThunk : public InstructionThunk
             }
             else if (Registers.InputConnected(0))
             {
-                for (const double* ChannelMask : Registers.InputVector(0))
+                for (const AudioSample* ChannelMask : Registers.InputVector(0))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -2045,23 +2045,23 @@ struct ControlChangeThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
 
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            double Control = Registers.CombineInput(Lane, 0);
-            double* Value = Registers.OutputPtr(0);
+            AudioSample Control = Registers.CombineInput(Lane, 0);
+            AudioSample* Value = Registers.OutputPtr(0);
             MidiNoteState& State = Program->MidiLanes[Lane];
-            double Channel = -1.0;
+            AudioSample Channel = -1.0;
             if (!Registers.InputConnected(1))
             {
                 Channel = State.Channel;
             }
             else if (Registers.InputConnected(1))
             {
-                for (const double* ChannelMask : Registers.InputVector(1))
+                for (const AudioSample* ChannelMask : Registers.InputVector(1))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -2094,22 +2094,22 @@ struct KikiThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("KikiThunk");
 
-        double* Kiki = Registers.OutputPtr(0);
+        AudioSample* Kiki = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            double Channel = -1.0;
+            AudioSample Channel = -1.0;
             if (!Registers.InputConnected(0))
             {
                 Channel = State.Channel;
             }
             else if (Registers.InputConnected(0))
             {
-                for (const double* ChannelMask : Registers.InputVector(0))
+                for (const AudioSample* ChannelMask : Registers.InputVector(0))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -2153,11 +2153,11 @@ struct PitchBendThunk : public InstructionThunk
 
     Scratch* Program;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
 
-        double* PitchBend = Registers.OutputPtr(0);
+        AudioSample* PitchBend = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
@@ -2167,7 +2167,7 @@ struct PitchBendThunk : public InstructionThunk
             }
             else if (Registers.InputConnected(0))
             {
-                for (const double* ChannelMask : Registers.InputVector(0))
+                for (const AudioSample* ChannelMask : Registers.InputVector(0))
                 {
                     if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
                     {
@@ -2201,7 +2201,7 @@ struct LeadLaneThunk : public InstructionThunk
         return true;
     }
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
 
@@ -2209,7 +2209,7 @@ struct LeadLaneThunk : public InstructionThunk
         constexpr uint32_t WriteLane = 0;
         if (ReadLane < Registers.Polyphony)
         {
-            double Value = Registers.CombineInput(ReadLane, 0);
+            AudioSample Value = Registers.CombineInput(ReadLane, 0);
             Registers.OutputRef(WriteLane, 0) = Value;
         }
     }
@@ -2240,7 +2240,7 @@ struct AddLanesThunk : public InstructionThunk
         return true;
     }
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddLanesThunk");
         constexpr uint32_t WriteLane = 0;
@@ -2268,13 +2268,13 @@ struct MidiToHzThunk : public InstructionThunk
         {"hz"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Note = Registers.CombineInput(Lane, 0);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Note = Registers.CombineInput(Lane, 0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
             Output = MidiNoteToHz(Note);
         });
     }
@@ -2294,13 +2294,13 @@ struct LoudnessFudgeThunk : public InstructionThunk
         {"amp"}
     };
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Hz = Registers.CombineInput(Lane, 0);
-            double& Output = Registers.OutputRef(Lane, 0);
+            AudioSample Hz = Registers.CombineInput(Lane, 0);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
             Output = PerceptualAmplitudeCorrectionByHz(Hz);
         });
     }
@@ -2314,7 +2314,7 @@ struct BoopThunk : public InstructionThunk
     static constexpr InstructionInfo<0, 1, 0> Info = { OpCode::BOOP, "boop", {}, {"gate"} };
     AtomicRunningStateSharedPtr Input;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("BoopThunk");
         constexpr uint32_t Lane = 0;
@@ -2330,7 +2330,7 @@ struct TweakThunk : public InstructionThunk
     static constexpr InstructionInfo<0, 1, 0> Info = { OpCode::TWEAK, "tweak", {}, {"value"} };
     AtomicRunningStateSharedPtr Input;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TweakThunk");
         constexpr uint32_t Lane = 0;
@@ -2358,23 +2358,23 @@ struct TapeLoopThunk : public InstructionThunk
     std::vector<MagicTapeUniquePtr>* TapeFile;
     std::ptrdiff_t TapeIndex;
 
-    virtual void Crank(double SampleInterval) override
+    virtual void Crank(AudioSample SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Sample = Registers.CombineInput(Lane, 0);
-            double Offset = Registers.CombineInput(Lane, 1);
-            double Seconds = Registers.CombineInput(Lane, 2);
-            double Reset = Registers.CombineInput(Lane, 3);
-            double& Output = Registers.OutputRef(Lane, 0);
-            double& ReadHead = Registers.ClosureRef(Lane, 0);
-            double& WriteHead = Registers.ClosureRef(Lane, 1);
-            double& LastReset = Registers.ClosureRef(Lane, 2);
-            double& LastOffset = Registers.ClosureRef(Lane, 3);
+            AudioSample Sample = Registers.CombineInput(Lane, 0);
+            AudioSample Offset = Registers.CombineInput(Lane, 1);
+            AudioSample Seconds = Registers.CombineInput(Lane, 2);
+            AudioSample Reset = Registers.CombineInput(Lane, 3);
+            AudioSample& Output = Registers.OutputRef(Lane, 0);
+            AudioSample& ReadHead = Registers.ClosureRef(Lane, 0);
+            AudioSample& WriteHead = Registers.ClosureRef(Lane, 1);
+            AudioSample& LastReset = Registers.ClosureRef(Lane, 2);
+            AudioSample& LastOffset = Registers.ClosureRef(Lane, 3);
 
-            uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
-            uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
+            uint32_t ReadIndex = std::bit_cast<uint32_t, AudioSample>(ReadHead);
+            uint32_t WriteIndex = std::bit_cast<uint32_t, AudioSample>(WriteHead);
 
             BlankTape* Tape;
             {
@@ -2423,10 +2423,10 @@ struct TapeLoopThunk : public InstructionThunk
                 LastReset = Reset;
 
                 Output = Tape->ReadAndAdvance(ReadIndex);
-                ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
+                ReadHead = std::bit_cast<AudioSample, uint32_t>(ReadIndex);
 
                 Tape->WriteAndAdvance(WriteIndex, Sample);
-                WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
+                WriteHead = std::bit_cast<AudioSample, uint32_t>(WriteIndex);
             }
         });
     }

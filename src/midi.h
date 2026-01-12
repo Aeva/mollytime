@@ -31,6 +31,8 @@
 
 #include "perf.h"
 
+using AudioSample = float;
+
 
 enum class MidiMessageType : uint8_t
 {
@@ -48,8 +50,8 @@ struct MidiMessage
 {
     MidiMessageType Type;
     uint8_t Channel;
-    double Param1;
-    double Param2;
+    AudioSample Param1;
+    AudioSample Param2;
 };
 
 
@@ -76,7 +78,7 @@ struct MidiHandler
 
     void ChannelPressure(uint8_t Value, uint8_t Channel);
 
-    void PitchBend(double Value, uint8_t Channel);
+    void PitchBend(AudioSample Value, uint8_t Channel);
 
     /* Drop all pending midi events and generate some a fake one to tell the running audio
      * thread to reset all polyphony voices.

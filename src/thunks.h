@@ -34,6 +34,9 @@
 #include "perf.h"
 
 
+using AudioSample = float;
+
+
 enum class OpCode : uint32_t
 {
     GO = 0,
@@ -106,30 +109,30 @@ enum class OpCode : uint32_t
 
 struct AtomicRunningState
 {
-    AtomicRunningState(double InSample)
+    AtomicRunningState(AudioSample InSample)
     : Sample(InSample)
     {
     }
-    double Get()
+    AudioSample Get()
     {
         return Sample.load();
     }
-    void Set(double NewSample)
+    void Set(AudioSample NewSample)
     {
         Sample.store(NewSample);
     }
-    void Add(double Increment)
+    void Add(AudioSample Increment)
     {
         Sample.fetch_add(Increment);
     }
-    void Add(double Increment, double LimitLow, double LimitHigh)
+    void Add(AudioSample Increment, AudioSample LimitLow, AudioSample LimitHigh)
     {
-        double Value = Sample.load();
+        AudioSample Value = Sample.load();
         Sample.store(std::min(std::max(Value + Increment, LimitLow), LimitHigh));
     }
 
 private:
-    std::atomic<double> Sample;
+    std::atomic<AudioSample> Sample;
 };
 
 using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
@@ -140,9 +143,9 @@ struct MagicTape
     MagicTape()
     {
     }
-    virtual size_t FindSample(double Position) = 0;
-    virtual double ReadAndAdvance(uint64_t& Index) = 0;
-    virtual void WriteAndAdvance(uint64_t& Index, double NewSample) = 0;
+    virtual size_t FindSample(AudioSample Position) = 0;
+    virtual AudioSample ReadAndAdvance(uint32_t& Index) = 0;
+    virtual void WriteAndAdvance(uint32_t& Index, AudioSample NewSample) = 0;
     virtual ~MagicTape()
     {
     }
@@ -157,25 +160,25 @@ struct BlankTape : public MagicTape
     {
     }
 
-    void Reset(double InSeconds)
+    void Reset(AudioSample InSeconds)
     {
-        Seconds = std::max(0.0, InSeconds);
-        size_t SampleCount = size_t(Seconds * double(SampleRate));
+        Seconds = std::max(0.0f, InSeconds);
+        size_t SampleCount = size_t(Seconds * AudioSample(SampleRate));
         Samples.clear();
         Samples.resize(SampleCount, 0.0);
     }
 
-    virtual size_t FindSample(double Position) override
+    virtual size_t FindSample(AudioSample Position) override
     {
         if (Seconds > 0.0)
         {
-            double Alpha = std::fmod(Position / Seconds, 1.0);
+            AudioSample Alpha = std::fmod(Position / Seconds, 1.0f);
             if (Alpha < 0.0)
             {
                 Alpha += 1.0;
             }
-            Alpha = std::min(std::max(Alpha, 0.0), 1.0);
-            size_t Index = size_t(double(Samples.size() - 1) * Alpha);
+            Alpha = std::min(std::max(Alpha, 0.0f), 1.0f);
+            size_t Index = size_t(AudioSample(Samples.size() - 1) * Alpha);
             return std::min(std::max(Index, 0zu), Samples.size());
         }
         else
@@ -184,7 +187,7 @@ struct BlankTape : public MagicTape
         }
     }
 
-    virtual double ReadAndAdvance(uint64_t& Index) override
+    virtual AudioSample ReadAndAdvance(uint32_t& Index) override
     {
         if (Samples.size())
         {
@@ -197,7 +200,7 @@ struct BlankTape : public MagicTape
         }
     }
 
-    virtual void WriteAndAdvance(uint64_t& Index, double NewSample) override
+    virtual void WriteAndAdvance(uint32_t& Index, AudioSample NewSample) override
     {
         if (Samples.size() > 0)
         {
@@ -212,8 +215,8 @@ struct BlankTape : public MagicTape
 
     // TODO: pull sampling rate from the audio subsystem on Reset
     uint32_t SampleRate = 48000;
-    double Seconds = 0.0;
-    std::vector<double> Samples;
+    AudioSample Seconds = 0.0;
+    std::vector<AudioSample> Samples;
 };
 
 
@@ -225,7 +228,7 @@ struct ProbeRunningState
     , Reset(true)
     {
     }
-    std::tuple<double, double> Get()
+    std::tuple<AudioSample, AudioSample> Get()
     {
         TRACEABLE_LOCK_GUARD(Crit);
         Reset = true;
@@ -238,7 +241,7 @@ struct ProbeRunningState
             return { SampleMin, SampleMax };
         }
     }
-    void Set(double NewSample)
+    void Set(AudioSample NewSample)
     {
         TRACEABLE_LOCK_GUARD(Crit);
         if (Reset)
@@ -261,9 +264,9 @@ struct ProbeRunningState
     }
 
 private:
-    double SampleMin;
-    double SampleMax;
-    double Reset = 0;
+    AudioSample SampleMin;
+    AudioSample SampleMax;
+    AudioSample Reset = 0;
     bool HandedNaN = false;
     DECLARE_TRACEABLE_MUTEX(Crit);
 };
@@ -271,25 +274,25 @@ private:
 using ProbeRunningStateSharedPtr = std::shared_ptr<ProbeRunningState>;
 
 
-inline double CombinerAdd(double LHS, double RHS)
+inline AudioSample CombinerAdd(AudioSample LHS, AudioSample RHS)
 {
     return LHS + RHS;
 }
 
 
-inline double CombinerMul(double LHS, double RHS)
+inline AudioSample CombinerMul(AudioSample LHS, AudioSample RHS)
 {
     return LHS * RHS;
 }
 
 
-inline double CombinerMin(double LHS, double RHS)
+inline AudioSample CombinerMin(AudioSample LHS, AudioSample RHS)
 {
     return std::min(LHS, RHS);
 }
 
 
-inline double CombinerMax(double LHS, double RHS)
+inline AudioSample CombinerMax(AudioSample LHS, AudioSample RHS)
 {
     return std::max(LHS, RHS);
 }
@@ -311,7 +314,7 @@ enum class InputCombiner
 struct InputInfo
 {
     std::string_view Name;
-    double DefaultValue;
+    AudioSample DefaultValue;
     InputCombiner Combiner;
 };
 
@@ -335,12 +338,12 @@ struct InstructionRegisters
         std::vector<std::vector<std::ptrdiff_t>>& InInputs,
         std::vector<std::ptrdiff_t>& InOutputs,
         std::vector<std::ptrdiff_t>& InClosures,
-        std::vector<double>* RegisterFile)
+        std::vector<AudioSample>* RegisterFile)
     {
         Input.reserve(InInputs.size());
         for (std::vector<std::ptrdiff_t>& InputOffsets: InInputs)
         {
-            std::vector<double*>& InputRegisters = Input.emplace_back();
+            std::vector<AudioSample*>& InputRegisters = Input.emplace_back();
             InputRegisters.reserve(InputOffsets.size());
             for (std::ptrdiff_t Offset : InputOffsets)
             {
@@ -361,7 +364,7 @@ struct InstructionRegisters
         }
     }
 
-    inline const std::vector<double*>& InputVector(uint32_t InputIndex)
+    inline const std::vector<AudioSample*>& InputVector(uint32_t InputIndex)
     {
         return Input[InputIndex];
     }
@@ -372,9 +375,9 @@ struct InstructionRegisters
     }
 
     // NOTE: This is basically only useful for AddLanesThunk
-    inline double CombineAcrossInputLanes(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    inline AudioSample CombineAcrossInputLanes(uint32_t InputIndex, AudioSample Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
-        std::vector<double*>& InputRegisters = Input[InputIndex];
+        std::vector<AudioSample*>& InputRegisters = Input[InputIndex];
         const uint32_t InputCount = uint32_t(InputRegisters.size());
         if (InputCount == 0)
         {
@@ -382,8 +385,8 @@ struct InstructionRegisters
         }
         else
         {
-            double* Cursor = InputRegisters[0];
-            double Accumulator = Cursor[0];
+            AudioSample* Cursor = InputRegisters[0];
+            AudioSample Accumulator = Cursor[0];
             for (uint32_t Lane = 1; Lane < Polyphony; ++Lane)
             {
                 Accumulator = Combiner(Accumulator, Cursor[Lane]);
@@ -400,43 +403,43 @@ struct InstructionRegisters
         }
     }
 
-    inline double CombineInput(uint32_t Lane, uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    inline AudioSample CombineInput(uint32_t Lane, uint32_t InputIndex, AudioSample Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         assert(Lane < Polyphony);
-        std::vector<double*>& InputRegisters = Input[InputIndex];
+        std::vector<AudioSample*>& InputRegisters = Input[InputIndex];
         const uint32_t InputCount = uint32_t(InputRegisters.size());
-        double Result = (InputCount == 0) ? Default : InputRegisters[0][Lane];
+        AudioSample Result = (InputCount == 0) ? Default : InputRegisters[0][Lane];
         for (uint32_t Index = 1; Index < InputCount; ++Index)
         {
-            double* NextValue = InputRegisters[Index];
+            AudioSample* NextValue = InputRegisters[Index];
             Result = Combiner(Result, NextValue[Lane]);
         }
         return Result;
     }
 
-    inline double* InputPtr(uint32_t InputIndex)
+    inline AudioSample* InputPtr(uint32_t InputIndex)
     {
         assert(Input[InputIndex].size() == 1);
         return Input[InputIndex][0];
     }
 
-    inline double* OutputPtr(uint32_t OutputIndex)
+    inline AudioSample* OutputPtr(uint32_t OutputIndex)
     {
         return Output[OutputIndex];
     }
 
-    inline double& OutputRef(uint32_t Lane, uint32_t OutputIndex)
+    inline AudioSample& OutputRef(uint32_t Lane, uint32_t OutputIndex)
     {
         assert(Lane < Polyphony);
         return Output[OutputIndex][Lane];
     }
 
-    inline double* ClosurePtr(uint32_t ClosureIndex)
+    inline AudioSample* ClosurePtr(uint32_t ClosureIndex)
     {
         return Closure[ClosureIndex];
     }
 
-    inline double& ClosureRef(uint32_t Lane, uint32_t ClosureIndex)
+    inline AudioSample& ClosureRef(uint32_t Lane, uint32_t ClosureIndex)
     {
         assert(Lane < Polyphony);
         return Closure[ClosureIndex][Lane];
@@ -444,20 +447,20 @@ struct InstructionRegisters
 
     inline void ZeroOut(uint32_t Lane)
     {
-        for (double* Register : Output)
+        for (AudioSample* Register : Output)
         {
             Register[Lane] = 0.0;
         }
-        for (double* Register : Closure)
+        for (AudioSample* Register : Closure)
         {
             Register[Lane] = 0.0;
         }
     }
 
 private:
-    std::vector<std::vector<double*>> Input;
-    std::vector<double*> Output;
-    std::vector<double*> Closure;
+    std::vector<std::vector<AudioSample*>> Input;
+    std::vector<AudioSample*> Output;
+    std::vector<AudioSample*> Closure;
 
     // Temporary debug holepunch:
     friend struct Patch;
@@ -495,7 +498,7 @@ struct InstructionThunk
         }
     };
 
-    virtual void Crank(double SampleInterval) = 0;
+    virtual void Crank(AudioSample SampleInterval) = 0;
 
     virtual void Reset()
     {
@@ -520,14 +523,14 @@ using InstructionThunkSharedPtr = std::shared_ptr<InstructionThunk>;
 
 using BasicCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<double>* RegisterFile,
+        std::vector<AudioSample>* RegisterFile,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures)>;
 
 using WidgetCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<double>* RegisterFile,
+        std::vector<AudioSample>* RegisterFile,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
         std::vector<std::ptrdiff_t>& Closures,
@@ -535,7 +538,7 @@ using WidgetCreateAndConnectFn = std::function<
 
 using MidiCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<double>* RegisterFile,
+        std::vector<AudioSample>* RegisterFile,
         struct Scratch* Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
@@ -543,7 +546,7 @@ using MidiCreateAndConnectFn = std::function<
 
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
-        std::vector<double>* RegisterFile,
+        std::vector<AudioSample>* RegisterFile,
         std::vector<MagicTapeUniquePtr>* TapeFile,
         std::ptrdiff_t TapeIndex,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
@@ -595,7 +598,7 @@ private:
     {
         SetCommon<ThunkT>();
         BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures)
+            std::vector<AudioSample>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
@@ -609,7 +612,7 @@ private:
     {
         SetCommon<ThunkT>();
         MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures)
+            std::vector<AudioSample>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
@@ -624,7 +627,7 @@ private:
     {
         SetCommon<ThunkT>();
         WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
+            std::vector<AudioSample>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
         {
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
@@ -639,7 +642,7 @@ private:
     {
         SetCommon<ThunkT>();
         TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& Inputs, auto& Outputs, auto& Closures)
+            std::vector<AudioSample>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
