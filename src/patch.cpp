@@ -401,6 +401,20 @@ int Patch::GetTilePolyphony(TileHandle Tile)
 }
 
 
+bool Patch::GetTileIsConstant(TileHandle Tile)
+{
+    auto Found = TileIsConstant.find(Tile);
+    if (Found != TileIsConstant.end())
+    {
+        return Found->second;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
 void Patch::Freeze()
 {
     Frozen = true;
@@ -610,11 +624,19 @@ ScratchUniquePtr Patch::Compile()
         LANE_MERGE,
     };
 
+    enum class EvalFrequency : uint8_t
+    {
+        UNKNOWN,
+        ONCE,
+        LIVE,
+    };
+
     struct TilePartial
     {
         PartialType Type;
         TileHandle Tile; // Must be non-zero if the type is PartialType::TILE, and zero otherwise.
         bool DynamicPolyphony; // True indicates the tile's polyphony is determined via propagation, not by its symbol.
+        EvalFrequency Frequency = EvalFrequency::UNKNOWN;
         uint32_t Polyphony = 1;
 
         // This is NOT redundant to Patch::ByInput, because its elements are ordered,
@@ -674,6 +696,15 @@ ScratchUniquePtr Patch::Compile()
             Partial->DynamicPolyphony = false;
             Partial->Polyphony = 1;
             Partial->Outputs = { MakePortHandle(Tile, 0) };
+
+            if (Symbol == OpCode::CONST || Symbol == OpCode::LANE_COUNT)
+            {
+                Partial->Frequency = EvalFrequency::ONCE;
+            }
+            else
+            {
+                Partial->Frequency = EvalFrequency::LIVE;
+            }
             return;
         }
 
@@ -720,6 +751,7 @@ ScratchUniquePtr Patch::Compile()
         else if (IsOutputSymbol(Symbol))
         {
             TilePartialSharedPtr Partial = VisitTile(Tile);
+            Partial->Frequency = EvalFrequency::LIVE;
             Partial->DynamicPolyphony = false;
             Partial->Polyphony = 1;
             Partial->Outputs = {};
@@ -741,6 +773,7 @@ ScratchUniquePtr Patch::Compile()
             {
                 Partial->DynamicPolyphony = false;
                 Partial->Polyphony = MidiPolyphony;
+                Partial->Frequency = EvalFrequency::LIVE;
             }
             else if (IsLaneJoinSymbol(Symbol))
             {
@@ -752,6 +785,13 @@ ScratchUniquePtr Patch::Compile()
                 // Inherit from inputs.
                 Partial->DynamicPolyphony = true;
                 Partial->Polyphony = 1;
+            }
+
+            if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI || Symbol == OpCode::SAW || Symbol == OpCode::NOI ||
+                Symbol == OpCode::PHASE || Symbol == OpCode::PLS || Symbol == OpCode::FLP || Symbol == OpCode::RNG || Symbol == OpCode::ADSR ||
+                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP)
+            {
+                Partial->Frequency = EvalFrequency::LIVE;
             }
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -864,13 +904,57 @@ ScratchUniquePtr Patch::Compile()
         ErasedTiles.clear();
     }
 
+    // Solve tile eval frequency via propagation.
+    TileIsConstant.clear();
+    {
+        // We need to run multiple times when there are graph cycles to fully propagate the required
+        // polyphony.  It is unclear if there is any situation where more than one retry would be needed
+        // to fully solve the graph correctly.
+        const uint32_t IterationCount = GraphHasCycles ? 2 : 1;
+        for (uint32_t Iteration = 0; Iteration < IterationCount; ++Iteration)
+        {
+            for (TilePartialSharedPtr& Partial : FlatGraph)
+            {
+                assert(Partial->Type == PartialType::TILE);
+                assert(Partial->Tile != 0);
+
+                if (Partial->Frequency < EvalFrequency::LIVE)
+                {
+                    for (std::vector<PortHandle>& ConnectedOutputs : Partial->Inputs)
+                    {
+                        for (PortHandle ConnectedPort : ConnectedOutputs)
+                        {
+                            TileHandle ConnectedTile = PortHandleTilePart(ConnectedPort);
+                            TilePartialSharedPtr& ConnectedPartial = PartialByTile.at(ConnectedTile);
+                            Partial->Frequency = std::max(Partial->Frequency, ConnectedPartial->Frequency);
+                        }
+                    }
+                }
+            }
+        }
+        for (TilePartialSharedPtr& Partial : FlatGraph)
+        {
+            TileLanes.insert_or_assign(Partial->Tile, Partial->Polyphony);
+            if (Partial->Frequency == EvalFrequency::ONCE)
+            {
+                TileIsConstant[Partial->Tile] = true;
+                Partial->DynamicPolyphony = false;
+                Partial->Polyphony = 1;
+            }
+            else
+            {
+                TileIsConstant[Partial->Tile] = false;
+            }
+        }
+    }
+
     // Solve tile polyphony via propagation.
     TilePolyphony.clear();
     {
         // We need to run multiple times when there are graph cycles to fully propagate the required
         // polyphony.  It is unclear if there is any situation where more than one retry would be needed
         // to fully solve the graph correctly.
-        uint32_t IterationCount = GraphHasCycles ? 2 : 1;
+        const uint32_t IterationCount = GraphHasCycles ? 2 : 1;
         // It is possible to create valid graphs with cycles where it is not possible to determine
         // the lane width because none of the tiles have constants or midi inputs.  The correct thing
         // to do in such a situation is to default to a lane width of one.
@@ -1011,7 +1095,7 @@ ScratchUniquePtr Patch::Compile()
         };
 
         BreadCrumbs.clear();
-        auto AllocateTileRegisters = [&](TileHandle Tile, uint32_t Lanes) -> void
+        auto AllocateTileRegisters = [&](EvalFrequency Frequency, TileHandle Tile, uint32_t Lanes) -> void
         {
             if (!BreadCrumbs.insert(Tile).second)
             {
@@ -1067,7 +1151,14 @@ ScratchUniquePtr Patch::Compile()
                     // from a different patch.  Additionally, thunks are free to assume their outputs are
                     // persistent, which can be used to save on allocating extra closure registers.
                     PortHandle OutputPort = MakePortHandle(Tile, PortIndex);
-                    AllocatePersistentRegister(OutputPort, Lanes);
+                    if (Frequency == EvalFrequency::ONCE)
+                    {
+                        AllocateRegister(OutputPort, Lanes);
+                    }
+                    else
+                    {
+                        AllocatePersistentRegister(OutputPort, Lanes);
+                    }
                 }
 
                 for (int ClosureIndex = 0; ClosureIndex < static_cast<int>(ClosureCount); ++ClosureIndex)
@@ -1075,7 +1166,14 @@ ScratchUniquePtr Patch::Compile()
                     // Closure registers represent a thunk's internal state, and as such they must be
                     // persistent across patch revisions.
                     PortHandle ClosurePort = MakeClosureHandle(Tile, ClosureIndex);
-                    AllocatePersistentRegister(ClosurePort, Lanes);
+                    if (Frequency == EvalFrequency::ONCE)
+                    {
+                        AllocateRegister(ClosurePort, Lanes);
+                    }
+                    else
+                    {
+                        AllocatePersistentRegister(ClosurePort, Lanes);
+                    }
                 }
             }
         };
@@ -1085,13 +1183,13 @@ ScratchUniquePtr Patch::Compile()
         {
             if (Partial->Type == PartialType::TILE)
             {
-                AllocateTileRegisters(Partial->Tile, Partial->Polyphony);
+                AllocateTileRegisters(Partial->Frequency, Partial->Tile, Partial->Polyphony);
             }
             else
             {
                 for (PortHandle OutputPort : Partial->Outputs)
                 {
-                    if (PortHandleTilePart(OutputPort) == 0)
+                    if (PortHandleTilePart(OutputPort) == 0 || Partial->Frequency == EvalFrequency::ONCE)
                     {
                         AllocateRegister(OutputPort, Partial->Polyphony);
                     }
@@ -1108,7 +1206,7 @@ ScratchUniquePtr Patch::Compile()
         {
             const TileHandle Tile = TileAndLanes.first;
             const uint32_t Lanes = TileAndLanes.second;
-            AllocateTileRegisters(Tile, Lanes);
+            AllocateTileRegisters(EvalFrequency::UNKNOWN, Tile, Lanes);
         }
     }
 
@@ -1140,6 +1238,9 @@ ScratchUniquePtr Patch::Compile()
         std::vector<double>* RegisterFile = &(Program->RegisterFile);
         std::vector<MagicTapeUniquePtr>* TapeFile = &(Program->TapeFile);
 
+        // This is the part of the patch that only has to be evaluated once.
+        std::vector<InstructionThunkSharedPtr> ConstantProgram;
+
         for (TilePartialSharedPtr& Partial : FlatGraph)
         {
             std::vector<std::vector<std::ptrdiff_t>> Inputs;
@@ -1170,7 +1271,7 @@ ScratchUniquePtr Patch::Compile()
             {
                 OutputWidths.push_back(RegisterWidths.at(Output));
             }
-            auto AppendThunk = [&](InstructionThunkSharedPtr Thunk) -> void
+            auto AppendThunk = [&](const EvalFrequency Frequency, InstructionThunkSharedPtr Thunk) -> void
             {
                 assert(Thunk != nullptr);
                 if (OutputWidths.size() > 0)
@@ -1201,12 +1302,26 @@ ScratchUniquePtr Patch::Compile()
                     assert(MinWidth == MaxWidth);
                     assert(MaxWidth == ExpectedPolyphony);
                 }
-                Program->Program.push_back(Thunk);
+                if (Frequency == EvalFrequency::ONCE)
+                {
+                    ConstantProgram.push_back(Thunk);
+                }
+                else
+                {
+                    Program->Program.push_back(Thunk);
+                }
             };
 #else
-            auto AppendThunk = [&](InstructionThunkSharedPtr Thunk) -> void
+            auto AppendThunk = [&](const EvalFrequency Frequency, InstructionThunkSharedPtr Thunk) -> void
             {
-                Program->Program.push_back(Thunk);
+                if (Frequency == EvalFrequency::ONCE)
+                {
+                    ConstantProgram.push_back(Thunk);
+                }
+                else
+                {
+                    Program->Program.push_back(Thunk);
+                }
             };
 #endif
 
@@ -1242,7 +1357,7 @@ ScratchUniquePtr Patch::Compile()
                             static const BasicCreateAndConnectFn AddCreateAndConnect = SymbolInfoMap.BasicCreateAndConnect.at((int)OpCode::ADD);
                             InstructionThunkSharedPtr Thunk = AddCreateAndConnect(RegisterFile, Inputs, Outputs, Closures);
                             Thunk->Registers.Polyphony = 1;
-                            AppendThunk(Thunk);
+                            AppendThunk(EvalFrequency::LIVE, Thunk);
                         }
                     }
 
@@ -1280,7 +1395,7 @@ ScratchUniquePtr Patch::Compile()
                         {
                             Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures);
                             Thunk->Registers.Polyphony = Partial->Polyphony;
-                            AppendThunk(Thunk);
+                            AppendThunk(Partial->Frequency, Thunk);
                         }
                     }
 
@@ -1291,7 +1406,8 @@ ScratchUniquePtr Patch::Compile()
                         {
                             Thunk = Found->second(RegisterFile, Inputs, Outputs, Closures, SpecialInputs[Partial->Tile]);
                             Thunk->Registers.Polyphony = 1;
-                            AppendThunk(Thunk);
+                            assert(Partial->Frequency == EvalFrequency::LIVE);
+                            AppendThunk(EvalFrequency::LIVE, Thunk);
                         }
                     }
 
@@ -1302,7 +1418,8 @@ ScratchUniquePtr Patch::Compile()
                         {
                             Thunk = Found->second(RegisterFile, Program.get(), Inputs, Outputs, Closures);
                             Thunk->Registers.Polyphony = MidiPolyphony;
-                            AppendThunk(Thunk);
+                            assert(Partial->Frequency == EvalFrequency::LIVE);
+                            AppendThunk(EvalFrequency::LIVE, Thunk);
                         }
                     }
 
@@ -1316,7 +1433,8 @@ ScratchUniquePtr Patch::Compile()
                             std::ptrdiff_t TapeIndex = TapeAllocation.BaseOffset;
                             Thunk = Found->second(RegisterFile, TapeFile, TapeIndex, Inputs, Outputs, Closures);
                             Thunk->Registers.Polyphony = Partial->Polyphony;
-                            AppendThunk(Thunk);
+                            assert(Partial->Frequency == EvalFrequency::LIVE);
+                            AppendThunk(EvalFrequency::LIVE, Thunk);
                         }
                     }
 
@@ -1327,15 +1445,17 @@ ScratchUniquePtr Patch::Compile()
                         Thunk->SetDebugName(TileName);
                     }
 #endif
-                    if (Symbol == OpCode::ADSR)
+                    if (Symbol == OpCode::ADSR && Partial->Polyphony > 1)
                     {
-                        assert(Partial->Polyphony > 1);
                         Thunk->Retriggerable = true;
                         uint32_t ThunkIndex = Program->Program.size() - 1;
                         assert(Program->Program[ThunkIndex] == Thunk);
-                        // TODO: figure out some means of determining if the trigger is directly or indirectly
-                        // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
-                        Program->Retriggerables.push_back(ThunkIndex);
+                        if (Partial->Frequency != EvalFrequency::ONCE)
+                        {
+                            // TODO: figure out some means of determining if the trigger is directly or indirectly
+                            // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
+                            Program->Retriggerables.push_back(ThunkIndex);
+                        }
                     }
                     else if (Symbol == OpCode::ADD_LANES)
                     {
@@ -1352,7 +1472,7 @@ ScratchUniquePtr Patch::Compile()
                 Thunk->Registers.Polyphony = MidiPolyphony;
                 Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
                 Thunk->Reset();
-                AppendThunk(Thunk);
+                AppendThunk(Partial->Frequency, Thunk);
             }
             else
             {
@@ -1363,8 +1483,14 @@ ScratchUniquePtr Patch::Compile()
                 Thunk->Registers.Polyphony = MidiPolyphony;
                 Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
                 Thunk->Reset();
-                AppendThunk(Thunk);
+                //assert(Partial->Frequency == EvalFrequency::LIVE);
+                AppendThunk(Partial->Frequency, Thunk);
             }
+        }
+
+        for (InstructionThunkSharedPtr& Thunk : ConstantProgram)
+        {
+            Thunk->Crank(0.0);
         }
     }
 

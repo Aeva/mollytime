@@ -249,6 +249,7 @@ PYBIND11_MODULE(mollytime, m) {
 		.def("get_input_port_name", &Patch::GetTileInputName)
 		.def("get_output_port_name", &Patch::GetTileOutputName)
 		.def("get_tile_polyphony", &Patch::GetTilePolyphony)
+		.def("get_tile_is_constant", &Patch::GetTileIsConstant)
 		.def("freeze", &Patch::Freeze)
 		.def("unfreeze", &Patch::Unfreeze)
 		.def("get_frozen", &Patch::GetFrozen)

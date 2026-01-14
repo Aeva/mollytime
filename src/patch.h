@@ -128,6 +128,7 @@ struct Patch
 
     // Used for queries from the UI.
     std::unordered_map<TileHandle, uint32_t> TilePolyphony;
+    std::unordered_map<TileHandle, bool> TileIsConstant;
 
     Patch();
 
@@ -155,6 +156,7 @@ struct Patch
     std::string GetTileInputName(PortHandle Port);
     std::string GetTileOutputName(PortHandle Port);
     int GetTilePolyphony(TileHandle Tile);
+    bool GetTileIsConstant(TileHandle Tile);
 
     void Freeze();
     void Unfreeze();
