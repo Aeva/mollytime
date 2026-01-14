@@ -197,7 +197,10 @@ class calculator_screen(editor_screen):
                 pattern = editor.clip_tile
             else:
                 polyphony = editor.patch.get_tile_polyphony(tile_id)
-                if polyphony > 1:
+                is_constant = editor.patch.get_tile_is_constant(tile_id)
+                if is_constant:
+                    pattern = editor.const_tile_bg
+                elif polyphony > 1:
                     pattern = editor.poly_tile_bg
                 elif polyphony == 0:
                     pattern = editor.disconnected_tile_bg

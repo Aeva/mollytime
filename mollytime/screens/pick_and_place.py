@@ -357,7 +357,10 @@ class pick_and_place_screen(editor_screen):
                     editor.initial_placement.draw(frame, rect, label)
                 else:
                     polyphony = editor.patch.get_tile_polyphony(tile_id)
-                    if polyphony > 1:
+                    is_constant = editor.patch.get_tile_is_constant(tile_id)
+                    if is_constant:
+                        editor.const_tile_bg.draw(frame, rect, label)
+                    elif polyphony > 1:
                         editor.poly_tile_bg.draw(frame, rect, label)
                     elif polyphony == 0:
                         editor.disconnected_tile_bg.draw(frame, rect, label)
