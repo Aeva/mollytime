@@ -4,7 +4,7 @@
     shallow = true
 [submodule "third_party/boost_1_90_0"]
 	path = third_party/boost_1_90_0
-	url = https://https://github.com/boostorg/boost.git
+	url = https://github.com/boostorg/boost.git
     shallow = true
 [submodule "third_party/glm-1.0.3"]
 	path = third_party/glm-1.0.3
