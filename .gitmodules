@@ -1,30 +1,24 @@
 [submodule "third_party/fmt-12.1.0"]
 	path = third_party/fmt-12.1.0
 	url = https://github.com/fmtlib/fmt
-    update = none
     shallow = true
 [submodule "third_party/boost_1_90_0"]
 	path = third_party/boost_1_90_0
 	url = https://https://github.com/boostorg/boost.git
-    update = none
     shallow = true
 [submodule "third_party/glm-1.0.3"]
 	path = third_party/glm-1.0.3
 	url = https://github.com/g-truc/glm.git
-    update = none
     shallow = true
 [submodule "third_party/SDL3-3.4.0"]
 	path = third_party/SDL3-3.4.0
-	url = https://github.com/libsdl-org/SDL
-    update = none
+	url = https://github.com/libsdl-org/SDL.git
     shallow = true
 [submodule "third_party/SDL3_ttf-3.2.2"]
 	path = third_party/SDL3_ttf-3.2.2
 	url = https://github.com/libsdl-org/SDL_ttf.git
-    update = none
     shallow = true
 [submodule "third_party/tracy-0.13.1"]
 	path = third_party/tracy-0.13.1
 	url = https://github.com/wolfpld/tracy.git
-    update = none
     shallow = true
