@@ -5,16 +5,17 @@ import sys
 
 from pathlib import Path
 
+this_dir = Path(__file__).parent
+project_dir = this_dir.parent
+
 def _get_boost(desired_boost_modules: list[str]):
     get_submodule_args = [ "git", "submodule", "update", "--depth", "1", "-q", "--init" ]
     boost_depinst_path = Path("tools/boostdep/depinst/depinst.py")
 
     # Boost tools need the boost directory to be current working directory.
-    this_dir = Path(__file__).parent
-    project_dir = this_dir.parent
     boost_dir = project_dir / "third_party" / "boost_1_90_0"
-
     old_cwd = os.getcwd()
+
     try:
         os.chdir(boost_dir)
 
@@ -35,6 +36,17 @@ def _get_boost(desired_boost_modules: list[str]):
     finally:
         os.chdir(old_cwd)
 
+def _get_sdl_ttf_dependencies():
+    sdl_ttf_external = project_dir / "third_party" / "SDL_ttf-3.2.2" / "external"
+    if shutil.which("/bin/bash"):
+        sh_result = subprocess.run([ sdl_ttf_external / "downloads.sh" ])
+        sh_result.check_returncode()
+    elif shutil.which("powershell"):
+        psh_result = subprocess.run([ "powershell", sdl_ttf_external / "Get-Gitmodules.ps1" ])
+        psh_result.check_returncode()
+    else:
+        raise FileNotFoundError("Can't find Bash or Powershell, so I can't resolve SDL_ttf dependencies.")
+
 # This is all git stuff.
 if shutil.which("git") == None:
     raise FileNotFoundError("Can't find 'git' on PATH. I need Git to get submodules.")
@@ -53,7 +65,8 @@ init_process.check_returncode()
 update_process = subprocess.run([ "git", "submodule", "update" ])
 update_process.check_returncode()
 
-# Gather boost submodules, and their dependencies.
+# Gather dependencies' dependencies.
 _get_boost([ "atomic", "stacktrace" ])
+_get_sdl_ttf_dependencies()
 
 print("\n...OK, looks like I've got everything!")

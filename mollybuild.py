@@ -46,12 +46,45 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     
     return args
 
-def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+def init(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
+    project_dir = Path(__file__).parent
+    build_tools_dir = project_dir / "build_tools"
+
     # Grab dependencies.
-    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
+    pip_result = _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
     if pip_result != 0:
         return pip_result
+    
+    # Get submodules. This will acquire *only* the Boost submodules we require.
+    get_submodules_script = build_tools_dir / "get_submodules.py"
+    get_submodules_result = subprocess.run([ sys.executable, get_submodules_script ])
+    if get_submodules_result.returncode != 0:
+        return get_submodules_result.returncode
+    
+    # Build Boost. (Yeah, we're using header-only librarires, but this still has to generate them.)
+    boost_build_script = build_tools_dir / "boost_build.py" 
+    boost_build_dir = project_dir / "build" / "boost"
+    boost_build_result = subprocess.run([ sys.executable, boost_build_script, boost_build_dir ])
+    if boost_build_result.returncode != 0:
+        return boost_build_result
+    
+    # Build SDL3.
+    sdl3_build_script = build_tools_dir / "sdl3_build.py" 
+    sdl3_build_dir = project_dir / "build" / "sdl3"
+    sdl3_build_result = subprocess.run([ sys.executable, sdl3_build_script, sdl3_build_dir ])
+    if sdl3_build_result.returncode != 0:
+        return sdl3_build_result
+    
+    # Build SDL3_ttf.
+    sdl3_ttf_build_script = build_tools_dir / "sdl3_ttf_build.py" 
+    sdl3_ttf_build_dir = project_dir / "build" / "sdl3_ttf"
+    sdl3_ttf_build_result = subprocess.run([ sys.executable, sdl3_ttf_build_script, sdl3_ttf_build_dir, sdl3_build_dir ])
+    if sdl3_ttf_build_result.returncode != 0:
+        return sdl3_ttf_build_result
+    
+    return 0
 
+def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Prepare to execute a local, editable `pip install`.
     # This will have meson-python automatically run `meson setup`, and then add a launcher shim
     # that automatically recompiles our extension module(s) when running the module locally.
@@ -161,21 +194,32 @@ if __name__ == "__main__":
         prog = "mollybuild",
         description = \
             "Concise build helper." +
-            "\nFor an iterative 'development' workflow, run `setup`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
-            "\nWhen you're ready to distribute, run `package`.",
+            "\nRun `init` after cloning the project. Then, for an iterative 'development' workflow, first run `build`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
+            "\nWhen you're ready to distribute, run `package` to build a wheel, or `exe` to build a Pyinstaller distribution.",
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
+    
+    # `init` command
+    init_parser = subparsers.add_parser("init", help = \
+        "Initialize the project repository. This will:" +
+        "\n- Acquire dependent Python packages via pip. (Running in a virtual environment is highly recommended!)" +
+        "\n- Initialize and update third party Git submodules. (Git is required!)" +
+        "\n- Build third party dependencies." +
+        "\n" +
+        "\nWhile Mollytime uses Meson, third-party dependences will, regrettably, be built using CMake. I'll handle it all; just FYI."
+    )
+    init_parser.set_defaults(command = init)
 
-    # `setup` command
-    setup_parser = subparsers.add_parser("setup", help = "Development: Set up a development build environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
-    setup_parser.set_defaults(command = setup)
-    _ = setup_parser.add_argument(
+    # `build` command
+    build_parser = subparsers.add_parser("build", help = "Development: Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
+    build_parser.set_defaults(command = build)
+    _ = build_parser.add_argument(
         "mode",
         help = "Build mode. If unspecified, uses `debug`.",
         choices = modes.keys()
     )
-    _ = setup_parser.add_argument(
+    _ = build_parser.add_argument(
         "toolchain",
         help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
         choices = toolchains.keys()
@@ -191,7 +235,7 @@ if __name__ == "__main__":
     )
 
     # `exe` command
-    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `setup` first.")
+    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `build` first.")
     exe_parser.set_defaults(command = exe)
 
     # Go

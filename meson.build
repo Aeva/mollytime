@@ -6,33 +6,17 @@ project('mollytime', 'cpp',
     ]
 )
 
+cmake = import('cmake')
 fs = import('fs')
 py = import('python')
 
 compiler = meson.get_compiler('cpp')
 project_dir = meson.project_source_root()
 
-include_dirs = []
-dependencies = []
-source_files = []
+python_install = py.find_installation(pure : false)
+python = python_install.full_path()
 
-# We'll need to link `m` (math) `dl` (dynamic linking) on non-Windows.
-dependencies += compiler.find_library('m', required : false)
-dependencies += compiler.find_library('dl', required : false)
-
-# HACK: Apparently Meson doesn't actually offer a way for us to get a platform's
-# executable suffix...? It absolutely knows about this, and has this internally. See:
-# - https://github.com/mesonbuild/meson/blob/8bba5d0a80ece5c14f5e56468dcf50752fe5d46d/mesonbuild/build.py#L2152
-# - https://github.com/mesonbuild/meson/blob/master/mesonbuild/envconfig.py#L382
-if build_machine.system() == 'windows'
-    executable_suffix = '.exe'
-else
-    executable_suffix = ''
-endif
-
-# ---
 # Warning wrangling 🤠
-
 if compiler.get_argument_syntax() == 'gcc'
     add_project_arguments(
         '-Wshadow',
@@ -48,7 +32,16 @@ elif compiler.get_argument_syntax() == 'msvc'
     )
 endif
 
-# ---
+# HACK: Apparently Meson doesn't actually offer a way for us to get a platform's
+# executable suffix...? It absolutely knows about this, and has this internally. See:
+# - https://github.com/mesonbuild/meson/blob/8bba5d0a80ece5c14f5e56468dcf50752fe5d46d/mesonbuild/build.py#L2152
+# - https://github.com/mesonbuild/meson/blob/master/mesonbuild/envconfig.py#L382
+if build_machine.system() == 'windows'
+    executable_suffix = '.exe'
+else
+    executable_suffix = ''
+endif
+
 # Force libc++ when compiling on Linux
 if compiler.get_id() == 'clang'
     # NOTE: according to https://mesonbuild.com/Reference-tables.html#compiler-ids,
@@ -62,154 +55,9 @@ if compiler.get_id() == 'clang'
 endif
 
 # ---
-# Python
+# Source files
 
-python_install = py.find_installation(pure : false)
-python = python_install.full_path()
-
-# ---
-# fmt
-
-fmt_include = 'third_party' / 'fmt-12.1.0' / 'include'
-include_dirs += include_directories(fmt_include)
-source_files += files('third_party' / 'fmt-12.1.0' / 'src' / 'format.cc')
-
-# ---
-# "get boost"
-
-boost_dir = 'third_party' / 'boost_1_90_0'
-include_dirs += include_directories(boost_dir)
-
-# ---
-# GLM
-
-glm_include = 'third_party' / 'glm-0.9.9.8'
-include_dirs += include_directories(glm_include)
-
-# ---
-# SDL3
-
-if build_machine.system() == 'windows'
-    sdl_include = 'third_party' / 'SDL3-3.2.22' / 'include'
-    sdl_libs = 'third_party' / 'SDL3-3.2.22' / 'lib' / 'x64'
-    sdl_includes = include_directories(sdl_include)
-    include_dirs += sdl_includes
-    dependencies += compiler.find_library(
-        'SDL3',
-        dirs : project_dir / sdl_libs,
-        header_include_directories : sdl_includes,
-        required : true
-    )
-
-    fs.copyfile(sdl_libs / 'SDL3.dll')
-else
-    dependencies += compiler.find_library(
-        'SDL3',
-        required : true
-    )
-endif
-
-# ---
-# SDL3_ttf
-
-if build_machine.system() == 'windows'
-    sdl_include = 'third_party' / 'SDL3_ttf-3.2.2' / 'include'
-    sdl_libs = 'third_party' / 'SDL3_ttf-3.2.2' / 'lib' / 'x64'
-    sdl_includes = include_directories(sdl_include)
-    include_dirs += sdl_includes
-    dependencies += compiler.find_library(
-        'SDL3_ttf',
-        dirs : project_dir / sdl_libs,
-        header_include_directories : sdl_includes,
-        required : true
-    )
-
-    fs.copyfile(sdl_libs / 'SDL3_ttf.dll')
-else
-    dependencies += compiler.find_library(
-        'SDL3_ttf',
-        required : true
-    )
-endif
-
-# ---
-# Pybind11
-
-dependencies += dependency('pybind11')
-
-# ---
-# Pyinstaller
-
-pyi_makespec = find_program('pyi-makespec', required : true)
-pyinstaller = find_program('pyinstaller', required : true)
-
-# ---
-# Audio backend
-
-if get_option('audio_backend') == 'jack'
-    dependencies += dependency('jack', required : true)
-    add_project_arguments('-DENABLE_JACK=1', language : 'cpp')
-elif get_option('audio_backend') == 'wasapi'
-    dependencies += compiler.find_library('RuntimeObject', required : true)
-    add_project_arguments('-DAUDIO_WASAPI=1', language : 'cpp')
-endif
-
-# ---
-# MIDI backend
-
-if get_option('midi_backend') == 'alsa'
-    dependencies += compiler.find_library('asound', required : true)
-    add_project_arguments('-DMIDI_ALSA=1', language: 'cpp')
-elif get_option('midi_backend') == 'mmeapi'
-    dependencies += compiler.find_library('Winmm', required : true)
-    add_project_arguments('-DMIDI_MMEAPI=1', language : 'cpp')
-endif
-
-# ---
-# Stack trace
-
-use_boost_stacktraces = get_option('boost_stacktrace').enabled()
-if use_boost_stacktraces
-    # Ideally, we can grab Boost as a system-known dependency. (Meson has internal magic for this.)
-    boost_stacktrace = dependency('boost', required : false)
-    if not boost_stacktrace.found()
-        # If not -- i.e, on Windows -- we'll look for a fallback in the `third_party` directory.
-        boost_stacktrace_dir = 'third_party' / 'boost-stacktrace-1.89.0'
-        if not fs.exists(boost_stacktrace_dir)
-            # If that's not there either, go ahead and let the build through; this isn't key functionality.
-            use_boost_stacktraces = false
-        else
-            include_dirs += include_directories(boost_stacktrace_dir / 'include')
-            message(f'boost_stacktrace: Fallback found: "@boost_stacktrace_dir@"')
-        endif
-    endif
-endif
-
-if use_boost_stacktraces
-    add_project_arguments('-DENABLE_STACK_TRACES=1', language : 'cpp')
-    if build_machine.system() == 'windows'
-        add_project_arguments('-DBOOST_STACKTRACE_USE_WINDBG=1', language: 'cpp')
-    endif
-endif
-
-# ---
-# Tracy
-
-if get_option('tracy').enabled()
-    tracy_dir = 'third_party' / 'tracy-0.12.2' / 'public'
-    add_project_arguments('-DTRACY_ENABLE', language: 'cpp')
-    include_dirs += include_directories(tracy_dir)
-    source_files += files(tracy_dir / 'TracyClient.cpp')
-
-    if build_machine.system() != 'windows'
-        dependencies += dependency('threads')
-    endif
-endif
-
-# ---
-# File lists
-
-source_files += files(
+source_files = files(
     'src' / 'alsa_midi.cpp',
     'src' / 'audio_backend.cpp',
     'src' / 'colors.cpp',
@@ -273,13 +121,185 @@ data_files = files(
 )
 
 # ---
+# Dependencies
+
+dependencies = []
+
+# *nixisms
+dependencies += compiler.find_library('m', required : false)
+dependencies += compiler.find_library('dl', required : false)
+
+# Pybind11
+dependencies += dependency('pybind11', required : true)
+
+# Pyinstaller
+pyi_makespec = find_program('pyi-makespec', required : true)
+pyinstaller = find_program('pyinstaller', required : true)
+
+# Audio backend
+if get_option('audio_backend') == 'jack'
+    dependencies += declare_dependency(
+        compile_args : '-DENABLE_JACK=1',
+        dependencies : dependency('jack', required : true)
+    )
+elif get_option('audio_backend') == 'wasapi'
+    dependencies += declare_dependency(
+        compile_args : '-DAUDIO_WASAPI=1',
+        dependencies : compiler.find_library('RuntimeObject', required : true)
+    )
+endif
+
+# MIDI backend
+if get_option('midi_backend') == 'alsa'
+    dependencies += declare_dependency(
+        compile_args : '-DMIDI_ALSA=1',
+        dependencies : compiler.find_library('asound', required : true)
+    )
+elif get_option('midi_backend') == 'mmeapi'
+    dependencies += declare_dependency(
+        compile_args : '-DMIDI_MMEAPI=1',
+        dependencies : compiler.find_library('Winmm', required : true)
+    )   
+endif
+
+# fmt
+fmt_dir = 'third_party' / 'fmt-12.1.0'
+fmt_include = fmt_dir / 'include'
+fmt_include_dirs = include_directories(fmt_include)
+fmt_source_files = files(fmt_dir / 'src' / 'format.cc')
+
+dependencies += declare_dependency(
+    include_directories : fmt_include_dirs,
+    link_with : static_library(
+        'fmt',
+        fmt_source_files,
+        include_directories : fmt_include_dirs,
+        override_options : [ 'warning_level=0' ]
+    )
+)
+
+# GLM
+glm_dir = 'third_party' / 'glm-1.0.3'
+dependencies += declare_dependency(
+    include_directories : include_directories(glm_dir)
+)
+
+# Tracy
+if get_option('tracy').enabled()
+    tracy_dir = 'third_party' / 'tracy-0.13.1' / 'public'
+    tracy_include_dirs = include_directories(tracy_dir)
+    tracy_source_files = files(tracy_dir / 'TracyClient.cpp')
+    
+    dependencies += declare_dependency(
+        compile_args : '-DTRACY_ENABLE',
+        dependencies : dependency('threads', required : false),
+        include_directories : tracy_include_dirs,
+        link_with : static_library(
+            'tracy',
+            tracy_source_files,
+            include_directories : tracy_include_dirs,
+            override_options : 'warning_level=0'
+        )
+    )
+endif
+
+# Boost
+boost_install_info_command = run_command(
+    python, 'build_tools' / 'boost_get_install_info.py', 'build' / 'boost',
+    check : true
+)
+boost_install_info = boost_install_info_command.stdout().strip().splitlines()
+
+boost_compile_args = []
+boost_include_dir = ''
+
+if get_option('boost_stacktrace').enabled()
+    boost_compile_args += '-DENABLE_STACK_TRACES=1'
+    if build_machine.system() == 'windows'
+        boost_compile_args += '-DBOOST_STACKTRACE_USE_WINDBG=1'
+    endif
+endif
+
+foreach line : boost_install_info
+    if line.startswith('include_dir:')
+        boost_include_dir = line.substring(12)
+    endif
+endforeach
+
+dependencies += declare_dependency(
+    compile_args : boost_compile_args,
+    include_directories : include_directories(boost_include_dir),
+)
+
+
+# SDL3
+sdl3_install_info_command = run_command(
+    python, 'build_tools' / 'sdl3_get_install_info.py', 'build' / 'sdl3',
+    check : true
+)
+sdl3_install_info = sdl3_install_info_command.stdout().strip().splitlines()
+
+sdl3_include_dir = ''
+sdl3_library_dir = ''
+sdl3_binary_dir = ''
+
+foreach line : sdl3_install_info
+    if line.startswith('include_dir:')
+        sdl3_include_dir = line.substring(12)
+    elif line.startswith('library_dir:')
+        sdl3_library_dir = line.substring(12)
+    elif line.startswith('binary_dir:')
+        sdl3_binary_dir = line.substring(11)
+    endif
+endforeach
+
+dependencies += declare_dependency(
+    include_directories : include_directories(sdl3_include_dir),
+    dependencies : compiler.find_library('SDL3', dirs : project_dir / sdl3_library_dir)
+)
+
+if build_machine.system() == 'windows'
+    fs.copyfile(sdl3_binary_dir / 'SDL3.dll')
+endif
+
+# SDL3_ttf
+sdl3_ttf_install_info_command = run_command(
+    python, 'build_tools' / 'sdl3_ttf_get_install_info.py', 'build' / 'sdl3_ttf',
+    check : true
+)
+sdl3_ttf_install_info = sdl3_ttf_install_info_command.stdout().strip().splitlines()
+
+sdl3_ttf_include_dir = ''
+sdl3_ttf_library_dir = ''
+sdl3_ttf_binary_dir = ''
+
+foreach line : sdl3_ttf_install_info
+    if line.startswith('include_dir:')
+        sdl3_ttf_include_dir = line.substring(12)
+    elif line.startswith('library_dir:')
+        sdl3_ttf_library_dir = line.substring(12)
+    elif line.startswith('binary_dir:')
+        sdl3_ttf_binary_dir = line.substring(11)
+    endif
+endforeach
+
+dependencies += declare_dependency(
+    include_directories : include_directories(sdl3_ttf_include_dir),
+    dependencies : compiler.find_library('SDL3_ttf', dirs : project_dir / sdl3_ttf_library_dir)
+)
+
+if build_machine.system() == 'windows'
+    fs.copyfile(sdl3_ttf_binary_dir / 'SDL3_ttf.dll')
+endif
+
+
+# ---
 # Targets
 
 # Compile and install the extension module in `<install root>/mollytime/`.
 cpp_module = python_install.extension_module(
     'mollytime',
     source_files,
-    include_directories : include_dirs,
     dependencies : dependencies,
     install : true,
     install_tag : 'package',
