@@ -46,9 +46,35 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     
     return args
 
-def init(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
+def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace):
+    args_dict = vars(args)
     project_dir = Path(__file__).parent
     build_tools_dir = project_dir / "build_tools"
+
+    # Dig out the specified compiler from the provided toolchain file.
+    # The build  helpers will pass these to CMake.
+    c_compiler_args: list[str] = []
+    cpp_compiler_args: list[str] = []
+    linker_type_args: list[str] = []
+
+    toolchain_name: str | None = args_dict.get("toolchain", None)
+    if toolchain_name != None:
+        toolchain_file = toolchains.get(toolchain_name, None)
+        if toolchain_file != None:
+            toolchain_config = ConfigParser()
+            _ = toolchain_config.read(toolchain_file)
+            
+            c_compiler: str | None = toolchain_config.get("binaries", "c", fallback = None)
+            if c_compiler != None:
+                c_compiler_args = [ "--c-compiler", c_compiler ]
+            
+            cpp_compiler: str | None = toolchain_config.get("binaries", "cpp", fallback = None)
+            if cpp_compiler != None:
+                cpp_compiler_args = [ "--cpp-compiler", cpp_compiler ]
+            
+            linker_type: str | None = toolchain_config.get("binaries", "cpp_ld", fallback = None)
+            if linker_type != None:
+                linker_type_args = [ "--linker-type", linker_type ]
 
     # Grab dependencies.
     pip_result = _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
@@ -64,21 +90,21 @@ def init(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace
     # Build Boost. (Yeah, we're using header-only librarires, but this still has to generate them.)
     boost_build_script = build_tools_dir / "boost_build.py" 
     boost_build_dir = project_dir / "build" / "boost"
-    boost_build_result = subprocess.run([ sys.executable, boost_build_script, boost_build_dir ])
+    boost_build_result = subprocess.run([ sys.executable, boost_build_script, boost_build_dir ] + cpp_compiler_args + linker_type_args)
     if boost_build_result.returncode != 0:
         return boost_build_result
     
     # Build SDL3.
     sdl3_build_script = build_tools_dir / "sdl3_build.py" 
     sdl3_build_dir = project_dir / "build" / "sdl3"
-    sdl3_build_result = subprocess.run([ sys.executable, sdl3_build_script, sdl3_build_dir ])
+    sdl3_build_result = subprocess.run([ sys.executable, sdl3_build_script, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
     if sdl3_build_result.returncode != 0:
         return sdl3_build_result
     
     # Build SDL3_ttf.
     sdl3_ttf_build_script = build_tools_dir / "sdl3_ttf_build.py" 
     sdl3_ttf_build_dir = project_dir / "build" / "sdl3_ttf"
-    sdl3_ttf_build_result = subprocess.run([ sys.executable, sdl3_ttf_build_script, sdl3_ttf_build_dir, sdl3_build_dir ])
+    sdl3_ttf_build_result = subprocess.run([ sys.executable, sdl3_ttf_build_script, sdl3_ttf_build_dir, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
     if sdl3_ttf_build_result.returncode != 0:
         return sdl3_ttf_build_result
     
@@ -210,6 +236,11 @@ if __name__ == "__main__":
         "\nWhile Mollytime uses Meson, third-party dependences will, regrettably, be built using CMake. I'll handle it all; just FYI."
     )
     init_parser.set_defaults(command = init)
+    _ = init_parser.add_argument(
+        "toolchain",
+        help = "Toolchain to build dependencies with. If unspecified, uses your system default.",
+        choices = toolchains.keys()
+    )
 
     # `build` command
     build_parser = subparsers.add_parser("build", help = "Development: Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")

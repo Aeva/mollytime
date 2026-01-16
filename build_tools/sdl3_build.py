@@ -13,6 +13,18 @@ _ = parser.add_argument(
     default = "cmake"
 )
 _ = parser.add_argument(
+    "--c-compiler",
+    help = "Path to a C compiler. If unspecfied, uses the system default."
+)
+_ = parser.add_argument(
+    "--cpp-compiler",
+    help = "Path to a C++ compiler. If unspecfied, uses the system default."
+)
+_ = parser.add_argument(
+    "--linker-type",
+    help = "C/++ linker type. If unspecfied, uses the system default."
+)
+_ = parser.add_argument(
     "build_dir",
     help = "Where to stash intermediate files."
 )
@@ -28,6 +40,14 @@ cmake = Path(args["cmake_path"])    # pyright: ignore[reportAny]
 build_dir = Path(args["build_dir"]) # pyright: ignore[reportAny]
 install_dir = sdl3_dir / "build" / "install"
 
+compiler_args: list[str] = []
+if (c_compiler := args.get("c_compiler", None)):
+    compiler_args.append(f"-D CMAKE_C_COMPILER={c_compiler}")
+if (cpp_compiler := args.get("cpp_compiler", None)):
+    compiler_args.append(f"-D CMAKE_CXX_COMPILER={cpp_compiler}")
+if (linker_type := args.get("linker_type", None)):
+    compiler_args.append(f"-D CMAKE_LINKER_TYPE={str(linker_type).upper()}")  # pyright: ignore[reportAny]
+
 cmake_configure_process = subprocess.run(
     [
         cmake,
@@ -35,13 +55,9 @@ cmake_configure_process = subprocess.run(
         "-B", build_dir,
         "-Wno-dev",
         f"-D CMAKE_INSTALL_PREFIX='{install_dir}'",
-        '-D CMAKE_C_COMPILER=clang',
-        '-D CMAKE_CXX_COMPILER=clang++',
-        '-D CMAKE_LINKER_TYPE=LLD',
-        '-D CMAKE_RC_COMPILER=llvm-rc',
         '-D CMAKE_MAKE_PROGRAM=ninja',
         "-G", "Ninja"
-    ]
+    ] + compiler_args
 )
 cmake_configure_process.check_returncode()
 
