@@ -36,13 +36,13 @@ def _get_boost(desired_boost_modules: list[str]):
     finally:
         os.chdir(old_cwd)
 
-def _get_sdl_ttf_dependencies():
-    sdl_ttf_external = project_dir / "third_party" / "SDL_ttf-3.2.2" / "external"
+def _get_sdl3_ttf_dependencies():
+    sdl_ttf_external = project_dir / "third_party" / "SDL3_ttf-3.2.2" / "external"
     if shutil.which("/bin/bash"):
-        sh_result = subprocess.run([ sdl_ttf_external / "downloads.sh" ])
+        sh_result = subprocess.run([ sdl_ttf_external / "downloads.sh" ], executable = "/bin/bash")
         sh_result.check_returncode()
     elif shutil.which("powershell"):
-        psh_result = subprocess.run([ "powershell", sdl_ttf_external / "Get-Gitmodules.ps1" ])
+        psh_result = subprocess.run([ "powershell", "-Command", f"& '{sdl_ttf_external / "Get-GitModules.ps1"}'" ])
         psh_result.check_returncode()
     else:
         raise FileNotFoundError("Can't find Bash or Powershell, so I can't resolve SDL_ttf dependencies.")
@@ -67,6 +67,6 @@ update_process.check_returncode()
 
 # Gather dependencies' dependencies.
 _get_boost([ "atomic", "stacktrace" ])
-_get_sdl_ttf_dependencies()
+_get_sdl3_ttf_dependencies()
 
 print("\n...OK, looks like I've got everything!")
