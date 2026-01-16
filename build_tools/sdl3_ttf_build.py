@@ -33,20 +33,6 @@ build_dir = Path(args["build_dir"]) # pyright: ignore[reportAny]
 sdl3_build_dir = Path(args["sdl3_build_dir"])    # pyright: ignore[reportAny]
 install_dir = sdl3_ttf_dir / "build" / "install"
 
-print(" ".join([
-    str(cmake),
-    "-S", str(sdl3_ttf_dir),
-    "-B", str(build_dir),
-    "-Wno-dev",
-    f"-D CMAKE_INSTALL_PREFIX='{install_dir}'",
-    '-D CMAKE_C_COMPILER=clang',
-    '-D CMAKE_CXX_COMPILER=clang++',
-    '-D CMAKE_LINKER_TYPE=LLD',
-    '-D CMAKE_RC_COMPILER=llvm-rc',
-    '-D CMAKE_MAKE_PROGRAM=ninja',
-    f'-D SDL3_DIR={project_dir / sdl3_build_dir}',
-    "-G", "Ninja"
-]))
 cmake_configure_process = subprocess.run(
     [
         cmake,

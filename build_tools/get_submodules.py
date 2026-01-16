@@ -51,8 +51,6 @@ def _get_sdl3_ttf_dependencies():
 if shutil.which("git") == None:
     raise FileNotFoundError("Can't find 'git' on PATH. I need Git to get submodules.")
 
-print("I'm going to initialize & acquire all submodules. This'll take a minute...\n")
-
 # Switch to the project root.
 this_dir = Path(__file__).parent
 project_dir = this_dir.parent
@@ -68,5 +66,3 @@ update_process.check_returncode()
 # Gather dependencies' dependencies.
 _get_boost([ "atomic", "stacktrace" ])
 _get_sdl3_ttf_dependencies()
-
-print("\n...OK, looks like I've got everything!")
