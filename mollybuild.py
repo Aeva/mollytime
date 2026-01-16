@@ -2,7 +2,6 @@ import os
 import platform
 import subprocess
 import sys
-import sysconfig
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
@@ -33,7 +32,7 @@ def _get_dependencies(dependencies: list[str]):
 def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     args: list[str] = []
     mode_config = ConfigParser()
-    mode_config.read(native_file)
+    _ = mode_config.read(native_file)
 
     def _parse_arg(name: str):
         arg = mode_config.get("built-in options", name, fallback = None)
@@ -64,7 +63,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     install_args += [ "-Ceditable-verbose=true" ]
     
     # Gather mode config, if specified.
-    mode_name = args_dict.get("mode", None)
+    mode_name: str | None = args_dict.get("mode", None)
     if mode_name != None:
         mode_file = modes.get(mode_name, None)
         if mode_file != None:
@@ -73,7 +72,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
             install_args += _HACK_extract_override_overrides(mode_file)
     
     # Gather toolchain config, if specified.
-    toolchain_name = args_dict.get("toolchain", None)
+    toolchain_name: str | None = args_dict.get("toolchain", None)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
@@ -86,7 +85,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     install_result = subprocess.run(install_args)
     return install_result.returncode
 
-def exe(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
     # Get the build directory. Meson-python will set this to './build/cpXX`,
     # where XX is the Python major & minor version number, w/o decimal separators.
     major, minor, _ = platform.python_version().split(".")
@@ -126,7 +125,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     setup_args += [ f"-Csetup-args={mode_arg}" ]
     
     # Gather toolchain config, if specified.
-    toolchain_name = args_dict.get("toolchain", None)
+    toolchain_name: str | None = args_dict.get("toolchain", None)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
@@ -161,8 +160,8 @@ if __name__ == "__main__":
     parser = ArgumentParser(
         prog = "mollybuild",
         description = \
-            "Concise build helper."
-            "\nFor an iterative 'development' workflow, run `setup`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run."
+            "Concise build helper." +
+            "\nFor an iterative 'development' workflow, run `setup`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
             "\nWhen you're ready to distribute, run `package`.",
         argument_default = "-h"
     )
@@ -171,12 +170,12 @@ if __name__ == "__main__":
     # `setup` command
     setup_parser = subparsers.add_parser("setup", help = "Development: Set up a development build environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
     setup_parser.set_defaults(command = setup)
-    setup_parser.add_argument(
+    _ = setup_parser.add_argument(
         "mode",
         help = "Build mode. If unspecified, uses `debug`.",
         choices = modes.keys()
     )
-    setup_parser.add_argument(
+    _ = setup_parser.add_argument(
         "toolchain",
         help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
         choices = toolchains.keys()
@@ -185,7 +184,7 @@ if __name__ == "__main__":
     # `package` command
     package_parser = subparsers.add_parser("package", help = "Release: Build a distributable Python package (sdist and wheel).")
     package_parser.set_defaults(command = package)
-    package_parser.add_argument(
+    _ = package_parser.add_argument(
         "toolchain",
         help = "Toolchain to build with. If unspecified, uses your system default.",
         choices = toolchains.keys()
@@ -201,5 +200,5 @@ if __name__ == "__main__":
         parser.print_help()
         exit(0)
     
-    return_code = args.command(modes, toolchains, args)
+    return_code: int = args.command(modes, toolchains, args)  # pyright: ignore[reportAny]
     exit(return_code)
