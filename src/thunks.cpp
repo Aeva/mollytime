@@ -1719,7 +1719,7 @@ struct InputSequenceThunk : public InstructionThunk
                 // Modulating the index happens at the start of this thunk, because the patch may
                 // have been modified between calls, which could result in the sequence changing
                 // length.
-                const int Period = Sequence.size();
+                const int Period = static_cast<const int>(Sequence.size());
                 int Index = int(Cursor) % Period;
                 OutValue = Sequence[Index][Lane];
 
@@ -1797,7 +1797,7 @@ struct RandomSequenceThunk : public InstructionThunk
                     }
                     LaneCache.resize(Period);
                     std::mt19937 Generator;
-                    Generator.seed(Seed);
+                    Generator.seed(static_cast<std::mt19937::result_type>(Seed));
                     double Low = Generator.min();
                     double Scale = 1.0 / (Generator.max() - Low);
                     for (double& Sample : LaneCache)
@@ -2373,8 +2373,8 @@ struct TapeLoopThunk : public InstructionThunk
             double& LastReset = Registers.ClosureRef(Lane, 2);
             double& LastOffset = Registers.ClosureRef(Lane, 3);
 
-            uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
-            uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
+            uint64_t ReadIndex = bit_cast<uint64_t, double>(ReadHead);
+            uint64_t WriteIndex = bit_cast<uint64_t, double>(WriteHead);
 
             BlankTape* Tape;
             {
@@ -2423,10 +2423,10 @@ struct TapeLoopThunk : public InstructionThunk
                 LastReset = Reset;
 
                 Output = Tape->ReadAndAdvance(ReadIndex);
-                ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
+                ReadHead = bit_cast<double, uint64_t>(ReadIndex);
 
                 Tape->WriteAndAdvance(WriteIndex, Sample);
-                WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
+                WriteHead = bit_cast<double, uint64_t>(WriteIndex);
             }
         });
     }

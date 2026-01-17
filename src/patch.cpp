@@ -330,7 +330,7 @@ std::string Patch::GetTileLabel(TileHandle Tile)
         OpCode Symbol = GetTileSymbol(Tile);
         if (Symbol == OpCode::CONST)
         {
-            return std::format("{}", GetConstant(Tile));
+            return fmt::format("{}", GetConstant(Tile));
         }
         else
         {
@@ -1289,14 +1289,14 @@ ScratchUniquePtr Patch::Compile()
                     {
                         if (OutputWidth != MaxWidth)
                         {
-                            std::print(
+                            fmt::print(
                                 "thunk \"{}\" somehow has a mix of monophonic and polyphonic outputs!\n",
                                 Thunk->DebugName);
                         }
                     }
                     if (MaxWidth != ExpectedPolyphony)
                     {
-                        std::print(
+                        fmt::print(
                             "thunk \"{}\" expects output width {}, but its outputs are {}!\n",
                             Thunk->DebugName, ExpectedPolyphony, MaxWidth);
                     }
@@ -1449,7 +1449,7 @@ ScratchUniquePtr Patch::Compile()
                     if (Symbol == OpCode::ADSR && Partial->Polyphony > 1)
                     {
                         Thunk->Retriggerable = true;
-                        uint32_t ThunkIndex = Program->Program.size() - 1;
+                        uint32_t ThunkIndex = static_cast<uint32_t>(Program->Program.size()) - 1;
                         assert(Program->Program[ThunkIndex] == Thunk);
                         if (Partial->Frequency != EvalFrequency::ONCE)
                         {
@@ -1519,14 +1519,14 @@ ScratchUniquePtr Patch::Compile()
 
 #ifndef NDEBUG
     {
-        std::print("\n\n##############################################################################\n");
-        std::print("Patch compiled:\n");
+        fmt::print("\n\n##############################################################################\n");
+        fmt::print("Patch compiled:\n");
         uint32_t ThunkIndex = 0;
         for (InstructionThunkSharedPtr& Thunk : Program->Program)
         {
             assert(Thunk != nullptr);
             assert(Thunk->Registers.Polyphony > 0);
-            std::print("{} {}:\n", ThunkIndex++, Thunk->DebugName);
+            fmt::print("{} {}:\n", ThunkIndex++, Thunk->DebugName);
         }
     }
 #endif
