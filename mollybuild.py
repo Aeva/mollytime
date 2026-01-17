@@ -74,6 +74,14 @@ def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace)
             
             linker_type: str | None = toolchain_config.get("binaries", "cpp_ld", fallback = None)
             if linker_type != None:
+                match linker_type:
+                    case "link":
+                        linker_type = "MSVC"
+                    case "lld":
+                        linker_type = "LLD"
+                    case _:
+                        linker_type = "SYSTEM"
+                
                 linker_type_args = [ "--linker-type", linker_type ]
 
     # Grab dependencies.

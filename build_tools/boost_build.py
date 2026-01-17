@@ -40,7 +40,7 @@ compiler_args: list[str] = []
 if (cpp_compiler := args.get("cpp_compiler", None)):
     compiler_args.append(f"-D CMAKE_CXX_COMPILER={cpp_compiler}")
 if (linker_type := args.get("linker_type", None)):
-    compiler_args.append(f"-D CMAKE_LINKER_TYPE={str(linker_type).upper()}")  # pyright: ignore[reportAny]
+    compiler_args.append(f"-D CMAKE_LINKER_TYPE={linker_type}")
 
 cmake_configure_process = subprocess.run([
     cmake,
