@@ -133,12 +133,15 @@ struct SinThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.ClosureRef(0);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.ClosureRef(Lane, 0);
 
-        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        Amplitude = std::sin(Phase * Tau);
+            Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+            Amplitude = std::sin(Phase * Tau);
+        });
     }
 
     virtual ~SinThunk() {};
@@ -159,16 +162,19 @@ struct SqrThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SqrThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.ClosureRef(0);
-
-        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        if (Phase < 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Phase += 1.0;
-        }
-        Amplitude = Phase < 0.5 ? 1.0 : -1.0;
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.ClosureRef(Lane, 0);
+
+            Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+            Amplitude = Phase < 0.5 ? 1.0 : -1.0;
+        });
     }
 
     virtual ~SqrThunk() {};
@@ -189,23 +195,26 @@ struct TriThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TriThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.ClosureRef(0);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.ClosureRef(Lane, 0);
 
-        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        if (Phase < 0.0)
-        {
-            Phase += 1.0;
-        }
-        double Sign = Phase < 0.5 ? 1.0 : -1.0;
-        double IntegerPart = 0.0;
-        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
-        if (int(IntegerPart) % 2 == 1)
-        {
-            Alpha = 1.0 - Alpha;
-        }
-        Amplitude = Alpha * Sign;
+            Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+            double Sign = Phase < 0.5 ? 1.0 : -1.0;
+            double IntegerPart = 0.0;
+            double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+            if (int(IntegerPart) % 2 == 1)
+            {
+                Alpha = 1.0 - Alpha;
+            }
+            Amplitude = Alpha * Sign;
+        });
     }
 
     virtual ~TriThunk() {};
@@ -226,17 +235,20 @@ struct SawThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SawThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.ClosureRef(0);
-
-        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        if (Phase < 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Phase += 1.0;
-        }
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.ClosureRef(Lane, 0);
 
-        Amplitude = Phase * 2.0 - 1.0;
+            Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+
+            Amplitude = Phase * 2.0 - 1.0;
+        });
     }
 
     virtual ~SawThunk() {};
@@ -257,31 +269,34 @@ struct NoiThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("NoiThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.ClosureRef(0);
-        double& HighAmp = Registers.ClosureRef(1);
-        double& LowAmp = Registers.ClosureRef(2);
-
-        int Before = int(Phase * 4.0);
-        Phase += Hz * SampleInterval;
-        int After = int(Phase * 4.0);
-        if ((Hz >= 0 && Before < After) || (Before > After))
+        CrankLanes([&](uint32_t Lane)
         {
-            // TODO: the backwards case is not quite right?
-            After %= 4;
-            if (After == 1)
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.ClosureRef(Lane, 0);
+            double& HighAmp = Registers.ClosureRef(Lane, 1);
+            double& LowAmp = Registers.ClosureRef(Lane, 2);
+
+            int Before = int(Phase * 4.0);
+            Phase += Hz * SampleInterval;
+            int After = int(Phase * 4.0);
+            if ((Hz >= 0 && Before < After) || (Before > After))
             {
-                LowAmp = Roll() * 2.0 - 1.0;
+                // TODO: the backwards case is not quite right?
+                After %= 4;
+                if (After == 1)
+                {
+                    LowAmp = Roll() * 2.0 - 1.0;
+                }
+                else if (After == 3)
+                {
+                    HighAmp = Roll() * 2.0 - 1.0;
+                }
             }
-            else if (After == 3)
-            {
-                HighAmp = Roll() * 2.0 - 1.0;
-            }
-        }
-        Phase = std::fmod(Phase, 1.0);
-        double Alpha = std::sin(Phase * Tau) * .5 + .5;
-        Amplitude = LowAmp * (1.0 - Alpha) + HighAmp * Alpha;
+            Phase = std::fmod(Phase, 1.0);
+            double Alpha = std::sin(Phase * Tau) * .5 + .5;
+            Amplitude = LowAmp * (1.0 - Alpha) + HighAmp * Alpha;
+        });
     }
 
     virtual ~NoiThunk() {};
@@ -302,14 +317,17 @@ struct PhaseThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseThunk");
-        double Hz = Registers.CombineInput(0, 440.0);
-        double& Phase = Registers.OutputRef(0);
-
-        Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
-        if (Phase < 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Phase += 1.0;
-        }
+            double Hz = Registers.CombineInput(Lane, 0, 440.0);
+            double& Phase = Registers.OutputRef(Lane, 0);
+
+            Phase = std::fmod(Phase + Hz * SampleInterval, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+        });
     }
 
     virtual ~PhaseThunk() {};
@@ -330,12 +348,15 @@ struct SinTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SinTrainThunk");
-        double InPhase = Registers.CombineInput(0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.OutputRef(1);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double InPhase = Registers.CombineInput(Lane, 0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.OutputRef(Lane, 1);
 
-        Phase = std::fmod(InPhase, 1.0);
-        Amplitude = std::sin(Phase * Tau);
+            Phase = std::fmod(InPhase, 1.0);
+            Amplitude = std::sin(Phase * Tau);
+        });
     }
 
     virtual ~SinTrainThunk() {};
@@ -356,16 +377,19 @@ struct SqrTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SqrTrainThunk");
-        double InPhase = Registers.CombineInput(0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.OutputRef(1);
-
-        Phase = std::fmod(InPhase, 1.0);
-        if (Phase < 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Phase += 1.0;
-        }
-        Amplitude = Phase < 0.5 ? 1.0 : -1.0;
+            double InPhase = Registers.CombineInput(Lane, 0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.OutputRef(Lane, 1);
+
+            Phase = std::fmod(InPhase, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+            Amplitude = Phase < 0.5 ? 1.0 : -1.0;
+        });
     }
 
     virtual ~SqrTrainThunk() {};
@@ -386,23 +410,26 @@ struct TriTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TriTrainThunk");
-        double InPhase = Registers.CombineInput(0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.OutputRef(1);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double InPhase = Registers.CombineInput(Lane, 0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.OutputRef(Lane, 1);
 
-        Phase = std::fmod(InPhase, 1.0);
-        if (Phase < 0.0)
-        {
-            Phase += 1.0;
-        }
-        double Sign = Phase < 0.5 ? 1.0 : -1.0;
-        double IntegerPart = 0.0;
-        double Alpha = std::modf(Phase * 4.0, &IntegerPart);
-        if (int(IntegerPart) % 2 == 1)
-        {
-            Alpha = 1.0 - Alpha;
-        }
-        Amplitude = Alpha * Sign;
+            Phase = std::fmod(InPhase, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+            double Sign = Phase < 0.5 ? 1.0 : -1.0;
+            double IntegerPart = 0.0;
+            double Alpha = std::modf(Phase * 4.0, &IntegerPart);
+            if (int(IntegerPart) % 2 == 1)
+            {
+                Alpha = 1.0 - Alpha;
+            }
+            Amplitude = Alpha * Sign;
+        });
     }
 
     virtual ~TriTrainThunk() {};
@@ -423,17 +450,20 @@ struct SawTrainThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SawTrainThunk");
-        double InPhase = Registers.CombineInput(0);
-        double& Amplitude = Registers.OutputRef(0);
-        double& Phase = Registers.OutputRef(1);
-
-        Phase = std::fmod(InPhase, 1.0);
-        if (Phase < 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Phase += 1.0;
-        }
+            double InPhase = Registers.CombineInput(Lane, 0);
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& Phase = Registers.OutputRef(Lane, 1);
 
-        Amplitude = Phase * 2.0 - 1.0;
+            Phase = std::fmod(InPhase, 1.0);
+            if (Phase < 0.0)
+            {
+                Phase += 1.0;
+            }
+
+            Amplitude = Phase * 2.0 - 1.0;
+        });
     }
 
     virtual ~SawTrainThunk() {};
@@ -455,25 +485,28 @@ struct PhaseWidthModulationThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PhaseWidthModulationThunk");
-        double Phase = Registers.CombineInput(0);
-        double Balance = Registers.CombineInput(1);
-        double& OutPhase = Registers.OutputRef(0);
-
-        const double Pivot = (Balance * 0.5 + 0.5);
-        Phase = std::fmod(Phase, 1.0);
-
-        if (Phase <= Pivot && Pivot > 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            const double Alpha = Phase / Pivot;
-            Phase = Alpha * 0.5;
-        }
-        else if (Phase >= Pivot && Pivot < 1.0)
-        {
-            const double Alpha = (Phase - Pivot) / (1.0 - Pivot);
-            Phase = 0.5 + Alpha * 0.5;
-        }
+            double Phase = Registers.CombineInput(Lane, 0);
+            double Balance = Registers.CombineInput(Lane, 1);
+            double& OutPhase = Registers.OutputRef(Lane, 0);
 
-        OutPhase = Phase;
+            const double Pivot = (Balance * 0.5 + 0.5);
+            Phase = std::fmod(Phase, 1.0);
+
+            if (Phase <= Pivot && Pivot > 0.0)
+            {
+                const double Alpha = Phase / Pivot;
+                Phase = Alpha * 0.5;
+            }
+            else if (Phase >= Pivot && Pivot < 1.0)
+            {
+                const double Alpha = (Phase - Pivot) / (1.0 - Pivot);
+                Phase = 0.5 + Alpha * 0.5;
+            }
+
+            OutPhase = Phase;
+        });
     }
 
     virtual ~PhaseWidthModulationThunk() {};
@@ -494,7 +527,10 @@ struct AddThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerAdd);
+        });
     }
 
     virtual ~AddThunk() {};
@@ -515,7 +551,10 @@ struct MulThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MulThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMul);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerMul);
+        });
     }
 
     virtual ~MulThunk() {};
@@ -536,13 +575,16 @@ struct RcpThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RcpThunk");
-        double Divisor = Registers.CombineInput(0, 0.0, CombinerMul);
-        double& Output = Registers.OutputRef(0);
-
-        if (Divisor != 0.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Output = 1.0 / Divisor;
-        }
+            double Divisor = Registers.CombineInput(Lane, 0, 0.0, CombinerMul);
+            double& Output = Registers.OutputRef(Lane, 0);
+
+            if (Divisor != 0.0)
+            {
+                Output = 1.0 / Divisor;
+            }
+        });
     }
 
     virtual ~RcpThunk() {};
@@ -564,15 +606,18 @@ struct PowThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PowThunk");
-        double Base = Registers.CombineInput(0);
-        double Exponent = Registers.CombineInput(1, 2.0);
-        double& Output = Registers.OutputRef(0);
-
-        double Result = std::pow(Base, Exponent);
-        if (std::isfinite(Result))
+        CrankLanes([&](uint32_t Lane)
         {
-            Output = Result;
-        }
+            double Base = Registers.CombineInput(Lane, 0);
+            double Exponent = Registers.CombineInput(Lane, 1, 2.0);
+            double& Output = Registers.OutputRef(Lane, 0);
+
+            double Result = std::pow(Base, Exponent);
+            if (std::isfinite(Result))
+            {
+                Output = Result;
+            }
+        });
     }
 
     virtual ~PowThunk() {};
@@ -594,16 +639,19 @@ struct SignPreservingPowThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SignPreservingPowThunk");
-        double Base = Registers.CombineInput(0);
-        double Exponent = Registers.CombineInput(1, 2.0);
-        double& Output = Registers.OutputRef(0);
-
-        double Sign = Base >= 0.0 ? 1.0 : -1.0;
-        double Result = std::pow(std::abs(Base), Exponent);
-        if (std::isfinite(Result))
+        CrankLanes([&](uint32_t Lane)
         {
-            Output = Result * Sign;
-        }
+            double Base = Registers.CombineInput(Lane, 0);
+            double Exponent = Registers.CombineInput(Lane, 1, 2.0);
+            double& Output = Registers.OutputRef(Lane, 0);
+
+            double Sign = Base >= 0.0 ? 1.0 : -1.0;
+            double Result = std::pow(std::abs(Base), Exponent);
+            if (std::isfinite(Result))
+            {
+                Output = Result * Sign;
+            }
+        });
     }
 
     virtual ~SignPreservingPowThunk() {};
@@ -624,7 +672,10 @@ struct MinThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MinThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMin);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerMin);
+        });
     }
 
     virtual ~MinThunk() {};
@@ -645,7 +696,10 @@ struct MaxThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MaxThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerMax);
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0, 0.0, CombinerMax);
+        });
     }
 
     virtual ~MaxThunk() {};
@@ -668,11 +722,14 @@ struct ClampThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ClampThunk");
-        double Sample = Registers.CombineInput(0);
-        double High = Registers.CombineInput(1, 1.0, CombinerMax);
-        double Low = Registers.CombineInput(2, -1.0, CombinerMin);
-        double& Output = Registers.OutputRef(0);
-        Output = std::max(std::min(Sample, High), Low);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Sample = Registers.CombineInput(Lane, 0);
+            double High = Registers.CombineInput(Lane, 1, 1.0, CombinerMax);
+            double Low = Registers.CombineInput(Lane, 2, -1.0, CombinerMin);
+            double& Output = Registers.OutputRef(Lane, 0);
+            Output = std::max(std::min(Sample, High), Low);
+        });
     }
 
     virtual ~ClampThunk() {};
@@ -693,7 +750,10 @@ struct FloorThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FloorThunk");
-        Registers.OutputRef(0) = std::floor(Registers.CombineInput(0));
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = std::floor(Registers.CombineInput(Lane, 0));
+        });
     }
 
     virtual ~FloorThunk() {};
@@ -714,7 +774,10 @@ struct CeilThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("CeilThunk");
-        Registers.OutputRef(0) = std::ceil(Registers.CombineInput(0));
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = std::ceil(Registers.CombineInput(Lane, 0));
+        });
     }
 
     virtual ~CeilThunk() {};
@@ -735,7 +798,10 @@ struct RoundThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RoundThunk");
-        Registers.OutputRef(0) = std::round(Registers.CombineInput(0));
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = std::round(Registers.CombineInput(Lane, 0));
+        });
     }
 
     virtual ~RoundThunk() {};
@@ -756,9 +822,12 @@ struct SignThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("SignThunk");
-        double Number = Registers.CombineInput(0);
-        double& Sign = Registers.OutputRef(0);
-        Sign = (Number < 0.0) ? -1.0 : 1.0;
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Number = Registers.CombineInput(Lane, 0);
+            double& Sign = Registers.OutputRef(Lane, 0);
+            Sign = (Number < 0.0) ? -1.0 : 1.0;
+        });
     }
 
     virtual ~SignThunk() {};
@@ -779,7 +848,10 @@ struct AbsThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AbsThunk");
-        Registers.OutputRef(0) = std::abs(Registers.CombineInput(0));
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = std::abs(Registers.CombineInput(Lane, 0));
+        });
     }
 
     virtual ~AbsThunk() {};
@@ -802,29 +874,32 @@ struct FoldThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FoldThunk");
-        double Sample = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Sample = Registers.CombineInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
 
-        double Threshold;
-        if (Sample < 0.0 && Registers.InputConnected(2))
-        {
-            // Use the negative threshold input.
-            Threshold = Registers.CombineInput(2);
-        }
-        else
-        {
-            // Use the positive threshold input or default to 1.
-            Threshold = Registers.CombineInput(1, 1.0);
-        }
+            double Threshold;
+            if (Sample < 0.0 && Registers.InputConnected(2))
+            {
+                // Use the negative threshold input.
+                Threshold = Registers.CombineInput(Lane, 2);
+            }
+            else
+            {
+                // Use the positive threshold input or default to 1.
+                Threshold = Registers.CombineInput(Lane, 1, 1.0);
+            }
 
-        double Sign = Sample < 0.0 ? -1.0 : 1.0;
-        Threshold = std::min(std::max(std::abs(Threshold), 0.0), 1.0);
-        Sample = std::abs(Sample);
-        if (Sample > Threshold)
-        {
-            Sample = Threshold - (Sample - Threshold);
-        }
-        Output = Sample * Sign;
+            double Sign = Sample < 0.0 ? -1.0 : 1.0;
+            Threshold = std::min(std::max(std::abs(Threshold), 0.0), 1.0);
+            Sample = std::abs(Sample);
+            if (Sample > Threshold)
+            {
+                Sample = Threshold - (Sample - Threshold);
+            }
+            Output = Sample * Sign;
+        });
     }
 
     virtual ~FoldThunk() {};
@@ -845,10 +920,13 @@ struct InvertThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InvertThunk");
-        double Value = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        double Sign = Value < 0.0 ? -1.0 : 1.0;
-        Output = (1.0 - std::abs(Value)) * Sign;
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Value = Registers.CombineInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double Sign = Value < 0.0 ? -1.0 : 1.0;
+            Output = (1.0 - std::abs(Value)) * Sign;
+        });
     }
 
     virtual ~InvertThunk() {};
@@ -869,7 +947,10 @@ struct ToUnipolarThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ToUnipolarThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0) * 0.5 + 0.5;
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0) * 0.5 + 0.5;
+        });
     }
 
     virtual ~ToUnipolarThunk() {};
@@ -890,7 +971,10 @@ struct ToBipolarThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ToBipolarThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0) * 2.0 - 1.0;
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.OutputRef(Lane, 0) = Registers.CombineInput(Lane, 0) * 2.0 - 1.0;
+        });
     }
 
     virtual ~ToBipolarThunk() {};
@@ -913,12 +997,15 @@ struct MixThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MixThunk");
-        double Left = Registers.CombineInput(0);
-        double Right = Registers.CombineInput(1);
-        double Alpha = Registers.CombineInput(2, 0.5);
-        double& Output = Registers.OutputRef(0);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Left = Registers.CombineInput(Lane, 0);
+            double Right = Registers.CombineInput(Lane, 1);
+            double Alpha = Registers.CombineInput(Lane, 2, 0.5);
+            double& Output = Registers.OutputRef(Lane, 0);
 
-        Output = (1.0 - Alpha) * Left + Alpha * Right;
+            Output = (1.0 - Alpha) * Left + Alpha * Right;
+        });
     }
 
     virtual ~MixThunk() {};
@@ -940,15 +1027,18 @@ struct StereoBalanceThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("StereoBalanceThunk");
-        double Sample = Registers.CombineInput(0);
-        double Balance = Registers.CombineInput(1);
-        double& Left = Registers.OutputRef(0);
-        double& Right = Registers.OutputRef(1);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Balance = Registers.CombineInput(Lane, 1);
+            double& Left = Registers.OutputRef(Lane, 0);
+            double& Right = Registers.OutputRef(Lane, 1);
 
-        double Alpha = std::min(std::max(Balance, -1.0), 1.0) * 0.5 + 0.5;
-        double InvA = 1.0 - Alpha;
-        Left = Sample * InvA;
-        Right = Sample * Alpha;
+            double Alpha = std::min(std::max(Balance, -1.0), 1.0) * 0.5 + 0.5;
+            double InvA = 1.0 - Alpha;
+            Left = Sample * InvA;
+            Right = Sample * Alpha;
+        });
     }
 
     virtual ~StereoBalanceThunk() {};
@@ -969,28 +1059,30 @@ struct PulseThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PulseThunk");
-
-        double Clock = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        double& Latch = Registers.ClosureRef(0);
-
-        if (Registers.InputConnected(0))
+        CrankLanes([&](uint32_t Lane)
         {
-            if (Latch == 0.0 && Clock >= 1.0)
+            double Clock = Registers.CombineInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double& Latch = Registers.ClosureRef(Lane, 0);
+
+            if (Registers.InputConnected(0))
             {
-                Latch = 1.0;
-                Output = 1.0;
+                if (Latch == 0.0 && Clock >= 1.0)
+                {
+                    Latch = 1.0;
+                    Output = 1.0;
+                }
+                else if (Latch == 1.0 && Clock <= 0.0)
+                {
+                    Latch = 0.0;
+                    Output = 0.0;
+                }
+                else
+                {
+                    Output = 0.0;
+                }
             }
-            else if (Latch == 1.0 && Clock <= 0.0)
-            {
-                Latch = 0.0;
-                Output = 0.0;
-            }
-            else
-            {
-                Output = 0.0;
-            }
-        }
+        });
     }
 
     virtual ~PulseThunk() {};
@@ -1011,40 +1103,43 @@ struct FlipFlopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("FlipFlopThunk");
-        double Clock = Registers.CombineInput(0);
-        double& EvenOutput = Registers.OutputRef(0);
-        double& OddOutput = Registers.OutputRef(1);
-        double& Latch = Registers.ClosureRef(0);
-
-        const double LastEven = EvenOutput;
-        const double LastOdd = OddOutput;
-        if (LastEven == LastOdd)
+        CrankLanes([&](uint32_t Lane)
         {
-            EvenOutput = 1.0;
-            OddOutput = 0.0;
-        }
+            double Clock = Registers.CombineInput(Lane, 0);
+            double& EvenOutput = Registers.OutputRef(Lane, 0);
+            double& OddOutput = Registers.OutputRef(Lane, 1);
+            double& Latch = Registers.ClosureRef(Lane, 0);
 
-        if (Registers.InputConnected(0))
-        {
-            if (Latch <= 0.0 && Clock >= 1.0)
+            const double LastEven = EvenOutput;
+            const double LastOdd = OddOutput;
+            if (LastEven == LastOdd)
             {
-                Latch = 1.0;
-                if (LastEven > 0.0)
+                EvenOutput = 1.0;
+                OddOutput = 0.0;
+            }
+
+            if (Registers.InputConnected(0))
+            {
+                if (Latch <= 0.0 && Clock >= 1.0)
                 {
-                    EvenOutput = 0.0;
-                    OddOutput = 1.0;
+                    Latch = 1.0;
+                    if (LastEven > 0.0)
+                    {
+                        EvenOutput = 0.0;
+                        OddOutput = 1.0;
+                    }
+                    else
+                    {
+                        EvenOutput = 1.0;
+                        OddOutput = 0.0;
+                    }
                 }
-                else
+                else if (Clock <= 0.0)
                 {
-                    EvenOutput = 1.0;
-                    OddOutput = 0.0;
+                    Latch = 0.0;
                 }
             }
-            else if (Clock <= 0.0)
-            {
-                Latch = 0.0;
-            }
-        }
+        });
     }
 
     virtual ~FlipFlopThunk() {};
@@ -1065,22 +1160,25 @@ struct RandomThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RandomThunk");
-        double Clock = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        double& Latch = Registers.ClosureRef(0);
-
-        if (Registers.InputConnected(0))
+        CrankLanes([&](uint32_t Lane)
         {
-            if (Latch <= 0.0 && Clock >= 1.0)
+            double Clock = Registers.CombineInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double& Latch = Registers.ClosureRef(Lane, 0);
+
+            if (Registers.InputConnected(0))
+            {
+                if (Latch <= 0.0 && Clock >= 1.0)
+                {
+                    Output = Roll();
+                }
+                Latch = Clock;
+            }
+            else
             {
                 Output = Roll();
             }
-            Latch = Clock;
-        }
-        else
-        {
-            Output = Roll();
-        }
+        });
     }
 
     virtual ~RandomThunk() {};
@@ -1102,28 +1200,31 @@ struct GradualThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GradualThunk");
-        if (Registers.InputConnected(0))
+        CrankLanes([&](uint32_t Lane)
         {
-            double Value = Registers.CombineInput(0);
-            double Rate = Registers.CombineInput(1);
-            double& Pos = Registers.OutputRef(0);
-            double& Initialized = Registers.ClosureRef(0);
-
-            Rate *= SampleInterval;
-
-            if (Initialized == 0.0)
+            if (Registers.InputConnected(0))
             {
-                Initialized = 1.0;
-                Pos = Value;
+                double Value = Registers.CombineInput(Lane, 0);
+                double Rate = Registers.CombineInput(Lane, 1);
+                double& Pos = Registers.OutputRef(Lane, 0);
+                double& Initialized = Registers.ClosureRef(Lane, 0);
+
+                Rate *= SampleInterval;
+
+                if (Initialized == 0.0)
+                {
+                    Initialized = 1.0;
+                    Pos = Value;
+                }
+                else
+                {
+                    double Delta = Value - Pos;
+                    double Sign = (Delta < 0.0) ? -1.0 : 1.0;
+                    Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
+                    Pos += Delta;
+                }
             }
-            else
-            {
-                double Delta = Value - Pos;
-                double Sign = (Delta < 0.0) ? -1.0 : 1.0;
-                Delta = std::min(std::abs(Delta), std::abs(Rate)) * Sign;
-                Pos += Delta;
-            }
-        }
+        });
     }
 
     virtual ~GradualThunk() {};
@@ -1153,107 +1254,112 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
-
-        double Sample = Registers.CombineInput(0);
-        double Cutoff = Registers.CombineInput(1, 1000.0);
-        double Resonance = Registers.CombineInput(2);
-        double& Output = Registers.OutputRef(0);
-        double& LastCutoff = Registers.ClosureRef(0);
-        double& LastResonance = Registers.ClosureRef(1);
-        double& Gain = Registers.ClosureRef(2);
-        double& FeedbackDamping = Registers.ClosureRef(3);
-        // TODO: ShelfGain can be factored out for most specializations of this class
-        double& ShelfGain = Registers.ClosureRef(4);
-        double& z1_A = Registers.ClosureRef(5); // state variables (z^-1)
-        double& z2_A = Registers.ClosureRef(6);
-
-        // TODO: Is this section actually worth the two extra RunningState vars and the branch?
-        if (Cutoff != LastCutoff || Resonance != LastResonance)
+        CrankLanes([&](uint32_t Lane)
         {
-            LastCutoff = Cutoff;
-            LastResonance = Resonance;
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Cutoff = Registers.CombineInput(Lane, 1, 1000.0);
+            double Resonance = Registers.CombineInput(Lane, 2);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double& LastCutoff = Registers.ClosureRef(Lane, 0);
+            double& LastResonance = Registers.ClosureRef(Lane, 1);
+            double& Gain = Registers.ClosureRef(Lane, 2);
+            double& FeedbackDamping = Registers.ClosureRef(Lane, 3);
+            // TODO: ShelfGain can be factored out for most specializations of this class
+            double& ShelfGain = Registers.ClosureRef(Lane, 4);
+            double& z1_A = Registers.ClosureRef(Lane, 5); // state variables (z^-1)
+            double& z2_A = Registers.ClosureRef(Lane, 6);
 
-            // prewarp the cutoff (for bilinear-transform filters)
-            double wd = Cutoff * Tau;
-            double T = SampleInterval;
-            double wa = (2.0 / T) * std::tan(wd * T / 2.0);
+            // TODO: Is this section actually worth the two extra RunningState vars and the branch?
+            if (Cutoff != LastCutoff || Resonance != LastResonance)
+            {
+                LastCutoff = Cutoff;
+                LastResonance = Resonance;
 
-            // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value of Q.
-            // This is the highest double precision value where integers can be exactly represented,
-            // which serves no other purpose than to be an improbably high value.
-            double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Resonance, 0.0), 1.0))), std::pow(2.0, 53.0));
+                // prewarp the cutoff (for bilinear-transform filters)
+                double wd = Cutoff * Tau;
+                double T = SampleInterval;
+                double wa = (2.0 / T) * std::tan(wd * T / 2.0);
 
-            // Calculate g (gain element of integrator)
-            Gain = wa * T / 2.0;
+                // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value of Q.
+                // This is the highest double precision value where integers can be exactly represented,
+                // which serves no other purpose than to be an improbably high value.
+                double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Resonance, 0.0), 1.0))), std::pow(2.0, 53.0));
 
-            // Calculate Zavalishin's R from Q (referred to as damping parameter)
-            FeedbackDamping = 1.0 / (2.0 * Q);
+                // Calculate g (gain element of integrator)
+                Gain = wa * T / 2.0;
 
-            // Gain for BandShelving filter
-            //ShelfGain = ShelfGain; ????????
-        }
+                // Calculate Zavalishin's R from Q (referred to as damping parameter)
+                FeedbackDamping = 1.0 / (2.0 * Q);
 
-        double HP = (Sample - (2.0 * FeedbackDamping + Gain) * z1_A - z2_A) /
-            (1.0 + (2.0 * FeedbackDamping * Gain) + Gain * Gain);
+                // Gain for BandShelving filter
+                //ShelfGain = ShelfGain; ????????
+            }
 
-        double BP = HP * Gain + z1_A;
+            double HP = (Sample - (2.0 * FeedbackDamping + Gain) * z1_A - z2_A) /
+                (1.0 + (2.0 * FeedbackDamping * Gain) + Gain * Gain);
 
-        double LP = BP * Gain + z2_A;
+            double BP = HP * Gain + z1_A;
 
-        double UBP = 2.0 * FeedbackDamping * BP;
+            double LP = BP * Gain + z2_A;
 
-        double BShelf = Sample + UBP * ShelfGain;
+            double UBP = 2.0 * FeedbackDamping * BP;
 
-        double Notch = Sample - UBP;
+            double BShelf = Sample + UBP * ShelfGain;
 
-        double AP = Sample - (4.0 * FeedbackDamping * BP);
+            double Notch = Sample - UBP;
 
-        double Peak = LP - HP;
+            double AP = Sample - (4.0 * FeedbackDamping * BP);
 
-        z1_A = Gain * HP + BP;
-        z2_A = Gain * BP + LP;
+            double Peak = LP - HP;
 
-        if constexpr (Mode == FilterType::Lowpass)
-        {
-            Output = LP;
-        }
-        else if constexpr (Mode == FilterType::Bandpass)
-        {
-            Output = BP;
-        }
-        else if constexpr (Mode == FilterType::Highpass)
-        {
-            Output = HP;
-        }
-        else if constexpr (Mode == FilterType::UnitGainBandpass)
-        {
-            Output = UBP;
-        }
-        else if constexpr (Mode == FilterType::BandShelving)
-        {
-            Output = BShelf;
-        }
-        else if constexpr (Mode == FilterType::Notch)
-        {
-            Output = Notch;
-        }
-        else if constexpr (Mode == FilterType::Allpass)
-        {
-            Output = AP;
-        }
-        else if constexpr (Mode == FilterType::Peak)
-        {
-            Output = Peak;
-        }
+            z1_A = Gain * HP + BP;
+            z2_A = Gain * BP + LP;
+
+            if constexpr (Mode == FilterType::Lowpass)
+            {
+                Output = LP;
+            }
+            else if constexpr (Mode == FilterType::Bandpass)
+            {
+                Output = BP;
+            }
+            else if constexpr (Mode == FilterType::Highpass)
+            {
+                Output = HP;
+            }
+            else if constexpr (Mode == FilterType::UnitGainBandpass)
+            {
+                Output = UBP;
+            }
+            else if constexpr (Mode == FilterType::BandShelving)
+            {
+                Output = BShelf;
+            }
+            else if constexpr (Mode == FilterType::Notch)
+            {
+                Output = Notch;
+            }
+            else if constexpr (Mode == FilterType::Allpass)
+            {
+                Output = AP;
+            }
+            else if constexpr (Mode == FilterType::Peak)
+            {
+                Output = Peak;
+            }
+        });
     }
 
     virtual void Reset() override
     {
-        Registers.ZeroOut();
-        // Gain and Feedback coefficients init to 1.
-        // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
-        Registers.ClosureRef(2) = 1.0;
-        Registers.ClosureRef(3) = 1.0;
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.ZeroOut(Lane);
+            // Gain and Feedback coefficients init to 1.
+            // See https://github.com/michaeldonovan/VAStateVariableFilter/blob/0e1384c62520ffcb3f321bb6ceb940472f5e152f/VAStateVariableFilter.cpp#L20
+            Registers.ClosureRef(Lane, 2) = 1.0;
+            Registers.ClosureRef(Lane, 3) = 1.0;
+        });
     }
 
     virtual ~TopologyPreservingTransformStateVariableFilterThunk() {};
@@ -1338,126 +1444,128 @@ struct AdsrThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AdsrThunk");
-
-        double Trigger = Registers.CombineInput(0);
-        const double Attack = std::max(Registers.CombineInput(1, 0.1), 0.0);
-        const double Decay = std::max(Registers.CombineInput(2, 0.1), 0.0);
-        const double Sustain = std::min(std::max(Registers.CombineInput(3, 1.0), 0.0), 1.0);
-        const double Release = std::max(Registers.CombineInput(4, 1.0), 0.0);
-
-        double& Amplitude = Registers.OutputRef(0);
-        double& LastTrigger = Registers.ClosureRef(0);
-        double& Mode = Registers.ClosureRef(1);
-
-        // Use simple rates of change for attack, decay, and release.  These
-        // input parameters are the number of seconds it takes to transit one
-        // unit of amplitude.  Effectively `abs(Rise / Run)`, where Rise is
-        // amplitude, and Run is seconds.
-        const double AttackRate = 1.0 / Attack;
-        const double DecayRate = 1.0 / Decay;
-        const double ReleaseRate = 1.0 / Release;
-
-        auto BeginAttack = [&]()
+        CrankLanes([&](uint32_t Lane)
         {
-            Mode = 3.0;
-        };
+            double Trigger = Registers.CombineInput(Lane, 0);
+            const double Attack = std::max(Registers.CombineInput(Lane, 1, 0.1), 0.0);
+            const double Decay = std::max(Registers.CombineInput(Lane, 2, 0.1), 0.0);
+            const double Sustain = std::min(std::max(Registers.CombineInput(Lane, 3, 1.0), 0.0), 1.0);
+            const double Release = std::max(Registers.CombineInput(Lane, 4, 1.0), 0.0);
 
-        auto BeginDecayToSustain = [&]()
-        {
-            Mode = 2.0;
-        };
+            double& Amplitude = Registers.OutputRef(Lane, 0);
+            double& LastTrigger = Registers.ClosureRef(Lane, 0);
+            double& Mode = Registers.ClosureRef(Lane, 1);
 
-        auto BeginDecayToRelease = [&]()
-        {
-            Mode = 1.0;
-        };
+            // Use simple rates of change for attack, decay, and release.  These
+            // input parameters are the number of seconds it takes to transit one
+            // unit of amplitude.  Effectively `abs(Rise / Run)`, where Rise is
+            // amplitude, and Run is seconds.
+            const double AttackRate = 1.0 / Attack;
+            const double DecayRate = 1.0 / Decay;
+            const double ReleaseRate = 1.0 / Release;
 
-        auto BeginRelease = [&]()
-        {
-            Mode = 0.0;
-        };
-
-        if (Trigger >= 1.0 && LastTrigger <= 0.0)
-        {
-            BeginAttack();
-        }
-        else if (Trigger <= 0.0 && LastTrigger >= 1.0)
-        {
-            // Note this is comparing divisors, so larger Rate values are faster:
-            if (Amplitude > Sustain && DecayRate > ReleaseRate)
+            auto BeginAttack = [&]()
             {
-                // If Amplitude is above the Sustain threshold, and the decay rate is faster
-                // than the release rate, use the decay rate until the Amplitude is no longer
-                // above the Sustain threshold.
-                BeginDecayToRelease();
+                Mode = 3.0;
+            };
+
+            auto BeginDecayToSustain = [&]()
+            {
+                Mode = 2.0;
+            };
+
+            auto BeginDecayToRelease = [&]()
+            {
+                Mode = 1.0;
+            };
+
+            auto BeginRelease = [&]()
+            {
+                Mode = 0.0;
+            };
+
+            if (Trigger >= 1.0 && LastTrigger <= 0.0)
+            {
+                BeginAttack();
+            }
+            else if (Trigger <= 0.0 && LastTrigger >= 1.0)
+            {
+                // Note this is comparing divisors, so larger Rate values are faster:
+                if (Amplitude > Sustain && DecayRate > ReleaseRate)
+                {
+                    // If Amplitude is above the Sustain threshold, and the decay rate is faster
+                    // than the release rate, use the decay rate until the Amplitude is no longer
+                    // above the Sustain threshold.
+                    BeginDecayToRelease();
+                }
+                else
+                {
+                    // Begin release.  Amplitude is assumed to be below the sustain threshold, or
+                    // it doesn't matter because the Release's rate is faster than decay's.
+                    BeginRelease();
+                }
+            }
+
+            if (Mode == 3.0 && Attack == 0.0)
+            {
+                // If Attack is zero, then Amplitude rises to one immediately.
+                Amplitude = 1.0;
+            }
+            else if ((Mode == 1.0 || Mode == 2.0) && (Decay == 0.0 || Sustain == 1.0))
+            {
+                // If Decay is zero, then Amplitude drops to Sustain immediately.
+                // If Sustain is one, then Decay is not applied.
+                Amplitude = std::min(Amplitude, Sustain);
+            }
+            else if (Mode == 0.0 && Release == 0.0)
+            {
+                // If Release is zero, then Amplitude drops to zero immediately.
+                // the release transition occurs.
+                Amplitude = 0.0;
             }
             else
             {
-                // Begin release.  Amplitude is assumed to be below the sustain threshold, or
-                // it doesn't matter because the Release's rate is faster than decay's.
+                double Rate;
+                switch (int(Mode))
+                {
+                case 3:
+                    Rate = AttackRate;
+                    break;
+                case 2:
+                case 1:
+                    Rate = DecayRate;
+                    break;
+                case 0:
+                default:
+                    Rate = ReleaseRate;
+                }
+
+                // Apply the rate of change appropriate for the current phase.
+                const double Direction = (Mode == 3.0) ? 1.0 : -1.0;
+                Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
+            }
+
+            if (Mode == 3.0 && Amplitude == 1.0)
+            {
+                BeginDecayToSustain();
+            }
+            else if (Mode == 2.0 && Amplitude < Sustain)
+            {
+                Amplitude = Sustain;
+            }
+            else if (Mode == 1.0 && Amplitude <= Sustain)
+            {
                 BeginRelease();
             }
-        }
 
-        if (Mode == 3.0 && Attack == 0.0)
-        {
-            // If Attack is zero, then Amplitude rises to one immediately.
-            Amplitude = 1.0;
-        }
-        else if ((Mode == 1.0 || Mode == 2.0) && (Decay == 0.0 || Sustain == 1.0))
-        {
-            // If Decay is zero, then Amplitude drops to Sustain immediately.
-            // If Sustain is one, then Decay is not applied.
-            Amplitude = std::min(Amplitude, Sustain);
-        }
-        else if (Mode == 0.0 && Release == 0.0)
-        {
-            // If Release is zero, then Amplitude drops to zero immediately.
-            // the release transition occurs.
-            Amplitude = 0.0;
-        }
-        else
-        {
-            double Rate;
-            switch (int(Mode))
-            {
-            case 3:
-                Rate = AttackRate;
-                break;
-            case 2:
-            case 1:
-                Rate = DecayRate;
-                break;
-            case 0:
-            default:
-                Rate = ReleaseRate;
-            }
-
-            // Apply the rate of change appropriate for the current phase.
-            const double Direction = (Mode == 3.0) ? 1.0 : -1.0;
-            Amplitude = std::min(std::max(Rate * SampleInterval * Direction + Amplitude, 0.0), 1.0);
-        }
-
-        if (Mode == 3.0 && Amplitude == 1.0)
-        {
-            BeginDecayToSustain();
-        }
-        else if (Mode == 2.0 && Amplitude < Sustain)
-        {
-            Amplitude = Sustain;
-        }
-        else if (Mode == 1.0 && Amplitude <= Sustain)
-        {
-            BeginRelease();
-        }
-
-        LastTrigger = Trigger;
+            LastTrigger = Trigger;
+        });
     }
 
-    virtual void Retrigger() override
+    virtual void Retrigger(uint32_t Lane) override
     {
         // If the adsr is currently held it will retrigger this frame.
-        double& LastTrigger = Registers.ClosureRef(0);
+        double& LastTrigger = Registers.ClosureRef(Lane, 0);
         LastTrigger = 0.0;
     }
 
@@ -1481,90 +1589,92 @@ struct QuantizeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("QuantizeThunk");
-
-        double Note = Registers.CombineInput(0);
-        const double Root = Registers.CombineInput(1, 60.0); // defaults to Middle C
-        const std::vector<double*>& Intervals = Registers.InputVector(2);
-        double& OutNote = Registers.OutputRef(0);
-
-        if (Registers.InputConnected(0) && Registers.InputConnected(2))
+        CrankLanes([&](uint32_t Lane)
         {
-            double Stride = 0.0;
-            std::vector<double> Scale;
-            Scale.reserve(Intervals.size() + 1);
-            Scale.push_back(0.0);
-            for (double* Register : Intervals)
+            double Note = Registers.CombineInput(Lane, 0);
+            const double Root = Registers.CombineInput(Lane, 1, 60.0); // defaults to Middle C
+            const std::vector<double*>& Intervals = Registers.InputVector(2);
+            double& OutNote = Registers.OutputRef(Lane, 0);
+
+            if (Registers.InputConnected(0) && Registers.InputConnected(2))
             {
-                double Interval = std::max(*Register, 0.0);
-                if (Interval > 0.0)
+                double Stride = 0.0;
+                std::vector<double> Scale;
+                Scale.reserve(Intervals.size() + 1);
+                Scale.push_back(0.0);
+                for (double* Register : Intervals)
                 {
-                    Stride += Interval;
-                    Scale.push_back(Stride);
+                    double Interval = std::max(Register[Lane], 0.0);
+                    if (Interval > 0.0)
+                    {
+                        Stride += Interval;
+                        Scale.push_back(Stride);
+                    }
                 }
-            }
 
-            if (Scale.size() == 0)
-            {
-                OutNote = Note;
-                return;
-            }
+                if (Scale.size() == 0)
+                {
+                    OutNote = Note;
+                    return;
+                }
 
-            double Shift = 0.0;
-            Note -= Root;
-            while (Note < 0.0)
-            {
-                --Shift;
-                Note += Stride;
-            }
-            while (Note > Stride)
-            {
-                ++Shift;
-                Note -= Stride;
-            }
+                double Shift = 0.0;
+                Note -= Root;
+                while (Note < 0.0)
+                {
+                    --Shift;
+                    Note += Stride;
+                }
+                while (Note > Stride)
+                {
+                    ++Shift;
+                    Note -= Stride;
+                }
 
 #if 1
-            {
-                double Alpha = Note / Stride;
-                int IndexLow = 0;
-                int IndexHigh = 0;
-                double AlphaLow = 0.0;
-                double AlphaHigh = 1.0;
-                for (int Index = 1; Index < int(Scale.size()); ++Index)
                 {
-                    IndexHigh = int(Index);
-                    AlphaHigh = double(Index) / double(Scale.size() - 1);
-                    if (AlphaLow <= Alpha && Alpha <= AlphaHigh)
+                    double Alpha = Note / Stride;
+                    int IndexLow = 0;
+                    int IndexHigh = 0;
+                    double AlphaLow = 0.0;
+                    double AlphaHigh = 1.0;
+                    for (int Index = 1; Index < int(Scale.size()); ++Index)
+                    {
+                        IndexHigh = int(Index);
+                        AlphaHigh = double(Index) / double(Scale.size() - 1);
+                        if (AlphaLow <= Alpha && Alpha <= AlphaHigh)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            IndexLow = IndexHigh;
+                            AlphaLow = AlphaHigh;
+                        }
+                    }
+                    Alpha = (Alpha - AlphaLow) / (AlphaHigh - AlphaLow);
+                    Note = (1.0 - Alpha) * Scale[IndexLow] + Alpha * Scale[IndexLow + 1];
+                }
+#endif
+
+                double Low = 0.0;
+                double High = 0.0;
+                for (int Index = 0; Index < int(Scale.size()) - 1; ++Index)
+                {
+                    Low = Scale[Index];
+                    High = Scale[Index + 1];
+                    if (Low <= Note && Note <= High)
                     {
                         break;
                     }
-                    else
-                    {
-                        IndexLow = IndexHigh;
-                        AlphaLow = AlphaHigh;
-                    }
                 }
-                Alpha = (Alpha - AlphaLow) / (AlphaHigh - AlphaLow);
-                Note = (1.0 - Alpha) * Scale[IndexLow] + Alpha * Scale[IndexLow + 1];
-            }
-#endif
 
-            double Low = 0.0;
-            double High = 0.0;
-            for (int Index = 0; Index < int(Scale.size()) - 1; ++Index)
-            {
-                Low = Scale[Index];
-                High = Scale[Index + 1];
-                if (Low <= Note && Note <= High)
-                {
-                    break;
-                }
+                Note = (std::abs(Note - Low) <= std::abs(Note - High)) ? Low : High;
+                Note += Shift * Stride + Root;
             }
 
-            Note = (std::abs(Note - Low) <= std::abs(Note - High)) ? Low : High;
-            Note += Shift * Stride + Root;
-        }
-
-        OutNote = Note;
+            OutNote = Note;
+        });
     }
 
     virtual ~QuantizeThunk() {};
@@ -1587,44 +1697,47 @@ struct InputSequenceThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("InputSequenceThunk");
-        double Clock = Registers.CombineInput(0);
-        const std::vector<double*>& Sequence = Registers.InputVector(1);
-        double Restart = Registers.CombineInput(2);
-        double& OutValue = Registers.OutputRef(0);
-        double& OutComplete = Registers.OutputRef(1);
-        double& LastClock = Registers.ClosureRef(0);
-        double& LastRestart = Registers.ClosureRef(1);
-        double& Cursor = Registers.ClosureRef(2);
-
-        if (LastRestart <= 0.0 && Restart >= 1.0)
+        CrankLanes([&](uint32_t Lane)
         {
-            Cursor = 0.0;
-        }
-        LastRestart = Restart;
+            double Clock = Registers.CombineInput(Lane, 0);
+            const std::vector<double*>& Sequence = Registers.InputVector(1);
+            double Restart = Registers.CombineInput(Lane, 2);
+            double& OutValue = Registers.OutputRef(Lane, 0);
+            double& OutComplete = Registers.OutputRef(Lane, 1);
+            double& LastClock = Registers.ClosureRef(Lane, 0);
+            double& LastRestart = Registers.ClosureRef(Lane, 1);
+            double& Cursor = Registers.ClosureRef(Lane, 2);
 
-        if (LastClock <= 0.0 && Clock >= 1.0)
-        {
-            // Modulating the index happens at the start of this thunk, because the patch may
-            // have been modified between calls, which could result in the sequence changing
-            // length.
-            const int Period = static_cast<int>(Sequence.size());
-            int Index = int(Cursor) % Period;
-            OutValue = *Sequence[Index];
+            if (LastRestart <= 0.0 && Restart >= 1.0)
+            {
+                Cursor = 0.0;
+            }
+            LastRestart = Restart;
 
-            // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
-            // Patches that use this signal to switch between sequences will want to add an extra
-            // step to each sequence using this signal.  Generally this extra note will never be
-            // heard if this pulse triggers a flip flop to switch to another sequence, because even
-            // if you pause the clock on this sequence, it'll usually pulse again when you switch
-            // back to this sequence.  In other words, the way of constructing a patch that chains
-            // sequences that was most obvious to me always skips the last note in each sequence.
-            // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
-            OutComplete = double(Index == (Period - 1));
+            if (LastClock <= 0.0 && Clock >= 1.0)
+            {
+                // Modulating the index happens at the start of this thunk, because the patch may
+                // have been modified between calls, which could result in the sequence changing
+                // length.
+                const int Period = Sequence.size();
+                int Index = int(Cursor) % Period;
+                OutValue = Sequence[Index][Lane];
 
-            Index = (Index + 1);
-            Cursor = double(Index);
-        }
-        LastClock = Clock;
+                // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
+                // Patches that use this signal to switch between sequences will want to add an extra
+                // step to each sequence using this signal.  Generally this extra note will never be
+                // heard if this pulse triggers a flip flop to switch to another sequence, because even
+                // if you pause the clock on this sequence, it'll usually pulse again when you switch
+                // back to this sequence.  In other words, the way of constructing a patch that chains
+                // sequences that was most obvious to me always skips the last note in each sequence.
+                // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
+                OutComplete = double(Index == (Period - 1));
+
+                Index = (Index + 1);
+                Cursor = double(Index);
+            }
+            LastClock = Clock;
+        });
     }
 
     virtual ~InputSequenceThunk() {};
@@ -1644,71 +1757,96 @@ struct RandomSequenceThunk : public InstructionThunk
         {"#", "complete"}
     };
 
-    std::vector<double> Cache;
+    std::vector<std::vector<double>> Cache;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("RandomSequenceThunk");
-        double Clock = Registers.CombineInput(0);
 
-        double& OutValue = Registers.OutputRef(0);
-        double& OutComplete = Registers.OutputRef(1);
-        double& LastClock = Registers.ClosureRef(0);
-        double& LastPeriod = Registers.ClosureRef(1);
-        double& LastSeed = Registers.ClosureRef(2);
-        double& Cursor = Registers.ClosureRef(3);
-
-        if (LastClock <= 0.0 && Clock >= 1.0)
+        if (Cache.size() != Registers.Polyphony)
         {
-            int Period = std::max(int(Registers.CombineInput(1, 4.0)), 1);
-            double Seed = Registers.CombineInput(2);
+            Cache.resize(Registers.Polyphony);
+        }
 
-            const bool Reset = Period != int(LastPeriod) || Seed != LastSeed;
-            if (Reset || int(Cache.size()) != Period)
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Clock = Registers.CombineInput(Lane, 0);
+
+            double& OutValue = Registers.OutputRef(Lane, 0);
+            double& OutComplete = Registers.OutputRef(Lane, 1);
+            double& LastClock = Registers.ClosureRef(Lane, 0);
+            double& LastPeriod = Registers.ClosureRef(Lane, 1);
+            double& LastSeed = Registers.ClosureRef(Lane, 2);
+            double& Cursor = Registers.ClosureRef(Lane, 3);
+
+            std::vector<double>& LaneCache = Cache[Lane];
+
+            if (LastClock <= 0.0 && Clock >= 1.0)
             {
-                LastSeed = Seed;
-                LastPeriod = double(Period);
-                if (Reset)
+                int Period = std::max(int(Registers.CombineInput(Lane, 1, 4.0)), 1);
+                double Seed = Registers.CombineInput(Lane, 2);
+
+                const bool Reset = Period != int(LastPeriod) || Seed != LastSeed;
+                if (Reset || int(LaneCache.size()) != Period)
                 {
-                    Cursor = 0.0;
+                    LastSeed = Seed;
+                    LastPeriod = double(Period);
+                    if (Reset)
+                    {
+                        Cursor = 0.0;
+                    }
+                    LaneCache.resize(Period);
+                    std::mt19937 Generator;
+                    Generator.seed(Seed);
+                    double Low = Generator.min();
+                    double Scale = 1.0 / (Generator.max() - Low);
+                    for (double& Sample : LaneCache)
+                    {
+                        Sample = (Generator() - Low) * Scale;
+                    }
                 }
-                Cache.resize(Period);
-                std::mt19937 Generator;
-                Generator.seed(static_cast<std::mt19937::result_type>(Seed));
-                double Low = Generator.min();
-                double Scale = 1.0 / (Generator.max() - Low);
-                for (double& Sample : Cache)
-                {
-                    Sample = (Generator() - Low) * Scale;
-                }
+
+                int Index = int(Cursor);
+                OutValue = LaneCache[Index];
+
+                // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
+                // Patches that use this signal to switch between sequences will want to add an extra
+                // step to each sequence using this signal.  Generally this extra note will never be
+                // heard if this pulse triggers a flip flop to switch to another sequence, because even
+                // if you pause the clock on this sequence, it'll usually pulse again when you switch
+                // back to this sequence.  In other words, the way of constructing a patch that chains
+                // sequences that was most obvious to me always skips the last note in each sequence.
+                // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
+                OutComplete = double(Index == (Period - 1));
+
+                Index = (Index + 1) % Period;
+                Cursor = double(Index);
+            }
+            else
+            {
+                OutComplete = 0.0;
             }
 
-            int Index = int(Cursor);
-            OutValue = Cache[Index];
-
-            // We trigger the "complete" pulse on the beginning of the last sample in the sequence.
-            // Patches that use this signal to switch between sequences will want to add an extra
-            // step to each sequence using this signal.  Generally this extra note will never be
-            // heard if this pulse triggers a flip flop to switch to another sequence, because even
-            // if you pause the clock on this sequence, it'll usually pulse again when you switch
-            // back to this sequence.  In other words, the way of constructing a patch that chains
-            // sequences that was most obvious to me always skips the last note in each sequence.
-            // So an 8-4-4 repeating sequence chain would have lengths of 9, 5, and 5.
-            OutComplete = double(Index == (Period - 1));
-
-            Index = (Index + 1) % Period;
-            Cursor = double(Index);
-        }
-        else
-        {
-            OutComplete = 0.0;
-        }
-
-        LastClock = Clock;
+            LastClock = Clock;
+        });
     }
 
     virtual ~RandomSequenceThunk() {};
 };
+
+
+static inline bool ChannelMatch(int Mask, int Channel)
+{
+    if (Mask < 0 && -Mask != Channel)
+    {
+        return true;
+    }
+    else if (Mask >= 0 && Mask == Channel)
+    {
+        return true;
+    }
+    return false;
+}
 
 
 struct GateThunk : public InstructionThunk
@@ -1723,26 +1861,28 @@ struct GateThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("GateThunk");
 
-        double& Gate = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Gate = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Gate = State.Gate;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                Gate[Lane] = State.Gate;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Gate = State.Gate;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Gate[Lane] = State.Gate;
+                        break;
+                    }
                 }
             }
         }
@@ -1764,26 +1904,28 @@ struct NoteThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("NoteThunk");
 
-        double& Note = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Note = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Note = State.Note;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                Note[Lane] = State.Note;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Note = State.Note;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Note[Lane] = State.Note;
+                        break;
+                    }
                 }
             }
         }
@@ -1791,9 +1933,12 @@ struct NoteThunk : public InstructionThunk
 
     virtual void Reset() override
     {
-        // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
-        Registers.ZeroOut();
-        Registers.OutputRef(0) = 50.0;
+        CrankLanes([&](uint32_t Lane)
+        {
+            // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
+            Registers.ZeroOut(Lane);
+            Registers.OutputRef(Lane, 0) = 50.0;
+        });
     }
 
     virtual ~NoteThunk() {};
@@ -1812,26 +1957,28 @@ struct VelocityThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("VelocityThunk");
 
-        double& Velocity = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Velocity = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Velocity = State.Velocity;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                Velocity[Lane] = State.Velocity;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Velocity = State.Velocity;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Velocity[Lane] = State.Velocity;
+                        break;
+                    }
                 }
             }
         }
@@ -1853,26 +2000,28 @@ struct PressureThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PressureThunk");
 
-        double& Pressure = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        if (State.Channel == -1.0 || !Registers.InputConnected(0))
+        double* Pressure = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Pressure = State.Pressure;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                Pressure[Lane] = State.Pressure;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Pressure = State.Pressure;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Pressure[Lane] = State.Pressure;
+                        break;
+                    }
                 }
             }
         }
@@ -1895,34 +2044,36 @@ struct ControlChangeThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("ControlChangeThunk");
 
-        double Control = Registers.CombineInput(0);
-        double& Value = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        double Channel = -1.0;
-        if (!Registers.InputConnected(1))
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Channel = State.Channel;
-        }
-        else if (Registers.InputConnected(1))
-        {
-            for (const double* ChannelMask : Registers.InputVector(1))
+            double Control = Registers.CombineInput(Lane, 0);
+            double* Value = Registers.OutputPtr(0);
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            double Channel = -1.0;
+            if (!Registers.InputConnected(1))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                Channel = State.Channel;
+            }
+            else if (Registers.InputConnected(1))
+            {
+                for (const double* ChannelMask : Registers.InputVector(1))
                 {
-                    Channel = State.Channel;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Channel = State.Channel;
+                        break;
+                    }
                 }
             }
-        }
-        if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
-        {
-            Value = Program->ChannelControls[uint8_t(Channel)][uint8_t(Control)];
+            if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
+            {
+                Value[Lane] = Program->ChannelControls[uint8_t(Channel)][uint8_t(Control)];
+            }
         }
     }
 
@@ -1942,42 +2093,47 @@ struct KikiThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("KikiThunk");
 
-        double& Kiki = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        double Channel = -1.0;
-        if (!Registers.InputConnected(0))
+        double* Kiki = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Channel = State.Channel;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            double Channel = -1.0;
+            if (!Registers.InputConnected(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                Channel = State.Channel;
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Channel = State.Channel;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        Channel = State.Channel;
+                        break;
+                    }
                 }
             }
-        }
-        if (Channel >= 0.0 && Channel < 16)
-        {
-            uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(Channel)];
-            Kiki = KikiTable[ProgramNumber];
+            if (Channel >= 0.0 && Channel < 16)
+            {
+                uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(Channel)];
+                Kiki[Lane] = KikiTable[ProgramNumber];
+            }
         }
     }
 
     virtual void Reset() override
     {
-        // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
-        Registers.ZeroOut();
-        Registers.OutputRef(0) = KikiTable[0];
+        CrankLanes([&](uint32_t Lane)
+        {
+            // Default last-played note until a new one is received.  This will be overwritten if the patch is migrated.
+            Registers.ZeroOut(Lane);
+            Registers.OutputRef(Lane, 0) = KikiTable[0];
+        });
     }
 
     virtual ~KikiThunk() {};
@@ -1996,33 +2152,30 @@ struct PitchBendThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane;
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("PitchBendThunk");
 
-        double& PitchBend = Registers.OutputRef(0);
-        MidiNoteState& State = Program->MidiLanes[Lane];
-        double Channel = -1.0;
-        if (!Registers.InputConnected(0))
+        double* PitchBend = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            Channel = State.Channel;
-        }
-        else if (Registers.InputConnected(0))
-        {
-            for (const double* ChannelMask : Registers.InputVector(0))
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            if (State.Channel == -1.0 || !Registers.InputConnected(0))
             {
-                if (int(*ChannelMask) == int(State.Channel))
+                PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
+            }
+            else if (Registers.InputConnected(0))
+            {
+                for (const double* ChannelMask : Registers.InputVector(0))
                 {
-                    Channel = State.Channel;
-                    break;
+                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
+                    {
+                        PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
+                        break;
+                    }
                 }
             }
-        }
-        if (Channel >= 0.0 && Channel < 16)
-        {
-            PitchBend = Program->ChannelPitchBend[uint8_t(Channel)];
         }
     }
 
@@ -2042,19 +2195,29 @@ struct LeadLaneThunk : public InstructionThunk
     };
 
     Scratch* Program;
-    uint32_t Lane; // not used, required by SetMidi
+
+    virtual bool LaneJoiner() override
+    {
+        return true;
+    }
 
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LeadLaneThunk");
 
         uint32_t ReadLane = uint32_t(Program->MostRecentLane);
-        uint32_t LaneCount = static_cast<uint32_t>(Program->MidiLanes.size());
-        if (ReadLane < LaneCount)
+        constexpr uint32_t WriteLane = 0;
+        if (ReadLane < Registers.Polyphony)
         {
-            double Value = Registers.CombineStridedInput(0, ReadLane, LaneCount);
-            Registers.OutputRef(0) = Value;
+            double Value = Registers.CombineInput(ReadLane, 0);
+            Registers.OutputRef(WriteLane, 0) = Value;
         }
+    }
+
+    virtual void Reset() override
+    {
+        constexpr uint32_t Lane = 0;
+        Registers.ZeroOut(Lane);
     }
 
     virtual ~LeadLaneThunk() {};
@@ -2072,10 +2235,22 @@ struct AddLanesThunk : public InstructionThunk
         {"="}
     };
 
+    virtual bool LaneJoiner() override
+    {
+        return true;
+    }
+
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("AddLanesThunk");
-        Registers.OutputRef(0) = Registers.CombineInput(0, 0.0, CombinerAdd);
+        constexpr uint32_t WriteLane = 0;
+        Registers.OutputRef(WriteLane, 0) = Registers.CombineAcrossInputLanes(0, 0.0, CombinerAdd);
+    }
+
+    virtual void Reset() override
+    {
+        constexpr uint32_t Lane = 0;
+        Registers.ZeroOut(Lane);
     }
 
     virtual ~AddLanesThunk() {};
@@ -2096,9 +2271,12 @@ struct MidiToHzThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("MidiToHzThunk");
-        double Note = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        Output = MidiNoteToHz(Note);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Note = Registers.CombineInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            Output = MidiNoteToHz(Note);
+        });
     }
 
     virtual ~MidiToHzThunk() {};
@@ -2119,9 +2297,12 @@ struct LoudnessFudgeThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("LoudnessFudgeThunk");
-        double Hz = Registers.CombineInput(0);
-        double& Output = Registers.OutputRef(0);
-        Output = PerceptualAmplitudeCorrectionByHz(Hz);
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Hz = Registers.CombineInput(Lane, 0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            Output = PerceptualAmplitudeCorrectionByHz(Hz);
+        });
     }
 
     virtual ~LoudnessFudgeThunk() {};
@@ -2136,7 +2317,8 @@ struct BoopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("BoopThunk");
-        Registers.OutputRef(0) = Input->Get();
+        constexpr uint32_t Lane = 0;
+        Registers.OutputRef(Lane, 0) = Input->Get();
     }
 
     virtual ~BoopThunk() {};
@@ -2151,7 +2333,8 @@ struct TweakThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TweakThunk");
-        Registers.OutputRef(0) = Input->Get();
+        constexpr uint32_t Lane = 0;
+        Registers.OutputRef(Lane, 0) = Input->Get();
     }
 
     virtual ~TweakThunk() {};
@@ -2178,71 +2361,74 @@ struct TapeLoopThunk : public InstructionThunk
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TapeLoopThunk");
-        double Sample = Registers.CombineInput(0);
-        double Offset = Registers.CombineInput(1);
-        double Seconds = Registers.CombineInput(2);
-        double Reset = Registers.CombineInput(3);
-        double& Output = Registers.OutputRef(0);
-        double& ReadHead = Registers.ClosureRef(0);
-        double& WriteHead = Registers.ClosureRef(1);
-        double& LastReset = Registers.ClosureRef(2);
-        double& LastOffset = Registers.ClosureRef(3);
-
-        uint64_t ReadIndex = bit_cast<uint64_t, double>(ReadHead);
-        uint64_t WriteIndex = bit_cast<uint64_t, double>(WriteHead);
-
-        BlankTape* Tape;
+        CrankLanes([&](uint32_t Lane)
         {
-            MagicTapeUniquePtr& Found = TapeFile->at(TapeIndex);
-            Tape = (BlankTape*)Found.get();
-        }
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Offset = Registers.CombineInput(Lane, 1);
+            double Seconds = Registers.CombineInput(Lane, 2);
+            double Reset = Registers.CombineInput(Lane, 3);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double& ReadHead = Registers.ClosureRef(Lane, 0);
+            double& WriteHead = Registers.ClosureRef(Lane, 1);
+            double& LastReset = Registers.ClosureRef(Lane, 2);
+            double& LastOffset = Registers.ClosureRef(Lane, 3);
 
-        if (!Tape)
-        {
-            return;
-        }
+            uint64_t ReadIndex = std::bit_cast<uint64_t, double>(ReadHead);
+            uint64_t WriteIndex = std::bit_cast<uint64_t, double>(WriteHead);
 
-        auto ResetOffset = [&]()
-        {
-            if (Tape->Samples.size() > 0)
+            BlankTape* Tape;
             {
-                ReadIndex = Tape->FindSample(Offset);
-                ReadIndex = (ReadIndex + WriteIndex) % Tape->Samples.size();
+                MagicTapeUniquePtr& Found = TapeFile->at(TapeIndex + Lane);
+                Tape = (BlankTape*)Found.get();
             }
-            else
+
+            if (!Tape)
             {
-                ReadIndex = 0;
+                return;
             }
-            LastOffset = Offset;
-        };
 
-        if (Seconds != Tape->Seconds)
-        {
-            Tape->Reset(Seconds);
-            WriteIndex = 0;
-            ResetOffset();
-        }
+            auto ResetOffset = [&]()
+            {
+                if (Tape->Samples.size() > 0)
+                {
+                    ReadIndex = Tape->FindSample(Offset);
+                    ReadIndex = (ReadIndex + WriteIndex) % Tape->Samples.size();
+                }
+                else
+                {
+                    ReadIndex = 0;
+                }
+                LastOffset = Offset;
+            };
 
-        if (Tape->Samples.size() > 0)
-        {
-            if (LastReset <= 0.0 && Reset >= 1.0)
+            if (Seconds != Tape->Seconds)
             {
                 Tape->Reset(Seconds);
                 WriteIndex = 0;
                 ResetOffset();
             }
-            else if (Offset != LastOffset)
+
+            if (Tape->Samples.size() > 0)
             {
-                ResetOffset();
+                if (LastReset <= 0.0 && Reset >= 1.0)
+                {
+                    Tape->Reset(Seconds);
+                    WriteIndex = 0;
+                    ResetOffset();
+                }
+                else if (Offset != LastOffset)
+                {
+                    ResetOffset();
+                }
+                LastReset = Reset;
+
+                Output = Tape->ReadAndAdvance(ReadIndex);
+                ReadHead = std::bit_cast<double, uint64_t>(ReadIndex);
+
+                Tape->WriteAndAdvance(WriteIndex, Sample);
+                WriteHead = std::bit_cast<double, uint64_t>(WriteIndex);
             }
-            LastReset = Reset;
-
-            Output = Tape->ReadAndAdvance(ReadIndex);
-            ReadHead = bit_cast<double, uint64_t>(ReadIndex);
-
-            Tape->WriteAndAdvance(WriteIndex, Sample);
-            WriteHead = bit_cast<double, uint64_t>(WriteIndex);
-        }
+        });
     }
 
     virtual ~TapeLoopThunk() {};

@@ -137,44 +137,46 @@ static double MoonPosition(double JulianDate, double ObserverLatitude, double Ob
 void MoonThunk::Crank(double SampleInterval)
 {
     TRACEABLE_NAMED_SCOPE("MoonThunk");
-
-    double Latitude = Registers.CombineInput(0, 41.881944);
-    double Longitude = Registers.CombineInput(1, -87.627778);
-    double JulianDate = Registers.CombineInput(2, -1.0);
-    double Speed = Registers.CombineInput(3, 1.0);
-    double& Altitude = Registers.OutputRef(0);
-
-    // If JulianDate was unset, then this will cache the current Julian Date
-    // at the time the tile was activated.
-    double& OriginDate = Registers.ClosureRef(0);
-    double& ElapsedSeconds = Registers.ClosureRef(1);
-
-    if (JulianDate < 0.0)
+    CrankLanes([&](uint32_t Lane)
     {
-        // Stars did not exist prior to noon Universal Time on January 1, 4713 BC, so
-        // we will use an impossible date to indicate the origin should be measured in
-        // local time instead.
-        JulianDate = OriginDate;
-        if (JulianDate == 0.0)
+        double Latitude = Registers.CombineInput(Lane, 0, 41.881944);
+        double Longitude = Registers.CombineInput(Lane, 1, -87.627778);
+        double JulianDate = Registers.CombineInput(Lane, 2, -1.0);
+        double Speed = Registers.CombineInput(Lane, 3, 1.0);
+        double& Altitude = Registers.OutputRef(Lane, 0);
+
+        // If JulianDate was unset, then this will cache the current Julian Date
+        // at the time the tile was activated.
+        double& OriginDate = Registers.ClosureRef(Lane, 0);
+        double& ElapsedSeconds = Registers.ClosureRef(Lane, 1);
+
+        if (JulianDate < 0.0)
         {
-            // As it is extremely unlikely that the operator of this program is starting
-            // this patch at exactly noon Universal Time on January 1, 4713 BC, we use
-            // a zero value to indicate that the current time needs to be recorded and
-            // saved in the closure register.  You can express this date explicitly, in
-            // which case the closure register is ignored.
-            JulianDate = GetCurrentJulianDate();
-            OriginDate = JulianDate;
+            // Stars did not exist prior to noon Universal Time on January 1, 4713 BC, so
+            // we will use an impossible date to indicate the origin should be measured in
+            // local time instead.
+            JulianDate = OriginDate;
+            if (JulianDate == 0.0)
+            {
+                // As it is extremely unlikely that the operator of this program is starting
+                // this patch at exactly noon Universal Time on January 1, 4713 BC, we use
+                // a zero value to indicate that the current time needs to be recorded and
+                // saved in the closure register.  You can express this date explicitly, in
+                // which case the closure register is ignored.
+                JulianDate = GetCurrentJulianDate();
+                OriginDate = JulianDate;
+            }
         }
-    }
-    {
-        // Since samples are calculated in batches, we must assume that ::Crank is
-        // called multiple times semisimultaneously.  As such, we have to advance
-        // time and recorde the elapsed time in a closure register.
-        ElapsedSeconds = ElapsedSeconds + SampleInterval * Speed;
-        // And then we convert that to a fraction of a day and add it to the origin date.
-        JulianDate += ElapsedSeconds / 86400.0;
-    }
+        {
+            // Since samples are calculated in batches, we must assume that ::Crank is
+            // called multiple times semisimultaneously.  As such, we have to advance
+            // time and recorde the elapsed time in a closure register.
+            ElapsedSeconds = ElapsedSeconds + SampleInterval * Speed;
+            // And then we convert that to a fraction of a day and add it to the origin date.
+            JulianDate += ElapsedSeconds / 86400.0;
+        }
 
-    double AltitudeH = MoonPosition(JulianDate, Latitude, Longitude);
-    Altitude = AltitudeH / 90.0;
+        double AltitudeH = MoonPosition(JulianDate, Latitude, Longitude);
+        Altitude = AltitudeH / 90.0;
+    });
 }

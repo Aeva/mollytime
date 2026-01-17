@@ -303,7 +303,7 @@ static glm::vec3 sRGB2HSL(glm::vec3 sRGB)
 	float D = MaxChannel - MinChannel;
 	if (D != 0.0f)
 	{
-		if (Lightness > 0.0f || Lightness < 1.0f)
+		if (Lightness > 0.0f && Lightness < 1.0f)
 		{
 			Saturation = (MaxChannel - Lightness) / glm::min(Lightness, 1.0f - Lightness);
 

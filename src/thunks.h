@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <tuple>
 #include <array>
@@ -26,6 +27,9 @@
 #include <memory>
 #include <cmath>
 #include <functional>
+#ifndef NDEBUG
+#include <algorithm>
+#endif
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
@@ -333,6 +337,8 @@ struct InstructionInfo
 
 struct InstructionRegisters
 {
+    uint32_t Polyphony = 0;
+
     inline void Connect(
         std::vector<std::vector<std::ptrdiff_t>>& InInputs,
         std::vector<std::ptrdiff_t>& InOutputs,
@@ -373,49 +379,86 @@ struct InstructionRegisters
         return Input[InputIndex].size() > 0;
     }
 
-    inline double CombineInput(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    // NOTE: This is basically only useful for AddLanesThunk
+    inline double CombineAcrossInputLanes(uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
     {
         std::vector<double*>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[0];
-        for (int Index = 1; Index < static_cast<int>(InputRegisters.size()); ++Index)
+        const uint32_t InputCount = uint32_t(InputRegisters.size());
+        if (InputCount == 0)
+        {
+            return Default;
+        }
+        else
+        {
+            double* Cursor = InputRegisters[0];
+            double Accumulator = Cursor[0];
+            for (uint32_t Lane = 1; Lane < Polyphony; ++Lane)
+            {
+                Accumulator = Combiner(Accumulator, Cursor[Lane]);
+            }
+            for (uint32_t Index = 1; Index < InputCount; ++Index)
+            {
+                Cursor = InputRegisters[Index];
+                for (uint32_t Lane = 1; Lane < Polyphony; ++Lane)
+                {
+                    Accumulator = Combiner(Accumulator, Cursor[Lane]);
+                }
+            }
+            return Accumulator;
+        }
+    }
+
+    inline double CombineInput(uint32_t Lane, uint32_t InputIndex, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    {
+        assert(Lane < Polyphony);
+        std::vector<double*>& InputRegisters = Input[InputIndex];
+        const uint32_t InputCount = uint32_t(InputRegisters.size());
+        double Result = (InputCount == 0) ? Default : InputRegisters[0][Lane];
+        for (uint32_t Index = 1; Index < InputCount; ++Index)
         {
             double* NextValue = InputRegisters[Index];
-            Result = Combiner(Result, *NextValue);
+            Result = Combiner(Result, NextValue[Lane]);
         }
         return Result;
     }
 
-    inline double CombineStridedInput(uint32_t InputIndex, uint32_t Offset, uint32_t Stride, double Default = 0.0, CombinerFn Combiner = CombinerAdd)
+    inline double* InputPtr(uint32_t InputIndex)
     {
-        std::vector<double*>& InputRegisters = Input[InputIndex];
-        double Result = InputRegisters.size() == 0 ? Default : *InputRegisters[Offset];
-        for (int Index = Offset + Stride; Index < static_cast<int>(InputRegisters.size()); Index += Stride)
-        {
-            double* NextValue = InputRegisters[Index];
-            Result = Combiner(Result, *NextValue);
-        }
-        return Result;
+        assert(Input[InputIndex].size() == 1);
+        return Input[InputIndex][0];
     }
 
-    inline double& OutputRef(uint32_t OutputIndex)
+    inline double* OutputPtr(uint32_t OutputIndex)
     {
-        return *Output[OutputIndex];
+        return Output[OutputIndex];
     }
 
-    inline double& ClosureRef(uint32_t ClosureIndex)
+    inline double& OutputRef(uint32_t Lane, uint32_t OutputIndex)
     {
-        return *Closure[ClosureIndex];
+        assert(Lane < Polyphony);
+        return Output[OutputIndex][Lane];
     }
 
-    inline void ZeroOut()
+    inline double* ClosurePtr(uint32_t ClosureIndex)
+    {
+        return Closure[ClosureIndex];
+    }
+
+    inline double& ClosureRef(uint32_t Lane, uint32_t ClosureIndex)
+    {
+        assert(Lane < Polyphony);
+        return Closure[ClosureIndex][Lane];
+    }
+
+    inline void ZeroOut(uint32_t Lane)
     {
         for (double* Register : Output)
         {
-            *Register = 0.0;
+            Register[Lane] = 0.0;
         }
         for (double* Register : Closure)
         {
-            *Register = 0.0;
+            Register[Lane] = 0.0;
         }
     }
 
@@ -431,18 +474,47 @@ private:
 
 struct InstructionThunk
 {
-    OpCode DebugSymbol;
+#ifndef NDEBUG
+    std::string DebugName;
+    void SetDebugName(const std::string& InDebugName)
+    {
+        DebugName = InDebugName;
+        std::replace(DebugName.begin(), DebugName.end(), '\n', ' ');
+    }
+#else
+    void SetDebugName(const std::string& InDebugName)
+    {
+    }
+#endif
     InstructionRegisters Registers;
     bool Retriggerable = false;
+
+    virtual bool LaneJoiner()
+    {
+        return false;
+    }
+
+    template<typename ThunkT>
+    inline void CrankLanes(ThunkT Thunk)
+    {
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
+        {
+            Thunk(Lane);
+        }
+    };
 
     virtual void Crank(double SampleInterval) = 0;
 
     virtual void Reset()
     {
-        Registers.ZeroOut();
+        assert(!LaneJoiner());
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.ZeroOut(Lane);
+        });
     }
 
-    virtual void Retrigger()
+    virtual void Retrigger(uint32_t Lane)
     {
     }
 
@@ -475,8 +547,7 @@ using MidiCreateAndConnectFn = std::function<
         struct Scratch* Program,
         std::vector<std::vector<std::ptrdiff_t>>& Inputs,
         std::vector<std::ptrdiff_t>& Outputs,
-        std::vector<std::ptrdiff_t>& Closures,
-        uint32_t Lane)>;
+        std::vector<std::ptrdiff_t>& Closures)>;
 
 using TapeCreateAndConnectFn = std::function<
     std::shared_ptr<InstructionThunk>(
@@ -535,7 +606,6 @@ private:
             std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -547,14 +617,12 @@ private:
     {
         SetCommon<ThunkT>();
         MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures, uint32_t Lane)
+            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->Program = Program;
-            Thunk->Lane = Lane;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -567,7 +635,6 @@ private:
             std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->Input = SpecialInput;
@@ -583,7 +650,6 @@ private:
             std::vector<double>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& Inputs, auto& Outputs, auto& Closures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->DebugSymbol = ThunkT::Info.Symbol;
             Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
             Thunk->Reset();
             Thunk->TapeFile = TapeFile;

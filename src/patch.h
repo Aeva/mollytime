@@ -96,7 +96,7 @@ struct Scratch final : public MidiHandler
     ProbeRunningStateSharedPtr ScopeProbe;
 
     std::vector<MidiNoteState> MidiLanes;
-    std::vector<std::vector<uint32_t>> Retriggerables;
+    std::vector<uint32_t> Retriggerables;
     std::array<uint8_t, 16> ChannelPrograms;
     std::array<double, 16> ChannelPitchBend;
     std::array<std::array<double, 128>, 16> ChannelControls;
@@ -128,6 +128,7 @@ struct Patch
 
     // Used for queries from the UI.
     std::unordered_map<TileHandle, uint32_t> TilePolyphony;
+    std::unordered_map<TileHandle, bool> TileIsConstant;
 
     Patch();
 
@@ -155,6 +156,7 @@ struct Patch
     std::string GetTileInputName(PortHandle Port);
     std::string GetTileOutputName(PortHandle Port);
     int GetTilePolyphony(TileHandle Tile);
+    bool GetTileIsConstant(TileHandle Tile);
 
     void Freeze();
     void Unfreeze();
