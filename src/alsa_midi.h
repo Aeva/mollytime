@@ -22,6 +22,7 @@ struct _snd_seq;    // Forward declares `typedef struct _snd_seq snd_seq_t` from
 class AlsaMidiDriver final : public MidiDriver
 {
     struct _snd_seq *SeqHandle = nullptr;
+    int MidiQueue = -1;
     int MidiInPort = -1;
     int MidiOutPort = -1;
 

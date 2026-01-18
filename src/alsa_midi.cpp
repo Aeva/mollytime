@@ -20,17 +20,94 @@
 #include <print>
 #include <alsa/asoundlib.h>
 
+constexpr bool EnableEventFilters = true;
+
+// The goal of non-simple input port creation is to setup our own queue, which in
+// theory should help us with pacing by giving us meaningful time stamps, and prevent
+// notes from being dropped.  However, ALSA appears to take care of the actual pacing,
+// so what happens instead is the time stamps are all zero, which indicates that the
+// note is to be played immediately.  This, of course, does not fix the pacing problem
+// that is likely caused by the batching that is inherent to doing sound generation
+// directly on the audio thread.  However however, this does still mean we aren't
+// as likely to drop notes as we would be if we didn't use a sequencer queue at all,
+// so leaving this on is most likely worthwhile.
+constexpr bool NonSimpleInputPort = true;
+
 
 AlsaMidiDriver::AlsaMidiDriver()
 {
     if (snd_seq_open(&SeqHandle, "default", SND_SEQ_OPEN_DUPLEX, SND_SEQ_NONBLOCK) == 0)
     {
+        snd_seq_nonblock(SeqHandle, 1);
         snd_seq_set_client_name(SeqHandle, "mollytime");
+        //snd_seq_set_client_pool_input(SeqHandle, 1024 * 10); // 10 KiB aught to be enough?
+
+        if (EnableEventFilters)
         {
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_NOTEON);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_NOTEOFF);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_KEYPRESS);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_CONTROLLER);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_CONTROL14);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_PGMCHANGE);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_CHANPRESS);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_PITCHBEND);
+        }
+
+        if (NonSimpleInputPort)
+        {
+            MidiQueue = snd_seq_alloc_named_queue(SeqHandle, "mollytime queue");
+            if (MidiQueue < 0)
+            {
+                snd_seq_close(SeqHandle);
+                SeqHandle = nullptr;
+                std::print("Unable to create named ALSA sequencer queue.  No MIDI connections will be possible.\n");
+                return;
+            }
+            snd_seq_start_queue(SeqHandle, MidiQueue, nullptr);
+        }
+
+        {
+            const char* InputPortName = "in";
             const unsigned int Caps = SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
             const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE | SND_SEQ_PORT_TYPE_MIDI_GENERIC | SND_SEQ_PORT_TYPE_SYNTHESIZER;
-            MidiInPort = snd_seq_create_simple_port(SeqHandle, "in", Caps, Type);
+
+            if (NonSimpleInputPort)
+            {
+                snd_seq_port_info_t* PortInfo = nullptr;
+                snd_seq_port_info_alloca(&PortInfo);
+                snd_seq_port_info_set_name(PortInfo, InputPortName);
+                snd_seq_port_info_set_capability(PortInfo, Caps);
+                snd_seq_port_info_set_type(PortInfo, Type);
+
+                if (MidiQueue != -1)
+                {
+                    // This tells ALSA we want time stamps.
+                    // TODO: If we leave this commented out, we get actual time stamps!  However, we get time stamps in a mix
+                    // of realtime values relative to the song start (Rosegarden), tick values relative to song start (aplaymidi),
+                    // or just zero (pads.py).  This is probably more useful to leave disabled, and do the sequencing in Mollytime,
+                    // but that requires recreating all of the sequencing stuff ALSA would normally do.  The most ideal solution
+                    // would be if it turns out there were  some way to programmatically tell alsa how much time has advanced in
+                    // the input queue, and then do that every time the audio thread runs.  I do not think there is such a thing,
+                    // however.
+                    //snd_seq_port_info_set_timestamping(PortInfo, 1);
+
+                    // This tells ALSA we want time stamps to expressed as time points not as ticks.
+                    snd_seq_port_info_set_timestamp_real(PortInfo, 1);
+
+                    // A queue seems to be required?
+                    snd_seq_port_info_set_timestamp_queue(PortInfo, MidiQueue);
+                }
+
+                snd_seq_create_port(SeqHandle, PortInfo);
+                MidiInPort = snd_seq_port_info_get_port(PortInfo);
+            }
+            else
+            {
+                MidiInPort = snd_seq_create_simple_port(SeqHandle, InputPortName, Caps, Type);
+            }
         }
+
         {
             const unsigned int Caps = SND_SEQ_PORT_CAP_READ | SND_SEQ_PORT_CAP_SUBS_READ;
             const unsigned int Type = SND_SEQ_PORT_TYPE_APPLICATION | SND_SEQ_PORT_TYPE_SOFTWARE | SND_SEQ_PORT_TYPE_MIDI_GENERIC;
@@ -66,6 +143,11 @@ AlsaMidiDriver::~AlsaMidiDriver()
 {
     if (SeqHandle)
     {
+        if (MidiQueue != -1 && MidiQueue == SND_SEQ_QUEUE_DIRECT)
+        {
+            snd_seq_free_queue(SeqHandle, MidiQueue);
+            MidiQueue = -1;
+        }
         if (MidiOutPort > -1)
         {
             snd_seq_delete_simple_port(SeqHandle, MidiOutPort);
@@ -89,7 +171,16 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
         while (true)
         {
             snd_seq_event_t* Event = nullptr;
-            snd_seq_event_input(SeqHandle, &Event);
+            int Error = snd_seq_event_input(SeqHandle, &Event);
+            if (Error == -EAGAIN || Event == nullptr)
+            {
+                // Queue is empty.
+                return;
+            }
+            else if (Error == -ENOSPC)
+            {
+                std::print("The MIDI input queue overflowed and events were lost.\n");
+            }
 
             // Relevant API reference pages:
             // union struct thing:
@@ -97,16 +188,31 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
             // event type enums etc:
             //  - https://www.alsa-project.org/alsa-doc/alsa-lib/group___seq_events.html#gaef39e1f267006faf7abc91c3cb32ea40
 
-            if (!Event)
+#if 0
             {
-                return;
-            }
+                snd_seq_queue_status_t* QueueStatus;
+                snd_seq_queue_status_alloca(&QueueStatus);
+                snd_seq_get_queue_status(SeqHandle, MidiQueue, QueueStatus);
+                auto* Time = snd_seq_queue_status_get_real_time(QueueStatus);
 
+                const double Seconds = double(Time->tv_sec);
+                const double NanoSeconds = double(Time->tv_nsec);
+                constexpr double NanoToSeconds = 1.0 / 1000000000.0;
+                double TimeStamp = NanoSeconds * NanoToSeconds + Seconds;
+
+                // NOTE: This seems to always be zero.  I don't know what the point of this is.
+                {
+                    std::print("time stamp {:.5f}\n", TimeStamp);
+                }
+            }
+#endif
+
+#if 0
             [[maybe_unused]] double TimeStamp = 0.0;
             {
                 // Rosegarden sometimes sends time in ticks, but doesn't seem to do so during song playback.
-                // My python experiments that generate MIDI events seem to produce packets with timestamps in
-                // ticks and these timestamps are so coarse I'm not sure they're actually useful for scheduling.
+                // My python experiments that generate MIDI events seem to produce packets with time stamps in
+                // ticks and these time stamps are so coarse I'm not sure they're actually useful for scheduling.
                 // I am unsure if that is the expected behavior, or a bug in my other programs.
                 // Aplaymidi also sends ticks.
                 const bool TimeIsReal = (Event->flags & SND_SEQ_TIME_STAMP_MASK) == SND_SEQ_TIME_STAMP_REAL;
@@ -133,18 +239,34 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
                     const double NanoSeconds = double(Event->time.time.tv_nsec);
                     constexpr double NanoToSeconds = 1.0 / 1000000000.0;
                     TimeStamp = NanoSeconds * NanoToSeconds + Seconds;
-                    //std::print("{:x} * timestamp {:.5f}\n", Sender, TimeStamp);
+                    if (TimeStamp > 0.0)
+                    {
+                        std::print("{:x} * time stamp {:.5f}\n", Sender, TimeStamp);
+                    }
                 }
-                else
+                else if (Event->time.tick > 0)
                 {
-                    //std::print("{:x} - tickstamp {}\n", Sender, Event->time.tick);
+                    std::print("{:x} - tick stamp {}\n", Sender, Event->time.tick);
                 }
 
-                // TODO: TimeStamp behaves too eccentrically to be useful.  However, it appears that
-                // `snd_seq_create_simple_port` does not setup timestamps or opt into realtime timestamps,
-                // so the eccentric behavior of `TimeStamp` is a consequence of not setting up the port
-                // manually.
+                // TODO: the ALSA time stamps do not seem to be terribyl useful?  When using a sequencer
+                // queue via NonSimpleInputPort, the time stamps are always zero, because ALSA takes care
+                // of the pacing such that they should be processed immediately when they are processed.
+                // When using direct processing (when NonSimpleInputPort is false), we sometimes get
+                // time stamps, and sometimes do not.  Rosegarden sends them, pads.py does not, and neither
+                // does aplaymidi.  Rosegarden time stamps are relative to the playback queue start, and
+                // they reset to zero when you seek during playback, stop the song, or pause/continue.
+                // The event time stamps are also missmatched, because you are getting the time stamp that
+                // was recorded when the event was enqueued, as apposed to one that was adjusted by ALSA.
+
+                // What I want instead is for ALSA to let me specify a buffering interval where queued input
+                // events are staged, and to let me look ahead in the queue and pick out impending events so
+                // that they can be inserted into the patch in the same relative intervals for which they
+                // were received.
             }
+#endif
+
+            // NOTE: Don't forget to add new events to the event filter list!
 
             if (Event->type == SND_SEQ_EVENT_NOTEON)
             {
@@ -184,6 +306,10 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
                 double Divisor = (Value <  0) ? 8192.0 : 8191.0;
                 Handler->PitchBend(double(Value) / Divisor, Event->data.control.channel);
             }
+
+            // NOTE: Don't forget to add new events to the event filter list!
+
+
 #if 0
             else
             {
