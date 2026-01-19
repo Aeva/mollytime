@@ -27,6 +27,8 @@ _ = parser.add_argument(
 
 # ---
 
+print("Building Boost...", flush = True)
+
 this_dir = Path(__file__).parent
 project_dir = this_dir.parent
 boost_dir = project_dir / "third_party" / "boost_1_90_0"
@@ -67,3 +69,5 @@ cmake_install_process = subprocess.run([
     "--config", "Release"
 ])
 cmake_install_process.check_returncode()
+
+print("...done building Boost.", flush = True)

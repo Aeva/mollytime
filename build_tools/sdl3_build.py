@@ -31,6 +31,8 @@ _ = parser.add_argument(
 
 # ---
 
+print("Building SDL3...", flush = True)
+
 this_dir = Path(__file__).parent
 project_dir = this_dir.parent
 sdl3_dir = project_dir / "third_party" / "SDL3-3.4.0"
@@ -74,3 +76,5 @@ cmake_install_process = subprocess.run([
     "--config", "Release"
 ])
 cmake_install_process.check_returncode()
+
+print("...done building SDL3.", flush = True)
