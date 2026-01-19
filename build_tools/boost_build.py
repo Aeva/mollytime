@@ -50,6 +50,7 @@ cmake_configure_process = subprocess.run([
     "-B", build_dir,
     "-Wno-dev",
     f"-D CMAKE_INSTALL_PREFIX='{install_dir}'",
+    f"-D BOOST_INSTALL_LAYOUT='versioned'",
     '-D CMAKE_MAKE_PROGRAM=ninja',
     "-G", "Ninja"
 ] + compiler_args)
