@@ -1314,6 +1314,7 @@ ScratchUniquePtr Patch::Compile()
 #else
             auto AppendThunk = [&](const EvalFrequency Frequency, InstructionThunkSharedPtr Thunk) -> void
             {
+                Thunk->Reset();
                 if (Frequency == EvalFrequency::ONCE)
                 {
                     ConstantProgram.push_back(Thunk);

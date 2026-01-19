@@ -1254,6 +1254,10 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
     virtual void Crank(double SampleInterval) override
     {
         THUNK_TRACEABLE_NAMED_SCOPE("TopologyPreservingTransformStateVariableFilterThunk");
+        if (SampleInterval == 0.0)
+        {
+            return;
+        }
         CrankLanes([&](uint32_t Lane)
         {
             double Sample = Registers.CombineInput(Lane, 0);
@@ -1269,6 +1273,11 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
             double& z1_A = Registers.ClosureRef(Lane, 5); // state variables (z^-1)
             double& z2_A = Registers.ClosureRef(Lane, 6);
 
+            // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value for various
+            // terms.  This is the highest double precision value where integers can be exactly represented,
+            // which serves no other purpose than to be an improbably high value.
+            const double VeryLargeNumber = std::pow(2.0, 53);
+
             // TODO: Is this section actually worth the two extra RunningState vars and the branch?
             if (Cutoff != LastCutoff || Resonance != LastResonance)
             {
@@ -1279,11 +1288,7 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
                 double wd = Cutoff * Tau;
                 double T = SampleInterval;
                 double wa = (2.0 / T) * std::tan(wd * T / 2.0);
-
-                // To prevent shooting off into infinity, 2 ** 53 is chosen as the maximum value of Q.
-                // This is the highest double precision value where integers can be exactly represented,
-                // which serves no other purpose than to be an improbably high value.
-                double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Resonance, 0.0), 1.0))), std::pow(2.0, 53.0));
+                double Q = std::min(1.0 / (2.0 * (1.0 - std::min(std::max(Resonance, 0.0), 1.0))), VeryLargeNumber);
 
                 // Calculate g (gain element of integrator)
                 Gain = wa * T / 2.0;
@@ -1297,55 +1302,74 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
 
             double HP = (Sample - (2.0 * FeedbackDamping + Gain) * z1_A - z2_A) /
                 (1.0 + (2.0 * FeedbackDamping * Gain) + Gain * Gain);
+            HP = std::min(std::max(HP, -VeryLargeNumber), VeryLargeNumber);
 
             double BP = HP * Gain + z1_A;
+            BP = std::min(std::max(BP, -VeryLargeNumber), VeryLargeNumber);
 
             double LP = BP * Gain + z2_A;
+            LP = std::min(std::max(LP, -VeryLargeNumber), VeryLargeNumber);
 
             double UBP = 2.0 * FeedbackDamping * BP;
+            UBP = std::min(std::max(UBP, -VeryLargeNumber), VeryLargeNumber);
 
             double BShelf = Sample + UBP * ShelfGain;
+            BShelf = std::min(std::max(BShelf, -VeryLargeNumber), VeryLargeNumber);
 
             double Notch = Sample - UBP;
+            Notch = std::min(std::max(Notch, -VeryLargeNumber), VeryLargeNumber);
 
             double AP = Sample - (4.0 * FeedbackDamping * BP);
+            AP = std::min(std::max(AP, -VeryLargeNumber), VeryLargeNumber);
 
             double Peak = LP - HP;
+            Peak = std::min(std::max(Peak, -VeryLargeNumber), VeryLargeNumber);
 
             z1_A = Gain * HP + BP;
             z2_A = Gain * BP + LP;
 
+            auto Commit = [&](double NewOutput) -> void
+            {
+                // Arbitrary magnitude for which we mute the output.
+                const double MuteThreshold = VeryLargeNumber / 2.0;
+
+                if (std::abs(Output) < MuteThreshold)
+                {
+                    Output = NewOutput;
+                }
+            };
+
             if constexpr (Mode == FilterType::Lowpass)
             {
-                Output = LP;
+                Commit(LP);
             }
             else if constexpr (Mode == FilterType::Bandpass)
             {
-                Output = BP;
+                Commit(BP);
             }
             else if constexpr (Mode == FilterType::Highpass)
             {
-                Output = HP;
+                Commit(HP);
             }
             else if constexpr (Mode == FilterType::UnitGainBandpass)
             {
-                Output = UBP;
+                Commit(UBP);
             }
             else if constexpr (Mode == FilterType::BandShelving)
             {
-                Output = BShelf;
+                Commit(BShelf);
             }
             else if constexpr (Mode == FilterType::Notch)
             {
-                Output = Notch;
+                Commit(Notch);
             }
             else if constexpr (Mode == FilterType::Allpass)
             {
-                Output = AP;
+                Commit(AP);
             }
             else if constexpr (Mode == FilterType::Peak)
             {
-                Output = Peak;
+                Commit(Peak);
             }
         });
     }
