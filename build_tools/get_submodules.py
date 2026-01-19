@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 
+from errno import ENOENT
 from pathlib import Path
 
 this_dir = Path(__file__).parent
@@ -38,18 +39,16 @@ def _get_boost(desired_boost_modules: list[str]):
 
 def _get_sdl3_ttf_dependencies():
     sdl_ttf_external = project_dir / "third_party" / "SDL3_ttf-3.2.2" / "external"
-    if shutil.which("/bin/bash"):
-        sh_result = subprocess.run([ sdl_ttf_external / "downloads.sh" ], executable = "/bin/bash")
-        sh_result.check_returncode()
-    elif shutil.which("powershell"):
+    if shutil.which("powershell"):
         psh_result = subprocess.run([ "powershell", "-Command", f"& '{sdl_ttf_external / "Get-GitModules.ps1"}'" ])
         psh_result.check_returncode()
     else:
-        raise FileNotFoundError("Can't find Bash or Powershell, so I can't resolve SDL_ttf dependencies.")
+        sh_result = subprocess.run([ "sh", sdl_ttf_external / "download.sh" ])
+        sh_result.check_returncode()
 
 # This is all git stuff.
 if shutil.which("git") == None:
-    raise FileNotFoundError("Can't find 'git' on PATH. I need Git to get submodules.")
+    raise FileNotFoundError(ENOENT, os.strerror(ENOENT), "Can't find 'git' on PATH. I need Git to get submodules.")
 
 print("Getting submodules...", flush = True)
 
