@@ -1904,6 +1904,11 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
             OutLeft = RegisterFile.at(Outputs[0]);
             OutRight = RegisterFile.at(Outputs[1]);
         }
+        else if (Outputs.size() == 0)
+        {
+            OutLeft = 0.0;
+            OutRight = 0.0;
+        }
     }
     if (ProbeConnected)
     {
