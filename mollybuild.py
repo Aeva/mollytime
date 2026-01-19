@@ -5,12 +5,13 @@ import sys
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
+from errno import ENOENT
 from pathlib import Path
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
     pip_result = subprocess.run(pip_args)
-    return pip_result.returncode
+    pip_result.check_returncode()
 
 # HACK: UGH: So, meson-python "helpfully" overrides some built-in Meson options:
 # - `buildtype  = release`
@@ -85,38 +86,30 @@ def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace)
                 linker_type_args = [ "--linker-type", linker_type ]
 
     # Grab dependencies.
-    pip_result = _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
-    if pip_result != 0:
-        return pip_result
+    _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
     
     # Get submodules. This will acquire *only* the Boost submodules we require.
     get_submodules_script = build_tools_dir / "get_submodules.py"
     get_submodules_result = subprocess.run([ sys.executable, get_submodules_script ])
-    if get_submodules_result.returncode != 0:
-        return get_submodules_result.returncode
+    get_submodules_result.check_returncode()
     
     # Build Boost. (Yeah, we're using header-only librarires, but this still has to generate them.)
     boost_build_script = build_tools_dir / "boost_build.py" 
     boost_build_dir = project_dir / "build" / "boost"
     boost_build_result = subprocess.run([ sys.executable, boost_build_script, boost_build_dir ] + cpp_compiler_args + linker_type_args)
-    if boost_build_result.returncode != 0:
-        return boost_build_result
+    boost_build_result.check_returncode()
     
     # Build SDL3.
     sdl3_build_script = build_tools_dir / "sdl3_build.py" 
     sdl3_build_dir = project_dir / "build" / "sdl3"
     sdl3_build_result = subprocess.run([ sys.executable, sdl3_build_script, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
-    if sdl3_build_result.returncode != 0:
-        return sdl3_build_result
+    sdl3_build_result.check_returncode()
     
     # Build SDL3_ttf.
     sdl3_ttf_build_script = build_tools_dir / "sdl3_ttf_build.py" 
     sdl3_ttf_build_dir = project_dir / "build" / "sdl3_ttf"
     sdl3_ttf_build_result = subprocess.run([ sys.executable, sdl3_ttf_build_script, sdl3_ttf_build_dir, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
-    if sdl3_ttf_build_result.returncode != 0:
-        return sdl3_ttf_build_result
-    
-    return 0
+    sdl3_ttf_build_result.check_returncode()
 
 def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Prepare to execute a local, editable `pip install`.
@@ -150,7 +143,7 @@ def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Go.
     install_args += [ "-v", "--editable", "." ]
     install_result = subprocess.run(install_args)
-    return install_result.returncode
+    install_result.check_returncode()
 
 def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
     # Get the build directory. Meson-python will set this to './build/cpXX`,
@@ -162,25 +155,21 @@ def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace)
     this_dir = Path(__file__).parent
     build_dir = this_dir / build_dir_local
     if not build_dir.exists():
-        print(f"Error: I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
-        return 1
+        raise FileNotFoundError(ENOENT, os.strerror(ENOENT), f"I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
     
     # `meson compile` the pyinstaller target.
     compile_args = [ "meson", "compile", "-C", str(build_dir.resolve()), "mollytime-exe" ]
     compile_result = subprocess.run(compile_args)
-    if compile_result.returncode != 0:
-        return compile_result.returncode
+    compile_result.check_returncode()
 
     # Now, `meson install` it.
     install_args = [ "meson", "install", "--no-rebuild", "--tags=exe", "-C", str(build_dir.resolve()) ]
     install_result = subprocess.run(install_args)
-    return install_result.returncode
+    install_result.check_returncode()
 
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    pip_result = _get_dependencies([ "build" ])
-    if pip_result != 0:
-        return pip_result
+    _get_dependencies([ "build" ])
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
@@ -201,7 +190,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     
     # Go.
     package_result = subprocess.run(setup_args)
-    return package_result.returncode
+    package_result.check_returncode()
 
 if __name__ == "__main__":
     working_dir = Path(__file__).parent
@@ -283,5 +272,4 @@ if __name__ == "__main__":
         parser.print_help()
         exit(0)
     
-    return_code: int = args.command(modes, toolchains, args)  # pyright: ignore[reportAny]
-    exit(return_code)
+    args.command(modes, toolchains, args)  # pyright: ignore[reportAny]
