@@ -26,9 +26,10 @@
 #undef VC_EXTRALEAN
 #undef WIN32_LEAN_AND_MEAN
 
+#include <fmt/format.h>
+
 #include <map>
 #include <mutex>
-#include <print>
 
 
 static std::map<int, HMIDIIN> LiveInputs;
@@ -99,7 +100,7 @@ MmeApiMidiDriver::MmeApiMidiDriver()
 	}
 	if (!Connected)
 	{
-		std::print("No MIDI input device found!\n");
+		fmt::print("No MIDI input device found!\n");
 	}
 }
 

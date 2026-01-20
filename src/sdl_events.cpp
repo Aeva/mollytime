@@ -5,9 +5,8 @@
 
 #define DEBUG_EVENTS 0
 #if DEBUG_EVENTS
-#include <print>
+#include <fmt/format.h>
 #endif
-
 
 namespace Events
 {
@@ -26,26 +25,21 @@ namespace Events
         SDL_Event Next;
         while (SDL_PollEvent(&Next))
         {
+            Event Event;
+
             switch (Next.type)
             {
                 case SDL_EVENT_QUIT:
-                    Events.push_back(
-                    {
-                        .Type = EventType::Quit
-                    });
+                    Event.Type = EventType::Quit;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_WINDOW_RESIZED:
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-                    Events.push_back(
-                    {
-                        .Resize =
-                        {
-                            // Theoretically these are semantically separate events.
-                            static_cast<EventType>(Next.type),
-                            static_cast<int>(Next.window.data1),
-                            static_cast<int>(Next.window.data2)
-                        }
-                    });
+                    // Theoretically these are semantically separate events.
+                    Event.Type = static_cast<EventType>(Next.type);
+                    Event.Resize.Width = static_cast<int>(Next.window.data1);
+                    Event.Resize.Height = static_cast<int>(Next.window.data2);
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_KEY_DOWN:
                     if (Next.key.key == SDLK_C)
@@ -58,14 +52,9 @@ namespace Events
                     }
                     else
                     {
-                        Events.push_back(
-                        {
-                            .Key =
-                            {
-                                EventType::KeyDown,
-                                static_cast<KeyCode>(Next.key.key)
-                            }
-                        });
+                        Event.Type = EventType::KeyDown;
+                        Event.Key.Key = static_cast<KeyCode>(Next.key.key);
+                        Events.push_back(Event);
                     }
                     break;
                 case SDL_EVENT_KEY_UP:
@@ -78,19 +67,14 @@ namespace Events
                     }
                     else
                     {
-                        Events.push_back(
-                        {
-                            .Key =
-                            {
-                                EventType::KeyUp,
-                                static_cast<KeyCode>(Next.key.key)
-                            }
-                        });
+                        Event.Type = EventType::KeyUp;
+                        Event.Key.Key = static_cast<KeyCode>(Next.key.key);
+                        Events.push_back(Event);
                     }
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
 #if DEBUG_EVENTS
-                    std::print("{}: {} MOUSE {} DOWN: {}, {}\n",
+                    fmt::print("{}: {} MOUSE {} DOWN: {}, {}\n",
                                FrameNumber,
                                Next.button.timestamp,
                                Next.button.which,
@@ -99,22 +83,17 @@ namespace Events
 #endif
                     if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
                     {
-                        Events.push_back(
-                        {
-                            .Button =
-                            {
-                                EventType::MouseButtonDown,
-                                Next.button.x,
-                                Next.button.y,
-                                static_cast<MouseButton>(Next.button.button),
-                                Next.button.which == SDL_TOUCH_MOUSEID
-                            }
-                        });
+                        Event.Type = EventType::MouseButtonDown;
+                        Event.Button.X = Next.button.x;
+                        Event.Button.Y = Next.button.y;
+                        Event.Button.Button = static_cast<MouseButton>(Next.button.button),
+                        Event.Button.IsTouch = Next.button.which == SDL_TOUCH_MOUSEID;
+                        Events.push_back(Event);
                     }
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
 #if DEBUG_EVENTS
-                    std::print("{}: {} MOUSE {} UP: {}, {}\n",
+                    fmt::print("{}: {} MOUSE {} UP: {}, {}\n",
                                FrameNumber,
                                Next.button.timestamp,
                                Next.button.which,
@@ -123,22 +102,17 @@ namespace Events
 #endif
                     if (Next.button.which != SDL_TOUCH_MOUSEID && Next.button.which != SDL_PEN_MOUSEID)
                     {
-                        Events.push_back(
-                        {
-                            .Button =
-                            {
-                                EventType::MouseButtonUp,
-                                Next.button.x,
-                                Next.button.y,
-                                static_cast<MouseButton>(Next.button.button),
-                                Next.button.which == SDL_TOUCH_MOUSEID
-                            }
-                        });
+                        Event.Type = EventType::MouseButtonUp;
+                        Event.Button.X = Next.button.x;
+                        Event.Button.Y = Next.button.y;
+                        Event.Button.Button = static_cast<MouseButton>(Next.button.button),
+                        Event.Button.IsTouch = Next.button.which == SDL_TOUCH_MOUSEID;
+                        Events.push_back(Event);
                     }
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
 #if DEBUG_EVENTS
-                    std::print("{}: {} MOUSE {} MOTION: {}, {}\n",
+                    fmt::print("{}: {} MOUSE {} MOTION: {}, {}\n",
                                FrameNumber,
                                Next.motion.timestamp,
                                Next.motion.which,
@@ -147,35 +121,25 @@ namespace Events
 #endif
                     if (Next.motion.which != SDL_TOUCH_MOUSEID && Next.motion.which != SDL_PEN_MOUSEID)
                     {
-                        Events.push_back(
-                        {
-                            .Motion =
-                            {
-                                EventType::MouseMotion,
-                                Next.motion.x,
-                                Next.motion.y,
-                                Next.motion.xrel,
-                                Next.motion.yrel
-                            }
-                        });
+                        Event.Type = EventType::MouseMotion;
+                        Event.Motion.X = Next.motion.x;
+                        Event.Motion.Y = Next.motion.y;
+                        Event.Motion.XRelative = Next.motion.xrel;
+                        Event.Motion.YRelative = Next.motion.yrel;
+                        Events.push_back(Event);
                     }
                     break;
                 case SDL_EVENT_MOUSE_WHEEL:
-                    Events.push_back(
-                        {
-                            .Wheel =
-                            {
-                                EventType::MouseWheel,
-                                Next.wheel.x,
-                                Next.wheel.y,
-                                Next.wheel.mouse_x,
-                                Next.wheel.mouse_y
-                            }
-                        });
+                    Event.Type = EventType::MouseWheel;
+                    Event.Wheel.Horizontal = Next.wheel.x;
+                    Event.Wheel.Vertical = Next.wheel.y;
+                    Event.Wheel.CursorX = Next.wheel.mouse_x;
+                    Event.Wheel.CursorY = Next.wheel.mouse_y;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_FINGER_DOWN:
 #if DEBUG_EVENTS
-                    std::print("{}: {} FINGER {}({}) DOWN: {}, {}, pressure: {}\n",
+                    fmt::print("{}: {} FINGER {}({}) DOWN: {}, {}, pressure: {}\n",
                                FrameNumber,
                                Next.tfinger.timestamp,
                                Next.tfinger.touchID,
@@ -184,21 +148,16 @@ namespace Events
                                Next.tfinger.y * float(WindowH),
                                Next.tfinger.pressure);
 #endif
-                    Events.push_back(
-                    {
-                        .Touch =
-                        {
-                            EventType::FingerDown,
-                            Next.tfinger.x,
-                            Next.tfinger.y,
-                            Next.tfinger.touchID,
-                            Next.tfinger.fingerID
-                        }
-                    });
+                    Event.Type = EventType::FingerDown;
+                    Event.Touch.X = Next.tfinger.x;
+                    Event.Touch.Y = Next.tfinger.y;
+                    Event.Touch.TouchID = Next.tfinger.touchID;
+                    Event.Touch.FingerID =  Next.tfinger.fingerID;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_FINGER_UP:
 #if DEBUG_EVENTS
-                    std::print("{}: {} FINGER {}({}) UP: {}, {}, pressure: {}\n",
+                    fmt::print("{}: {} FINGER {}({}) UP: {}, {}, pressure: {}\n",
                                FrameNumber,
                                Next.tfinger.timestamp,
                                Next.tfinger.touchID,
@@ -207,21 +166,16 @@ namespace Events
                                Next.tfinger.y * float(WindowH),
                                Next.tfinger.pressure);
 #endif
-                    Events.push_back(
-                    {
-                        .Touch =
-                        {
-                            EventType::FingerUp,
-                            Next.tfinger.x,
-                            Next.tfinger.y,
-                            Next.tfinger.touchID,
-                            Next.tfinger.fingerID
-                        }
-                    });
+                    Event.Type = EventType::FingerUp;
+                    Event.Touch.X = Next.tfinger.x;
+                    Event.Touch.Y = Next.tfinger.y;
+                    Event.Touch.TouchID = Next.tfinger.touchID;
+                    Event.Touch.FingerID =  Next.tfinger.fingerID;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_FINGER_MOTION:
 #if DEBUG_EVENTS
-                    std::print("{}: {} FINGER {}({}) MOVE: {}, {}, pressure: {}\n",
+                    fmt::print("{}: {} FINGER {}({}) MOVE: {}, {}, pressure: {}\n",
                                FrameNumber,
                                Next.tfinger.timestamp,
                                Next.tfinger.touchID,
@@ -230,80 +184,60 @@ namespace Events
                                Next.tfinger.y * float(WindowH),
                                Next.tfinger.pressure);
 #endif
-                    Events.push_back(
-                    {
-                        .Touch =
-                        {
-                            EventType::FingerMotion,
-                            Next.tfinger.x,
-                            Next.tfinger.y,
-                            Next.tfinger.touchID,
-                            Next.tfinger.fingerID
-                        }
-                    });
+                    Event.Type = EventType::FingerMotion;
+                    Event.Touch.X = Next.tfinger.x;
+                    Event.Touch.Y = Next.tfinger.y;
+                    Event.Touch.TouchID = Next.tfinger.touchID;
+                    Event.Touch.FingerID =  Next.tfinger.fingerID;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_PEN_DOWN:
 #if DEBUG_EVENTS
-                    std::print("{}: {} PEN {} DOWN: {}, {}\n",
+                    fmt::print("{}: {} PEN {} DOWN: {}, {}\n",
                                FrameNumber,
                                Next.ptouch.timestamp,
                                Next.ptouch.which,
                                Next.ptouch.x,
                                Next.ptouch.y);
 #endif
-                    Events.push_back(
-                        {
-                            .Button =
-                            {
-                                EventType::MouseButtonDown,
-                                Next.ptouch.x,
-                                Next.ptouch.y,
-                                static_cast<MouseButton>(SDL_BUTTON_LEFT),
-                                     false
-                            }
-                        });
+                    Event.Type = EventType::MouseButtonDown;
+                    Event.Button.X = Next.ptouch.x;
+                    Event.Button.Y = Next.ptouch.y;
+                    Event.Button.Button = static_cast<MouseButton>(SDL_BUTTON_LEFT);
+                    Event.Button.IsTouch = false;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_PEN_UP:
 #if DEBUG_EVENTS
-                    std::print("{}: {} PEN {} UP: {}, {}\n",
+                    fmt::print("{}: {} PEN {} UP: {}, {}\n",
                                FrameNumber,
                                Next.ptouch.timestamp,
                                Next.ptouch.which,
                                Next.ptouch.x,
                                Next.ptouch.y);
 #endif
-                    Events.push_back(
-                        {
-                            .Button =
-                            {
-                                EventType::MouseButtonUp,
-                                Next.ptouch.x,
-                                Next.ptouch.y,
-                                static_cast<MouseButton>(SDL_BUTTON_LEFT),
-                                false
-                            }
-                        });
+                    Event.Type = EventType::MouseButtonUp;
+                    Event.Button.X = Next.ptouch.x;
+                    Event.Button.Y = Next.ptouch.y;
+                    Event.Button.Button = static_cast<MouseButton>(SDL_BUTTON_LEFT);
+                    Event.Button.IsTouch = false;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_PEN_MOTION:
 #if DEBUG_EVENTS
-                    std::print("{}: {} PEN {} MOVE: {}, {}\n",
+                    fmt::print("{}: {} PEN {} MOVE: {}, {}\n",
                                FrameNumber,
                                Next.pmotion.timestamp,
                                Next.pmotion.which,
                                Next.pmotion.x,
                                Next.pmotion.y);
 #endif
-                    Events.push_back(
-                        {
-                            .Motion =
-                            {
-                                EventType::MouseMotion,
-                                Next.pmotion.x,
-                                Next.pmotion.y,
-                                0,
-                                0
-                            }
-                        });
+                    Event.Type = EventType::MouseMotion;
+                    Event.Motion.X = Next.pmotion.x;
+                    Event.Motion.Y = Next.pmotion.y;
+                    Event.Motion.XRelative = 0.0f;
+                    Event.Motion.YRelative = 0.0f;
+                    Events.push_back(Event);
                     break;
                 case SDL_EVENT_PEN_AXIS:
 #if DEBUG_EVENTS
@@ -333,7 +267,7 @@ namespace Events
                             Label = "squeeze";
                             break;
                     }
-                    std::print("{}: {} PEN {} AXIS: {}, {}, {}: {}\n",
+                    fmt::print("{}: {} PEN {} AXIS: {}, {}, {}: {}\n",
                                FrameNumber,
                                Next.paxis.timestamp,
                                Next.paxis.which,

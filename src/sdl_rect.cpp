@@ -163,7 +163,7 @@ std::tuple<Point, Point> Rect::IntersectLine(const Point& Start, const Point& En
     auto [X2, Y2] = End;
     if (!SDL_GetRectAndLineIntersectionFloat(&SDLRect, &X1, &Y1, &X2, &Y2))
     {
-        return { { 0, 0 }, { 0, 0 } };
+        return { { 0.0f, 0.0f }, { 0.0f, 0.0f } };
     }
 
     return { { X1, Y1 }, { X2, Y2 } };

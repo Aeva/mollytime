@@ -8,10 +8,9 @@
 #include <SDL3/SDL_version.h>
 #include <SDL3/SDL_revision.h>
 
+#include <fmt/format.h>
+
 #include <cassert>
-#include <print>
-#include <format>
-#include <span>
 #include <stdexcept>
 #include <string>
 
@@ -25,7 +24,7 @@ namespace Display
         SDL_DisplayID* DisplayIdPtr = SDL_GetDisplays(&DisplayCount);
         if (DisplayIdPtr == nullptr)
         {
-            throw std::runtime_error(std::format("Failed to get displays. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to get displays. SDL error: {}", SDL_GetError()));
         }
         SDL_free(DisplayIdPtr);
         return std::max(0, DisplayCount);
@@ -37,7 +36,7 @@ namespace Display
         SDL_DisplayID* DisplayIdPtr = SDL_GetDisplays(&DisplayCount);
         if (DisplayIdPtr == nullptr)
         {
-            throw std::runtime_error(std::format("Failed to get displays. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to get displays. SDL error: {}", SDL_GetError()));
         }
         if ( DisplayCount < 1)
         {
@@ -58,7 +57,7 @@ namespace Display
         SDL_DisplayMode** DisplayModesPtr = SDL_GetFullscreenDisplayModes(DisplayId, &DisplayModeCount);
         if (DisplayModesPtr == nullptr)
         {
-            throw std::runtime_error(std::format("Failed to get display mode. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to get display mode. SDL error: {}", SDL_GetError()));
         }
         if (DisplayModeCount < 1)
         {
@@ -92,19 +91,19 @@ namespace Display
 
         if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR))
         {
-            throw std::runtime_error(std::format("Failed to initialize SDL. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to initialize SDL. SDL error: {}", SDL_GetError()));
         }
 
         std::string_view LinkedRevision = SDL_GetRevision();
         std::string_view CompiledRevision = SDL_REVISION;
         if (LinkedRevision != CompiledRevision)
         {
-            std::print("Compiled SDL version: {}\n", CompiledRevision);
-            std::print("Linked SDL version: {}\n", LinkedRevision);
+            fmt::print("Compiled SDL version: {}\n", CompiledRevision);
+            fmt::print("Linked SDL version: {}\n", LinkedRevision);
         }
         else
         {
-            std::print("SDL version: {}\n", CompiledRevision);
+            fmt::print("SDL version: {}\n", CompiledRevision);
         }
 
         if (Window != nullptr)
@@ -137,13 +136,13 @@ namespace Display
 
         if (Window == nullptr)
         {
-            throw std::runtime_error(std::format("Failed to create window. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to create window. SDL error: {}", SDL_GetError()));
         }
         else
         {
             if (!SDL_SetWindowMinimumSize(Window, 320, 240))
             {
-                throw std::runtime_error(std::format("Failed to set minimum window size to 320x240. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to set minimum window size to 320x240. SDL error: {}", SDL_GetError()));
             }
         }
     }
@@ -177,10 +176,10 @@ namespace Display
             const SDL_DisplayMode* DisplayMode = SDL_GetDesktopDisplayMode(ID);
             if (DisplayMode == nullptr)
             {
-                throw std::runtime_error(std::format("Failed to get display mode. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to get display mode. SDL error: {}", SDL_GetError()));
             }
 
-            Sizes.emplace_back(DisplayMode->w, DisplayMode->h);
+            Sizes.emplace_back(static_cast<float>(DisplayMode->w), static_cast<float>(DisplayMode->h));
         }
 
         return Sizes;
@@ -189,20 +188,14 @@ namespace Display
     std::vector<Size> ListModes(int DisplayIndex)
     {
         const std::vector<SDL_DisplayID> DisplayIds = GetDisplayIds();
-        if (DisplayIndex < 0 || DisplayIndex >= std::ssize(DisplayIds))
-        {
-            // std::span doesn't have bounds-checked `.at()` until C++26...
-            throw std::out_of_range(std::format("Display index out of range. Expected >= 0, < {}.", DisplayIds.size()));
-        }
-
-        const SDL_DisplayID DisplayId = DisplayIds[DisplayIndex];
+        const SDL_DisplayID DisplayId = DisplayIds.at(DisplayIndex);
         const std::vector<SDL_DisplayMode*> DisplayModes = GetDisplayModes(DisplayId);
 
         std::vector<Size> Sizes;
         for(SDL_DisplayMode* Mode : DisplayModes)
         {
             assert(Mode != nullptr);
-            Sizes.emplace_back(Mode->w, Mode->h);
+            Sizes.emplace_back(static_cast<float>(Mode->w), static_cast<float>(Mode->h));
         }
 
         return Sizes;
@@ -214,7 +207,7 @@ namespace Display
 
         if (!SDL_SetWindowTitle(Window, Title.data()))
         {
-            throw std::runtime_error(std::format("Failed to set window title. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Failed to set window title. SDL error: {}", SDL_GetError()));
         }
     }
 
@@ -243,14 +236,14 @@ namespace Display
         {
             if (!SDL_SetWindowFullscreen(Window, false))
             {
-                throw std::runtime_error(std::format("Unable to leave fullscreen. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Unable to leave fullscreen. SDL error: {}", SDL_GetError()));
             }
         }
         else
         {
             if (!SDL_SetWindowFullscreen(Window, true))
             {
-                throw std::runtime_error(std::format("Failed to enter fullscreen. SDL error: {}", SDL_GetError()));
+                throw std::runtime_error(fmt::format("Failed to enter fullscreen. SDL error: {}", SDL_GetError()));
             }
         }
     }
@@ -261,7 +254,7 @@ namespace Display
         float Scale = SDL_GetWindowDisplayScale(Window);
         if (Scale <= 0.0f)
         {
-            throw std::runtime_error(std::format("Unable to determine resolution scale. SDL error: {}", SDL_GetError()));
+            throw std::runtime_error(fmt::format("Unable to determine resolution scale. SDL error: {}", SDL_GetError()));
         }
         return Scale;
     }

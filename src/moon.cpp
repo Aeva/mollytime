@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <numbers>
 #include <cmath>
 #include <array>
 #include <chrono>
@@ -59,8 +58,9 @@ double GetCurrentJulianDate()
 }
 #endif
 
-static constexpr double ToRadians = std::numbers::pi / 180.0;
-static constexpr double ToDegrees = 180.0 / std::numbers::pi;
+static constexpr double Pi = 3.141592653589793;    // Not standard until C++20 😔
+static constexpr double ToRadians = Pi / 180.0;
+static constexpr double ToDegrees = 180.0 / Pi;
 
 
 // Approximate Moon math adapted from https://aa.quae.nl/en/reken/hemelpositie.html

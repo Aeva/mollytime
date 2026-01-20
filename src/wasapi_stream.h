@@ -27,7 +27,11 @@
 #define NOMINMAX
 #include <Audioclient.h>
 #include <mmdeviceapi.h>
+#define WINRT_LEAN_AND_MEAN
+#define _SILENCE_CLANG_COROUTINE_MESSAGE
 #include <winrt/base.h>
+#undef _SILENCE_CLANG_COROUTINE_MESSAGE
+#undef WINRT_LEAN_AND_MEAN
 #undef NOMINMAX
 #undef VC_EXTRALEAN
 #undef WIN32_LEAN_AND_MEAN

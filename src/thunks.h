@@ -31,6 +31,14 @@
 #include <algorithm>
 #endif
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#define BOOST_ATOMIC_NO_LIB
+#include <boost/atomic.hpp>
+#undef BOOST_ATOMIC_NO_LIB
+#pragma clang diagnostic pop
+
 #include "perf.h"
 
 
@@ -129,7 +137,7 @@ struct AtomicRunningState
     }
 
 private:
-    std::atomic<double> Sample;
+    boost::atomic_double_t Sample;
 };
 
 using AtomicRunningStateSharedPtr = std::shared_ptr<AtomicRunningState>;
@@ -176,7 +184,7 @@ struct BlankTape : public MagicTape
             }
             Alpha = std::min(std::max(Alpha, 0.0), 1.0);
             size_t Index = size_t(double(Samples.size() - 1) * Alpha);
-            return std::min(std::max(Index, 0zu), Samples.size());
+            return std::min(std::max(Index, static_cast<size_t>(0)), Samples.size());
         }
         else
         {
@@ -650,3 +658,14 @@ private:
         };
     }
 };
+
+template<typename To, typename From>
+static inline To bit_cast(const From& FromValue) noexcept {
+    static_assert(sizeof(To) == sizeof(From));
+    static_assert(std::is_trivially_copyable_v<To>);
+    static_assert(std::is_trivially_copyable_v<From>);
+
+    To ToValue;
+    memcpy(&ToValue, &FromValue, sizeof(From));
+    return ToValue;
+}

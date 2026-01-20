@@ -4,8 +4,9 @@
 #include <spa/param/audio/format-utils.h>
 #include <pipewire/pipewire.h>
 
+#include <fmt/format.h>
+
 #include <vector>
-#include <print>
 #include <mutex>
 #include <cstring>
 
@@ -68,11 +69,11 @@ void SynthProgram::Commit(std::vector<double>& Variables)
             std::uint16_t Param2 = Params[ParamCounter++];
             if (Param1 >= Intermediaries.size())
             {
-                std::print("{}: Oscillator Hz param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Oscillator Hz param is out of bounds!!!\n", ProgramCounter);
             }
             if (Param2 >= Phases.size())
             {
-                std::print("{}: Oscillator phase index is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Oscillator phase index is out of bounds!!!\n", ProgramCounter);
             }
 
         }
@@ -82,11 +83,11 @@ void SynthProgram::Commit(std::vector<double>& Variables)
             std::uint16_t Param2 = Params[ParamCounter++];
             if (Param1 >= Intermediaries.size())
             {
-                std::print("{}: Mul LHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Mul LHS param is out of bounds!!!\n", ProgramCounter);
             }
             if (Param2 >= Intermediaries.size())
             {
-                std::print("{}: Mul RHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Mul RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
         else if (Instruction == OpCode::Add)
@@ -95,11 +96,11 @@ void SynthProgram::Commit(std::vector<double>& Variables)
             std::uint16_t Param2 = Params[ParamCounter++];
             if (Param1 >= Intermediaries.size())
             {
-                std::print("{}: Add LHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Add LHS param is out of bounds!!!\n", ProgramCounter);
             }
             if (Param2 >= Intermediaries.size())
             {
-                std::print("{}: Add RHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Add RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
         else if (Instruction == OpCode::Min)
@@ -108,11 +109,11 @@ void SynthProgram::Commit(std::vector<double>& Variables)
             std::uint16_t Param2 = Params[ParamCounter++];
             if (Param1 >= Intermediaries.size())
             {
-                std::print("{}: Min LHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Min LHS param is out of bounds!!!\n", ProgramCounter);
             }
             if (Param2 >= Intermediaries.size())
             {
-                std::print("{}: Min RHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Min RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
         else if (Instruction == OpCode::Max)
@@ -121,16 +122,16 @@ void SynthProgram::Commit(std::vector<double>& Variables)
             std::uint16_t Param2 = Params[ParamCounter++];
             if (Param1 >= Intermediaries.size())
             {
-                std::print("{}: Max LHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Max LHS param is out of bounds!!!\n", ProgramCounter);
             }
             if (Param2 >= Intermediaries.size())
             {
-                std::print("{}: Max RHS param is out of bounds!!!\n", ProgramCounter);
+                fmt::print("{}: Max RHS param is out of bounds!!!\n", ProgramCounter);
             }
         }
         else
         {
-            std::print("{}: Unknown OpCode {}!\n", ProgramCounter, (std::uint16_t)Instruction);
+            fmt::print("{}: Unknown OpCode {}!\n", ProgramCounter, (std::uint16_t)Instruction);
         }
     }
 }
@@ -445,7 +446,7 @@ PipeWireStream::PipeWireStream(int SampleRate)
 
         if (StatusCode < 0)
         {
-            std::print("Can't connect pipewire stream :(\n");
+            fmt::print("Can't connect pipewire stream :(\n");
             Reset();
         }
     }
@@ -546,7 +547,7 @@ void clear()
     }
     else
     {
-        std::print("invalid use of clear\n");
+        fmt::print("invalid use of clear\n");
     }
 }
 
@@ -556,10 +557,10 @@ int push_var(double InitValue)
 {
     if (IncompleteProgram != nullptr)
     {
-        //std::print("push_var({})\n", InitValue);
+        //fmt::print("push_var({})\n", InitValue);
         return IncompleteProgram->PushVar(InitValue);
     }
-    std::print("invalid use of push_var\n");
+    fmt::print("invalid use of push_var\n");
     return -1;
 }
 
@@ -579,10 +580,10 @@ int push_sin(std::uint16_t Frequency)
 {
     if (IncompleteProgram != nullptr)
     {
-        //std::print("push_sin({})\n", Frequency);
+        //fmt::print("push_sin({})\n", Frequency);
         return IncompleteProgram->PushSin(Frequency);
     }
-    std::print("invalid use of push_sin\n");
+    fmt::print("invalid use of push_sin\n");
     return -1;
 }
 
@@ -592,10 +593,10 @@ int push_mul(std::uint16_t LHS, std::uint16_t RHS)
 {
     if (IncompleteProgram != nullptr)
     {
-        //std::print("push_mul({}, {})\n", LHS, RHS);
+        //fmt::print("push_mul({}, {})\n", LHS, RHS);
         return IncompleteProgram->PushMul(LHS, RHS);
     }
-    std::print("invalid use of push_mul\n");
+    fmt::print("invalid use of push_mul\n");
     return -1;
 }
 
@@ -605,10 +606,10 @@ int push_add(std::uint16_t LHS, std::uint16_t RHS)
 {
     if (IncompleteProgram != nullptr)
     {
-        //std::print("push_add({}, {})\n", LHS, RHS);
+        //fmt::print("push_add({}, {})\n", LHS, RHS);
         return IncompleteProgram->PushAdd(LHS, RHS);
     }
-    std::print("invalid use of push_add\n");
+    fmt::print("invalid use of push_add\n");
     return -1;
 }
 
@@ -618,10 +619,10 @@ int push_min(std::uint16_t LHS, std::uint16_t RHS)
 {
     if (IncompleteProgram != nullptr)
     {
-        //std::print("push_min({}, {})\n", LHS, RHS);
+        //fmt::print("push_min({}, {})\n", LHS, RHS);
         return IncompleteProgram->PushMin(LHS, RHS);
     }
-    std::print("invalid use of push_min\n");
+    fmt::print("invalid use of push_min\n");
     return -1;
 }
 
@@ -631,10 +632,10 @@ int push_max(std::uint16_t LHS, std::uint16_t RHS)
 {
     if (IncompleteProgram != nullptr)
     {
-        //std::print("push_max({}, {})\n", LHS, RHS);
+        //fmt::print("push_max({}, {})\n", LHS, RHS);
         return IncompleteProgram->PushMax(LHS, RHS);
     }
-    std::print("invalid use of push_max\n");
+    fmt::print("invalid use of push_max\n");
     return -1;
 }
 
@@ -649,7 +650,7 @@ void commit_program()
     }
     else
     {
-        std::print("invalid use of commit_program\n");
+        fmt::print("invalid use of commit_program\n");
     }
 }
 

@@ -23,6 +23,14 @@
 
 #include "patch.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#define BOOST_ATOMIC_NO_LIB
+#include <boost/atomic.hpp>
+#undef BOOST_ATOMIC_NO_LIB
+#pragma clang diagnostic pop
+
 
 using Clock = std::chrono::steady_clock;
 using TimePoint = std::chrono::time_point<Clock>;
@@ -33,7 +41,7 @@ struct AudioThreadShared
     DECLARE_TRACEABLE_MUTEX(Mutex);
     ScratchUniquePtr PendingProgram = nullptr;
 
-    std::atomic<float> TemporalPressure = 0.0;
+    boost::atomic_float_t TemporalPressure = 0.0;
 };
 
 

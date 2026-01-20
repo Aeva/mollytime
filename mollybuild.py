@@ -2,16 +2,16 @@ import os
 import platform
 import subprocess
 import sys
-import sysconfig
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
+from errno import ENOENT
 from pathlib import Path
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
     pip_result = subprocess.run(pip_args)
-    return pip_result.returncode
+    pip_result.check_returncode()
 
 # HACK: UGH: So, meson-python "helpfully" overrides some built-in Meson options:
 # - `buildtype  = release`
@@ -33,7 +33,7 @@ def _get_dependencies(dependencies: list[str]):
 def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     args: list[str] = []
     mode_config = ConfigParser()
-    mode_config.read(native_file)
+    _ = mode_config.read(native_file)
 
     def _parse_arg(name: str):
         arg = mode_config.get("built-in options", name, fallback = None)
@@ -47,12 +47,71 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     
     return args
 
-def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
-    # Grab dependencies.
-    pip_result = _get_dependencies([ "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
-    if pip_result != 0:
-        return pip_result
+def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace):
+    args_dict = vars(args)
+    project_dir = Path(__file__).parent
+    build_tools_dir = project_dir / "build_tools"
 
+    # Dig out the specified compiler from the provided toolchain file.
+    # The build  helpers will pass these to CMake.
+    c_compiler_args: list[str] = []
+    cpp_compiler_args: list[str] = []
+    linker_type_args: list[str] = []
+
+    toolchain_name: str | None = args_dict.get("toolchain", None)
+    if toolchain_name != None:
+        toolchain_file = toolchains.get(toolchain_name, None)
+        if toolchain_file != None:
+            toolchain_config = ConfigParser()
+            _ = toolchain_config.read(toolchain_file)
+            
+            c_compiler: str | None = toolchain_config.get("binaries", "c", fallback = None)
+            if c_compiler != None:
+                c_compiler_args = [ "--c-compiler", c_compiler ]
+            
+            cpp_compiler: str | None = toolchain_config.get("binaries", "cpp", fallback = None)
+            if cpp_compiler != None:
+                cpp_compiler_args = [ "--cpp-compiler", cpp_compiler ]
+            
+            linker_type: str | None = toolchain_config.get("binaries", "cpp_ld", fallback = None)
+            if linker_type != None:
+                match linker_type:
+                    case "link":
+                        linker_type = "MSVC"
+                    case "lld":
+                        linker_type = "LLD"
+                    case _:
+                        linker_type = "SYSTEM"
+                
+                linker_type_args = [ "--linker-type", linker_type ]
+
+    # Grab dependencies.
+    _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
+    
+    # Get submodules. This will acquire *only* the Boost submodules we require.
+    get_submodules_script = build_tools_dir / "get_submodules.py"
+    get_submodules_result = subprocess.run([ sys.executable, get_submodules_script ])
+    get_submodules_result.check_returncode()
+    
+    # Build Boost. (Yeah, we're using header-only librarires, but this still has to generate them.)
+    boost_build_script = build_tools_dir / "boost_build.py" 
+    boost_build_dir = project_dir / "build" / "boost"
+    boost_build_result = subprocess.run([ sys.executable, boost_build_script, boost_build_dir ] + cpp_compiler_args + linker_type_args)
+    boost_build_result.check_returncode()
+    
+    # Build SDL3.
+    sdl3_build_script = build_tools_dir / "sdl3_build.py" 
+    sdl3_build_dir = project_dir / "build" / "sdl3"
+    sdl3_build_result = subprocess.run([ sys.executable, sdl3_build_script, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
+    sdl3_build_result.check_returncode()
+    
+    # Build SDL3_ttf.
+    sdl3_ttf_build_script = build_tools_dir / "sdl3_ttf_build.py" 
+    sdl3_ttf_build_dir = project_dir / "build" / "sdl3_ttf"
+    sdl3_ttf_build_result = subprocess.run([ sys.executable, sdl3_ttf_build_script, sdl3_ttf_build_dir, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
+    sdl3_ttf_build_result.check_returncode()
+
+def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Prepare to execute a local, editable `pip install`.
     # This will have meson-python automatically run `meson setup`, and then add a launcher shim
     # that automatically recompiles our extension module(s) when running the module locally.
@@ -64,7 +123,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     install_args += [ "-Ceditable-verbose=true" ]
     
     # Gather mode config, if specified.
-    mode_name = args_dict.get("mode", None)
+    mode_name: str | None = args_dict.get("mode", None)
     if mode_name != None:
         mode_file = modes.get(mode_name, None)
         if mode_file != None:
@@ -73,7 +132,7 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
             install_args += _HACK_extract_override_overrides(mode_file)
     
     # Gather toolchain config, if specified.
-    toolchain_name = args_dict.get("toolchain", None)
+    toolchain_name: str | None = args_dict.get("toolchain", None)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
@@ -84,9 +143,9 @@ def setup(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Go.
     install_args += [ "-v", "--editable", "." ]
     install_result = subprocess.run(install_args)
-    return install_result.returncode
+    install_result.check_returncode()
 
-def exe(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
     # Get the build directory. Meson-python will set this to './build/cpXX`,
     # where XX is the Python major & minor version number, w/o decimal separators.
     major, minor, _ = platform.python_version().split(".")
@@ -96,25 +155,21 @@ def exe(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     this_dir = Path(__file__).parent
     build_dir = this_dir / build_dir_local
     if not build_dir.exists():
-        print(f"Error: I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
-        return 1
+        raise FileNotFoundError(ENOENT, os.strerror(ENOENT), f"I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
     
     # `meson compile` the pyinstaller target.
     compile_args = [ "meson", "compile", "-C", str(build_dir.resolve()), "mollytime-exe" ]
     compile_result = subprocess.run(compile_args)
-    if compile_result.returncode != 0:
-        return compile_result.returncode
+    compile_result.check_returncode()
 
     # Now, `meson install` it.
     install_args = [ "meson", "install", "--no-rebuild", "--tags=exe", "-C", str(build_dir.resolve()) ]
     install_result = subprocess.run(install_args)
-    return install_result.returncode
+    install_result.check_returncode()
 
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    pip_result = _get_dependencies([ "build" ])
-    if pip_result != 0:
-        return pip_result
+    _get_dependencies([ "build" ])
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
@@ -126,7 +181,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     setup_args += [ f"-Csetup-args={mode_arg}" ]
     
     # Gather toolchain config, if specified.
-    toolchain_name = args_dict.get("toolchain", None)
+    toolchain_name: str | None = args_dict.get("toolchain", None)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
@@ -135,7 +190,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     
     # Go.
     package_result = subprocess.run(setup_args)
-    return package_result.returncode
+    package_result.check_returncode()
 
 if __name__ == "__main__":
     working_dir = Path(__file__).parent
@@ -161,22 +216,38 @@ if __name__ == "__main__":
     parser = ArgumentParser(
         prog = "mollybuild",
         description = \
-            "Concise build helper."
-            "\nFor an iterative 'development' workflow, run `setup`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run."
-            "\nWhen you're ready to distribute, run `package`.",
+            "Concise build helper." +
+            "\nRun `init` after cloning the project. Then, for an iterative 'development' workflow, first run `build`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
+            "\nWhen you're ready to distribute, run `package` to build a wheel, or `exe` to build a Pyinstaller distribution.",
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
+    
+    # `init` command
+    init_parser = subparsers.add_parser("init", help = \
+        "Initialize the project repository. This will:" +
+        "\n- Acquire dependent Python packages via pip. (Running in a virtual environment is highly recommended!)" +
+        "\n- Initialize and update third party Git submodules. (Git is required!)" +
+        "\n- Build third party dependencies." +
+        "\n" +
+        "\nWhile Mollytime uses Meson, third-party dependences will, regrettably, be built using CMake. I'll handle it all; just FYI."
+    )
+    init_parser.set_defaults(command = init)
+    _ = init_parser.add_argument(
+        "toolchain",
+        help = "Toolchain to build dependencies with. If unspecified, uses your system default.",
+        choices = toolchains.keys()
+    )
 
-    # `setup` command
-    setup_parser = subparsers.add_parser("setup", help = "Development: Set up a development build environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
-    setup_parser.set_defaults(command = setup)
-    setup_parser.add_argument(
+    # `build` command
+    build_parser = subparsers.add_parser("build", help = "Development: Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
+    build_parser.set_defaults(command = build)
+    _ = build_parser.add_argument(
         "mode",
         help = "Build mode. If unspecified, uses `debug`.",
         choices = modes.keys()
     )
-    setup_parser.add_argument(
+    _ = build_parser.add_argument(
         "toolchain",
         help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
         choices = toolchains.keys()
@@ -185,14 +256,14 @@ if __name__ == "__main__":
     # `package` command
     package_parser = subparsers.add_parser("package", help = "Release: Build a distributable Python package (sdist and wheel).")
     package_parser.set_defaults(command = package)
-    package_parser.add_argument(
+    _ = package_parser.add_argument(
         "toolchain",
         help = "Toolchain to build with. If unspecified, uses your system default.",
         choices = toolchains.keys()
     )
 
     # `exe` command
-    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `setup` first.")
+    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `build` first.")
     exe_parser.set_defaults(command = exe)
 
     # Go
@@ -201,5 +272,4 @@ if __name__ == "__main__":
         parser.print_help()
         exit(0)
     
-    return_code = args.command(modes, toolchains, args)
-    exit(return_code)
+    args.command(modes, toolchains, args)  # pyright: ignore[reportAny]

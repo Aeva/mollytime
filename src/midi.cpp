@@ -15,16 +15,17 @@
 
 #include "midi.h"
 
-#ifdef MIDI_ALSA
+#if defined(MIDI_ALSA)
 #include "alsa_midi.h"
-#elifdef MIDI_MMEAPI
+#elif defined(MIDI_MMEAPI)
 #include "mmeapi_midi.h"
 #endif
+
+#include <fmt/format.h>
 
 #include <utility>
 #include <atomic>
 #include <memory>
-#include <print>
 
 
 static std::unique_ptr<MidiDriver> Driver;
@@ -128,7 +129,7 @@ void MidiHandler::Reset()
 #endif
 
     PendingMidiMessages.clear();
-    PendingMidiMessages.emplace_back(MidiMessageType::Reset, 0, 0.0, 0.0);
+    PendingMidiMessages.push_back({ MidiMessageType::Reset, 0, 0.0, 0.0 });
 }
 
 
@@ -186,12 +187,12 @@ void Midi::ProcessEvents(MidiHandler* Handler)
 
 void Midi::Init()
 {
-#ifdef MIDI_ALSA
+#if defined(MIDI_ALSA)
     Driver = std::make_unique<AlsaMidiDriver>();
-#elifdef MIDI_MMEAPI
+#elif defined(MIDI_MMEAPI)
     Driver = std::make_unique<MmeApiMidiDriver>();
 #else
-    std::println("No MIDI driver is available.");
+    fmt::println("No MIDI driver is available.");
 #endif
 }
 

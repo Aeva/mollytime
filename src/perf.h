@@ -32,7 +32,8 @@ inline bool IsProfilingEnabled()
     return true;
 }
 
-inline void PerfTrampoline(const char* Name, auto& Function, auto& ReturnVal)
+template<typename FunctionType, typename ReturnType>
+inline void PerfTrampoline(const char* Name, FunctionType&& Function, ReturnType& ReturnVal)
 {
     ZoneScoped;
     ZoneName(Name, strlen(Name));
@@ -51,7 +52,8 @@ inline bool IsProfilingEnabled()
     return false;
 }
 
-inline void PerfTrampoline(const char* Name, auto& Function, auto& ReturnVal)
+template<typename FunctionType, typename ReturnType>
+inline void PerfTrampoline(const char* Name, FunctionType&& Function, ReturnType& ReturnVal)
 {
     ReturnVal = Function();
 }

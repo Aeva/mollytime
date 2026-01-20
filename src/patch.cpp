@@ -15,7 +15,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <print>
+
+#include <fmt/format.h>
 
 #include "errors.h"
 #include "patch.h"
@@ -54,9 +55,9 @@ double EncodeSampleHandle(uint32_t SampleHandle)
 #if 0
     const uint64_t NaN = (0xffful << 51);
     uint64_t Encoded = NaN | uint64_t(SampleHandle);
-    return std::bit_cast<double, uint64_t>(Encoded);
+    return bit_cast<double, uint64_t>(Encoded);
 #endif
-    return std::bit_cast<double, uint64_t>(uint64_t(SampleHandle));
+    return bit_cast<double, uint64_t>(uint64_t(SampleHandle));
 }
 
 
@@ -156,7 +157,7 @@ TileHandle Patch::MakeTile(OpCode Symbol)
             // 32 bit TileId values allow 4294967295 calls to MakeTile before the patch becomes uneditable.
             // If you hit MakeTile every second, it would take about 136 years before it becomes cashed out.
             // Should this somehow prove to be a problem, consider adding an id recycling system.
-            throw std::runtime_error(std::format("Fatal error: TileId collision on {}!\n", AllocatedHandle));
+            throw std::runtime_error(fmt::format("Fatal error: TileId collision on {}!\n", AllocatedHandle));
         }
     }
     for (PortHandle Port : GetTileInputPorts(AllocatedHandle))
@@ -188,7 +189,7 @@ TileHandle Patch::MakeTile(double Constant)
     auto Result = TileConstants.try_emplace(AllocatedHandle, Constant);
     if (!Result.second)
     {
-        throw std::runtime_error(std::format("Unusual fatal error: cannot initialize constant tile {}!\n", AllocatedHandle));
+        throw std::runtime_error(fmt::format("Unusual fatal error: cannot initialize constant tile {}!\n", AllocatedHandle));
     }
     ReplaceConstantOutput(AllocatedHandle, Constant);
     return AllocatedHandle;
@@ -252,11 +253,11 @@ std::string Patch::GetTileName(TileHandle Tile)
 
     if (Symbol == OpCode::IN)
     {
-        return std::format("in {}", Tile);
+        return fmt::format("in {}", Tile);
     }
     else if (Symbol == OpCode::AUX)
     {
-        return std::format("aux {}", Tile);
+        return fmt::format("aux {}", Tile);
     }
     else if (Symbol == OpCode::OUT)
     {
@@ -305,7 +306,7 @@ void Patch::SetConstant(TileHandle Tile, double NewValue)
     }
     else
     {
-        throw std::runtime_error(std::format("Attempted to assign a value to non-constant tile {}!\n", Tile));
+        throw std::runtime_error(fmt::format("Attempted to assign a value to non-constant tile {}!\n", Tile));
     }
 }
 
@@ -329,7 +330,7 @@ std::string Patch::GetTileLabel(TileHandle Tile)
         OpCode Symbol = GetTileSymbol(Tile);
         if (Symbol == OpCode::CONST)
         {
-            return std::format("{}", GetConstant(Tile));
+            return fmt::format("{}", GetConstant(Tile));
         }
         else
         {
@@ -437,13 +438,13 @@ bool Patch::GetFrozen()
 void Patch::Connect(PortHandle OutputPort, PortHandle InputPort)
 {
     TRACEABLE_SCOPE;
-    if (!ByOutput.contains(OutputPort))
+    if (ByOutput.find(OutputPort) == ByOutput.end())
     {
-        throw std::range_error(std::format("Fatal error: {} is not a known output port!\n", OutputPort));
+        throw std::range_error(fmt::format("Fatal error: {} is not a known output port!\n", OutputPort));
     }
-    if (!ByInput.contains(InputPort))
+    if (ByInput.find(InputPort) == ByInput.end())
     {
-        throw std::range_error(std::format("Fatal error: {} is not a known input port!\n", InputPort));
+        throw std::range_error(fmt::format("Fatal error: {} is not a known input port!\n", InputPort));
     }
 
     ByInput[InputPort].insert(OutputPort);
@@ -468,7 +469,7 @@ void Patch::Disconnect(PortHandle OutputPort, PortHandle InputPort)
 void Patch::ToggleConnection(PortHandle OutputPort, PortHandle InputPort)
 {
     TRACEABLE_SCOPE;
-    if (Wires.contains({OutputPort, InputPort}))
+    if (Wires.find({OutputPort, InputPort}) != Wires.end())
     {
         Disconnect(OutputPort, InputPort);
     }
@@ -530,7 +531,7 @@ void Patch::SetActiveProbe(TileHandle Tile)
 
 void Patch::ClearActiveProbe()
 {
-    TileHandle Tile = -1;
+    TileHandle Tile = static_cast<uint32_t>(-1);
     Patch::SetActiveProbe(Tile);
 }
 
@@ -1221,8 +1222,8 @@ ScratchUniquePtr Patch::Compile()
             std::ptrdiff_t BaseOffset = TapeCount;
             uint32_t LaneCount = Partial->Polyphony;
 
-            [[maybe_unused]] auto Result = Program->PersistentTapes.try_emplace(Port, BaseOffset, LaneCount);
-            assert(Result.second == true);
+            [[maybe_unused]] const auto [_, WasInserted] = Program->PersistentTapes.insert({ Port, { BaseOffset, LaneCount } });
+            assert(WasInserted == true);
 
             TapeCount += LaneCount;
         }
@@ -1288,14 +1289,14 @@ ScratchUniquePtr Patch::Compile()
                     {
                         if (OutputWidth != MaxWidth)
                         {
-                            std::print(
+                            fmt::print(
                                 "thunk \"{}\" somehow has a mix of monophonic and polyphonic outputs!\n",
                                 Thunk->DebugName);
                         }
                     }
                     if (MaxWidth != ExpectedPolyphony)
                     {
-                        std::print(
+                        fmt::print(
                             "thunk \"{}\" expects output width {}, but its outputs are {}!\n",
                             Thunk->DebugName, ExpectedPolyphony, MaxWidth);
                     }
@@ -1449,7 +1450,7 @@ ScratchUniquePtr Patch::Compile()
                     if (Symbol == OpCode::ADSR && Partial->Polyphony > 1)
                     {
                         Thunk->Retriggerable = true;
-                        uint32_t ThunkIndex = Program->Program.size() - 1;
+                        uint32_t ThunkIndex = static_cast<uint32_t>(Program->Program.size()) - 1;
                         assert(Program->Program[ThunkIndex] == Thunk);
                         if (Partial->Frequency != EvalFrequency::ONCE)
                         {
@@ -1519,14 +1520,14 @@ ScratchUniquePtr Patch::Compile()
 
 #ifndef NDEBUG
     {
-        std::print("\n\n##############################################################################\n");
-        std::print("Patch compiled:\n");
+        fmt::print("\n\n##############################################################################\n");
+        fmt::print("Patch compiled:\n");
         uint32_t ThunkIndex = 0;
         for (InstructionThunkSharedPtr& Thunk : Program->Program)
         {
             assert(Thunk != nullptr);
             assert(Thunk->Registers.Polyphony > 0);
-            std::print("{} {}:\n", ThunkIndex++, Thunk->DebugName);
+            fmt::print("{} {}:\n", ThunkIndex++, Thunk->DebugName);
         }
     }
 #endif
@@ -1551,22 +1552,22 @@ void Scratch::PrintRegisters() const
     std::unordered_map<uint32_t, PortHandle> PortsByRegisterOffset;
     for (auto const& [Port, Allocation] : PersistentRegisters)
     {
-        PortsByRegisterOffset[Allocation.BaseOffset] = Port;
+        PortsByRegisterOffset[static_cast<uint32_t>(Allocation.BaseOffset)] = Port;
     }
     for (std::ptrdiff_t Register = 0; Register < (std::ptrdiff_t)RegisterFile.size(); ++Register)
     {
         const double Value = RegisterFile.at(Register);
-        auto Found = PortsByRegisterOffset.find(Register);
+        auto Found = PortsByRegisterOffset.find(static_cast<uint32_t>(Register));
         if (Found != PortsByRegisterOffset.end())
         {
             PortHandle Port = Found->second;
             TileHandle Tile = PortHandleTilePart(Port);
             int32_t Index = (int32_t)PortHandlePortIndexPart(Port);
-            std::print("    {:>4}: {:^8.4} ({}:{})\n", Register, Value, Tile, Index);
+            fmt::print("    {:>4}: {:^8.4} ({}:{})\n", Register, Value, Tile, Index);
         }
         else
         {
-            std::print("    {:>4}: {:^8.4}\n", Register, Value);
+            fmt::print("    {:>4}: {:^8.4}\n", Register, Value);
         }
     }
 }
@@ -1601,10 +1602,10 @@ void Scratch::Migrate(Scratch& Old)
 
     if (EnableDebugLogging)
     {
-        std::print("\n\n==============================================================================\n");
-        std::print("Old register file:\n");
+        fmt::print("\n\n==============================================================================\n");
+        fmt::print("Old register file:\n");
         Old.PrintRegisters();
-        std::print("\nRunning migration:\n");
+        fmt::print("\nRunning migration:\n");
     }
 
     for (auto const& [Port, NewAllocation] : PersistentRegisters)
@@ -1614,7 +1615,7 @@ void Scratch::Migrate(Scratch& Old)
         {
             if (EnableDebugLogging)
             {
-                std::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
+                fmt::print(" + MATCH: {}:{}", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
             }
 
             const RegisterAllocation& OldAllocation = Found->second;
@@ -1622,7 +1623,7 @@ void Scratch::Migrate(Scratch& Old)
             {
                 if (EnableDebugLogging)
                 {
-                    std::print(" (copy, no resize)\n");
+                    fmt::print(" (copy, no resize)\n");
                 }
 
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
@@ -1631,8 +1632,8 @@ void Scratch::Migrate(Scratch& Old)
                     if (EnableDebugLogging)
                     {
                         const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
-                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
-                        std::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        const uint32_t WriteOffset = static_cast<uint32_t>(NewAllocation.BaseOffset) + Lane;
+                        fmt::print("    > Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
                     RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
                 }
@@ -1641,7 +1642,7 @@ void Scratch::Migrate(Scratch& Old)
             {
                 if (EnableDebugLogging)
                 {
-                    std::print(" (mono -> poly resize)\n");
+                    fmt::print(" (mono -> poly resize)\n");
                 }
                 for (uint32_t Lane = 0; Lane < NewAllocation.LaneCount; ++Lane)
                 {
@@ -1649,8 +1650,8 @@ void Scratch::Migrate(Scratch& Old)
                     if (EnableDebugLogging)
                     {
                         const double StompedValue = RegisterFile.at(NewAllocation.BaseOffset + Lane);
-                        const uint32_t WriteOffset = NewAllocation.BaseOffset + Lane;
-                        std::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
+                        const uint32_t WriteOffset = static_cast<uint32_t>(NewAllocation.BaseOffset) + Lane;
+                        fmt::print("    | Register[{}] = {:.4} -> {:.4}\n", WriteOffset, StompedValue, MigratedValue);
                     }
                     RegisterFile.at(NewAllocation.BaseOffset + Lane) = MigratedValue;
                 }
@@ -1662,13 +1663,13 @@ void Scratch::Migrate(Scratch& Old)
                 // zero, but some thunks will set different default values for their ports.
                 if (EnableDebugLogging)
                 {
-                    std::print(" (poly->mono RESET)\n");
+                    fmt::print(" (poly->mono RESET)\n");
                 }
             }
 
             if (EnableDebugLogging)
             {
-                std::print("\n");
+                fmt::print("\n");
             }
         }
         else
@@ -1677,7 +1678,7 @@ void Scratch::Migrate(Scratch& Old)
             // handling is required.
             if (EnableDebugLogging)
             {
-                std::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
+                fmt::print(" - no match: {}:{}\n", PortHandleTilePart(Port), (int32_t)PortHandlePortIndexPart(Port));
             }
         }
     }
@@ -1701,8 +1702,8 @@ void Scratch::Migrate(Scratch& Old)
 
     if (EnableDebugLogging)
     {
-        std::print("\nMigration complete!\n");
-        std::print("\nNew register file:\n");
+        fmt::print("\nMigration complete!\n");
+        fmt::print("\nNew register file:\n");
         PrintRegisters();
     }
 }
@@ -1896,13 +1897,13 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
     {
         if (Outputs.size() == 1)
         {
-            OutLeft = RegisterFile.at(Outputs[0]);
-            OutRight = RegisterFile.at(Outputs[0]);
+            OutLeft = static_cast<float>(RegisterFile.at(Outputs[0]));
+            OutRight = static_cast<float>(RegisterFile.at(Outputs[0]));
         }
         else if (Outputs.size() > 1)
         {
-            OutLeft = RegisterFile.at(Outputs[0]);
-            OutRight = RegisterFile.at(Outputs[1]);
+            OutLeft = static_cast<float>(RegisterFile.at(Outputs[0]));
+            OutRight = static_cast<float>(RegisterFile.at(Outputs[1]));
         }
         else if (Outputs.size() == 0)
         {

@@ -20,6 +20,8 @@
 
 #include <cassert>
 
+#include <fmt/format.h>
+
 #include <jack/jack.h>
 
 static int OnProcess(jack_nframes_t FrameCount, void *UserData)
@@ -94,7 +96,7 @@ JackStream::JackStream(int SampleRate) :
     JackClient = jack_client_open(ClientName, JackOptions, &JackStatus, nullptr);
     if (JackClient == nullptr)
     {
-        throw std::runtime_error(std::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
+        throw std::runtime_error(fmt::format("jack_client_open() failed, jack status = {}\n", (int)JackStatus));
     }
     if (JackStatus & JackNameNotUnique)
     {
@@ -106,7 +108,7 @@ JackStream::JackStream(int SampleRate) :
     int process_callback_status = jack_set_process_callback(JackClient, OnProcess, &RealTimeThread);
     if(process_callback_status != 0)
     {
-        throw std::runtime_error(std::format("jack_set_process_callback() failed, error code = {}\n", process_callback_status));
+        throw std::runtime_error(fmt::format("jack_set_process_callback() failed, error code = {}\n", process_callback_status));
     }
     
     // Now that that's taken care of, we can register output ports...
@@ -184,7 +186,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.InputPorts)
         {
-            if (!BufferState.PendingProgram->Inputs.contains(Tile))
+            if (BufferState.PendingProgram->Inputs.find(Tile) == BufferState.PendingProgram->Inputs.end())
             {
                 Erased.push_back(Tile);
                 jack_port_unregister(JackClient, JackPort);
@@ -200,7 +202,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.AuxOutPorts)
         {
-            if (!BufferState.PendingProgram->AuxOutputs.contains(Tile))
+            if (BufferState.PendingProgram->AuxOutputs.find(Tile) == BufferState.PendingProgram->AuxOutputs.end())
             {
                 Erased.push_back(Tile);
                 jack_port_unregister(JackClient, JackPort);
@@ -215,9 +217,9 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         // Create jack input ports for any new patch input ports.
         for (const auto& [Tile, InputRegister] : BufferState.PendingProgram->Inputs)
         {
-            if (!BufferState.InputPorts.contains(Tile))
+            if (BufferState.InputPorts.find(Tile) == BufferState.InputPorts.end())
             {
-                std::string Name = std::format("in {}", Tile);
+                std::string Name = fmt::format("in {}", Tile);
                 jack_port_t* JackPort = jack_port_register(
                     JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
                 if (JackPort)
@@ -231,9 +233,9 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         // Create jack aux ports for any new patch aux ports.
         for (const auto& [Tile, OutputRegister] : BufferState.PendingProgram->AuxOutputs)
         {
-            if (!BufferState.AuxOutPorts.contains(Tile))
+            if (BufferState.AuxOutPorts.find(Tile) == BufferState.AuxOutPorts.end())
             {
-                std::string Name = std::format("aux {}", Tile);
+                std::string Name = fmt::format("aux {}", Tile);
                 jack_port_t* JackPort = jack_port_register(
                     JackClient, Name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
                 if (JackPort)

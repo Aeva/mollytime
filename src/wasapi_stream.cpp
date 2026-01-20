@@ -18,7 +18,6 @@
 #include "wasapi_stream.h"
 
 #include <cassert>
-#include <span>
 
 
 #define CheckHResult winrt::check_hresult
@@ -114,8 +113,8 @@ void WasapiRealTimeThread::BeginFrame(FramePointers& Frame)
     assert(BufferState != nullptr);
 
     WasapiThreadShared& WasapiBufferState = static_cast<WasapiThreadShared &>(*BufferState);
-    assert(std::ssize(WasapiBufferState.OutputSamplesLeft) >= Frame.SampleCount);
-    assert(std::ssize(WasapiBufferState.OutputSamplesRight) >= Frame.SampleCount);
+    assert(static_cast<ptrdiff_t>(WasapiBufferState.OutputSamplesLeft.size()) >= Frame.SampleCount);
+    assert(static_cast<ptrdiff_t>(WasapiBufferState.OutputSamplesRight.size()) >= Frame.SampleCount);
 
     Frame.OutLeft = WasapiBufferState.OutputSamplesLeft.data();
     Frame.OutRight = WasapiBufferState.OutputSamplesRight.data();
@@ -140,11 +139,11 @@ void WasapiRealTimeThread::EndFrame(FramePointers& Frame)
     // Its size will be (SampleCount * sizeof(OutputFrame)).
     BYTE *Data;
     CheckHResult(RenderClient->GetBuffer(static_cast<UINT32>(Frame.SampleCount), &Data));
-    std::span<OutputFrame> OutputFrames(reinterpret_cast<OutputFrame *>(Data), Frame.SampleCount);
+    OutputFrame *OutputFrames = reinterpret_cast<OutputFrame *>(Data);
 
     // Interleave samples.
     WasapiThreadShared& WasapiBufferState = static_cast<WasapiThreadShared &>(*BufferState);
-    for (ptrdiff_t OutputFrameIndex = 0; OutputFrameIndex < std::ssize(OutputFrames); OutputFrameIndex++)
+    for (ptrdiff_t OutputFrameIndex = 0; OutputFrameIndex < Frame.SampleCount; OutputFrameIndex++)
     {
         OutputFrame& OutputFrame = OutputFrames[OutputFrameIndex];
         OutputFrame.Left = WasapiBufferState.OutputSamplesLeft[OutputFrameIndex];

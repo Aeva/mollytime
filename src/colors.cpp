@@ -439,7 +439,7 @@ void ColorPoint::MutateChannels(glm::vec3 NewChannels)
 std::tuple<uint8_t, uint8_t, uint8_t> ColorPoint::To8BitRGB() const
 {
     const ColorPoint RGBColor = Encoding == ColorSpace::sRGB ? *this : Encode(ColorSpace::sRGB);
-    auto To8Bit = [](float Channel) -> uint8_t { return std::min(std::max(int(Channel * 255.0f), 0), 255); };
+    auto To8Bit = [](float Channel) -> uint8_t { return static_cast<uint8_t>(std::min(std::max(int(Channel * 255.0f), 0), 255)); };
 
     return
     {

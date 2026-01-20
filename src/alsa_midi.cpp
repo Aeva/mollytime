@@ -16,8 +16,7 @@
 #ifdef MIDI_ALSA
 
 #include "alsa_midi.h"
-#include <format>
-#include <print>
+#include <fmt/format.h>
 #include <alsa/asoundlib.h>
 
 constexpr bool EnableEventFilters = true;
@@ -61,7 +60,7 @@ AlsaMidiDriver::AlsaMidiDriver()
             {
                 snd_seq_close(SeqHandle);
                 SeqHandle = nullptr;
-                std::print("Unable to create named ALSA sequencer queue.  No MIDI connections will be possible.\n");
+                fmt::print("Unable to create named ALSA sequencer queue.  No MIDI connections will be possible.\n");
                 return;
             }
             snd_seq_start_queue(SeqHandle, MidiQueue, nullptr);
@@ -120,12 +119,12 @@ AlsaMidiDriver::AlsaMidiDriver()
             snd_seq_port_info_malloc(&PortInfo);
             snd_seq_get_port_info(SeqHandle, MidiInPort, PortInfo);
             unsigned int Caps = snd_seq_port_info_get_capability(PortInfo);
-            std::print("SND_SEQ_PORT_CAP_NO_EXPORT: {}\n", (Caps & SND_SEQ_PORT_CAP_NO_EXPORT) == SND_SEQ_PORT_CAP_NO_EXPORT);
-            std::print("midi channels: {}\n", snd_seq_port_info_get_midi_channels(PortInfo));
-            std::print("midi voices: {}\n", snd_seq_port_info_get_midi_voices(PortInfo));
-            std::print("time stamping: {}\n", snd_seq_port_info_get_timestamping(PortInfo));
-            std::print("realtime stamps: {}\n", snd_seq_port_info_get_timestamp_real(PortInfo));
-            std::print("timestamp queue id: {}\n", snd_seq_port_info_get_timestamp_queue(PortInfo));
+            fmt::print("SND_SEQ_PORT_CAP_NO_EXPORT: {}\n", (Caps & SND_SEQ_PORT_CAP_NO_EXPORT) == SND_SEQ_PORT_CAP_NO_EXPORT);
+            fmt::print("midi channels: {}\n", snd_seq_port_info_get_midi_channels(PortInfo));
+            fmt::print("midi voices: {}\n", snd_seq_port_info_get_midi_voices(PortInfo));
+            fmt::print("time stamping: {}\n", snd_seq_port_info_get_timestamping(PortInfo));
+            fmt::print("realtime stamps: {}\n", snd_seq_port_info_get_timestamp_real(PortInfo));
+            fmt::print("timestamp queue id: {}\n", snd_seq_port_info_get_timestamp_queue(PortInfo));
 
             snd_seq_port_info_free(PortInfo);
         }
@@ -133,7 +132,7 @@ AlsaMidiDriver::AlsaMidiDriver()
     }
     else
     {
-        std::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
+        fmt::print("Unable to initialize ALSA.  No MIDI connections will be possible.\n");
         SeqHandle = nullptr;
     }
 }
@@ -179,7 +178,7 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
             }
             else if (Error == -ENOSPC)
             {
-                std::print("The MIDI input queue overflowed and events were lost.\n");
+                fmt::print("The MIDI input queue overflowed and events were lost.\n");
             }
 
             // Relevant API reference pages:
@@ -202,7 +201,7 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
 
                 // NOTE: This seems to always be zero.  I don't know what the point of this is.
                 {
-                    std::print("time stamp {:.5f}\n", TimeStamp);
+                    fmt::print("time stamp {:.5f}\n", TimeStamp);
                 }
             }
 #endif
@@ -241,12 +240,12 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
                     TimeStamp = NanoSeconds * NanoToSeconds + Seconds;
                     if (TimeStamp > 0.0)
                     {
-                        std::print("{:x} * time stamp {:.5f}\n", Sender, TimeStamp);
+                        fmt::print("{:x} * time stamp {:.5f}\n", Sender, TimeStamp);
                     }
                 }
                 else if (Event->time.tick > 0)
                 {
-                    std::print("{:x} - tick stamp {}\n", Sender, Event->time.tick);
+                    fmt::print("{:x} - tick stamp {}\n", Sender, Event->time.tick);
                 }
 
                 // TODO: the ALSA time stamps do not seem to be terribyl useful?  When using a sequencer
@@ -313,7 +312,7 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
 #if 0
             else
             {
-#define LOG_EVENT(EVENT_TYPE) if ( Event->type == EVENT_TYPE ) std::print("{}\n", #EVENT_TYPE);
+#define LOG_EVENT(EVENT_TYPE) if ( Event->type == EVENT_TYPE ) fmt::print("{}\n", #EVENT_TYPE);
                 // None of these seem to be emitted by Rosegarden under normal playback conditions, nor while
                 // seeking.  If you seek forward or backward by a fixed amount, the timestamp always resets to
                 // zero.  The timestamps never move backward except when resetting to zero.  This raises the
