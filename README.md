@@ -37,6 +37,9 @@ please let me know and I'll write them down here.
 
 ## "I want to work on / quickly try out the project!"
 
+> WINDOWS USERS: If you're compiling with MSVC, you'll need to be running in a
+> `vcvars` x64 environment, such as an "x64 Native Tools Command Prompt for VS 2022."
+
 As a one-time setup step, run this helper script to automatically download &
 build third-party dependencies:
 - `python mollybuild.py init <toolchain>`
