@@ -186,7 +186,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.InputPorts)
         {
-            if (!BufferState.PendingProgram->Inputs.contains(Tile))
+            if (BufferState.PendingProgram->Inputs.find(Tile) == BufferState.PendingProgram->Inputs.end())
             {
                 Erased.push_back(Tile);
                 jack_port_unregister(JackClient, JackPort);
@@ -202,7 +202,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         std::vector<TileHandle> Erased;
         for (const auto& [Tile, JackPort] : BufferState.AuxOutPorts)
         {
-            if (!BufferState.PendingProgram->AuxOutputs.contains(Tile))
+            if (BufferState.PendingProgram->AuxOutputs.find(Tile) == BufferState.PendingProgram->AuxOutputs.end())
             {
                 Erased.push_back(Tile);
                 jack_port_unregister(JackClient, JackPort);
@@ -217,7 +217,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         // Create jack input ports for any new patch input ports.
         for (const auto& [Tile, InputRegister] : BufferState.PendingProgram->Inputs)
         {
-            if (!BufferState.InputPorts.contains(Tile))
+            if (BufferState.InputPorts.find(Tile) == BufferState.InputPorts.end())
             {
                 std::string Name = fmt::format("in {}", Tile);
                 jack_port_t* JackPort = jack_port_register(
@@ -233,7 +233,7 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         // Create jack aux ports for any new patch aux ports.
         for (const auto& [Tile, OutputRegister] : BufferState.PendingProgram->AuxOutputs)
         {
-            if (!BufferState.AuxOutPorts.contains(Tile))
+            if (BufferState.AuxOutPorts.find(Tile) == BufferState.AuxOutPorts.end())
             {
                 std::string Name = fmt::format("aux {}", Tile);
                 jack_port_t* JackPort = jack_port_register(
