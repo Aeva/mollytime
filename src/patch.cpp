@@ -1315,6 +1315,7 @@ ScratchUniquePtr Patch::Compile()
 #else
             auto AppendThunk = [&](const EvalFrequency Frequency, InstructionThunkSharedPtr Thunk) -> void
             {
+                Thunk->Reset();
                 if (Frequency == EvalFrequency::ONCE)
                 {
                     ConstantProgram.push_back(Thunk);
@@ -1903,6 +1904,11 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
         {
             OutLeft = static_cast<float>(RegisterFile.at(Outputs[0]));
             OutRight = static_cast<float>(RegisterFile.at(Outputs[1]));
+        }
+        else if (Outputs.size() == 0)
+        {
+            OutLeft = 0.0;
+            OutRight = 0.0;
         }
     }
     if (ProbeConnected)

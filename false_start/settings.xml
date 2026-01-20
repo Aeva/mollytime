@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <mollytime>
     <autoconnect>
+        <device>mollytime</device>
         <device>VCV Rack</device>
         <device>Arturia MicroFreak</device>
         <device>EP-1320</device>

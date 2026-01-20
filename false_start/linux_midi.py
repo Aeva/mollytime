@@ -5,7 +5,7 @@ from alsa_midi import ProgramChangeEvent, ChannelPressureEvent, PitchBendEvent
 from alsa_midi import MidiBytesEvent, StartEvent, StopEvent, ContinueEvent, ClockEvent
 from alsa_midi.port import PortCaps, PortType
 
-client = SequencerClient("MollyTime")
+client = SequencerClient("pads.py")
 port = client.create_port(
     "output",
     caps=READ_PORT,
