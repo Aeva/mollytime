@@ -129,7 +129,7 @@ void SDLRealTimeThread::EndFrame(FramePointers& Frame)
     // If this isn't fast enough, `SDL_PutAudioStreamDataNoCopy()` can read directly from an already-interleaved buffer,
     // but that means we'd have 1. do our own faster-than-SDL interleave, or 2. generate samples pre-interleaved.
     const float* SamplesLeft = SDLBufferState.OutputSamplesLeft.data();
-    const float* SamplesRight = SDLBufferState.OutputSamplesLeft.data();
+    const float* SamplesRight = SDLBufferState.OutputSamplesRight.data();
     const void* Channels[] = { SamplesLeft, SamplesRight };
 
     if(!SDL_PutAudioStreamPlanarData(SDLStream, Channels, 2, Frame.SampleCount))
