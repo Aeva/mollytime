@@ -16,10 +16,13 @@
 #include "audio_backend.h"
 #include "midi.h"
 
-#if defined(ENABLE_JACK)
+#if defined(AUDIO_SDL)
+#include "sdl_stream.h"
+#elif defined(ENABLE_JACK)
 #include "jack_stream.h"
 #elif defined(AUDIO_WASAPI)
 #include "wasapi_stream.h"
+
 #endif
 
 #include <fmt/format.h>
@@ -162,7 +165,9 @@ AudioStream* Audio::GetStream()
 
 void Audio::Init(int SampleRate)
 {
-#if defined(ENABLE_JACK)
+#if defined(AUDIO_SDL)
+    Stream = std::make_unique<SDLStream>(SampleRate);
+#elif defined(ENABLE_JACK)
     Stream = std::make_unique<JackStream>(SampleRate);
 #elif defined(AUDIO_WASAPI)
     Stream = std::make_unique<WasapiStream>(SampleRate);

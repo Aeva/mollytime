@@ -1,4 +1,4 @@
-option('audio_backend', type : 'combo', choices: ['none', 'jack', 'wasapi'])
+option('audio_backend', type : 'combo', choices: ['none', 'sdl', 'jack', 'wasapi'])
 option('midi_backend', type : 'combo', choices: ['none', 'alsa', 'mmeapi'])
 option('boost_stacktrace', type : 'feature', value : 'auto')
 option('tracy', type : 'feature', value: 'disabled')

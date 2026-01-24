@@ -75,6 +75,7 @@ source_files = files(
     'src' / 'sdl_font.cpp',
     'src' / 'sdl_mouse.cpp',
     'src' / 'sdl_rect.cpp',
+    'src' / 'sdl_stream.cpp',
     'src' / 'sdl_time.cpp',
     'src' / 'thunks.cpp',
     'src' / 'wasapi_stream.cpp'
@@ -136,39 +137,13 @@ dependencies += dependency('pybind11', required : true)
 pyi_makespec = find_program('pyi-makespec', required : true)
 pyinstaller = find_program('pyinstaller', required : true)
 
-# Audio backend
-if get_option('audio_backend') == 'jack'
-    dependencies += declare_dependency(
-        compile_args : '-DENABLE_JACK=1',
-        dependencies : dependency('jack', required : true)
-    )
-elif get_option('audio_backend') == 'wasapi'
-    dependencies += declare_dependency(
-        compile_args : '-DAUDIO_WASAPI=1',
-        dependencies : compiler.find_library('RuntimeObject', required : true)
-    )
-endif
-
-# MIDI backend
-if get_option('midi_backend') == 'alsa'
-    dependencies += declare_dependency(
-        compile_args : '-DMIDI_ALSA=1',
-        dependencies : compiler.find_library('asound', required : true)
-    )
-elif get_option('midi_backend') == 'mmeapi'
-    dependencies += declare_dependency(
-        compile_args : '-DMIDI_MMEAPI=1',
-        dependencies : compiler.find_library('Winmm', required : true)
-    )   
-endif
-
 # fmt
 fmt_dir = 'third_party' / 'fmt-12.1.0'
 fmt_include = fmt_dir / 'include'
 fmt_include_dirs = include_directories(fmt_include)
 fmt_source_files = files(fmt_dir / 'src' / 'format.cc')
 
-dependencies += declare_dependency(
+fmt_dependency = declare_dependency(
     include_directories : fmt_include_dirs,
     link_with : static_library(
         'fmt',
@@ -176,13 +151,16 @@ dependencies += declare_dependency(
         include_directories : fmt_include_dirs,
         override_options : [ 'warning_level=0' ]
     )
-)
+) 
+dependencies += fmt_dependency
 
 # GLM
 glm_dir = 'third_party' / 'glm-1.0.3'
-dependencies += declare_dependency(
+
+glm_dependency = declare_dependency(
     include_directories : include_directories(glm_dir)
-)
+) 
+dependencies += glm_dependency
 
 # Tracy
 if get_option('tracy').enabled()
@@ -190,7 +168,7 @@ if get_option('tracy').enabled()
     tracy_include_dirs = include_directories(tracy_dir)
     tracy_source_files = files(tracy_dir / 'TracyClient.cpp')
     
-    dependencies += declare_dependency(
+    tracy_dependency = declare_dependency(
         compile_args : '-DTRACY_ENABLE',
         dependencies : dependency('threads', required : false),
         include_directories : tracy_include_dirs,
@@ -201,6 +179,7 @@ if get_option('tracy').enabled()
             override_options : 'warning_level=0'
         )
     )
+    dependencies += tracy_dependency
 endif
 
 # Boost
@@ -226,11 +205,11 @@ foreach line : boost_install_info
     endif
 endforeach
 
-dependencies += declare_dependency(
+boost_dependency = declare_dependency(
     compile_args : boost_compile_args,
     include_directories : include_directories(boost_include_dir),
 )
-
+dependencies += boost_dependency
 
 # SDL3
 sdl3_install_info_command = run_command(
@@ -253,10 +232,11 @@ foreach line : sdl3_install_info
     endif
 endforeach
 
-dependencies += declare_dependency(
+sdl_dependency = declare_dependency(
     include_directories : include_directories(sdl3_include_dir),
     dependencies : compiler.find_library('SDL3', dirs : project_dir / sdl3_library_dir)
 )
+dependencies += sdl_dependency
 
 if build_machine.system() == 'windows'
     fs.copyfile(sdl3_binary_dir / 'SDL3.dll')
@@ -283,13 +263,45 @@ foreach line : sdl3_ttf_install_info
     endif
 endforeach
 
-dependencies += declare_dependency(
+sdl_ttf_dependency = declare_dependency(
     include_directories : include_directories(sdl3_ttf_include_dir),
     dependencies : compiler.find_library('SDL3_ttf', dirs : project_dir / sdl3_ttf_library_dir)
 )
+dependencies += sdl_ttf_dependency
 
 if build_machine.system() == 'windows'
     fs.copyfile(sdl3_ttf_binary_dir / 'SDL3_ttf.dll')
+endif
+
+# Audio backend
+if get_option('audio_backend') == 'sdl'
+    dependencies += declare_dependency(
+        compile_args : '-DAUDIO_SDL=1',
+        dependencies : sdl_dependency
+    )
+elif get_option('audio_backend') == 'jack'
+    dependencies += declare_dependency(
+        compile_args : '-DENABLE_JACK=1',
+        dependencies : dependency('jack', required : true)
+    )
+elif get_option('audio_backend') == 'wasapi'
+    dependencies += declare_dependency(
+        compile_args : '-DAUDIO_WASAPI=1',
+        dependencies : compiler.find_library('RuntimeObject', required : true)
+    )
+endif
+
+# MIDI backend
+if get_option('midi_backend') == 'alsa'
+    dependencies += declare_dependency(
+        compile_args : '-DMIDI_ALSA=1',
+        dependencies : compiler.find_library('asound', required : true)
+    )
+elif get_option('midi_backend') == 'mmeapi'
+    dependencies += declare_dependency(
+        compile_args : '-DMIDI_MMEAPI=1',
+        dependencies : compiler.find_library('Winmm', required : true)
+    )   
 endif
 
 
