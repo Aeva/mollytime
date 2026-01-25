@@ -13,6 +13,10 @@
 #include <cassert>
 #include <stdexcept>
 #include <string>
+#include <mutex>
+
+#include "perf.h"
+
 
 namespace Display
 {
@@ -265,11 +269,14 @@ namespace Display
         return Window;
     }
 
+    DECLARE_TRACEABLE_MUTEX(LoadPathCrit);
     static int LoadStatus = 0;
     static std::string LoadPath = "";
 
     static void LoadDialogCallback(void* UserData, const char* const* FileList, int Filter)
     {
+        TRACEABLE_LOCK_GUARD(LoadPathCrit);
+
         if (FileList == nullptr || *FileList == nullptr)
         {
             // An error happened, or the operator cancelled the request.
@@ -278,16 +285,38 @@ namespace Display
         }
         else
         {
-            LoadStatus = 1;
-            LoadPath = (const char*)FileList[0];
+            std::vector<std::string> Paths;
+            while (FileList[Paths.size()] != nullptr)
+            {
+                std::string Path(FileList[Paths.size()]);
+                if (Path.size() > 0)
+                {
+                    Paths.push_back(Path);
+                }
+            }
+            if (Paths.size() == 0)
+            {
+                // Unknown error happened.
+                LoadStatus = -1;
+                LoadPath = "";
+            }
+            else
+            {
+                // Success!
+                LoadStatus = 1;
+                LoadPath = Paths[0];
+            }
         }
     }
 
+    DECLARE_TRACEABLE_MUTEX(SavePathCrit);
     static int SaveStatus = 0;
     static std::string SavePath = "";
 
     static void SaveDialogCallback(void* UserData, const char* const* FileList, int Filter)
     {
+        TRACEABLE_LOCK_GUARD(SavePathCrit);
+
         if (FileList == nullptr || *FileList == nullptr)
         {
             // An error happened, or the operator cancelled the request.
@@ -296,13 +325,33 @@ namespace Display
         }
         else
         {
-            SaveStatus = 1;
-            SavePath = (const char*)FileList[0];
+            std::vector<std::string> Paths;
+            while (FileList[Paths.size()] != nullptr)
+            {
+                std::string Path(FileList[Paths.size()]);
+                if (Path.size() > 0)
+                {
+                    Paths.push_back(Path);
+                }
+            }
+            if (Paths.size() == 0)
+            {
+                // Unknown error happened.
+                SaveStatus = -1;
+                SavePath = "";
+            }
+            else
+            {
+                // Success!
+                SaveStatus = 1;
+                SavePath = Paths[0];
+            }
         }
     }
 
     void ShowLoadDialog(const std::string_view& PatchDir)
     {
+        TRACEABLE_LOCK_GUARD(LoadPathCrit);
         LoadStatus = 0;
         LoadPath = "";
 
@@ -316,6 +365,7 @@ namespace Display
 
     void ShowSaveDialog(const std::string_view& PatchDir)
     {
+        TRACEABLE_LOCK_GUARD(SavePathCrit);
         SaveStatus = 0;
         SavePath = "";
 
@@ -329,11 +379,13 @@ namespace Display
 
     std::tuple<int, std::string_view> GetLoadDialogResult()
     {
+        TRACEABLE_LOCK_GUARD(LoadPathCrit);
         return { LoadStatus, LoadPath };
     }
 
     std::tuple<int, std::string_view> GetSaveDialogResult()
     {
+        TRACEABLE_LOCK_GUARD(SavePathCrit);
         return { SaveStatus, SavePath };
     }
 }

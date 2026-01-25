@@ -186,6 +186,8 @@ class program_card:
             footer = '</mollytime>\n'
             outfile.write(f'{header}{entries}{footer}')
 
+        print(f"saved: {save_path}")
+
     def loader_20250713(self, tree, root):
         self.patch = Patch()
         self.tile_positions = {}
@@ -265,12 +267,13 @@ class program_card:
             if root.attrib.get("version") is None:
                 print(f'Unable to open mollytime patch file "{load_path}", because the version string is missing!')
             elif root.attrib["version"] == "2025.07.13":
-                return self.loader_20250713(tree, root)
+                self.loader_20250713(tree, root)
             else:
                 print(f'Unable to open mollytime patch file "{load_path}", because the version is unknown or invalid!')
         else:
             print(f'Unable to open file "{load_path}", because it is not a supported file type.')
         gc.collect()
+        print(f"loaded: {load_path}")
 
     def make_tile(self, position, symbol):
         tile_id = self.patch.make_tile(symbol);
