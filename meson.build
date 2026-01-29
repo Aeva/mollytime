@@ -351,7 +351,7 @@ run_command(
     '--icon', project_dir / 'mollytime.ico',
     '--add-binary', cpp_module_source + ':' + cpp_module_target_dir,
     '--add-data', media_dir_source + ':' + media_dir_target,
-    project_dir / 'build_tools' / 'pyinstaller_main.py',
+    project_dir / 'pyinstaller_main.py',
     check : true
 )
 
