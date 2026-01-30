@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import math
-from .. import mollytime
+from .. import backend
 #from ..mollytime import OpCode, get_symbol_name
 from .common import *
 
@@ -211,7 +211,7 @@ assert(INSTRUMENTS[BY_CATEGORY["world music"][-1]] == "shanai")
 
 class midi_settings_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = mollytime.mouse.get_pos()
+        self.cursor_pos = backend.mouse.get_pos()
         self.press_start = None
         self.resize_screen(editor)
 
@@ -230,20 +230,20 @@ class midi_settings_screen(editor_screen):
             for x_ in range(4):
                 x = anchor_x + x_ * grid * 3
                 y = anchor_y + y_ * grid * 3
-                rect = mollytime.Rect(x, y, size, size)
+                rect = backend.Rect(x, y, size, size)
                 self.channel_rects.append(rect)
 
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = mollytime.Rect(
+        goto_inspect_rect = backend.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = mollytime.Rect(
+        active_rect = backend.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)

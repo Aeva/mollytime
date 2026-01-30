@@ -14,14 +14,14 @@
 # limitations under the License.
 
 import math
-from .. import mollytime
+from .. import backend
 from ..mollytime import OpCode, get_symbol_name
 from .common import *
 
 
 class pick_and_place_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = mollytime.mouse.get_pos()
+        self.cursor_pos = backend.mouse.get_pos()
         self.reset_grab_state()
         self.repopulate_sidebar(editor)
 
@@ -104,9 +104,9 @@ class pick_and_place_screen(editor_screen):
             align_x = (editor.play_area.viewport.width - width) // 2
             align_y = (editor.play_area.viewport.height - height)
 
-            palette_rect = mollytime.Rect(align_x, align_y, width, height)
+            palette_rect = backend.Rect(align_x, align_y, width, height)
 
-            palette_surface = mollytime.draw.Texture((width, height))
+            palette_surface = backend.draw.Texture((width, height))
             palette_surface.fill(editor.select_color, 0.95)
 
             align_x += padding // 2
@@ -119,7 +119,7 @@ class pick_and_place_screen(editor_screen):
                 x = 0
                 for archetile in row:
                     if archetile is not None:
-                        hit_rect = mollytime.Rect(align_x + x * tile_stride, align_y + y * tile_stride, tile_span, tile_span)
+                        hit_rect = backend.Rect(align_x + x * tile_stride, align_y + y * tile_stride, tile_span, tile_span)
                         palette[archetile] = hit_rect
 
                         if type(archetile) in (int, float):
@@ -128,7 +128,7 @@ class pick_and_place_screen(editor_screen):
                         else:
                             label = get_symbol_name(archetile)
                             coverage.add(archetile)
-                        draw_rect = mollytime.Rect(padding + x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
+                        draw_rect = backend.Rect(padding + x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
                         editor.tile_bg.draw(palette_surface, draw_rect, label)
                     x += 1
                 y += 1
@@ -168,9 +168,9 @@ class pick_and_place_screen(editor_screen):
         align_y = editor.grid_size // 2
         index_w = editor.play_rect.width
 
-        self.catalog_index_rect = mollytime.Rect(
+        self.catalog_index_rect = backend.Rect(
             0, 0, index_w, index_h)
-        self.catalog_index_surface = mollytime.draw.Texture((index_w, index_h))
+        self.catalog_index_surface = backend.draw.Texture((index_w, index_h))
         self.catalog_index_surface.fill(editor.select_color, 0.95)
 
         align_x += editor.grid_size
@@ -179,7 +179,7 @@ class pick_and_place_screen(editor_screen):
         for index, name in enumerate(self.palette_names):
             x = index % columns
             y = index // columns
-            rect = mollytime.Rect(
+            rect = backend.Rect(
                 x * editor.grid_size * 3 + align_x,
                 y * editor.grid_size * 3 + align_y,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -201,14 +201,14 @@ class pick_and_place_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        goto_inspect_rect = mollytime.Rect(
+        goto_inspect_rect = backend.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = mollytime.Rect(
+        active_rect = backend.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -278,7 +278,7 @@ class pick_and_place_screen(editor_screen):
         elif editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = mollytime.Rect(
+                rect = backend.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -405,16 +405,16 @@ class pick_and_place_screen(editor_screen):
         drag_and_draw = None
         if self.grabbed_tile or (self.prospective_tile is not None and self.last_hover_position):
             overlay_span = (editor.grid_size * 4)
-            overlay = mollytime.draw.Texture((overlay_span, overlay_span))
-            overlay.set_blend_mode(mollytime.draw.premultiplied_alpha)
+            overlay = backend.draw.Texture((overlay_span, overlay_span))
+            overlay.set_blend_mode(backend.draw.premultiplied_alpha)
             overlay.fill((0, 0, 0), 0)
 
-            rect = mollytime.Rect(0, 0, editor.grid_size * 4, editor.grid_size * 4)
+            rect = backend.Rect(0, 0, editor.grid_size * 4, editor.grid_size * 4)
             rect.center = [round(i) for i in self.cursor_pos]
             drag_and_draw = (overlay, rect)
             self.request_extra_draws()
 
-            rect = mollytime.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)
+            rect = backend.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)
 
             if self.prospective_tile is not None:
                 if type(self.prospective_tile) in (int, float):

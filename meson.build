@@ -57,28 +57,28 @@ endif
 # ---
 # Source files
 
-source_files = files(
-    'src' / 'alsa_midi.cpp',
-    'src' / 'audio_backend.cpp',
-    'src' / 'colors.cpp',
-    'src' / 'errors.cpp',
-    'src' / 'jack_stream.cpp',
-    'src' / 'midi.cpp',
-    'src' / 'mmeapi_midi.cpp',
-    'src' / 'moon.cpp',
-    'src' / 'patch.cpp',
-    'src' / 'perf.cpp',
-    'src' / 'py_api.cpp',
-    'src' / 'sdl_display.cpp',
-    'src' / 'sdl_draw.cpp',
-    'src' / 'sdl_events.cpp',
-    'src' / 'sdl_font.cpp',
-    'src' / 'sdl_mouse.cpp',
-    'src' / 'sdl_rect.cpp',
-    'src' / 'sdl_stream.cpp',
-    'src' / 'sdl_time.cpp',
-    'src' / 'thunks.cpp',
-    'src' / 'wasapi_stream.cpp'
+backend_source_files = files(
+    'mollytime' / 'backend' / 'alsa_midi.cpp',
+    'mollytime' / 'backend' / 'audio_backend.cpp',
+    'mollytime' / 'backend' / 'colors.cpp',
+    'mollytime' / 'backend' / 'errors.cpp',
+    'mollytime' / 'backend' / 'jack_stream.cpp',
+    'mollytime' / 'backend' / 'midi.cpp',
+    'mollytime' / 'backend' / 'mmeapi_midi.cpp',
+    'mollytime' / 'backend' / 'moon.cpp',
+    'mollytime' / 'backend' / 'patch.cpp',
+    'mollytime' / 'backend' / 'perf.cpp',
+    'mollytime' / 'backend' / 'py_api.cpp',
+    'mollytime' / 'backend' / 'sdl_display.cpp',
+    'mollytime' / 'backend' / 'sdl_draw.cpp',
+    'mollytime' / 'backend' / 'sdl_events.cpp',
+    'mollytime' / 'backend' / 'sdl_font.cpp',
+    'mollytime' / 'backend' / 'sdl_mouse.cpp',
+    'mollytime' / 'backend' / 'sdl_rect.cpp',
+    'mollytime' / 'backend' / 'sdl_stream.cpp',
+    'mollytime' / 'backend' / 'sdl_time.cpp',
+    'mollytime' / 'backend' / 'thunks.cpp',
+    'mollytime' / 'backend' / 'wasapi_stream.cpp'
 )
 
 python_files = files(
@@ -310,8 +310,8 @@ endif
 
 # Compile and install the extension module in `<install root>/mollytime/`.
 cpp_module = python_install.extension_module(
-    'mollytime',
-    source_files,
+    'backend',
+    backend_source_files,
     dependencies : dependencies,
     install : true,
     install_tag : 'package',

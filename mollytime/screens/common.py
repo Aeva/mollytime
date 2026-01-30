@@ -26,7 +26,7 @@ from ..dpi import calculate_dpi
 from ..perf import profile_function
 from ..power import poll_battery
 
-from .. import mollytime
+from .. import backend
 from ..mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
 
 
@@ -98,7 +98,7 @@ class program_card:
 
         self.selected = []
 
-        self.clock = mollytime.time.Clock()
+        self.clock = backend.time.Clock()
 
         self.dpi = None
         self.resize()
@@ -231,11 +231,11 @@ class program_card:
                         out_key = [int(i) for i in patch_child.attrib["from"].split(":")]
                         out_tile = rewrite[out_key[0]]
                         out_index = out_key[1]
-                        out_port = mollytime.make_port_handle(out_tile, out_index)
+                        out_port = backend.make_port_handle(out_tile, out_index)
                         in_key = [int(i) for i in patch_child.attrib["to"].split(":")]
                         in_tile = rewrite[in_key[0]]
                         in_index = in_key[1]
-                        in_port = mollytime.make_port_handle(in_tile, in_index)
+                        in_port = backend.make_port_handle(in_tile, in_index)
                         try:
                             self.patch.connect_tiles(out_port, in_port)
                         except:
@@ -292,7 +292,7 @@ class program_card:
     def get_grid_rect(self, tile_xy):
         frame_x = self.play_rect.centerx - self.focus_x - self.grid_size + tile_xy[0] * self.grid_size * 3
         frame_y = self.play_rect.centery - self.focus_y - self.grid_size + tile_xy[1] * self.grid_size * 3
-        return mollytime.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
+        return backend.Rect((frame_x, frame_y), (self.grid_size * 2, self.grid_size * 2))
 
     def get_tile_rect(self, tile_id):
         tile_xy = self.tile_positions[tile_id]
@@ -400,7 +400,7 @@ class program_card:
         radius = self.grid_size / 2
         for key, pos in editor_screen.touch_points.items():
             color = editor_screen.touch_colors[key]
-            mollytime.draw.circle(self.screen, color, pos, radius)
+            backend.draw.circle(self.screen, color, pos, radius)
 
     def present(self, overlay = None):
         self.screen.blit(self._play_area_surface, self.play_area.viewport)
@@ -408,10 +408,10 @@ class program_card:
         if overlay:
             self.screen.blit(*overlay)
         self.draw_touch_points()
-        mollytime.draw.flip()
+        backend.draw.flip()
 
     def resize(self):
-        self.screen = mollytime.draw.get_rendering_surface()
+        self.screen = backend.draw.get_rendering_surface()
         self.dpi = dpi = calculate_dpi(self.vertical_inches_override)
 
         screen_rect = self.screen.get_rect()
@@ -427,14 +427,14 @@ class program_card:
 
         self.heavy_line = max(dpi // 32, 2)
 
-        self.play_rect = mollytime.Rect(0, 0, screen_w - side_bar_w, screen_h)
+        self.play_rect = backend.Rect(0, 0, screen_w - side_bar_w, screen_h)
         self.play_area = tile_grid_bg(self.play_rect, self.grid_size)
         self._play_area_surface = self.play_area.surface.copy()
 
         self.settings_area = settings_grid_bg(self.play_rect, self.grid_size)
         self._settings_area = self.settings_area.surface.copy()
 
-        self.side_bar_rect = mollytime.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
+        self.side_bar_rect = backend.Rect(screen_w - side_bar_w, 0, side_bar_w, side_bar_h)
         self.side_bar = side_bar_bg(self.side_bar_rect, self.grid_size)
         self._side_bar_surface = self.side_bar.surface.copy()
 
@@ -459,7 +459,7 @@ class program_card:
         lch = list(self.select_color.encode(ColorSpace.OkLCH).channels)
         lch[0] *= 0.25
         lch[1] *= 0.5
-        self.scope_bg_color = mollytime.oklch(*lch)
+        self.scope_bg_color = backend.oklch(*lch)
 
         self.scope_tile_highlight = plate_outline(self.grid_size, parse_color("#211a17"))
 
@@ -583,7 +583,7 @@ class editor_screen:
             self.draw(editor)
 
     def toggle_fullscreen(self, editor):
-        mollytime.display.toggle_fullscreen()
+        backend.display.toggle_fullscreen()
 
     def handle_resize_event(self, editor, event):
         self.reset_touch_tracker()
@@ -716,10 +716,10 @@ class editor_screen:
 
     def purge_events(self):
         self.reset_touch_tracker()
-        for event in mollytime.events.get():
-            if (event.type == mollytime.events.KEYDOWN and event.key == mollytime.events.K_ESCAPE):
+        for event in backend.events.get():
+            if (event.type == backend.events.KEYDOWN and event.key == backend.events.K_ESCAPE):
                 self.live = False
-            elif event.type == mollytime.events.QUIT:
+            elif event.type == backend.events.QUIT:
                 exit(0)
 
     def handle_escape(self, editor):
@@ -728,36 +728,36 @@ class editor_screen:
 
     @profile_function("process_events")
     def process_events(self, editor):
-        for event in mollytime.events.get():
-            if event.type == mollytime.events.KEYDOWN and event.key.key == mollytime.events.K_ESCAPE:
+        for event in backend.events.get():
+            if event.type == backend.events.KEYDOWN and event.key.key == backend.events.K_ESCAPE:
                self.handle_escape(editor)
 
-            elif event.type == mollytime.events.KEYDOWN and event.key.key in (mollytime.events.K_F, mollytime.events.K_F11):
+            elif event.type == backend.events.KEYDOWN and event.key.key in (backend.events.K_F, backend.events.K_F11):
                self.toggle_fullscreen(editor)
 
-            elif event.type == mollytime.events.WINDOWRESIZE or event.type == mollytime.events.PIXELSIZECHANGED:
+            elif event.type == backend.events.WINDOWRESIZE or event.type == backend.events.PIXELSIZECHANGED:
                 self.handle_resize_event(editor, event)
 
-            elif event.type == mollytime.events.MOUSEMOTION and (abs(event.motion.rel[0]) > 0 or abs(event.motion.rel[1]) > 0):
+            elif event.type == backend.events.MOUSEMOTION and (abs(event.motion.rel[0]) > 0 or abs(event.motion.rel[1]) > 0):
                 self.on_move(editor, event.motion.pos, event)
 
-            elif event.type == mollytime.events.MOUSEBUTTONDOWN and event.button.button == mollytime.events.BUTTON_LEFT:
+            elif event.type == backend.events.MOUSEBUTTONDOWN and event.button.button == backend.events.BUTTON_LEFT:
                 self.on_press(editor, event.button.pos, event)
 
-            elif event.type == mollytime.events.MOUSEBUTTONUP and event.button.button == mollytime.events.BUTTON_LEFT:
+            elif event.type == backend.events.MOUSEBUTTONUP and event.button.button == backend.events.BUTTON_LEFT:
                 self.on_release(editor, event.button.pos, event)
 
-            elif event.type == mollytime.events.MOUSEWHEEL:
+            elif event.type == backend.events.MOUSEWHEEL:
                 self.on_scroll(editor, event.wheel)
 
-            elif event.type == mollytime.events.FINGERMOTION:
+            elif event.type == backend.events.FINGERMOTION:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)
                 pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_update(editor, key, pos, event)
                 if key == self.primary_touch:
                     self.on_move(editor, pos, event)
 
-            elif event.type == mollytime.events.FINGERDOWN:
+            elif event.type == backend.events.FINGERDOWN:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)
                 pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_start(editor, key, pos, event)
@@ -766,7 +766,7 @@ class editor_screen:
                     self.on_press(editor, pos, event)
 
 
-            elif event.type == mollytime.events.FINGERUP:
+            elif event.type == backend.events.FINGERUP:
                 key = (event.tfinger.touch_id, event.tfinger.finger_id)
                 pos = (event.tfinger.x * editor.screen.get_width(), event.tfinger.y * editor.screen.get_height())
                 self.touch_end(editor, key, pos, event)
@@ -774,7 +774,7 @@ class editor_screen:
                     self.on_release(editor, pos, event)
                     self.primary_touch = None
 
-            elif event.type == mollytime.events.QUIT:
+            elif event.type == backend.events.QUIT:
                 sys.exit(0)
 
     def draw(self, editor):

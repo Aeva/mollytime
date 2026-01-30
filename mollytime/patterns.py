@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import mollytime
+from . import backend
 
 from .fonts import *
 from .colors import *
@@ -23,7 +23,7 @@ from .more_math import *
 class tile_viewport:
     def __init__(self, viewport, grid):
         self.grid = -1
-        self.viewport = mollytime.Rect(0, 0, 0, 0)
+        self.viewport = backend.Rect(0, 0, 0, 0)
         self.resize(viewport, grid)
 
     def resize(self, viewport, grid):
@@ -31,7 +31,7 @@ class tile_viewport:
             return
         self.grid = grid
         self.viewport = viewport
-        self.surface = mollytime.draw.Texture(viewport.size)
+        self.surface = backend.draw.Texture(viewport.size)
         self.redraw()
 
     def redraw(self):
@@ -90,9 +90,9 @@ class tile_grid_bg(tile_viewport):
                 tile_y = crop_min_y // self.grid + view_tile_y
                 view_x = view_tile_x * self.grid + x_offset
                 view_y = view_tile_y * self.grid + y_offset
-                rect = mollytime.Rect(view_x, view_y, self.grid, self.grid)
+                rect = backend.Rect(view_x, view_y, self.grid, self.grid)
                 color = self.bg_color(tile_x, tile_y, rect)
-                mollytime.draw.rect(self.surface, color, rect)
+                backend.draw.rect(self.surface, color, rect)
 
         # coarse grid
         for view_tile_y in range(-1, y_count):
@@ -103,9 +103,9 @@ class tile_grid_bg(tile_viewport):
                     continue
                 view_x = view_tile_x * self.grid + x_offset
                 view_y = view_tile_y * self.grid + y_offset
-                rect = mollytime.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
+                rect = backend.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
                 color = self.bg_color(tile_x, tile_y, rect)
-                mollytime.draw.rect(self.surface, color, rect)
+                backend.draw.rect(self.surface, color, rect)
 
 
 class settings_grid_bg(tile_viewport):
@@ -162,9 +162,9 @@ class settings_grid_bg(tile_viewport):
                 tile_y = crop_min_y // self.grid + view_tile_y
                 view_x = view_tile_x * self.grid + x_offset
                 view_y = view_tile_y * self.grid + y_offset
-                rect = mollytime.Rect(view_x, view_y, self.grid, self.grid)
+                rect = backend.Rect(view_x, view_y, self.grid, self.grid)
                 color = self.bg_color(tile_x, tile_y, rect)
-                mollytime.draw.rect(self.surface, color, rect)
+                backend.draw.rect(self.surface, color, rect)
 
         # coarse grid
         for view_tile_y in range(-1, y_count):
@@ -175,9 +175,9 @@ class settings_grid_bg(tile_viewport):
                     continue
                 view_x = view_tile_x * self.grid + x_offset
                 view_y = view_tile_y * self.grid + y_offset
-                rect = mollytime.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
+                rect = backend.Rect(view_x, view_y, self.grid * 2, self.grid * 2)
                 color = self.bg_color(tile_x, tile_y, rect)
-                mollytime.draw.rect(self.surface, color, rect)
+                backend.draw.rect(self.surface, color, rect)
 
 
 class side_bar_bg(tile_viewport):
@@ -201,8 +201,8 @@ class side_bar_bg(tile_viewport):
             alpha = i / steps
             inv_a = 1.0 - alpha
 
-            rect = mollytime.Rect(0, 0, self.viewport.w * inv_a, self.viewport.h)
-            mollytime.draw.rect(self.surface, color, rect)
+            rect = backend.Rect(0, 0, self.viewport.w * inv_a, self.viewport.h)
+            backend.draw.rect(self.surface, color, rect)
 
 
 class plate_bg:
@@ -223,24 +223,24 @@ class plate_bg:
             return
         self.grid = grid
         self.size = grid * 2
-        self.surface = mollytime.draw.Texture((self.size, self.size))
+        self.surface = backend.draw.Texture((self.size, self.size))
         self.redraw()
 
     def redraw(self):
-        rect = mollytime.Rect(0, 0, self.size, self.size)
+        rect = backend.Rect(0, 0, self.size, self.size)
         depth = max(round(self.size / 22.6), 1)
 
-        mollytime.draw.rect(self.surface, self.color_base, rect)
-        mollytime.draw.rect(self.surface, self.color_sides, rect, depth)
+        backend.draw.rect(self.surface, self.color_base, rect)
+        backend.draw.rect(self.surface, self.color_sides, rect, depth)
 
         for i in range(0, depth):
             a = (rect.topleft[0] + i, rect.topleft[1] + i)
             b = (rect.topright[0] - i - 1, rect.topright[1] + i)
-            mollytime.draw.line(self.surface, self.color_top, a, b, 1)
+            backend.draw.line(self.surface, self.color_top, a, b, 1)
 
             a = (rect.bottomleft[0] + i, rect.bottomleft[1] - i - 1)
             b = (rect.bottomright[0] - i - 1, rect.bottomright[1] - i - 1)
-            mollytime.draw.line(self.surface, self.color_bottom, a, b, 1)
+            backend.draw.line(self.surface, self.color_bottom, a, b, 1)
 
         if self.text:
             self.draw_label(self.surface, rect, self.text)
@@ -296,17 +296,17 @@ def draw_outline(target, rect, color, radius, inset=0):
     for edge in range(4):
         a = corners[edge]
         b = corners[(edge + 1) % 4]
-        mollytime.draw.circle(target, color, a, radius)
-        mollytime.draw.line(target, color, a, b, radius * 2)
+        backend.draw.circle(target, color, a, radius)
+        backend.draw.line(target, color, a, b, radius * 2)
 
 
 def draw_arrow(target, color, start, end, radius, inset=.5):
-    start_pt = start.center if type(start) == mollytime.Rect else start
-    end_pt = end.center if type(end) == mollytime.Rect else end
+    start_pt = start.center if type(start) == backend.Rect else start
+    end_pt = end.center if type(end) == backend.Rect else end
 
     inset = int(radius * inset)
 
-    if type(start) == mollytime.Rect:
+    if type(start) == backend.Rect:
         start = start.copy()
         start.x += inset
         start.y += inset
@@ -315,7 +315,7 @@ def draw_arrow(target, color, start, end, radius, inset=.5):
         if line := start.clipline(start_pt, end_pt):
             start_pt = line[1]
 
-    if type(end) == mollytime.Rect:
+    if type(end) == backend.Rect:
         end = end.copy()
         end.x += inset
         end.y += inset
@@ -324,15 +324,15 @@ def draw_arrow(target, color, start, end, radius, inset=.5):
         if line := end.clipline(start_pt, end_pt):
             end_pt = line[0]
 
-    mollytime.draw.line(target, color, start_pt, end_pt, radius * 2)
-    mollytime.draw.circle(target, color, start_pt, radius)
-    mollytime.draw.circle(target, color, end_pt, radius)
+    backend.draw.line(target, color, start_pt, end_pt, radius * 2)
+    backend.draw.circle(target, color, start_pt, radius)
+    backend.draw.circle(target, color, end_pt, radius)
 
     point = vec_scale(normalize(vec_sub(start_pt, end_pt)), radius * 4)
     for angle in [-35, 35]:
         arrow_pt = vec_add(end_pt, rotate_point(point, angle))
-        mollytime.draw.line(target, color, end_pt, arrow_pt, radius * 2)
-        mollytime.draw.circle(target, color, arrow_pt, radius)
+        backend.draw.line(target, color, end_pt, arrow_pt, radius * 2)
+        backend.draw.circle(target, color, arrow_pt, radius)
 
 
 class plate_outline(plate_bg):
@@ -342,23 +342,23 @@ class plate_outline(plate_bg):
         self.text_color = color
 
     def redraw(self):
-        self.surface = mollytime.draw.Texture((self.size, self.size))
+        self.surface = backend.draw.Texture((self.size, self.size))
         line_radius = max(int(self.size / 67), 1)
         inset = line_radius * 2
-        rect = mollytime.Rect(0, 0, self.size, self.size)
+        rect = backend.Rect(0, 0, self.size, self.size)
         corners = [
             vec_add(rect.topleft, (inset, inset)),
             vec_add(rect.topright, (-inset, inset)),
             vec_add(rect.bottomright, (-inset, -inset)),
             vec_add(rect.bottomleft, (inset, -inset))]
 
-        fill_rect = mollytime.Rect(inset, inset, self.size - inset * 2, self.size - inset * 2)
-        mollytime.draw.rect(self.surface, self.color_base, fill_rect, alpha = .1)
+        fill_rect = backend.Rect(inset, inset, self.size - inset * 2, self.size - inset * 2)
+        backend.draw.rect(self.surface, self.color_base, fill_rect, alpha = .1)
 
         for edge in range(4):
             a = corners[edge]
             b = corners[(edge + 1) % 4]
-            mollytime.draw.line(self.surface, self.color_base, a, b, line_radius * 2)
+            backend.draw.line(self.surface, self.color_base, a, b, line_radius * 2)
         if self.cross_out:
             inset = max(int(self.size / 3), 8)
             more_corners = [
@@ -369,4 +369,4 @@ class plate_outline(plate_bg):
             for edge in range(4):
                 a = corners[edge]
                 b = more_corners[edge]
-                mollytime.draw.line(self.surface, self.color_base, a, b, line_radius * 2)
+                backend.draw.line(self.surface, self.color_base, a, b, line_radius * 2)
