@@ -37,15 +37,6 @@ def _get_boost(desired_boost_modules: list[str]):
     finally:
         os.chdir(old_cwd)
 
-def _get_sdl3_ttf_dependencies():
-    sdl_ttf_external = project_dir / "third_party" / "SDL3_ttf-3.2.2" / "external"
-    if shutil.which("powershell"):
-        psh_result = subprocess.run([ "powershell", "-Command", f"& '{sdl_ttf_external / "Get-GitModules.ps1"}'" ])
-        psh_result.check_returncode()
-    else:
-        sh_result = subprocess.run([ "sh", sdl_ttf_external / "download.sh" ])
-        sh_result.check_returncode()
-
 # This is all git stuff.
 if shutil.which("git") == None:
     raise FileNotFoundError(ENOENT, os.strerror(ENOENT), "Can't find 'git' on PATH. I need Git to get submodules.")
@@ -66,6 +57,5 @@ update_process.check_returncode()
 
 # Gather dependencies' dependencies.
 _get_boost([ "atomic", "stacktrace" ])
-_get_sdl3_ttf_dependencies()
 
 print("...done getting submodules.", flush = True)

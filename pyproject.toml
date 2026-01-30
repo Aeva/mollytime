@@ -3,8 +3,7 @@ build-backend = "mesonpy"
 requires = [
     "meson",
     "meson-python",
-    "ninja",
-    "pybind11"
+    "ninja"
 ]
 
 [project]

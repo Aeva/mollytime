@@ -106,7 +106,7 @@ def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace)
                 linker_type_args = [ "--linker-type", linker_type ]
 
     # Grab dependencies.
-    _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
+    _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pyinstaller" ])
     
     # Get submodules. This will acquire *only* the Boost submodules we require.
     get_submodules_script = build_tools_dir / "get_submodules.py"

@@ -1,9 +1,12 @@
 __pycache__/
 .cache/
+.mesonpy*/
+build/
+dist/
+subprojects/*
+!subprojects/*.wrap
+
 *.so
 *.pdb
 *.pyd
 *.kate-swp
-build/
-dist/
-.mesonpy*/

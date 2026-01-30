@@ -130,57 +130,29 @@ dependencies = []
 dependencies += compiler.find_library('m', required : false)
 dependencies += compiler.find_library('dl', required : false)
 
-# Pybind11
-dependencies += dependency('pybind11', required : true)
-
-# Pyinstaller
+# From pip
 pyi_makespec = find_program('pyi-makespec', required : true)
 pyinstaller = find_program('pyinstaller', required : true)
 
-# fmt
-fmt_dir = 'third_party' / 'fmt-12.1.0'
-fmt_include = fmt_dir / 'include'
-fmt_include_dirs = include_directories(fmt_include)
-fmt_source_files = files(fmt_dir / 'src' / 'format.cc')
+# From wrap
+fmt = dependency('fmt', required : true)
+glm = dependency('glm', required : true)
+pybind11 = dependency('pybind11', required : true)
+sdl3 = dependency('sdl3', required : true)
+sdl3_ttf = dependency('sdl3_ttf', required : true)
+dependencies = [ fmt, glm, pybind11, sdl3, sdl3_ttf ]
 
-fmt_dependency = declare_dependency(
-    include_directories : fmt_include_dirs,
-    link_with : static_library(
-        'fmt',
-        fmt_source_files,
-        include_directories : fmt_include_dirs,
-        override_options : [ 'warning_level=0' ]
-    )
-) 
-dependencies += fmt_dependency
-
-# GLM
-glm_dir = 'third_party' / 'glm-1.0.3'
-
-glm_dependency = declare_dependency(
-    include_directories : include_directories(glm_dir)
-) 
-dependencies += glm_dependency
-
-# Tracy
 if get_option('tracy').enabled()
-    tracy_dir = 'third_party' / 'tracy-0.13.1' / 'public'
-    tracy_include_dirs = include_directories(tracy_dir)
-    tracy_source_files = files(tracy_dir / 'TracyClient.cpp')
-    
-    tracy_dependency = declare_dependency(
-        compile_args : '-DTRACY_ENABLE',
-        dependencies : dependency('threads', required : false),
-        include_directories : tracy_include_dirs,
-        link_with : static_library(
-            'tracy',
-            tracy_source_files,
-            include_directories : tracy_include_dirs,
-            override_options : 'warning_level=0'
-        )
-    )
-    dependencies += tracy_dependency
+    dependencies += dependency('tracy', required : true)
 endif
+
+# if build_machine.system() == 'windows'
+#     fs.copyfile(sdl3_binary_dir / 'SDL3.dll')
+# endif
+
+# if build_machine.system() == 'windows'
+#     fs.copyfile(sdl3_ttf_binary_dir / 'SDL3_ttf.dll')
+# endif
 
 # Boost
 boost_install_info_command = run_command(
@@ -210,68 +182,6 @@ boost_dependency = declare_dependency(
     include_directories : include_directories(boost_include_dir),
 )
 dependencies += boost_dependency
-
-# SDL3
-sdl3_install_info_command = run_command(
-    python, 'build_tools' / 'sdl3_get_install_info.py', 'build' / 'sdl3',
-    check : true
-)
-sdl3_install_info = sdl3_install_info_command.stdout().strip().splitlines()
-
-sdl3_include_dir = ''
-sdl3_library_dir = ''
-sdl3_binary_dir = ''
-
-foreach line : sdl3_install_info
-    if line.startswith('include_dir:')
-        sdl3_include_dir = line.substring(12)
-    elif line.startswith('library_dir:')
-        sdl3_library_dir = line.substring(12)
-    elif line.startswith('binary_dir:')
-        sdl3_binary_dir = line.substring(11)
-    endif
-endforeach
-
-sdl_dependency = declare_dependency(
-    include_directories : include_directories(sdl3_include_dir),
-    dependencies : compiler.find_library('SDL3', dirs : project_dir / sdl3_library_dir)
-)
-dependencies += sdl_dependency
-
-if build_machine.system() == 'windows'
-    fs.copyfile(sdl3_binary_dir / 'SDL3.dll')
-endif
-
-# SDL3_ttf
-sdl3_ttf_install_info_command = run_command(
-    python, 'build_tools' / 'sdl3_ttf_get_install_info.py', 'build' / 'sdl3_ttf',
-    check : true
-)
-sdl3_ttf_install_info = sdl3_ttf_install_info_command.stdout().strip().splitlines()
-
-sdl3_ttf_include_dir = ''
-sdl3_ttf_library_dir = ''
-sdl3_ttf_binary_dir = ''
-
-foreach line : sdl3_ttf_install_info
-    if line.startswith('include_dir:')
-        sdl3_ttf_include_dir = line.substring(12)
-    elif line.startswith('library_dir:')
-        sdl3_ttf_library_dir = line.substring(12)
-    elif line.startswith('binary_dir:')
-        sdl3_ttf_binary_dir = line.substring(11)
-    endif
-endforeach
-
-sdl_ttf_dependency = declare_dependency(
-    include_directories : include_directories(sdl3_ttf_include_dir),
-    dependencies : compiler.find_library('SDL3_ttf', dirs : project_dir / sdl3_ttf_library_dir)
-)
-dependencies += sdl_ttf_dependency
-
-if build_machine.system() == 'windows'
-    fs.copyfile(sdl3_ttf_binary_dir / 'SDL3_ttf.dll')
-endif
 
 # Audio backend
 if get_option('audio_backend') == 'sdl'
