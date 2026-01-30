@@ -13,5 +13,8 @@ license-files = [ "LICENSE.txt" ]
 readme = "README.md"
 dependencies = []
 
+[tool.meson-python]
+allow-windows-internal-shared-libs = true
+
 [tool.meson-python.args]
 install = [ "--tags=package" ]

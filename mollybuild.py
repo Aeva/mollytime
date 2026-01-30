@@ -193,7 +193,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
-    setup_args = [ sys.executable, "-m", "build" ]
+    setup_args = [ sys.executable, "-m", "build", "--no-isolation" ]
 
     # Always package in `release` mode.
     mode_file = modes["release"]
