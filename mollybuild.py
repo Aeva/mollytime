@@ -1,5 +1,6 @@
 import os
 import platform
+import shutil
 import subprocess
 import sys
 
@@ -46,6 +47,25 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     _parse_arg("b_vscrt")
     
     return args
+
+def clean(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
+    build_dir = Path("build")
+    dist_dir = Path("dist")
+    third_party_dir = Path("third_party")
+
+    shutil.rmtree(build_dir, True)
+    shutil.rmtree(dist_dir, True)
+
+    for submodule_dir in third_party_dir.iterdir():
+        # HACK
+        if submodule_dir.name == "VAStateVariableFilter":
+            continue
+        
+        for everything in submodule_dir.iterdir():
+            if everything.is_dir():
+                shutil.rmtree(everything, True)
+            else:
+                os.remove(everything)
 
 def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace):
     args_dict = vars(args)
@@ -222,6 +242,10 @@ if __name__ == "__main__":
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
+
+    # `clean` command
+    clean_parser = subparsers.add_parser("clean")
+    clean_parser.set_defaults(command = clean)
     
     # `init` command
     init_parser = subparsers.add_parser("init", help = \
