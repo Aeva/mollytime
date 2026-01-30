@@ -110,7 +110,7 @@ static ColorPoint MakeHSL(float H, float S, float L)
 }
 
 
-PYBIND11_MODULE(mollytime, m) {
+PYBIND11_MODULE(backend, m) {
 	m.doc() = "mollytime c++ internals";
 
 	py::native_enum<ColorSpace>(m, "ColorSpace", "enum.Enum")

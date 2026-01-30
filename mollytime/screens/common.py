@@ -27,7 +27,7 @@ from ..perf import profile_function
 from ..power import poll_battery
 
 from .. import backend
-from ..mollytime import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
+from ..backend import Patch, OpCode, decode_port_tile, decode_port_index, get_temporal_pressure
 
 
 battery_level = None

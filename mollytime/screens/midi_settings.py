@@ -15,7 +15,7 @@
 
 import math
 from .. import backend
-#from ..mollytime import OpCode, get_symbol_name
+#from ..backend import OpCode, get_symbol_name
 from .common import *
 
 
