@@ -1,0 +1,21 @@
+--- SDL3_ttf-3.2.2/meson.build
++++ SDL3_ttf-3.2.2/meson.build
+@@ -87,11 +87,18 @@ foreach argument : project_arguments
+   )
+ endforeach
+ 
++if get_option('default_library') == 'shared'
++  extra_args = ['-DDLL_EXPORT']
++else
++  extra_args = []
++endif
++
+ subdir('src')
+ ttf_lib = library(
+   'sdl3_ttf',
+   ttf_src,
+   include_directories: include_directories('include'),
++  c_args: extra_args,
+   dependencies: [sdl_dep, freetype_dep, thread_dep, harfbuzz_dep, plutosvg_dep],
+   soversion: so_version['major'],
+   version: so_version['major'] + '.' + so_version['minor'] + '.' + so_version['micro'],

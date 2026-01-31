@@ -9,5 +9,7 @@ patch_hash = da1006e2244497bb2ef2177d5028ebfecac8b22644b1f3b49df9883e44f31bc0
 source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/sdl3_ttf_3.2.2-2/SDL3_ttf-3.2.2.tar.gz
 wrapdb_version = 3.2.2-2
 
+diff_files = SDL3_ttf-3.2.2/meson.build.patch
+
 [provide]
 sdl3_ttf = sdl3_ttf_dep
