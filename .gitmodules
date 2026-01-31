@@ -1,4 +1,0 @@
-[submodule "third_party/boost_1_90_0"]
-	path = third_party/boost_1_90_0
-	url = https://github.com/boostorg/boost.git
-    shallow = true
