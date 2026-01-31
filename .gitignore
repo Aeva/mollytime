@@ -11,6 +11,8 @@ subprojects/*
 *.kate-swp
 
 # Un-ignore top-level wraps we've specified
+!subprojects/packagefiles
+!subprojects/boost.wrap
 !subprojects/fmt.wrap
 !subprojects/freetype2.wrap
 !subprojects/glm.wrap

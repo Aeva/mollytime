@@ -135,12 +135,13 @@ pyi_makespec = find_program('pyi-makespec', required : true)
 pyinstaller = find_program('pyinstaller', required : true)
 
 # From wrap
+boost = dependency('boost', required : true)
 fmt = dependency('fmt', required : true)
 glm = dependency('glm', required : true)
 pybind11 = dependency('pybind11', required : true)
 sdl3 = dependency('sdl3', required : true)
 sdl3_ttf = dependency('sdl3_ttf', required : true)
-dependencies = [ fmt, glm, pybind11, sdl3, sdl3_ttf ]
+dependencies = [ boost, fmt, glm, pybind11, sdl3, sdl3_ttf ]
 
 if get_option('tracy').enabled()
     dependencies += dependency('tracy', required : true)
@@ -153,35 +154,6 @@ endif
 # if build_machine.system() == 'windows'
 #     fs.copyfile(sdl3_ttf_binary_dir / 'SDL3_ttf.dll')
 # endif
-
-# Boost
-boost_install_info_command = run_command(
-    python, 'build_tools' / 'boost_get_install_info.py', 'build' / 'boost',
-    check : true
-)
-boost_install_info = boost_install_info_command.stdout().strip().splitlines()
-
-boost_compile_args = []
-boost_include_dir = ''
-
-if get_option('boost_stacktrace').enabled()
-    boost_compile_args += '-DENABLE_STACK_TRACES=1'
-    if build_machine.system() == 'windows'
-        boost_compile_args += '-DBOOST_STACKTRACE_USE_WINDBG=1'
-    endif
-endif
-
-foreach line : boost_install_info
-    if line.startswith('include_dir:')
-        boost_include_dir = line.substring(12)
-    endif
-endforeach
-
-boost_dependency = declare_dependency(
-    compile_args : boost_compile_args,
-    include_directories : include_directories(boost_include_dir),
-)
-dependencies += boost_dependency
 
 # Audio backend
 if get_option('audio_backend') == 'sdl'
