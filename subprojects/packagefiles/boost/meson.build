@@ -11,7 +11,7 @@ py = import('python')
 python = py.find_installation()
 
 # Ensure all desired modules & their dependencies are available.
-desired_modules = [ 'atomic', 'stacktrace' ]
+desired_modules = get_option('modules')
 run_command(python, 'get_boost.py', desired_modules, check : true)
 
 # Get their names as a cleanly-parseable list.

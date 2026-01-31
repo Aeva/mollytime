@@ -135,7 +135,7 @@ pyi_makespec = find_program('pyi-makespec', required : true)
 pyinstaller = find_program('pyinstaller', required : true)
 
 # From wrap
-boost = dependency('boost', required : true)
+boost = dependency('boost', required : true, default_options : 'modules=atomic,stacktrace')
 fmt = dependency('fmt', required : true)
 glm = dependency('glm', required : true)
 pybind11 = dependency('pybind11', required : true)
