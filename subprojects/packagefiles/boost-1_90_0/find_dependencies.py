@@ -28,6 +28,7 @@ git_modules: list[str] = read_gitmodules()  # pyright: ignore[reportUnknownVaria
 # OK, we're ready to scan for dependencies.
 # Refer to `depinst.py` for these values, just in case they change in the future.
 modules_always_required = [ 'config', 'headers' ]   # `./tools` modules are omitted, as they have no installed library representatioon.
+modules_always_required.append('static_assert')     # For whatever reason, this oft-required dependency isn't picked up by `depinst.py`.
 scan_dirs = [ 'include', 'src' ]
 dependencies: dict[str, int] = {}
 
