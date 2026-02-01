@@ -2,6 +2,7 @@ import glob
 import os
 import platform
 import random
+import re
 import shutil
 import subprocess
 import string
@@ -153,8 +154,9 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     # Dig out the name of the built wheel.
     package_stdout = package_result.stdout.decode().strip()
     package_report = package_stdout.splitlines()[-1]
-    if package_report.startswith("Successfully built "):
-        wheel_name = package_report.removeprefix("Successfully built ")
+    package_report_pattern = re.compile(r"^Successfully built (.* and )?(?P<name>.+)")
+    if (match := package_report_pattern.match(package_report)):
+        wheel_name = match.group("name")
     else:
         print("Can't infer wheel name from package report. Inferring...")
         maybe_wheel_names = glob.glob((output_dir / "*.whl").as_posix())
@@ -165,6 +167,10 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
         print(f"...Inferred {wheel_name}")
     
     wheel_path = output_dir.resolve() / wheel_name
+    if not wheel_path.exists():
+        raise RuntimeError(f"I seem to have messed up finding the wheel. I think it's at: '{wheel_path}'")
+    
+    print(f"Building a Pyinstaller executable from {wheel_path}.")
 
     # Create a temporary directory to work in.
     this_dir = Path(__file__).parent
