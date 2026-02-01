@@ -130,10 +130,6 @@ dependencies = []
 dependencies += compiler.find_library('m', required : false)
 dependencies += compiler.find_library('dl', required : false)
 
-# From pip
-pyi_makespec = find_program('pyi-makespec', required : true)
-pyinstaller = find_program('pyinstaller', required : true)
-
 # From wrap
 boost = dependency('boost', required : true, default_options : 'modules=atomic,stacktrace')
 fmt = dependency('fmt', required : true)
