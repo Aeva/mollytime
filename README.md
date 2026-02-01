@@ -22,7 +22,7 @@ recommended.
 
 You'll also need a C++ toolchain to build the core extension module. Supported
 platforms, as in "we've tried these and it seems to work fine":
-- Linux, via Clang or GCC, using glibc
+- Linux, via Clang or GCC, using LLVM's libc++
 - Windows, via Clang or MSVC, using MSVC 2022
 
 Whatever you're using needs its binaries available on `PATH`.
@@ -30,56 +30,35 @@ Whatever you're using needs its binaries available on `PATH`.
 Other dependencies you'll currently need to acquire yourself:
 - JACK, if building with the JACK audio backend.
 - Windows 11 SDK (10.0.22621.5040) or newer, if building with the WASAPI backend.
-  (Don't worry, it also works with Windows 10.)
+  (Don't worry, the SDK also works with Windows 10.)
 
 Once you have determined the correct versions of each of these dependencies,
 please let me know and I'll write them down here.
 
 ## "I want to work on / quickly try out the project!"
 
-> WINDOWS USERS: If you're compiling with MSVC, you'll need to be running in a
-> `vcvars` x64 environment, such as an "x64 Native Tools Command Prompt for VS 2022."
-
-As a one-time setup step, run this helper script to automatically download &
-build third-party dependencies:
-- `python mollybuild.py init <toolchain>`
-
-Then, build the project to set up a development environment:
+Run this:
 - `python mollybuild.py build <mode> <toolchain>`
+
+You can see supported `<mode>`s and `<toolchain>`s by checking command help:
+- `python mollybuild.py build -h`
 
 That's it! Now just run `python -m mollytime` to launch the project. When you do,
 the C++ extension module will be automatically recompiled if you've changed any
 source files since the last run.
 
-You can see supported `<mode>`s and `<toolchain>`s by checking command help:
-- `python mollybuild.py init -h`
-- `python mollybuild.py build -h`
-
-If you omit the toolchain, it'll detect your system "default." This might work
-even if your system default isn't on the supported list, but it might not.
-
-## "I want to build a 'exe'!"
-
-After `mollybuild.py build`, run this:
-- `python mollybuild.py exe`
-
-This uses [Pyinstaller](https://pyinstaller.org/) to bundle the project & its
-dependencies into a single-file executable, output to a `dist` subfolder.
-
-## "I want to package the project for distribution!"
+## "I want to package the project!"
 
 Run this:
 - `python mollybuild.py package <toolchain>`
 
-This executes [`build`](https://build.pypa.io/en/latest/) on the project, with all
-required settings pre-configured. An sdist and wheel will be output to a `dist`
-subfolder.
-
 You can see supported `<toolchain>`s by checking command help:
 - `python mollybuild.py package -h`
 
-If you omit the toolchain, it'll detect your system "default." This might work
-even if your system default isn't on the supported list, but it might not.
+This executes [`build`](https://build.pypa.io/en/latest/) on the project, with all
+required settings pre-configured. A source distribution archive and wheel will be output
+to a `dist` subfolder. Then, it'll also emit a standalone executable based on the wheel,
+using [Pyinstaller](https://pyinstaller.org/).
 
 ## "I need to do things to the build system..."
 
