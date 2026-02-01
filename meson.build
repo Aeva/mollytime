@@ -147,14 +147,6 @@ if get_option('tracy').enabled()
     dependencies += dependency('tracy', required : true)
 endif
 
-# if build_machine.system() == 'windows'
-#     fs.copyfile(sdl3_binary_dir / 'SDL3.dll')
-# endif
-
-# if build_machine.system() == 'windows'
-#     fs.copyfile(sdl3_ttf_binary_dir / 'SDL3_ttf.dll')
-# endif
-
 # Audio backend
 if get_option('audio_backend') == 'sdl'
     dependencies += declare_dependency(
@@ -186,7 +178,6 @@ elif get_option('midi_backend') == 'mmeapi'
     )   
 endif
 
-
 # ---
 # Targets
 
@@ -196,7 +187,6 @@ cpp_module = python_install.extension_module(
     backend_source_files,
     dependencies : dependencies,
     install : true,
-    install_tag : 'package',
     subdir : 'mollytime'
 )
 
@@ -205,7 +195,6 @@ cpp_module = python_install.extension_module(
 # `<install root>/mollytime/screens/calc.py`.
 python_install.install_sources(
     python_files,
-    install_tag : 'package',
     preserve_path : true
 )
 
@@ -215,7 +204,7 @@ python_install.install_sources(
 install_data(
     data_files,
     install_dir : python_install.get_install_dir(),
-    install_tag : 'package',
+    install_tag : 'python-runtime',
     preserve_path : true
 )
 

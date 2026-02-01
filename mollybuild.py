@@ -104,6 +104,20 @@ def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     install_result = subprocess.run(install_args)
     install_result.check_returncode()
 
+    # HACK: Meson-python isn't smart enough to expose subprojects' DLLs to an editable install.
+    # Meson, meanwhile, is too fussy to let us access and manipulate subproject output directly. (For our own good, of course.)
+    # Dig them out of the build folder, and put them where the program can find them.
+    major, minor, _ = platform.python_version().split(".")
+    build_dir = Path("build") / f"cp{major}{minor}"
+    subprojects_dir = build_dir / "subprojects"
+
+    for subproject_dir in subprojects_dir.iterdir():
+        for file in subproject_dir.iterdir():
+            if file.is_file() and file.suffix == ".dll":
+                output_path_expected = build_dir / file.name
+                output_path_actual = file.copy(output_path_expected)
+                print(f"Copied {file} to {output_path_actual}.")
+
 def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
     # Get the build directory. Meson-python will set this to './build/cpXX`,
     # where XX is the Python major & minor version number, w/o decimal separators.
