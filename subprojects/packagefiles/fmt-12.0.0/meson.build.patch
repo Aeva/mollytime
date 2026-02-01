@@ -1,0 +1,14 @@
+--- fmt-12.0.0/meson.build
++++ fmt-12.0.0/meson.build
+@@ -19,8 +19,11 @@
+   fmt_header_only_dep = declare_dependency(
+     include_directories: 'include',
+     compile_args: '-DFMT_HEADER_ONLY',
+   )
++  if meson.version().version_compare('>=0.54.0')
++    meson.override_dependency('fmt', fmt_header_only_dep)
++  endif
+ else
+   fmt_lib = library(
+     'fmt',
+     'src/format.cc',
