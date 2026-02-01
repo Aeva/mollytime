@@ -1,140 +1,68 @@
 # Build system documentation
 
 Mollytime primarily uses the [Meson](https://mesonbuild.com/) build system. Build
-tools and Python dependencies are acquired via `pip`. Third-party C++ dependencies
-are tracked using Git submodules, and built (if necessary) using some special-case
-CMake shims. Mollytime itself can be packaged both as a Wheel (via [`build`](https://pypi.org/project/build/), using
-the [meson-python](https://mesonbuild.com/meson-python/) backend), and as a
+tools are acquired via `pip`. Third-party C++ dependencies are downloaded and built
+using Meson's "wrap" feature, if they can't be fulfilled by your system.  Mollytime
+itself can be packaged both as a Wheel (via [`build`](https://pypi.org/project/build/),
+using the [meson-python](https://mesonbuild.com/meson-python/) backend), and as a
 self-contained executable (via [Pyinstaller](https://pyinstaller.org/en/stable/)).
 
 As much of this as possible is automated using `mollybuild.py`, a project-
 specific build script. End-users Shouldn't™ have to care about anything more
 than:
-- `python mollybuild.py init` - One-time get-and-build of third-party dependencies.
 - `python mollybuild.py build` - Build an iterative development environment.
 - `python -m mollytime` - Run from the development environment, auto-recompiling if needed.
-- `python mollybuild.py package` - Package the project into a wheel.
-- `python mollybuild.py exe` - Package the project into a self-contained executable.
+- `python mollybuild.py package` - Package the project into source distribution, wheel, and self-contained executable.
 
 If you want to, or must, care about more than this, here's what's really going on.
 
 ## 1. Getting Python & build system dependencies
 
-Building the project requires:
+Building a development environment for the project requires:
 - `pip install meson` - [Primary build system for the project.](https://mesonbuild.com/)
 - `pip install meson-python` - [Meson backend for building Python wheels.](https://mesonbuild.com/meson-python/)
+- `pip install ninja` - [C++ backend used by Meson.](https://ninja-build.org/)
+
+`mollybuild.py build` acquires all of these automatically.
+
+Packaging the project requires:
 - `pip install build` - [Top-level Python packaging tool.](https://pypi.org/project/build/)
-- `pip install cmake` - [Build system for third-party dependencies.](https://cmake.org/)
-- `pip install ninja` - [C++ backend used by both Meson and CMake.](https://ninja-build.org/)
-- `pip install pyinstaller` - [Bundles Python programs into a single executable.](https://pyinstaller.org/en/stable/)
 
-Running the project additionally requires:
-- `pip install pybind11` - [C++ <-> Python Binding API.](https://pypi.org/project/pybind11/)
-
-`mollybuild.py init` acquires all of these as its first step.
+`mollybuild.py package` acquires this automatically.
 
 ## 2. Getting C++ dependencies
 
 The project's C++ module requires:
+- Boost - [`atomic`](https://github.com/boostorg/atomic) and [`stacktrace`](https://github.com/boostorg/stacktrace) support libraries.
 - `fmt` - [String formatting & printing.](https://github.com/fmtlib/fmt)
 - GLM - [GL-style graphcis math.](https://github.com/g-truc/glm)
-- Boost - [`atomic`](https://github.com/boostorg/atomic) and [`stacktrace`](https://github.com/boostorg/stacktrace) support libraries.
+- Pybind11 - [C++ <-> Python Binding API.](https://pypi.org/project/pybind11/)
 - SDL3 - [Low-level platform abstraction.](https://github.com/libsdl-org/SDL)
 - SDL3_ttf - [Font rendering support for SDL3.](https://github.com/libsdl-org/SDL_ttf)
 - Tracy (optional) - [Multi-platform profiler.](https://github.com/wolfpld/tracy)
 
-All of these, happily, can be and are tracked as Git submodules, and can thus
-be acquired idiomatically:
-- `git submodule init`
-- `git submodule update`
+Everything but Boost has an externally-maintained port available on Meson's
+[WrapDB](https://mesonbuild.com/Wrapdb-projects.html), which the project will
+automatically download and execute as a build step, if the dependency can't first
+be fulfilled by your system packages.
 
-SDL3_ttf requires its own submodule dependencies. If not provided by your
-system, you can acquire them using its helper script:
-- `sh third_party/SDL3_tff-3.2.2/external/download.sh`
-- Or, `powershell -Command & 'third_party/SDL3_tff-3.2.2/external/Get-GitModules.ps1'`
+`fmt`'s externally-maintained port doesn't properly expose its header-only variant as a
+Meson dependency name. A local `diff_files` patch applied to its `.wrap` addresses this.
 
-Lastly, Boost is shallow-cloned without any modules, to minimize disk
-footprint. Per [its documentation](https://www.boost.org/doc/user-guide/getting-started.html#_individual_modules),
-you can acquire only the modules we actually depend upon. Note that Boost's
-build scripts require you set its project folder as the working directory:
-- `cd third_party/boost_1_90_0`
-- `git submodule update --depth 1 -q --init tools/boostdep`
-- `git submodule update --depth 1 -q --init libs/atomic`
-- `git submodule update --depth 1 -q --init libs/stacktrace`
-- `python tools/boostdep/depinst/depinst.py -X test -g "--depth 1" atomic`
-- `python tools/boostdep/depinst/depinst.py -X test -g "--depth 1" stacktrace`
-- `cd ../..`
+SDL3_ttf's externally-maintained port is broken, and needs some patching.
+- `freetype2` is required, but no external dependency acquisition method is provided.
+  We thus specifice a `.wrap` for it ourselves, which the build can then discover.
+- `-D DLLEXPORT` needs to be defined on Windows, or the build will incorrectly assume
+  static linking, and fail. This is fixed by applying a local `diff_files` patch in the
+  SDL3_ttf `.wrap`.
+- The SDL3_ttf binaries need to be marked as installable, or they can't be propagated
+  into a built package, breaking Windows. This is also fixed through the `diff_files` patch.
 
-`mollybuild.py init` also performs all of this automatically.
+For Boost, the build leverages Meson's support for downloading Git repositories, and then
+applies a minimal build patch to discover and propagate a provided set of header-only
+libraries. Non-header-only libraries aren't yet supported, but also aren't yet needed.
 
-## 3. Building C++ dependencies
-
-Only Boost, SDL3, and SDL3_ttf require building from source to integrate.
-Ideally, these dependencies could be fully managed by Mollytime's top-level
-Meson build. We do not live in an ideal world.
-- Not all of these are available through Meson's "WrapDB" pseudo package manager.
-- Even so, SDL3 lags behind official releases.
-- Even so, SDL3 fails to build on Windows using Clang, a first-class project requirement.
-- Even so, SDL3_ttf fails to properly provide import libraries for linking.
-- Even so, the required Boost dependences are not provided.
-
-SDL3 and SDL3_ttf use CMake as their primary build system. Boost uses its own system
-by default, but offers a CMake alternative. Meson does provide a CMake module for
-handling this sort of case, but it's insufficient: SDL3_ttf requires that SDL3 is
-discoverable as a CMake package dependency, but Meson provides no way to propagate
-such interdependencies between CMake projects.
-
-Meson's preference is that that we write wrapper shims for such non-"native" builds.
-Given that its offical wrappers are lacking, we've chosen to simply handle this part
-ourselves, avoiding the indirection.
-
-So, as noted earlier, CMake is acquired through `pip` as a build system dependency.
-From there, all three dependencies can be built without doing anything too weird.
-Since Ninja is also acquired for the system, it's best used as the build backend.
-
-Boost:
-- `cmake -Wno-dev -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -S third_party/boost_1_90_0 -B build/boost -DCMAKE_INSTALL_PREFIX=third_party/boost_1_90_0/dist -DBOOST_INSTALL_LAYOUT='versioned'`
-    - `-Wno-dev` - Ignore warnings & misconfigurations in the CMake project. It's not ours.
-    - `-G Ninja` - Use Ninja backend.
-    - `-DCMAKE_MAKE_PROGRAM=ninja` - Here's the Ninja exectuable (i.e. on PATH).
-    - `-S third_party/boost_1_90_0` - Here's the Boost source directory.
-    - `-B build/boost` - Stash intermediary build artifacts here.
-    - `-DCMAKE_INSTALL_PREFIX=third_party/boost_1_90_0/dist` - Install built output here. (Boost `.gitignore`s this directory.)
-    - `-DBOOST_INSTALL_LAYOUT='versioned'` - Use the same install layout on all platforms.
-
-SDL3:
-- `cmake -Wno-dev -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -S third_party/SDL3-3.4.0 -B build/boost -DCMAKE_INSTALL_PREFIX=third_party/SDL3-3.4.0/dist`
-    - `-Wno-dev` - Ignore warnings & misconfigurations in the CMake project. It's not ours.
-    - `-G Ninja` - Use Ninja backend.
-    - `-DCMAKE_MAKE_PROGRAM=ninja` - Here's the Ninja exectuable (i.e. on PATH).
-    - `-S third_party/SDL3-3.4.0` - Here's the SDL3 source directory.
-    - `-B build/sdl3` - Stash intermediary build artifacts here.
-    - `-DCMAKE_INSTALL_PREFIX=third_party/SDL3-3.4.0/build/install` - Install built output here. (SDL3 `.gitignore`s this directory.)
-
-SDL3_ttf:
-- `cmake -Wno-dev -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -S third_party/SDL3_ttf-3.2.2 -B build/boost -DCMAKE_INSTALL_PREFIX=third_party/SDL3_ttf-3.2.2/dist`
-    - `-Wno-dev` - Ignore warnings & misconfigurations in the CMake project. It's not ours.
-    - `-G Ninja` - Use Ninja backend.
-    - `-DCMAKE_MAKE_PROGRAM=ninja` - Here's the Ninja exectuable (i.e. on PATH).
-    - `-S third_party/SDL3_ttf-3.2.2` - Here's the SDL3_ttf source directory.
-    - `-B build/sdl3` - Stash intermediary build artifacts here.
-    - `-DCMAKE_INSTALL_PREFIX=third_party/SDL3_ttf-3.2.2/build/install` - Install built output here. (SDL3_ttf `.gitignore`s this directory.)
-
-It's important that, if not using the helper scripts, you specify the *exact* build
-and install directories shown here. The Meson build hardcodes them to look up installed
-artifacts.
-
-This is automated by some helper scripts:
-- `python build_tools/boost_build.py`
-- `python build_tools/sdl3_build.py`
-- `python build_tools/sdl3_ttf_build.py`
-
-`mollybuild.py init` invokes these automatically, as its last step.
-
-## 4. Setting up a development environment
-
-Now that the hard stuff's out of the way, we can actually enjoy what Meson's good at,
-instead of suffering what it's bad at.
+## 3. Setting up a development environment
 
 `meson-python` integrates with `pip` to provide support for dynamically recompiling
 the project's C++ source files at module import-time, as needed, if the project is
@@ -174,7 +102,7 @@ covered here, like whether or not to emit optimized builds.
 
 `mollybuild.py build` handles all of this automatically.
 
-## 5. Running the project
+## 4. Running the project
 
 If all goes well, you will then be able to run Mollytime like so:
 - `python -m mollytime`
@@ -182,30 +110,49 @@ If all goes well, you will then be able to run Mollytime like so:
 That's all! Out-of-date C++ source files will be detected and recompiled when the
 `mollytime` extension module is imported by the Python runtime.
 
-## 6. Building an executable
+## 5. Packaging a wheel
 
-The Meson build specifies a Pyinstaller target, not built by default. Build it,
-then install it using the `exe` tag:
-- `meson compile -C build mollytime-exe`
-- `meson install -C build --tags=exe`
-
-`mollybuild.py exe` handles this automatically.
-
-## 7. Packaging a wheel
-
-To package, run `build`. This will integrate with the `meson-python` backend,
-passing along your native toolchain of choice to Meson -- or your own arguments,
-if you prefer. (This is the same as Step 4, earlier.)
-
+To package, run `build`:
 ```
 python -m build
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-release.ini
-    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini`
+    -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/<toolchain>.ini
 ```
 
-Yes, you do need absolute paths if you're using the native config files.
+This will integrate with the `meson-python` backend, passing along your native toolchain
+of choice to Meson -- or your own arguments, if you prefer. (This is the same as Step 3,
+earlier.) Yes, you do need absolute paths if you're using the native config files.
 
-`mollybuild.py package` handle this automatically.
+`mollybuild.py package` handles this automatically.
+
+## 6. Packaging an executable
+
+Pyinstaller is designed to work on a complete and well-formatted Python package, with all
+modules discoverable through natural `import`s, pointing to idiomatic filesystem locations.
+Mollytime doesn't exist in such a form until it's formally packaged, so the best way to get
+a clean Pyinstaller build is to execute it upon the extracted contents of a built wheel.
+
+The wheel is just a glorified `.zip` archive, and can be extracted with any tool that knows
+how to unzip, like `unzip`.
+
+Then, you'll need to copy `pyinstaller_main.py` into the directory you extracted to, such that
+it's a sibling of the `mollytime/` directory. This works around a known, perpetually unfixed
+Pyinstaller issue, where package-relative imports can't be used in an entry-point module:
+https://github.com/pyinstaller/pyinstaller/issues/2560
+
+Now you can run Pyinstaller:
+```
+pyinstaller
+    --onefile                           # Build a self-contained executable.
+    --name mollytime                    # Name it "mollytime".
+    --icon <project dir>/mollytime.ico  # Use this icon for the executable.
+    --copy-metadata mollytime           # Copy package metadata.
+    --collect-binaries mollytime        # Find and propagate all binary dependencies, e.g DLLs on Windows.
+    --collect-data mollytime            # Find and propagate all non-Python files in the package.
+    pyinstaller_main.py                 # Program entry point.
+```
+
+`mollybuild.py package` handles this automatically.
 
 # Appendix A: Linux Dependencies
 ## Fedora 42
