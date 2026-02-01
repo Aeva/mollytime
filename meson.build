@@ -132,7 +132,7 @@ dependencies += compiler.find_library('dl', required : false)
 
 # From wrap
 boost = dependency('boost', required : true, default_options : 'modules=atomic,stacktrace')
-fmt = dependency('fmt', required : true)
+fmt = dependency('fmt', required : true, default_options : 'header-only=true')
 glm = dependency('glm', required : true)
 pybind11 = dependency('pybind11', required : true)
 sdl3 = dependency('sdl3', required : true)
