@@ -147,7 +147,7 @@ endif
 if get_option('audio_backend') == 'sdl'
     dependencies += declare_dependency(
         compile_args : '-DAUDIO_SDL=1',
-        dependencies : sdl_dependency
+        dependencies : sdl3
     )
 elif get_option('audio_backend') == 'jack'
     dependencies += declare_dependency(
