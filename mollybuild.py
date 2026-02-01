@@ -188,7 +188,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
         venv_config_vars["base"] = venv_path.resolve()
         venv_paths = sysconfig.get_paths(scheme = "venv", vars = venv_config_vars)
         venv_scripts = Path(venv_paths["scripts"])
-        venv_python = (venv_scripts / 'python.exe') if os.name == "nt" else "python"
+        venv_python = (venv_scripts / "python.exe") if os.name == "nt" else "python"
 
         # Install dependencies into the virtual environment.
         venv_packages = [ wheel_path, "pyinstaller" ]
@@ -204,7 +204,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
         # Copy the pyinstaller shim over, and build.
         venv_pyinstaller_main = shutil.copy(this_dir / "pyinstaller_main.py", wheel_out_path / "pyinstaller_main.py")
         venv_pyinstaller_command = [
-            venv_scripts / "pyinstaller",
+            (venv_scripts / "pyinstaller.exe") if os.name == "nt" else "pyinstaller",
             "--distpath", output_dir,
             "--specpath", temp_dir / ".pyinstaller",
             "--workpath", temp_dir / ".pyinstaller" / "work",
