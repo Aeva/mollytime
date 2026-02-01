@@ -1,13 +1,19 @@
+import glob
 import os
 import platform
+import random
 import shutil
 import subprocess
+import string
 import sys
+import sysconfig
+import venv
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
-from errno import ENOENT
 from pathlib import Path
+from subprocess import PIPE
+from zipfile import ZipFile
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
@@ -69,7 +75,7 @@ def clean(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespac
 
 def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
-    _get_dependencies([ "meson", "meson-python", "ninja", "pyinstaller" ])
+    _get_dependencies([ "meson", "meson-python", "ninja" ])
 
     # Prepare to execute a local, editable `pip install`.
     # This will have meson-python automatically run `meson setup`, and then add a launcher shim
@@ -118,35 +124,14 @@ def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
                 output_path_actual = file.copy(output_path_expected)
                 print(f"Copied {file} to {output_path_actual}.")
 
-def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
-    # Get the build directory. Meson-python will set this to './build/cpXX`,
-    # where XX is the Python major & minor version number, w/o decimal separators.
-    major, minor, _ = platform.python_version().split(".")
-    build_dir_local = Path("build") / f"cp{major}{minor}"
-
-    # If this doesn't exist, the user probably forgot to run `setup`.
-    this_dir = Path(__file__).parent
-    build_dir = this_dir / build_dir_local
-    if not build_dir.exists():
-        raise FileNotFoundError(ENOENT, os.strerror(ENOENT), f"I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
-    
-    # `meson compile` the pyinstaller target.
-    compile_args = [ "meson", "compile", "-C", str(build_dir.resolve()), "mollytime-exe" ]
-    compile_result = subprocess.run(compile_args)
-    compile_result.check_returncode()
-
-    # Now, `meson install` it.
-    install_args = [ "meson", "install", "--no-rebuild", "--tags=exe", "-C", str(build_dir.resolve()) ]
-    install_result = subprocess.run(install_args)
-    install_result.check_returncode()
-
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
     _get_dependencies([ "build" ])
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
-    setup_args = [ sys.executable, "-m", "build" ]
+    output_dir = Path("dist")
+    setup_args = [ sys.executable, "-m", "build", "--outdir", output_dir ]
 
     # Always package in `release` mode.
     mode_file = modes["release"]
@@ -161,9 +146,76 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             setup_args += [ f"-Csetup-args={toolchain_arg}" ]
     
-    # Go.
-    package_result = subprocess.run(setup_args)
+    # Build the source distribution & wheel.
+    package_result = subprocess.run(setup_args, stdout = PIPE)
     package_result.check_returncode()
+
+    # Dig out the name of the built wheel.
+    package_stdout = package_result.stdout.decode().strip()
+    package_report = package_stdout.splitlines()[-1]
+    if package_report.startswith("Successfully built "):
+        wheel_name = package_report.removeprefix("Successfully built ")
+    else:
+        print("Can't infer wheel name from package report. Inferring...")
+        maybe_wheel_names = glob.glob((output_dir / "*.whl").as_posix())
+        if len(maybe_wheel_names) < 1:
+            raise RuntimeError(f"Couldn't find any built *.whl files in {output_dir}.")
+        
+        wheel_name = maybe_wheel_names[0]
+        print(f"...Inferred {wheel_name}")
+    
+    wheel_path = output_dir.resolve() / wheel_name
+
+    # Create a temporary directory to work in.
+    this_dir = Path(__file__).parent
+    temp_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k = 8))
+    temp_dir = Path(f".mollybuild-package-{temp_id}")
+
+    try:    
+        shutil.rmtree(temp_dir, ignore_errors = True)
+        os.makedirs(temp_dir)
+
+        # Create an isolated virtual environment.
+        venv_path = temp_dir / ".venv"
+        venv.EnvBuilder(with_pip = True).create(venv_path)
+        venv_config_vars = sysconfig.get_config_vars().copy()
+        venv_config_vars["base"] = venv_path.resolve()
+        venv_paths = sysconfig.get_paths(scheme = "venv", vars = venv_config_vars)
+        venv_scripts = Path(venv_paths["scripts"])
+        venv_python = (venv_scripts / 'python.exe') if os.name == "nt" else "python"
+
+        # Install dependencies into the virtual environment.
+        venv_packages = [ wheel_path, "pyinstaller" ]
+        venv_pip_command = [ venv_python, "-Im", "pip", "install" ] + venv_packages
+        venv_pip_process = subprocess.run(venv_pip_command)
+        venv_pip_process.check_returncode()
+
+        # Unzip the wheel.
+        wheel_zip = ZipFile(wheel_path)
+        wheel_out_path = temp_dir / wheel_name
+        _ = wheel_zip.extractall(wheel_out_path)
+
+        # Copy the pyinstaller shim over, and build.
+        venv_pyinstaller_main = shutil.copy(this_dir / "pyinstaller_main.py", wheel_out_path / "pyinstaller_main.py")
+        venv_pyinstaller_command = [
+            venv_scripts / "pyinstaller",
+            "--distpath", output_dir,
+            "--specpath", temp_dir / ".pyinstaller",
+            "--workpath", temp_dir / ".pyinstaller" / "work",
+            "--onefile",
+            "--name", "mollytime",
+            "--icon", this_dir / "mollytime.ico",
+            "--copy-metadata", "mollytime",
+            "--collect-binaries", "mollytime",
+            "--collect-data", "mollytime",
+            venv_pyinstaller_main
+        ]
+        venv_pyinstaller_process = subprocess.run(venv_pyinstaller_command)
+        venv_pyinstaller_process.check_returncode()
+    
+    finally:
+        # Clean out the temporary work dir.
+        shutil.rmtree(temp_dir, ignore_errors = True)
 
 if __name__ == "__main__":
     working_dir = Path(__file__).parent
@@ -222,10 +274,6 @@ if __name__ == "__main__":
         help = "Toolchain to build with. If unspecified, uses your system default.",
         choices = toolchains.keys()
     )
-
-    # `exe` command
-    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `build` first.")
-    exe_parser.set_defaults(command = exe)
 
     # Go
     args = parser.parse_args()
