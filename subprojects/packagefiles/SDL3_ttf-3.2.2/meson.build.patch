@@ -1,6 +1,7 @@
 --- SDL3_ttf-3.2.2/meson.build
 +++ SDL3_ttf-3.2.2/meson.build
-@@ -87,11 +87,19 @@ foreach argument : project_arguments
+@@ -86,16 +86,22 @@
+     language: 'c',
    )
  endforeach
  
@@ -17,6 +18,10 @@
    include_directories: include_directories('include'),
 +  c_args: extra_args,
    dependencies: [sdl_dep, freetype_dep, thread_dep, harfbuzz_dep, plutosvg_dep],
+-  soversion: so_version['major'],
+-  version: so_version['major'] + '.' + so_version['minor'] + '.' + so_version['micro'],
 +  install: true,
-   soversion: so_version['major'],
-   version: so_version['major'] + '.' + so_version['minor'] + '.' + so_version['micro'],
+   darwin_versions: [
+     dylib_compat_version['major'] + '.' + dylib_compat_version['minor'] + '.' + dylib_compat_version['micro'],
+     dylib_current_version['major'] + '.' + dylib_current_version['minor'] + '.' + dylib_current_version['micro'],
+   ],
