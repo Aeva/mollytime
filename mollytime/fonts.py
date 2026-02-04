@@ -15,7 +15,7 @@
 
 import os
 
-from . import mollytime
+from . import backend
 from .colors import *
 
 AFACAD_REGULAR = "afacad/static/Afacad-Regular.ttf"
@@ -35,7 +35,7 @@ def get_font(font_path, size):
     found = FONT_CACHE.get(key)
     if found:
         return found
-    font = mollytime.font.Font(font_path, size)
+    font = backend.font.Font(font_path, size)
     FONT_CACHE[key] = font
     return font
 
@@ -114,28 +114,28 @@ def font_debug_surface(screen, font_path = AFACAD_REGULAR, size = 100):
     font = get_font(font_path, size)
     font_surf = render_text(font_path, size, fg_color, "Mollytime Font Debug")
     font_rect = font_surf.get_rect()
-    mollytime.draw.rect(screen, bg_color, font_rect)
+    backend.draw.rect(screen, bg_color, font_rect)
 
     asc_rect = font_rect.copy()
     asc_rect.top = 0
     asc_rect.height = font.get_ascent()
-    mollytime.draw.rect(screen, asc_color, asc_rect)
+    backend.draw.rect(screen, asc_color, asc_rect)
 
     dsc_rect = font_rect.copy()
     dsc_rect.height = abs(font.get_descent())
     dsc_rect.top = font_rect.height - dsc_rect.height
     dsc_rect.left = 100
     dsc_rect.width -= 100
-    mollytime.draw.rect(screen, dsc_color, dsc_rect)
+    backend.draw.rect(screen, dsc_color, dsc_rect)
 
     x_rect = font_rect.copy()
     x_rect.height = estimate_font_x_height(font_path, size)
     x_rect.width -= x_rect.height
     x_rect.left = x_rect.height
     x_rect.top = asc_rect.height - x_rect.height
-    mollytime.draw.rect(screen, x_color, x_rect)
+    backend.draw.rect(screen, x_color, x_rect)
 
     screen.blit(font_surf, font_rect)
 
     x_center = estimate_font_x_center(font_path, size)
-    mollytime.draw.line(screen, parse_color("#0F0"), (x_rect.x, x_center), (x_rect.x + x_rect.w, x_center))
+    backend.draw.line(screen, parse_color("#0F0"), (x_rect.x, x_center), (x_rect.x + x_rect.w, x_center))

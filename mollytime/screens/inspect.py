@@ -23,7 +23,7 @@ from .calc import calculator_screen
 from .pick_and_place import pick_and_place_screen
 from .midi_settings import midi_settings_screen
 
-from .. import mollytime
+from .. import backend
 
 
 def find_search_path():
@@ -40,7 +40,7 @@ def find_search_path():
 
 class inspect_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = mollytime.mouse.get_pos()
+        self.cursor_pos = backend.mouse.get_pos()
         self.press_start = None
         self.repopulate_sidebar(editor)
         self.pending_save = None
@@ -87,7 +87,7 @@ class inspect_screen(editor_screen):
     def advance_scope_color(self):
         margin = 40
         self.beam_hue = (self.beam_hue + random.randint(margin, 360 - margin)) % 360
-        self.beam_color = mollytime.hsl(self.beam_hue, 1.0, 0.5)
+        self.beam_color = backend.hsl(self.beam_hue, 1.0, 0.5)
 
     def refresh_can_throttle(self, editor):
         for tile_id in editor.tile_positions.keys():
@@ -100,42 +100,42 @@ class inspect_screen(editor_screen):
     def repopulate_sidebar(self, editor):
         self.update_sidebar = True
 
-        active_rect = mollytime.Rect(
+        active_rect = backend.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         active_icon = editor.inspect_active
 
-        goto_move_rect = mollytime.Rect(
+        goto_move_rect = backend.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_move_icon = editor.move_target
 
-        goto_select_rect = mollytime.Rect(
+        goto_select_rect = backend.Rect(
             editor.grid_size,
             2 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_select_icon = editor.select_target
 
-        goto_settings_rect = mollytime.Rect(
+        goto_settings_rect = backend.Rect(
             editor.grid_size,
             3 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_settings_icon = editor.settings_target
 
-        goto_save_rect = mollytime.Rect(
+        goto_save_rect = backend.Rect(
             editor.grid_size,
             4 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_save_icon = editor.save_target
 
-        goto_load_rect = mollytime.Rect(
+        goto_load_rect = backend.Rect(
             editor.grid_size,
             5 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -211,7 +211,7 @@ class inspect_screen(editor_screen):
         # the directory below if the last character is not the directory delimiter.
         patch_dir = os.path.join(patch_dir, "")
 
-        mollytime.display.show_save_dialog(patch_dir)
+        backend.display.show_save_dialog(patch_dir)
 
     def goto_load_patch(self, editor):
         assert(not self.pending_save)
@@ -229,7 +229,7 @@ class inspect_screen(editor_screen):
         # the directory below if the last character is not the directory delimiter.
         patch_dir = os.path.join(patch_dir, "")
 
-        mollytime.display.show_load_dialog(patch_dir)
+        backend.display.show_load_dialog(patch_dir)
 
     def goto_midi_settings(self, editor):
         overlay = midi_settings_screen(editor)
@@ -270,7 +270,7 @@ class inspect_screen(editor_screen):
         if editor.play_rect.collidepoint(pos):
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = mollytime.Rect(
+                rect = backend.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -313,7 +313,7 @@ class inspect_screen(editor_screen):
 
     def on_scroll(self, editor, event):
         for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-            rect = mollytime.Rect(
+            rect = backend.Rect(
                 editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                 editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -326,7 +326,7 @@ class inspect_screen(editor_screen):
     def touch_start(self, editor, key, pos, event):
         super().touch_start(editor, key, pos, event)
         for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-            rect = mollytime.Rect(
+            rect = backend.Rect(
                 editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                 editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -348,7 +348,7 @@ class inspect_screen(editor_screen):
     @profile_function("inspect.draw")
     def draw(self, editor):
         if self.pending_save:
-            save_status, save_path = mollytime.display.get_save_dialog_result()
+            save_status, save_path = backend.display.get_save_dialog_result()
             if save_status < 0:
                 self.pending_save = False
             elif save_status > 0:
@@ -359,7 +359,7 @@ class inspect_screen(editor_screen):
                 self.save_patch(editor)
 
         if self.pending_load:
-            load_status, load_path = mollytime.display.get_load_dialog_result()
+            load_status, load_path = backend.display.get_load_dialog_result()
             if load_status < 0:
                 self.pending_load = False
             elif load_status > 0 and load_path:
@@ -393,7 +393,7 @@ class inspect_screen(editor_screen):
                     if symbol == OpCode.TWEAK:
                         editor.tile_bg.draw(frame, rect)
                         arc = editor.patch.get_special_input(tile_id)
-                        mollytime.draw.pie(frame, (0, 0, 0), rect.center, radius, .75, -arc)
+                        backend.draw.pie(frame, (0, 0, 0), rect.center, radius, .75, -arc)
                     else:
                         polyphony = editor.patch.get_tile_polyphony(tile_id)
                         is_constant = editor.patch.get_tile_is_constant(tile_id)
@@ -426,22 +426,22 @@ class inspect_screen(editor_screen):
         if self.scope_target:
             self.force_redraw = False
             if not self.scope_overlay:
-                self.scope_overlay = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
-                self.scope_overlay.set_blend_mode(mollytime.draw.premultiplied_alpha)
+                self.scope_overlay = backend.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
+                self.scope_overlay.set_blend_mode(backend.draw.premultiplied_alpha)
 
                 self.scope_history = self.scope_overlay.copy()
                 self.scope_history.fill(parse_color("#000"), 0.0)
-                self.scope_history.set_blend_mode(mollytime.draw.premultiplied_alpha)
+                self.scope_history.set_blend_mode(backend.draw.premultiplied_alpha)
 
                 self.scope_mask = self.scope_overlay.copy()
                 self.scope_mask.fill(parse_color("#000"), 0.0)
 
-            interactive_hot = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
-            interactive_hot.set_blend_mode(mollytime.draw.multiply)
+            interactive_hot = backend.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
+            interactive_hot.set_blend_mode(backend.draw.multiply)
             interactive_hot.fill((255, 255, 255), 1.0)
 
-            interactive_cold = mollytime.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
-            interactive_cold.set_blend_mode(mollytime.draw.premultiplied_alpha)
+            interactive_cold = backend.draw.Texture((editor.play_area.viewport.width, editor.play_area.viewport.height))
+            interactive_cold.set_blend_mode(backend.draw.premultiplied_alpha)
             interactive_cold.fill(editor.scope_bg_color, 0.9)
 
             outline = editor.heavy_line
@@ -458,7 +458,7 @@ class inspect_screen(editor_screen):
                     hot_alpha = 0.5
                     cold_alpha = 1.0
                     draw_outline(interactive_cold, rect, parse_color("#333"), outline)
-                    outline_rect = mollytime.Rect(rect.x - half_outline, rect.y - half_outline, rect.width + outline, rect.height + outline)
+                    outline_rect = backend.Rect(rect.x - half_outline, rect.y - half_outline, rect.width + outline, rect.height + outline)
                     draw_outline(interactive_cold, outline_rect, parse_color("#FFF"), half_outline)
                     draw_outline(interactive_hot, outline_rect, parse_color("#CCC"), half_outline)
                 elif symbol in (OpCode.BOOP, OpCode.TWEAK, OpCode.OUT, OpCode.SCOPE):
@@ -474,8 +474,8 @@ class inspect_screen(editor_screen):
                     editor.tile_bg.draw(interactive_cold, rect, alpha=cold_alpha, text_alpha = 1.0)
                     editor.tile_bg.draw(interactive_hot, rect, alpha=hot_alpha)
                     arc = editor.patch.get_special_input(tile_id)
-                    mollytime.draw.pie(interactive_cold, (0, 0, 0), rect.center, radius, .75, -arc, alpha = 1.0)
-                    mollytime.draw.pie(interactive_hot, (200, 200, 200), rect.center, radius, .75, -arc)
+                    backend.draw.pie(interactive_cold, (0, 0, 0), rect.center, radius, .75, -arc, alpha = 1.0)
+                    backend.draw.pie(interactive_hot, (200, 200, 200), rect.center, radius, .75, -arc)
                 else:
                     editor.tile_bg.draw(interactive_cold, rect, label, cold_alpha, text_alpha = 1.0)
                     editor.tile_bg.draw(interactive_hot, rect, label, hot_alpha)
@@ -497,8 +497,8 @@ class inspect_screen(editor_screen):
             max_beam_y = center * -max_sample + center
             w = max(1, abs(beam_x - self.last_x))
             h = max(1, abs(max_beam_y - min_beam_y))
-            beam_rect = mollytime.Rect((self.last_x, max_beam_y), (w, h))
-            clear_rect = mollytime.Rect((self.last_x, 0), (w, editor.play_rect.h))
+            beam_rect = backend.Rect((self.last_x, max_beam_y), (w, h))
+            clear_rect = backend.Rect((self.last_x, 0), (w, editor.play_rect.h))
 
             beam_color = self.beam_color
             if is_nan:
@@ -513,9 +513,9 @@ class inspect_screen(editor_screen):
                 elapsed = 2
             else:
                 self.scope_history.fill_rect((0, 0, 0), clear_rect, alpha=0.0)
-                mollytime.draw.rect(self.scope_history, beam_color, beam_rect, alpha=0.8)
+                backend.draw.rect(self.scope_history, beam_color, beam_rect, alpha=0.8)
                 self.scope_mask.fill_rect((0, 0, 0), clear_rect, alpha=0.0)
-                mollytime.draw.rect(self.scope_mask, (255, 255, 255), beam_rect, alpha=1.0)
+                backend.draw.rect(self.scope_mask, (255, 255, 255), beam_rect, alpha=1.0)
 
             if elapsed > 1:
                 self.last_x = 0
@@ -531,22 +531,22 @@ class inspect_screen(editor_screen):
                 start_pt = (0, y)
                 end_pt = (editor.play_rect.w, y)
                 if alpha == 0.5:
-                    mollytime.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .9)
-                    mollytime.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .2)
+                    backend.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .9)
+                    backend.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .2)
                 elif i % 2 == 1:
-                    mollytime.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .6)
-                    mollytime.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .12)
+                    backend.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .6)
+                    backend.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .12)
                 else:
-                    mollytime.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .7)
-                    mollytime.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .125)
+                    backend.draw.line(interactive_hot, line_color, start_pt, end_pt, 1, alpha = .7)
+                    backend.draw.line(interactive_cold, line_color, start_pt, end_pt, 1, alpha = .125)
 
-            self.scope_mask.set_blend_mode(mollytime.draw.eraser)
+            self.scope_mask.set_blend_mode(backend.draw.eraser)
             interactive_cold.blit(self.scope_mask, (0, 0))
 
             self.scope_overlay.blit(self.scope_history, (0, 0))
             self.scope_overlay.blit(interactive_hot, (0, 0))
 
-            self.scope_mask.set_blend_mode(mollytime.draw.inverse_eraser)
+            self.scope_mask.set_blend_mode(backend.draw.inverse_eraser)
             self.scope_overlay.blit(self.scope_mask, (0, 0))
 
             self.scope_overlay.blit(interactive_cold, (0, 0))

@@ -1,9 +1,23 @@
 __pycache__/
 .cache/
+.mesonpy*/
+.mollybuild*/
+build/
+dist/
+subprojects/*
+
 *.so
 *.pdb
 *.pyd
 *.kate-swp
-build/
-dist/
-.mesonpy*/
+
+# Un-ignore top-level wraps we've specified
+!subprojects/packagefiles
+!subprojects/boost.wrap
+!subprojects/fmt.wrap
+!subprojects/freetype2.wrap
+!subprojects/glm.wrap
+!subprojects/pybind11.wrap
+!subprojects/sdl3_ttf.wrap
+!subprojects/sdl3.wrap
+!subprojects/tracy.wrap

@@ -16,17 +16,17 @@
 import os
 import sys
 import glob
-from . import mollytime
+from . import backend
 
 
-ColorSpace = mollytime.ColorSpace
-parse_color = mollytime.parse_color
-oklab = mollytime.oklab
-oklch = mollytime.oklch
+ColorSpace = backend.ColorSpace
+parse_color = backend.parse_color
+oklab = backend.oklab
+oklch = backend.oklch
 
 
 def lch_prism(color):
-    return mollytime.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH).channels
+    return backend.convert_color([i / 255 for i in color], ColorSpace.sRGB, ColorSpace.OkLCH).channels
 
 
 def lch_swizzle(LC_part, H_Part, swizzle):
@@ -38,4 +38,4 @@ def lch_swizzle(LC_part, H_Part, swizzle):
 
 
 def color_ramp(*color_points):
-    return mollytime.ColorRamp(color_points)
+    return backend.ColorRamp(color_points)

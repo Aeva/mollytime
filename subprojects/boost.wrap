@@ -1,0 +1,9 @@
+[wrap-git]
+url = https://github.com/boostorg/boost.git
+revision = boost-1.90.0
+depth = 1
+directory = boost-1_90_0
+patch_directory = boost-1_90_0
+
+[provide]
+boost = boost_dep

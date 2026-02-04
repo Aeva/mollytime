@@ -3,8 +3,7 @@ build-backend = "mesonpy"
 requires = [
     "meson",
     "meson-python",
-    "ninja",
-    "pybind11"
+    "ninja"
 ]
 
 [project]
@@ -14,5 +13,8 @@ license-files = [ "LICENSE.txt" ]
 readme = "README.md"
 dependencies = []
 
+[tool.meson-python]
+allow-windows-internal-shared-libs = true
+
 [tool.meson-python.args]
-install = [ "--tags=package" ]
+install = [ "--tags=runtime,python-runtime" ]

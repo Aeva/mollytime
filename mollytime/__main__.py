@@ -19,7 +19,7 @@ import sys
 import platform
 import time
 
-from . import mollytime
+from . import backend
 
 from .fonts import *
 from .colors import *
@@ -52,25 +52,25 @@ def main():
         elif arg == "--vertical-inches":
             vertical_inches = float(args.pop(0))
         elif arg == "-p":
-            mollytime.set_default_polyphony(int(args.pop(0)))
+            backend.set_default_polyphony(int(args.pop(0)))
         else:
             print(f"Ignoring unknown arg: {arg}")
 
-    mollytime.init_midi()
-    mollytime.init_audio(48000)
+    backend.init_midi()
+    backend.init_audio(48000)
 
-    mollytime.display.init(force_fullscreen)
-    mollytime.draw.init()
-    mollytime.font.init()
+    backend.display.init(force_fullscreen)
+    backend.draw.init()
+    backend.font.init()
 
-    print(f'SDL3 selected the "{mollytime.draw.get_renderer_name()}" rendering backend.')
+    print(f'SDL3 selected the "{backend.draw.get_renderer_name()}" rendering backend.')
 
     if operating_system == "Windows":
         icon_size = 32
     else:
         icon_size = 512
     
-    # TODO: Implement mollytime.draw.Texture.save()
+    # TODO: Implement backend.draw.Texture.save()
     # # According to the docs, the program icon must be set before calling "pygame.display.set_mode".
     # # However this does not seem to do anything on Linux, probably due to Wayland nonsense to add security.
     program_icon = plate_bg(icon_size // 2, parse_color("#dee5e8"), "moll-\nytime")
@@ -81,15 +81,15 @@ def main():
 
     assert(program_icon.surface.get_rect().w == icon_size)
     assert(program_icon.surface.get_rect().h == icon_size)
-    mollytime.display.set_icon(program_icon.surface)
-    mollytime.display.set_caption("mollytime")
+    backend.display.set_icon(program_icon.surface)
+    backend.display.set_caption("mollytime")
 
     # The rendering surface doesn't get created right away on Linux (and possibly other platforms).
     # This code ensures that it is fully created before we advance to creating the UI.
     wait_start = time.time()
-    flush = mollytime.events.get()
-    while not mollytime.draw.get_renderer_ready():
-        flush = mollytime.events.get()
+    flush = backend.events.get()
+    while not backend.draw.get_renderer_ready():
+        flush = backend.events.get()
         if wait_start - time.time() < 1:
             time.sleep(0.01)
         else:
@@ -99,8 +99,8 @@ def main():
     editor = program_card(vertical_inches)
     ui = inspect_screen(editor)
 
-    mollytime.shutdown_audio()
-    mollytime.shutdown_midi()
+    backend.shutdown_audio()
+    backend.shutdown_midi()
 
 if __name__ == "__main__":
     main()

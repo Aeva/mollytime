@@ -15,26 +15,26 @@
 
 from .common import *
 
-from .. import mollytime
+from .. import backend
 
 
 class select_screen(editor_screen):
     def setup(self, editor):
-        self.cursor_pos = mollytime.mouse.get_pos()
+        self.cursor_pos = backend.mouse.get_pos()
         self.press_start = None
         self.resize_screen(editor)
 
     def resize_screen(self, editor):
         w = editor.grid_size * 3
         h = editor.play_rect.height
-        self.selectbar_rect = mollytime.Rect(0, 0, w, h)
+        self.selectbar_rect = backend.Rect(0, 0, w, h)
 
-        self.selectbar_rect = mollytime.Rect(0, 0, w, h)
+        self.selectbar_rect = backend.Rect(0, 0, w, h)
         self.lhs_selectbar_rect = self.selectbar_rect.copy()
-        self.rhs_selectbar_rect = mollytime.Rect(editor.play_rect.width - w, 0, w, h)
+        self.rhs_selectbar_rect = backend.Rect(editor.play_rect.width - w, 0, w, h)
 
-        self.lhs_selectbar_bg = mollytime.draw.Texture((w, h))
-        self.rhs_selectbar_bg = mollytime.draw.Texture((w, h))
+        self.lhs_selectbar_bg = backend.draw.Texture((w, h))
+        self.rhs_selectbar_bg = backend.draw.Texture((w, h))
 
         self.lhs_targets = []
         self.lhs_selection = None
@@ -93,9 +93,9 @@ class select_screen(editor_screen):
             for index, port in enumerate(lhs_outputs):
                 alpha = (index + 1) / (count + 1)
                 draw_pos = vec_lerp(draw_start, draw_stop, alpha)
-                draw_rect = mollytime.Rect(draw_pos, (editor.grid_size * 2, editor.grid_size * 2))
+                draw_rect = backend.Rect(draw_pos, (editor.grid_size * 2, editor.grid_size * 2))
                 click_pos = vec_lerp(click_start, click_stop, alpha)
-                click_rect = mollytime.Rect(click_pos, (editor.grid_size * 2, editor.grid_size * 2))
+                click_rect = backend.Rect(click_pos, (editor.grid_size * 2, editor.grid_size * 2))
                 self.lhs_targets.append((click_rect, port))
 
                 tile_id = decode_port_tile(port)
@@ -126,9 +126,9 @@ class select_screen(editor_screen):
             for index, port in enumerate(rhs_inputs):
                 alpha = (index + 1) / (count + 1)
                 draw_pos = vec_lerp(draw_start, draw_stop, alpha)
-                draw_rect = mollytime.Rect(draw_pos, (editor.grid_size * 2, editor.grid_size * 2))
+                draw_rect = backend.Rect(draw_pos, (editor.grid_size * 2, editor.grid_size * 2))
                 click_pos = vec_lerp(click_start, click_stop, alpha)
-                click_rect = mollytime.Rect(click_pos, (editor.grid_size * 2, editor.grid_size * 2))
+                click_rect = backend.Rect(click_pos, (editor.grid_size * 2, editor.grid_size * 2))
                 self.rhs_targets.append((click_rect, port))
                 terminals[port] = vec_add(click_pos, (0, tile_size // 2))
 
@@ -150,21 +150,21 @@ class select_screen(editor_screen):
 
         self.update_sidebar = True
 
-        goto_inspect_rect = mollytime.Rect(
+        goto_inspect_rect = backend.Rect(
             editor.grid_size,
             0 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         goto_inspect_icon = editor.inspect_target
 
-        active_rect = mollytime.Rect(
+        active_rect = backend.Rect(
             editor.grid_size,
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
         active_icon = editor.select_active
 
-        toggle_frozen_rect = mollytime.Rect(
+        toggle_frozen_rect = backend.Rect(
             editor.grid_size,
             2 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
@@ -182,7 +182,7 @@ class select_screen(editor_screen):
             (toggle_frozen_rect, toggle_frozen_icon, toggle_frozen)]
 
         if editor.connectable_selection():
-            connect_rect = mollytime.Rect(
+            connect_rect = backend.Rect(
                 editor.grid_size,
                 3 * editor.grid_size * 3,
                 editor.grid_size * 2, editor.grid_size * 2)
@@ -190,7 +190,7 @@ class select_screen(editor_screen):
             self.side_bar_targets.append((connect_rect, editor.clear_selection_target, self.goto_clear_selection))
 
             if editor.rhs_selection():
-                rect = mollytime.Rect(
+                rect = backend.Rect(
                     editor.grid_size,
                     4 * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)
@@ -261,7 +261,7 @@ class select_screen(editor_screen):
 
             something_happened = False
             for tile_id, (tile_x, tile_y) in editor.tile_positions.items():
-                rect = mollytime.Rect(
+                rect = backend.Rect(
                     editor.play_rect.centerx - editor.focus_x - editor.grid_size + tile_x * editor.grid_size * 3,
                     editor.play_rect.centery - editor.focus_y - editor.grid_size + tile_y * editor.grid_size * 3,
                     editor.grid_size * 2, editor.grid_size * 2)

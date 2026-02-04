@@ -17,14 +17,14 @@ import re
 import platform
 import subprocess
 
-from . import mollytime
+from . import backend
 
 
 def calculate_dpi(vertical_inches=None):
-    display_index = mollytime.display.get_current_display_index()
-    sizes = mollytime.display.get_desktop_sizes()
+    display_index = backend.display.get_current_display_index()
+    sizes = backend.display.get_desktop_sizes()
     scaled_display_size = sizes[display_index]
-    unscaled_display_size = mollytime.display.list_modes(display=display_index)[0]
+    unscaled_display_size = backend.display.list_modes(display=display_index)[0]
 
     # TODO: SDL_GetWindowDisplayScale, at lesat in the version of SDL3 that I presently have, does
     # not correctly support fractional resolution scaling on x11, and instead rounds up.  Likewise,
@@ -33,11 +33,11 @@ def calculate_dpi(vertical_inches=None):
     # override it, we will ignore the resolution scale for simplicity's sake, though it would
     # be nice to use where it is supported correctly.
     if False:
-        resolution_scale = mollytime.display.get_resolution_scale()
+        resolution_scale = backend.display.get_resolution_scale()
         print(f"calculated resolution scale: {scaled_display_size[0] / unscaled_display_size[0]}")
         print(f"reported resolution scale: {resolution_scale}")
 
-    unscaled_render_rect = mollytime.draw.get_rendering_surface().get_rect()
+    unscaled_render_rect = backend.draw.get_rendering_surface().get_rect()
     unscaled_render_size = (unscaled_render_rect.width, unscaled_render_rect.height)
 
     minimum_vertical_inches = 7

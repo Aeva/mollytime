@@ -1,12 +1,20 @@
+import glob
 import os
 import platform
+import random
+import re
+import shutil
 import subprocess
+import string
 import sys
+import sysconfig
+import venv
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
-from errno import ENOENT
 from pathlib import Path
+from subprocess import PIPE
+from zipfile import ZipFile
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
@@ -47,71 +55,29 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     
     return args
 
-def init(_modes: dict[str, Path], toolchains: dict[str, Path], _args: Namespace):
-    args_dict = vars(args)
-    project_dir = Path(__file__).parent
-    build_tools_dir = project_dir / "build_tools"
+def clean(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
+    build_dir = Path("build")
+    dist_dir = Path("dist")
+    third_party_dir = Path("third_party")
 
-    # Dig out the specified compiler from the provided toolchain file.
-    # The build  helpers will pass these to CMake.
-    c_compiler_args: list[str] = []
-    cpp_compiler_args: list[str] = []
-    linker_type_args: list[str] = []
+    shutil.rmtree(build_dir, True)
+    shutil.rmtree(dist_dir, True)
 
-    toolchain_name: str | None = args_dict.get("toolchain", None)
-    if toolchain_name != None:
-        toolchain_file = toolchains.get(toolchain_name, None)
-        if toolchain_file != None:
-            toolchain_config = ConfigParser()
-            _ = toolchain_config.read(toolchain_file)
-            
-            c_compiler: str | None = toolchain_config.get("binaries", "c", fallback = None)
-            if c_compiler != None:
-                c_compiler_args = [ "--c-compiler", c_compiler ]
-            
-            cpp_compiler: str | None = toolchain_config.get("binaries", "cpp", fallback = None)
-            if cpp_compiler != None:
-                cpp_compiler_args = [ "--cpp-compiler", cpp_compiler ]
-            
-            linker_type: str | None = toolchain_config.get("binaries", "cpp_ld", fallback = None)
-            if linker_type != None:
-                match linker_type:
-                    case "link":
-                        linker_type = "MSVC"
-                    case "lld":
-                        linker_type = "LLD"
-                    case _:
-                        linker_type = "SYSTEM"
-                
-                linker_type_args = [ "--linker-type", linker_type ]
-
-    # Grab dependencies.
-    _get_dependencies([ "cmake", "meson", "meson-python", "ninja", "pybind11", "pyinstaller" ])
-    
-    # Get submodules. This will acquire *only* the Boost submodules we require.
-    get_submodules_script = build_tools_dir / "get_submodules.py"
-    get_submodules_result = subprocess.run([ sys.executable, get_submodules_script ])
-    get_submodules_result.check_returncode()
-    
-    # Build Boost. (Yeah, we're using header-only librarires, but this still has to generate them.)
-    boost_build_script = build_tools_dir / "boost_build.py" 
-    boost_build_dir = project_dir / "build" / "boost"
-    boost_build_result = subprocess.run([ sys.executable, boost_build_script, boost_build_dir ] + cpp_compiler_args + linker_type_args)
-    boost_build_result.check_returncode()
-    
-    # Build SDL3.
-    sdl3_build_script = build_tools_dir / "sdl3_build.py" 
-    sdl3_build_dir = project_dir / "build" / "sdl3"
-    sdl3_build_result = subprocess.run([ sys.executable, sdl3_build_script, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
-    sdl3_build_result.check_returncode()
-    
-    # Build SDL3_ttf.
-    sdl3_ttf_build_script = build_tools_dir / "sdl3_ttf_build.py" 
-    sdl3_ttf_build_dir = project_dir / "build" / "sdl3_ttf"
-    sdl3_ttf_build_result = subprocess.run([ sys.executable, sdl3_ttf_build_script, sdl3_ttf_build_dir, sdl3_build_dir ] + c_compiler_args + cpp_compiler_args + linker_type_args)
-    sdl3_ttf_build_result.check_returncode()
+    for submodule_dir in third_party_dir.iterdir():
+        # HACK
+        if submodule_dir.name == "VAStateVariableFilter":
+            continue
+        
+        for everything in submodule_dir.iterdir():
+            if everything.is_dir():
+                shutil.rmtree(everything, True)
+            else:
+                os.remove(everything)
 
 def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+    # Grab dependencies.
+    _get_dependencies([ "meson", "meson-python", "ninja" ])
+
     # Prepare to execute a local, editable `pip install`.
     # This will have meson-python automatically run `meson setup`, and then add a launcher shim
     # that automatically recompiles our extension module(s) when running the module locally.
@@ -145,27 +111,19 @@ def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     install_result = subprocess.run(install_args)
     install_result.check_returncode()
 
-def exe(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
-    # Get the build directory. Meson-python will set this to './build/cpXX`,
-    # where XX is the Python major & minor version number, w/o decimal separators.
+    # HACK: Meson-python isn't smart enough to expose subprojects' DLLs to an editable install.
+    # Meson, meanwhile, is too fussy to let us access and manipulate subproject output directly. (For our own good, of course.)
+    # Dig them out of the build folder, and put them where the program can find them.
     major, minor, _ = platform.python_version().split(".")
-    build_dir_local = Path("build") / f"cp{major}{minor}"
+    build_dir = Path("build") / f"cp{major}{minor}"
+    subprojects_dir = build_dir / "subprojects"
 
-    # If this doesn't exist, the user probably forgot to run `setup`.
-    this_dir = Path(__file__).parent
-    build_dir = this_dir / build_dir_local
-    if not build_dir.exists():
-        raise FileNotFoundError(ENOENT, os.strerror(ENOENT), f"I can't find the expected build directory: '{build_dir_local}' (i.e. '{build_dir}').\nDid you forget to run `setup`?")
-    
-    # `meson compile` the pyinstaller target.
-    compile_args = [ "meson", "compile", "-C", str(build_dir.resolve()), "mollytime-exe" ]
-    compile_result = subprocess.run(compile_args)
-    compile_result.check_returncode()
-
-    # Now, `meson install` it.
-    install_args = [ "meson", "install", "--no-rebuild", "--tags=exe", "-C", str(build_dir.resolve()) ]
-    install_result = subprocess.run(install_args)
-    install_result.check_returncode()
+    for subproject_dir in subprojects_dir.iterdir():
+        for file in subproject_dir.iterdir():
+            if file.is_file() and file.suffix == ".dll":
+                output_path_expected = build_dir / file.name
+                output_path_actual = file.copy(output_path_expected)
+                print(f"Copied {file} to {output_path_actual}.")
 
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
@@ -173,7 +131,8 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
-    setup_args = [ sys.executable, "-m", "build" ]
+    output_dir = Path("dist")
+    setup_args = [ sys.executable, "-m", "build", "--outdir", output_dir ]
 
     # Always package in `release` mode.
     mode_file = modes["release"]
@@ -188,9 +147,81 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             setup_args += [ f"-Csetup-args={toolchain_arg}" ]
     
-    # Go.
-    package_result = subprocess.run(setup_args)
+    # Build the source distribution & wheel.
+    package_result = subprocess.run(setup_args, stdout = PIPE)
     package_result.check_returncode()
+
+    # Dig out the name of the built wheel.
+    package_stdout = package_result.stdout.decode().strip()
+    package_report = package_stdout.splitlines()[-1]
+    package_report_pattern = re.compile(r"^Successfully built (.* and )?(?P<name>.+)")
+    if (match := package_report_pattern.match(package_report)):
+        wheel_name = match.group("name")
+    else:
+        print("Can't infer wheel name from package report. Inferring...")
+        maybe_wheel_names = glob.glob((output_dir / "*.whl").as_posix())
+        if len(maybe_wheel_names) < 1:
+            raise RuntimeError(f"Couldn't find any built *.whl files in {output_dir}.")
+        
+        wheel_name = maybe_wheel_names[0]
+        print(f"...Inferred {wheel_name}")
+    
+    wheel_path = output_dir.resolve() / wheel_name
+    if not wheel_path.exists():
+        raise RuntimeError(f"I seem to have messed up finding the wheel. I think it's at: '{wheel_path}'")
+    
+    print(f"Building a Pyinstaller executable from {wheel_path}.")
+
+    # Create a temporary directory to work in.
+    this_dir = Path(__file__).parent
+    temp_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k = 8))
+    temp_dir = Path(f".mollybuild-package-{temp_id}")
+
+    try:    
+        shutil.rmtree(temp_dir, ignore_errors = True)
+        os.makedirs(temp_dir)
+
+        # Create an isolated virtual environment.
+        venv_path = temp_dir / ".venv"
+        venv.EnvBuilder(with_pip = True).create(venv_path)
+        venv_config_vars = sysconfig.get_config_vars().copy()
+        venv_config_vars["base"] = venv_path.resolve()
+        venv_paths = sysconfig.get_paths(scheme = "venv", vars = venv_config_vars)
+        venv_scripts = Path(venv_paths["scripts"])
+        venv_python = (venv_scripts / "python.exe") if os.name == "nt" else "python"
+
+        # Install dependencies into the virtual environment.
+        venv_packages = [ wheel_path, "pyinstaller" ]
+        venv_pip_command = [ venv_python, "-Im", "pip", "install" ] + venv_packages
+        venv_pip_process = subprocess.run(venv_pip_command)
+        venv_pip_process.check_returncode()
+
+        # Unzip the wheel.
+        wheel_zip = ZipFile(wheel_path)
+        wheel_out_path = temp_dir / wheel_name
+        _ = wheel_zip.extractall(wheel_out_path)
+
+        # Copy the pyinstaller shim over, and build.
+        venv_pyinstaller_main = shutil.copy(this_dir / "pyinstaller_main.py", wheel_out_path / "pyinstaller_main.py")
+        venv_pyinstaller_command = [
+            (venv_scripts / "pyinstaller.exe") if os.name == "nt" else "pyinstaller",
+            "--distpath", output_dir,
+            "--specpath", temp_dir / ".pyinstaller",
+            "--workpath", temp_dir / ".pyinstaller" / "work",
+            "--onefile",
+            "--name", "mollytime",
+            "--icon", this_dir / "mollytime.ico",
+            "--copy-metadata", "mollytime",
+            "--collect-binaries", "mollytime",
+            "--collect-data", "mollytime",
+            venv_pyinstaller_main
+        ]
+        venv_pyinstaller_process = subprocess.run(venv_pyinstaller_command)
+        venv_pyinstaller_process.check_returncode()
+    
+    finally:
+        # Clean out the temporary work dir.
+        shutil.rmtree(temp_dir, ignore_errors = True)
 
 if __name__ == "__main__":
     working_dir = Path(__file__).parent
@@ -222,22 +253,10 @@ if __name__ == "__main__":
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
-    
-    # `init` command
-    init_parser = subparsers.add_parser("init", help = \
-        "Initialize the project repository. This will:" +
-        "\n- Acquire dependent Python packages via pip. (Running in a virtual environment is highly recommended!)" +
-        "\n- Initialize and update third party Git submodules. (Git is required!)" +
-        "\n- Build third party dependencies." +
-        "\n" +
-        "\nWhile Mollytime uses Meson, third-party dependences will, regrettably, be built using CMake. I'll handle it all; just FYI."
-    )
-    init_parser.set_defaults(command = init)
-    _ = init_parser.add_argument(
-        "toolchain",
-        help = "Toolchain to build dependencies with. If unspecified, uses your system default.",
-        choices = toolchains.keys()
-    )
+
+    # `clean` command
+    clean_parser = subparsers.add_parser("clean")
+    clean_parser.set_defaults(command = clean)
 
     # `build` command
     build_parser = subparsers.add_parser("build", help = "Development: Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
@@ -261,10 +280,6 @@ if __name__ == "__main__":
         help = "Toolchain to build with. If unspecified, uses your system default.",
         choices = toolchains.keys()
     )
-
-    # `exe` command
-    exe_parser = subparsers.add_parser("exe", help = "Release: Build an executable with Pyinstaller. You'll need to run `build` first.")
-    exe_parser.set_defaults(command = exe)
 
     # Go
     args = parser.parse_args()
