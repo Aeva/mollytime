@@ -5,6 +5,9 @@ if host_machine.system() == 'windows'
   subdir('windows')
 elif host_machine.system() == 'darwin'
   subdir('cocoa')
+elif host_machine.system() == 'emscripten'
+  cdata.set('SDL_VIDEO_DRIVER_EMSCRIPTEN', 1)
+  subdir('emscripten')
 else
   cdata.set('SDL_VIDEO_DRIVER_WAYLAND', 1)
   subdir('wayland')

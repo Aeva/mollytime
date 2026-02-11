@@ -8,6 +8,9 @@ elif host_machine.system() == 'darwin'
   cdata.set('SDL_JOYSTICK_MFI', 1)
   subdir('apple')
   subdir('darwin')
+elif host_machine.system() == 'emscripten'
+  cdata.set('SDL_JOYSTICK_EMSCRIPTEN', 1)
+  subdir('emscripten')
 else
   cdata.set('SDL_JOYSTICK_LINUX', 1)
   subdir('linux')

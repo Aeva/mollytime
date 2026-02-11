@@ -395,6 +395,10 @@ elif host_machine.system() == 'windows'
   sdl_deps += cc.find_library('setupapi')
   sdl_deps += cc.find_library('winmm')
   sdl_deps += cc.find_library('opengl32')
+elif host_machine.system() == 'emscripten'
+  if get_option('default_library') == 'shared'
+    error('Emscripten does not support building SDL3 as a shared library.')
+  endif
 elif host_machine.subsystem() == 'macos'
   cdata.set('SDL_PLATFORM_APPLE', 1)
   cdata.set('SDL_THREAD_PTHREAD', 1)

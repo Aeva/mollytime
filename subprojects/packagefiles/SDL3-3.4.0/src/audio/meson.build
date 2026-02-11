@@ -5,6 +5,9 @@ if host_machine.system() == 'windows'
   #  subdir('wasapi')
 elif host_machine.system() == 'darwin'
   subdir('coreaudio')
+elif host_machine.system() == 'emscripten'
+  cdata.set('SDL_AUDIO_DRIVER_EMSCRIPTEN', 1)
+  subdir('emscripten')
 else
   cdata.set('SDL_AUDIO_DRIVER_PIPEWIRE', 1)
   subdir('pipewire')
