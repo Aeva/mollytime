@@ -4,6 +4,8 @@ if host_machine.system() == 'windows'
 elif host_machine.system() == 'darwin'
   cdata.set('SDL_HAPTIC_IOKIT', 1)
   subdir('darwin')
+elif host_machine.system() == 'emscripten'
+  # noop
 else
   cdata.set('SDL_HAPTIC_LINUX', 1)
   subdir('linux')
