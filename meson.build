@@ -32,6 +32,29 @@ elif compiler.get_argument_syntax() == 'msvc'
     )
 endif
 
+# HACK: I want to disable *all* warnings for *external dependencies only*, but Meson doesn't permit this.
+# - `warning_level` provides no `none` option: https://github.com/mesonbuild/meson/issues/8636
+# - We can't directly pass warning flags to `dependency()`: https://github.com/mesonbuild/meson/issues/9486
+#
+# As a workaround, we'll use warning level 0 (default) for the problem dependencies -- currently SDL3 -- and
+# globally disable *only* the additional warnings that get through that. Luckily, SDL3 is C-only, and we're
+# C++-only, so the language specifier will ensure we still get these warnings in our code.
+if compiler.get_argument_syntax() == 'gcc'
+    add_global_arguments(
+        '-Wno-cast-function-type-mismatch',
+        '-Wno-deprecated-declarations',
+        language : 'c'
+    )
+elif compiler.get_argument_syntax() == 'msvc'
+    add_global_arguments(
+        '/wd4127', # Constant conditonal expression
+        '/wd4244', # Implicit signed <-> unsigned conversion
+        '/wd4267', # Implicit narrowing conversion
+        '/wd4996', # "Insecure" C stdlib function
+        language : 'c'
+    )
+endif
+
 # HACK: Apparently Meson doesn't actually offer a way for us to get a platform's
 # executable suffix...? It absolutely knows about this, and has this internally. See:
 # - https://github.com/mesonbuild/meson/blob/8bba5d0a80ece5c14f5e56468dcf50752fe5d46d/mesonbuild/build.py#L2152
@@ -135,8 +158,8 @@ boost = dependency('boost', required : true, default_options : 'modules=atomic,s
 fmt = dependency('fmt', required : true, default_options : 'header-only=true')
 glm = dependency('glm', required : true)
 pybind11 = dependency('pybind11', required : true)
-sdl3 = dependency('sdl3', required : true)
-sdl3_ttf = dependency('sdl3_ttf', required : true)
+sdl3 = dependency('sdl3', required : true, default_options : { 'warning_level' : '0' })
+sdl3_ttf = dependency('sdl3_ttf', required : true, default_options : { 'warning_level' : '0' })
 dependencies = [ boost, fmt, glm, pybind11, sdl3, sdl3_ttf ]
 
 if get_option('tracy').enabled()
