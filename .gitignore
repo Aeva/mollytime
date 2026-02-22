@@ -5,6 +5,7 @@ __pycache__/
 build/
 dist/
 subprojects/*
+third_party/emsdk
 
 *.so
 *.pdb
