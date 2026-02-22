@@ -3,7 +3,8 @@
 if host_machine.system() == 'windows'
   subdir('windows')
 elif host_machine.system() == 'emscripten'
-  subdir('generic')
+  cdata.set('SDL_THREAD_PTHREAD', 1)
+  subdir('pthread')
 else
   subdir('pthread')
 endif
