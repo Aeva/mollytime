@@ -5,7 +5,7 @@ It's not pretty at the moment.
 Mollytime can target WASM via Emscripten, via [Pyodide](https://pyodide.org/en/stable/). This isn't currently real support; all it does is build a Pyodide-compatible wheel, which could then theoretically be used by Pyodide in an HTML/JS frontend.
 
 Prerequisites:
-- Pyodide only officially supports Linux environments. You'll need everything you'd normally need to build the project in Linux.
+- Pyodide only officially supports Linux environments. You'll need everything you'd normally need to build the project in Linux, as documented in [BUILD-linux.md](BUILD-linux.md).
 - Make sure you have a `venv` set up and activated.
 - On some Debian-based distros, such as Debian, you'll need to edit your Python installation's `pyconfig.h` to accept WASM as a buildable platform.
   1. Copy `build_cross/pyconfig-32.h` into `/usr/include/<your python version>/`.
