@@ -46,6 +46,11 @@ Everything but Boost has an externally-maintained port available on Meson's
 automatically download and execute as a build step, if the dependency can't first
 be fulfilled by your system packages.
 
+SDL3 uses a local copy of the [Meson team's wrap overlay](https://github.com/mesonbuild/wrapdb),
+extended to support Emscripten. It's on You, the Maintainer of the Build, to ensure that
+any important updates they make to the overlay are propagated into the local copy. (It'd be
+nicer if we could fork individual patch repos instead, but so far, so Meson.)
+
 `fmt`'s externally-maintained port doesn't properly expose its header-only variant as a
 Meson dependency name. A local `diff_files` patch applied to its `.wrap` addresses this.
 
