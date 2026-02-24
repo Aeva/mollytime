@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if DAZ_AND_FTZ_SSE
+#include <xmmintrin.h>
+#endif
+
 #include <algorithm>
 #include <cassert>
 
@@ -21,6 +25,7 @@
 #include "errors.h"
 #include "patch.h"
 #include "audio_backend.h"
+
 
 extern SymbolInfo SymbolInfoMap;
 
@@ -1712,6 +1717,11 @@ void Scratch::Migrate(Scratch& Old)
 void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
 {
     TRACEABLE_SCOPE;
+#if DAZ_AND_FTZ_SSE
+    const unsigned int CurrentCSR = _mm_getcsr();
+    _mm_setcsr(CurrentCSR | 0x8040); // set DAZ and FTZ
+#endif
+
     assert(MidiLanes.size() == Polyphony);
     {
         TRACEABLE_NAMED_SCOPE("MIDI PHASE");
@@ -1928,4 +1938,8 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
         ScopeProbe->Set(RegisterFile.at(Outputs[0]));
         OutputProbe->Set(RegisterFile.at(Outputs[0]));
     }
+
+#if DAZ_AND_FTZ_SSE
+    _mm_setcsr(CurrentCSR); // restore prior value
+#endif
 }
