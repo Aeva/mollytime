@@ -20,7 +20,8 @@ namespace Events
 #endif
         std::vector<Event> Events;
 
-        static bool SentMidiReset = false;
+        static bool SentPatchReset = false;
+        static bool SentMidiRelease = false;
 
         SDL_Event Next;
         while (SDL_PollEvent(&Next))
@@ -42,12 +43,20 @@ namespace Events
                     Events.push_back(Event);
                     break;
                 case SDL_EVENT_KEY_DOWN:
-                    if (Next.key.key == SDLK_C)
+                    if (Next.key.key == SDLK_BACKSPACE)
                     {
-                        if (!SentMidiReset)
+                        if (!SentPatchReset)
                         {
-                            Midi::Reset();
-                            SentMidiReset = true;
+                            Midi::PatchReset();
+                            SentPatchReset = true;
+                        }
+                    }
+                    else if (Next.key.key == SDLK_R)
+                    {
+                        if (!SentMidiRelease)
+                        {
+                            Midi::ReleaseHeldNotes();
+                            SentMidiRelease = true;
                         }
                     }
                     else
@@ -58,11 +67,18 @@ namespace Events
                     }
                     break;
                 case SDL_EVENT_KEY_UP:
-                    if (Next.key.key == SDLK_C)
+                    if (Next.key.key == SDLK_BACKSPACE)
                     {
-                        if (SentMidiReset)
+                        if (SentPatchReset)
                         {
-                            SentMidiReset = false;
+                            SentPatchReset = false;
+                        }
+                    }
+                    else if (Next.key.key == SDLK_R)
+                    {
+                        if (SentMidiRelease)
+                        {
+                            SentMidiRelease = false;
                         }
                     }
                     else

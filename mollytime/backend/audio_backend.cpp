@@ -52,10 +52,18 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
             if (Program && BufferState->PendingProgram->Identity == Program->Identity)
             {
                 BufferState->PendingProgram->Migrate(*Program);
+                const uint16_t OldListenMask = Program->ChannelMask;
+                const uint16_t NewListenMask = BufferState->PendingProgram->ChannelMask;
+                const uint16_t ReleaseMask = OldListenMask & (~NewListenMask);
+                if (ReleaseMask)
+                {
+                    // Only release notes for previously listened channels we are now ignoring.
+                    Midi::ReleaseHeldNotes(ReleaseMask);
+                }
             }
             else
             {
-                Midi::Reset();
+                Midi::PatchReset();
             }
             Program = std::move(BufferState->PendingProgram);
             BufferState->PendingProgram = nullptr;

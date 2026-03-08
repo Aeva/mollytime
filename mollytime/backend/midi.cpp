@@ -29,7 +29,8 @@
 
 
 static std::unique_ptr<MidiDriver> Driver;
-static std::atomic_bool SendMidiReset = false;
+static std::atomic_bool SendPatchReset = false;
+static std::atomic<uint16_t> SendReleaseHeldNotes = 0;
 
 
 void MidiHandler::NoteOn(uint8_t Note, uint8_t Velocity, uint8_t Channel)
@@ -120,7 +121,7 @@ void MidiHandler::PitchBend(double Value, uint8_t Channel)
 }
 
 
-void MidiHandler::Reset()
+void MidiHandler::PatchReset()
 {
     TRACEABLE_SCOPE;
 
@@ -129,7 +130,19 @@ void MidiHandler::Reset()
 #endif
 
     PendingMidiMessages.clear();
-    PendingMidiMessages.push_back({ MidiMessageType::Reset, 0, 0.0, 0.0 });
+    PendingMidiMessages.push_back({ MidiMessageType::PatchReset, 0, 0.0, 0.0 });
+}
+
+
+void MidiHandler::ReleaseHeldNotes(uint16_t ChannelMask)
+{
+    TRACEABLE_SCOPE;
+
+    #if MIDI_NEEDS_LOCKS
+    TRACEABLE_LOCK_GUARD(PendingMidiCrit);
+    #endif
+
+    PendingMidiMessages.push_back({ MidiMessageType::ReleaseHeldNotes, ChannelMask, 0.0, 0.0 });
 }
 
 
@@ -166,9 +179,15 @@ bool MidiHandler::PopMidiMessage(MidiMessage& Message)
 }
 
 
-void Midi::Reset()
+void Midi::PatchReset()
 {
-    SendMidiReset = true;
+    SendPatchReset = true;
+}
+
+
+void Midi::ReleaseHeldNotes(uint16_t ChannelMask)
+{
+    SendReleaseHeldNotes.fetch_or(ChannelMask);
 }
 
 
@@ -177,9 +196,13 @@ void Midi::ProcessEvents(MidiHandler* Handler)
     if (Driver)
     {
         Driver->ProcessEvents(Handler);
-        if (SendMidiReset.exchange(false))
+        if (SendPatchReset.exchange(false))
         {
-            Handler->Reset();
+            Handler->PatchReset();
+        }
+        if (const uint16_t ReleaseMask = SendReleaseHeldNotes.exchange(0))
+        {
+            Handler->ReleaseHeldNotes(ReleaseMask);
         }
     }
 }
