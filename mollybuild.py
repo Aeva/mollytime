@@ -122,7 +122,7 @@ def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
         for file in subproject_dir.iterdir():
             if file.is_file() and file.suffix == ".dll":
                 output_path_expected = build_dir / file.name
-                output_path_actual = file.copy(output_path_expected)
+                output_path_actual = shutil.copy(file, output_path_expected)
                 print(f"Copied {file} to {output_path_actual}.")
 
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
