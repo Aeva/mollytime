@@ -104,6 +104,7 @@ struct Scratch final : public MidiHandler
 
     void Migrate(Scratch& Old);
 
+    void PumpMidi();
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
 
 private:

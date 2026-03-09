@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if DAZ_AND_FTZ_SSE
+#include <xmmintrin.h>
+#endif
+
 #include <algorithm>
 #include <cassert>
 
@@ -21,6 +25,7 @@
 #include "errors.h"
 #include "patch.h"
 #include "audio_backend.h"
+
 
 extern SymbolInfo SymbolInfoMap;
 
@@ -1709,182 +1714,223 @@ void Scratch::Migrate(Scratch& Old)
 }
 
 
-void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
+void Scratch::PumpMidi()
 {
-    TRACEABLE_SCOPE;
-    assert(MidiLanes.size() == Polyphony);
+    MidiMessage Message;
+    if (!PopMidiMessage(Message))
     {
-        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
+        return;
+    }
 
-        MidiMessage Message;
-        if (PopMidiMessage(Message) && (ChannelMask & (1 << Message.Channel)))
+    if (Message.Type == MidiMessageType::PatchReset)
+    {
+        for (MidiNoteState& State : MidiLanes)
         {
-            int32_t AssignedLane = -1;
-            if (Message.Type == MidiMessageType::Reset)
+            State = MidiNoteState();
+        }
+        for (InstructionThunkSharedPtr& Thunk : Program)
+        {
+            assert(Thunk != nullptr);
+            Thunk->Reset();
+        }
+    }
+    else if (Message.Type == MidiMessageType::ReleaseHeldNotes)
+    {
+        for (MidiNoteState& State : MidiLanes)
+        {
+            if (Message.Channel & (1 << uint8_t(State.Channel)))
             {
+                // Leave the velocity alone so the adsr can ring out properly.
+                State.Gate = 0.0;
+                State.Pressure = 0.0;
+            }
+        }
+    }
+    else if (ChannelMask & (1 << Message.Channel))
+    {
+        int32_t AssignedLane = -1;
+
+        if (Message.Type == MidiMessageType::ControlChange)
+        {
+            uint8_t Control = uint8_t(Message.Param1);
+            ChannelControls[Message.Channel][Control] = Message.Param2;
+            if (Control == 123 && Message.Param2 == 0.0)
+            {
+                // All notes off.  See: http://midi.teragonaudio.com/tech/midispec/ntnoff.htm
                 for (MidiNoteState& State : MidiLanes)
                 {
                     double OldNote = State.Note;
                     State = MidiNoteState();
                     State.Note = OldNote;
-                }
-            }
-            else if (Message.Type == MidiMessageType::ControlChange)
-            {
-                uint8_t Control = uint8_t(Message.Param1);
-                ChannelControls[Message.Channel][Control] = Message.Param2;
-                if (Control == 123 && Message.Param2 == 0.0)
-                {
-                    // All notes off.  See: http://midi.teragonaudio.com/tech/midispec/ntnoff.htm
-                    for (MidiNoteState& State : MidiLanes)
-                    {
-                        double OldNote = State.Note;
-                        State = MidiNoteState();
-                        State.Note = OldNote;
-                        State.Gate = 0.0;
-                        State.Pressure = 0.0;
-                    }
-                }
-            }
-            else if (Message.Type == MidiMessageType::ProgramChange)
-            {
-                ChannelPrograms[Message.Channel] = uint8_t(Message.Param1);
-                for (MidiNoteState& State : MidiLanes)
-                {
-                    if (State.Channel == Message.Channel)
-                    {
-                        State.Gate = 0.0;
-                        State.Velocity = 0.0;
-                        State.Pressure = 0.0;
-                    }
-                }
-            }
-            else if (Message.Type == MidiMessageType::ChannelPressure)
-            {
-                for (MidiNoteState& State : MidiLanes)
-                {
-                    if (State.Channel == Message.Channel)
-                    {
-                        State.Pressure = Message.Param1;
-                    }
-                }
-            }
-            else if (Message.Type == MidiMessageType::PitchBend)
-            {
-                ChannelPitchBend[Message.Channel] = Message.Param1;
-            }
-            else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
-            {
-                bool LaneReset = false;
-                const double Note = Message.Param1;
-                const int Channel = int(Message.Channel);
-                if (MostRecentLane == -1)
-                {
-                    AssignedLane = 0;
-                    LaneReset = true;
-                }
-                else
-                {
-                    // If we have a lane that matches the note and mask, use that.
-                    for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
-                    {
-                        const double LaneNote = MidiLanes.at(Lane).Note;
-                        const int LaneChannel = int(MidiLanes.at(Lane).Channel);
-                        if (Note == LaneNote && Channel == LaneChannel)
-                        {
-                            LaneReset = MidiLanes.at(Lane).Gate == 0.0;
-                            AssignedLane = Lane;
-                            break;
-                        }
-                    }
-                    if (AssignedLane == -1)
-                    {
-                        // Otherwise select the oldest lane, prioritizing inactive lanes over active lanes.
-                        int32_t OldestLane = -1;
-                        int64_t OldestAge = -1;
-                        int32_t OldestInactiveLane = -1;
-                        int64_t OldestInactiveAge = -1;
-                        for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
-                        {
-                            double Gate = MidiLanes.at(Lane).Gate;
-                            int64_t Age = MidiLanes.at(Lane).Age;
-                            if (Gate == 0.0 && Age > OldestInactiveAge)
-                            {
-                                OldestInactiveLane = Lane;
-                                OldestInactiveAge = Age;
-                            }
-                            if (Age > OldestAge)
-                            {
-                                OldestLane = Lane;
-                                OldestAge = Age;
-                            }
-                        }
-                        if (OldestInactiveLane > 0)
-                        {
-                            LaneReset = true;
-                            AssignedLane = OldestInactiveLane;
-                        }
-                        else if (OldestLane > 0)
-                        {
-                            LaneReset = true;
-                            AssignedLane = OldestLane;
-                        }
-                    }
-                    if (AssignedLane == -1)
-                    {
-                        // In the event that we somehow selected nothing, just pick "the next one".
-                        LaneReset = true;
-                        AssignedLane = (MostRecentLane + 1) % Polyphony;
-                    }
-                }
-                if (LaneReset)
-                {
-                    MostRecentLane = AssignedLane;
-                    for (MidiNoteState& State : MidiLanes)
-                    {
-                        ++State.Age;
-                    }
-
-                    MidiNoteState& State = MidiLanes.at(AssignedLane);
-                    State.Note = Note;
                     State.Gate = 0.0;
-                    State.Velocity = 0.0;
                     State.Pressure = 0.0;
-                    State.Channel = double(Channel);
-                    State.Age = 0;
-
-                    for (uint32_t ThunkIndex : Retriggerables)
-                    {
-                        InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
-                        assert(Thunk != nullptr);
-                        assert(Thunk->Retriggerable);
-                        Thunk->Retrigger(AssignedLane);
-                    }
-                }
-                if (Message.Type == MidiMessageType::Note)
-                {
-                    MidiNoteState& State = MidiLanes.at(AssignedLane);
-                    const double Velocity = Message.Param2;
-                    if (Velocity > 0.0)
-                    {
-                        State.Gate = 1.0;
-                        State.Velocity = Velocity;
-                    }
-                    else
-                    {
-                        // Leave the velocity alone so the adsr can ring out instead.
-                        State.Gate = 0.0;
-                        State.Pressure = 0.0;
-                    }
-                }
-                else if (Message.Type == MidiMessageType::PolyPress)
-                {
-                    MidiNoteState& State = MidiLanes.at(AssignedLane);
-                    const double Pressure = Message.Param2;
-                    State.Pressure = Pressure;
                 }
             }
         }
+        else if (Message.Type == MidiMessageType::ProgramChange)
+        {
+            ChannelPrograms[Message.Channel] = uint8_t(Message.Param1);
+            for (MidiNoteState& State : MidiLanes)
+            {
+                if (State.Channel == Message.Channel)
+                {
+                    State.Gate = 0.0;
+                    State.Velocity = 0.0;
+                    State.Pressure = 0.0;
+                }
+            }
+        }
+        else if (Message.Type == MidiMessageType::ChannelPressure)
+        {
+            for (MidiNoteState& State : MidiLanes)
+            {
+                if (State.Channel == Message.Channel)
+                {
+                    State.Pressure = Message.Param1;
+                }
+            }
+        }
+        else if (Message.Type == MidiMessageType::PitchBend)
+        {
+            ChannelPitchBend[Message.Channel] = Message.Param1;
+        }
+        else if (Message.Type == MidiMessageType::Note && Message.Param2 == 0.0) // Note off
+        {
+            const double Note = Message.Param1;
+            const double Channel = Message.Channel;
+
+            for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
+            {
+                MidiNoteState& State = MidiLanes.at(Lane);
+                if (State.Note == Note && State.Channel == Channel)
+                {
+                    // Leave the velocity alone so the adsr can ring out properly.
+                    State.Gate = 0.0;
+                    State.Pressure = 0.0;
+                }
+            }
+        }
+        else if (Message.Type == MidiMessageType::Note || Message.Type == MidiMessageType::PolyPress)
+        {
+            bool LaneReset = false;
+            const double Note = Message.Param1;
+            const int Channel = int(Message.Channel);
+
+            if (MostRecentLane == -1)
+            {
+                AssignedLane = 0;
+                LaneReset = true;
+            }
+            else
+            {
+                // If we have a lane that matches the note and mask, use that.
+                for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
+                {
+                    const double LaneNote = MidiLanes.at(Lane).Note;
+                    const int LaneChannel = int(MidiLanes.at(Lane).Channel);
+                    if (Note == LaneNote && Channel == LaneChannel)
+                    {
+                        LaneReset = MidiLanes.at(Lane).Gate == 0.0;
+                        AssignedLane = Lane;
+                        break;
+                    }
+                }
+                if (AssignedLane == -1)
+                {
+                    // Otherwise select the oldest lane, prioritizing inactive lanes over active lanes.
+                    int32_t OldestLane = -1;
+                    int64_t OldestAge = -1;
+                    int32_t OldestInactiveLane = -1;
+                    int64_t OldestInactiveAge = -1;
+                    for (uint32_t Lane = 0; Lane < Polyphony; ++Lane)
+                    {
+                        double Gate = MidiLanes.at(Lane).Gate;
+                        int64_t Age = MidiLanes.at(Lane).Age;
+                        if (Gate == 0.0 && Age > OldestInactiveAge)
+                        {
+                            OldestInactiveLane = Lane;
+                            OldestInactiveAge = Age;
+                        }
+                        if (Age > OldestAge)
+                        {
+                            OldestLane = Lane;
+                            OldestAge = Age;
+                        }
+                    }
+                    if (OldestInactiveLane > 0)
+                    {
+                        LaneReset = true;
+                        AssignedLane = OldestInactiveLane;
+                    }
+                    else if (OldestLane > 0)
+                    {
+                        LaneReset = true;
+                        AssignedLane = OldestLane;
+                    }
+                }
+                if (AssignedLane == -1)
+                {
+                    // In the event that we somehow selected nothing, just pick "the next one".
+                    LaneReset = true;
+                    AssignedLane = (MostRecentLane + 1) % Polyphony;
+                }
+            }
+            if (LaneReset)
+            {
+                MostRecentLane = AssignedLane;
+                for (MidiNoteState& State : MidiLanes)
+                {
+                    ++State.Age;
+                }
+
+                MidiNoteState& State = MidiLanes.at(AssignedLane);
+                State.Note = Note;
+                State.Gate = 0.0;
+                State.Velocity = 0.0;
+                State.Pressure = 0.0;
+                State.Channel = double(Channel);
+                State.Age = 0;
+
+                for (uint32_t ThunkIndex : Retriggerables)
+                {
+                    InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
+                    assert(Thunk != nullptr);
+                    assert(Thunk->Retriggerable);
+                    Thunk->Retrigger(AssignedLane);
+                }
+            }
+            if (Message.Type == MidiMessageType::Note)
+            {
+                MidiNoteState& State = MidiLanes.at(AssignedLane);
+                const double Velocity = Message.Param2;
+                assert(Velocity > 0.0);
+                {
+                    State.Gate = 1.0;
+                    State.Velocity = Velocity;
+                }
+            }
+            else if (Message.Type == MidiMessageType::PolyPress)
+            {
+                MidiNoteState& State = MidiLanes.at(AssignedLane);
+                const double Pressure = Message.Param2;
+                State.Pressure = Pressure;
+            }
+        }
+    }
+}
+
+
+void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
+{
+    TRACEABLE_SCOPE;
+#if DAZ_AND_FTZ_SSE
+    const unsigned int CurrentCSR = _mm_getcsr();
+    _mm_setcsr(CurrentCSR | 0x8040); // set DAZ and FTZ
+#endif
+    {
+        TRACEABLE_NAMED_SCOPE("MIDI PHASE");
+        assert(MidiLanes.size() == Polyphony);
+        PumpMidi();
     }
     {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
@@ -1928,4 +1974,8 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
         ScopeProbe->Set(RegisterFile.at(Outputs[0]));
         OutputProbe->Set(RegisterFile.at(Outputs[0]));
     }
+
+#if DAZ_AND_FTZ_SSE
+    _mm_setcsr(CurrentCSR); // restore prior value
+#endif
 }

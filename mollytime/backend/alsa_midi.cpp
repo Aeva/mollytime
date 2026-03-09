@@ -51,6 +51,7 @@ AlsaMidiDriver::AlsaMidiDriver()
             snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_PGMCHANGE);
             snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_CHANPRESS);
             snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_PITCHBEND);
+            snd_seq_set_client_event_filter(SeqHandle, SND_SEQ_EVENT_PORT_UNSUBSCRIBED);
         }
 
         if (NonSimpleInputPort)
@@ -304,6 +305,15 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
                 int16_t Value = Event->data.control.value;
                 double Divisor = (Value <  0) ? 8192.0 : 8191.0;
                 Handler->PitchBend(double(Value) / Divisor, Event->data.control.channel);
+            }
+            else if (Event->type == SND_SEQ_EVENT_PORT_UNSUBSCRIBED)
+            {
+                // In theory it is possible and valid to have a setup that is dynamically subscribing and unsubscribing
+                // ports while a song is playing, that such a system is somehow immaculately well behaved, and thus releasing
+                // all held notes in response to each disconnect.  I'll believe it when I see it, and in the meantime this
+                // event is the simplest way to detect when an aplaymidi process was terminated early (which is absolutely not
+                // "immaculately well behaved").
+                Handler->ReleaseHeldNotes();
             }
 
             // NOTE: Don't forget to add new events to the event filter list!

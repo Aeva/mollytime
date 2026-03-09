@@ -40,14 +40,15 @@ enum class MidiMessageType : uint8_t
     ProgramChange,
     ChannelPressure,
     PitchBend,
-    Reset,
+    PatchReset,
+    ReleaseHeldNotes,
 };
 
 
 struct MidiMessage
 {
     MidiMessageType Type;
-    uint8_t Channel;
+    uint16_t Channel; // May be a bitmask for some commands.
     double Param1;
     double Param2;
 };
@@ -79,9 +80,13 @@ struct MidiHandler
     void PitchBend(double Value, uint8_t Channel);
 
     /* Drop all pending midi events and generate some a fake one to tell the running audio
-     * thread to reset all polyphony voices.
+     * thread to reset all note states and all thunks to their initial states.
      */
-    void Reset();
+    void PatchReset();
+
+    /* Generate fake events to tell the running audio thread to release all held notes.
+     */
+    void ReleaseHeldNotes(uint16_t ChannelMask = 0xFFFF);
 
     void EnqueueMidiMessage(MidiMessage& Message);
 
@@ -113,7 +118,8 @@ struct MidiDriver
 
 namespace Midi
 {
-    void Reset();
+    void PatchReset();
+    void ReleaseHeldNotes(uint16_t ChannelMask = 0xFFFF);
     void ProcessEvents(MidiHandler* Handler);
     void Init();
     void Shutdown();
