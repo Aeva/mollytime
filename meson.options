@@ -1,4 +1,9 @@
-option('audio_backend', type : 'combo', choices : ['none', 'sdl', 'jack', 'wasapi'], value : 'sdl')
-option('midi_backend', type : 'combo', choices : ['none', 'alsa', 'mmeapi'], value : 'none')
+option('audio_driver_sdl', type : 'feature', value : 'enabled')
+option('audio_driver_jack', type : 'feature', value : 'auto')
+option('audio_driver_wasapi', type : 'feature', value : 'auto')
+
+option('midi_driver_alsa', type : 'feature', value : 'auto')
+option('midi_driver_mmeapi', type : 'feature', value : 'auto')
+
 option('boost_stacktrace', type : 'feature', value : 'auto')
 option('tracy', type : 'feature', value: 'disabled')

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef AUDIO_SDL
-
 #include "sdl_stream.h"
 
 #include <fmt/format.h>
@@ -158,5 +156,3 @@ void SDLStream::ProgramChange(ScratchUniquePtr&& NewProgram)
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
     BufferState.PendingProgram = std::move(NewProgram);
 }
-
-#endif

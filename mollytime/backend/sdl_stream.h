@@ -14,9 +14,7 @@
 
 #pragma once
 
-#ifdef AUDIO_SDL
-
-#include "audio_backend.h"
+#include "audio_driver.h"
 
 struct SDL_AudioStream;
 
@@ -54,5 +52,3 @@ public:
     virtual float GetTemporalPressure() override;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
 };
-
-#endif

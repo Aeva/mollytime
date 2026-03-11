@@ -13,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef MIDI_ALSA
-
 #include "alsa_midi.h"
 #include <fmt/format.h>
 #include <alsa/asoundlib.h>
@@ -373,5 +371,3 @@ void AlsaMidiDriver::ProcessEvents(MidiHandler* Handler)
         }
     }
 }
-
-#endif

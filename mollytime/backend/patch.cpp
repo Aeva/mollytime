@@ -24,7 +24,7 @@
 
 #include "errors.h"
 #include "patch.h"
-#include "audio_backend.h"
+#include "audio_driver.h"
 
 
 extern SymbolInfo SymbolInfoMap;
