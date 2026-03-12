@@ -55,16 +55,6 @@ elif compiler.get_argument_syntax() == 'msvc'
     )
 endif
 
-# HACK: Apparently Meson doesn't actually offer a way for us to get a platform's
-# executable suffix...? It absolutely knows about this, and has this internally. See:
-# - https://github.com/mesonbuild/meson/blob/8bba5d0a80ece5c14f5e56468dcf50752fe5d46d/mesonbuild/build.py#L2152
-# - https://github.com/mesonbuild/meson/blob/master/mesonbuild/envconfig.py#L382
-if build_machine.system() == 'windows'
-    executable_suffix = '.exe'
-else
-    executable_suffix = ''
-endif
-
 # Force libc++ when compiling on Linux
 if compiler.get_id() == 'clang'
     # NOTE: according to https://mesonbuild.com/Reference-tables.html#compiler-ids,
