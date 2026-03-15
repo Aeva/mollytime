@@ -150,14 +150,12 @@ tracy = dependency('tracy', required : get_option('tracy'))
 # ---
 # Targets
 
-driver_compile_flags = []
-driver_libraries = []
+driver_dependencies = []
 
 if get_option('audio_driver_sdl').allowed()
-    driver_compile_flags += '-DAUDIO_SDL=1'
-    driver_libraries += static_library(
-        'audio_driver_sdl',
+    driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, sdl3 ],
+        compile_args : [ '-DAUDIO_SDL=1' ],
         sources : files('mollytime' / 'backend' / 'sdl_stream.cpp')
     )
 endif
@@ -165,10 +163,9 @@ endif
 jack = dependency('jack', required : false)
 use_jack = get_option('audio_driver_jack').enable_auto_if(jack.found())
 if use_jack.enabled()
-    driver_compile_flags += '-DENABLE_JACK=1'
-    driver_libraries += static_library(
-        'audio_driver_jack',
+    driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, jack ],
+        compile_args : [ '-DENABLE_JACK=1' ],
         sources : files('mollytime' / 'backend' / 'jack_stream.cpp')
     )
 endif
@@ -176,21 +173,19 @@ endif
 use_wasapi = get_option('audio_driver_wasapi').enable_auto_if(host_machine.system() == 'windows')
 if use_wasapi.enabled()
     windows_runtime_object = compiler.find_library('RuntimeObject', required : true)
-    driver_compile_flags += '-DAUDIO_WASAPI=1'
-    driver_libraries += static_library(
-        'audio_driver_wasapi',
+    driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, windows_runtime_object ],
-        sources : files('mollytime' / 'backend' / 'wasapi_stream.cpp')
+        compile_args : [ '-DAUDIO_WASAPI=1' ],
+        sources : files('mollytime' / 'backend' / 'wasapi_stream.cpp'),
     )
 endif
 
 alsa = compiler.find_library('asound', required : false)
 use_alsa = get_option('midi_driver_alsa').enable_auto_if(alsa.found())
 if use_alsa.enabled()
-    driver_compile_flags += '-DMIDI_ALSA=1'
-    driver_libraries += static_library(
-        'midi_driver_alsa',
+    driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, alsa ],
+        compile_args : [ '-DMIDI_ALSA=1' ],
         sources : files('mollytime' / 'backend' / 'alsa_midi.cpp')
     )
 endif
@@ -198,10 +193,9 @@ endif
 winmm = compiler.find_library('Winmm', required : false)
 use_winmm = get_option('midi_driver_mmeapi').enable_auto_if(winmm.found())
 if use_winmm.enabled()
-    driver_compile_flags += '-DMIDI_MMEAPI=1'
-    driver_libraries += static_library(
-        'midi_driver_mmeapi',
+    driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, winmm ],
+        compile_args : [ '-DMIDI_MMEAPI=1' ],
         sources : files('mollytime' / 'backend' / 'mmeapi_midi.cpp')
     )
 endif
@@ -210,9 +204,7 @@ endif
 cpp_module = python_install.extension_module(
     'backend',
     backend_source_files,
-    dependencies : [ libm, libdl, boost, fmt, glm, pybind11, sdl3, sdl3_ttf, tracy ],
-    cpp_args : driver_compile_flags,
-    link_with : driver_libraries,
+    dependencies : [ libm, libdl, boost, fmt, glm, pybind11, sdl3, sdl3_ttf, tracy ] + driver_dependencies,
     install : true,
     subdir : 'mollytime'
 )
