@@ -15,9 +15,7 @@
 
 #pragma once
 
-#ifdef AUDIO_WASAPI
-
-#include "audio_backend.h"
+#include "audio_driver.h"
 
 #include <thread>
 #include <vector>
@@ -81,5 +79,3 @@ public:
     virtual float GetTemporalPressure() override;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
 };
-
-#endif

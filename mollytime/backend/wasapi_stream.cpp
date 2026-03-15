@@ -13,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef AUDIO_WASAPI
-
 #include "wasapi_stream.h"
 
 #include <cassert>
@@ -194,5 +192,3 @@ void WasapiStream::ProgramChange(ScratchUniquePtr&& NewProgram)
     TRACEABLE_LOCK_GUARD(BufferState.Mutex);
     BufferState.PendingProgram = std::move(NewProgram);
 }
-
-#endif

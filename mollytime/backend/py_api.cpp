@@ -33,7 +33,7 @@
 
 #include "colors.h"
 #include "patch.h"
-#include "audio_backend.h"
+#include "audio_driver.h"
 #include "alsa_midi.h"
 #include "perf.h"
 #include "sdl.h"

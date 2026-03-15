@@ -17,7 +17,9 @@
 
 #if defined(MIDI_ALSA)
 #include "alsa_midi.h"
-#elif defined(MIDI_MMEAPI)
+#endif
+
+#if defined(MIDI_MMEAPI)
 #include "mmeapi_midi.h"
 #endif
 

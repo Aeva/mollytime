@@ -32,14 +32,27 @@ elif compiler.get_argument_syntax() == 'msvc'
     )
 endif
 
-# HACK: Apparently Meson doesn't actually offer a way for us to get a platform's
-# executable suffix...? It absolutely knows about this, and has this internally. See:
-# - https://github.com/mesonbuild/meson/blob/8bba5d0a80ece5c14f5e56468dcf50752fe5d46d/mesonbuild/build.py#L2152
-# - https://github.com/mesonbuild/meson/blob/master/mesonbuild/envconfig.py#L382
-if build_machine.system() == 'windows'
-    executable_suffix = '.exe'
-else
-    executable_suffix = ''
+# HACK: I want to disable *all* warnings for *external dependencies only*, but Meson doesn't permit this.
+# - `warning_level` provides no `none` option: https://github.com/mesonbuild/meson/issues/8636
+# - We can't directly pass warning flags to `dependency()`: https://github.com/mesonbuild/meson/issues/9486
+#
+# As a workaround, we'll use warning level 0 (default) for the problem dependencies -- currently SDL3 -- and
+# globally disable *only* the additional warnings that get through that. Luckily, SDL3 is C-only, and we're
+# C++-only, so the language specifier will ensure we still get these warnings in our code.
+if compiler.get_argument_syntax() == 'gcc'
+    add_global_arguments(
+        '-Wno-cast-function-type-mismatch',
+        '-Wno-deprecated-declarations',
+        language : 'c'
+    )
+elif compiler.get_argument_syntax() == 'msvc'
+    add_global_arguments(
+        '/wd4127', # Constant conditonal expression
+        '/wd4244', # Implicit signed <-> unsigned conversion
+        '/wd4267', # Implicit narrowing conversion
+        '/wd4996', # "Insecure" C stdlib function
+        language : 'c'
+    )
 endif
 
 # Force libc++ when compiling on Linux
@@ -58,13 +71,10 @@ endif
 # Source files
 
 backend_source_files = files(
-    'mollytime' / 'backend' / 'alsa_midi.cpp',
-    'mollytime' / 'backend' / 'audio_backend.cpp',
+    'mollytime' / 'backend' / 'audio_driver.cpp',
     'mollytime' / 'backend' / 'colors.cpp',
     'mollytime' / 'backend' / 'errors.cpp',
-    'mollytime' / 'backend' / 'jack_stream.cpp',
     'mollytime' / 'backend' / 'midi.cpp',
-    'mollytime' / 'backend' / 'mmeapi_midi.cpp',
     'mollytime' / 'backend' / 'moon.cpp',
     'mollytime' / 'backend' / 'patch.cpp',
     'mollytime' / 'backend' / 'perf.cpp',
@@ -75,10 +85,8 @@ backend_source_files = files(
     'mollytime' / 'backend' / 'sdl_font.cpp',
     'mollytime' / 'backend' / 'sdl_mouse.cpp',
     'mollytime' / 'backend' / 'sdl_rect.cpp',
-    'mollytime' / 'backend' / 'sdl_stream.cpp',
     'mollytime' / 'backend' / 'sdl_time.cpp',
     'mollytime' / 'backend' / 'thunks.cpp',
-    'mollytime' / 'backend' / 'wasapi_stream.cpp'
 )
 
 python_files = files(
@@ -127,61 +135,76 @@ data_files = files(
 dependencies = []
 
 # *nixisms
-dependencies += compiler.find_library('m', required : false)
-dependencies += compiler.find_library('dl', required : false)
+libm = compiler.find_library('m', required : false)
+libdl = compiler.find_library('dl', required : false)
 
 # From wrap
 boost = dependency('boost', required : true, default_options : 'modules=atomic,stacktrace')
 fmt = dependency('fmt', required : true, default_options : 'header-only=true')
 glm = dependency('glm', required : true)
 pybind11 = dependency('pybind11', required : true)
-sdl3 = dependency('sdl3', required : true)
-sdl3_ttf = dependency('sdl3_ttf', required : true)
-dependencies = [ boost, fmt, glm, pybind11, sdl3, sdl3_ttf ]
-
-if get_option('tracy').enabled()
-    dependencies += dependency('tracy', required : true)
-endif
-
-# Audio backend
-if get_option('audio_backend') == 'sdl'
-    dependencies += declare_dependency(
-        compile_args : '-DAUDIO_SDL=1',
-        dependencies : sdl3
-    )
-elif get_option('audio_backend') == 'jack'
-    dependencies += declare_dependency(
-        compile_args : '-DENABLE_JACK=1',
-        dependencies : dependency('jack', required : true)
-    )
-elif get_option('audio_backend') == 'wasapi'
-    dependencies += declare_dependency(
-        compile_args : '-DAUDIO_WASAPI=1',
-        dependencies : compiler.find_library('RuntimeObject', required : true)
-    )
-endif
-
-# MIDI backend
-if get_option('midi_backend') == 'alsa'
-    dependencies += declare_dependency(
-        compile_args : '-DMIDI_ALSA=1',
-        dependencies : compiler.find_library('asound', required : true)
-    )
-elif get_option('midi_backend') == 'mmeapi'
-    dependencies += declare_dependency(
-        compile_args : '-DMIDI_MMEAPI=1',
-        dependencies : compiler.find_library('Winmm', required : true)
-    )   
-endif
+sdl3 = dependency('sdl3', required : true, default_options : { 'warning_level' : '0' })
+sdl3_ttf = dependency('sdl3_ttf', required : true, default_options : { 'warning_level' : '0' })
+tracy = dependency('tracy', required : get_option('tracy'))
 
 # ---
 # Targets
+
+driver_dependencies = []
+
+if get_option('audio_driver_sdl').allowed()
+    driver_dependencies += declare_dependency(
+        dependencies : [ boost, fmt, sdl3 ],
+        compile_args : [ '-DAUDIO_SDL=1' ],
+        sources : files('mollytime' / 'backend' / 'sdl_stream.cpp')
+    )
+endif
+
+jack = dependency('jack', required : false)
+use_jack = get_option('audio_driver_jack').enable_auto_if(jack.found())
+if use_jack.enabled()
+    driver_dependencies += declare_dependency(
+        dependencies : [ boost, fmt, jack ],
+        compile_args : [ '-DENABLE_JACK=1' ],
+        sources : files('mollytime' / 'backend' / 'jack_stream.cpp')
+    )
+endif
+
+use_wasapi = get_option('audio_driver_wasapi').enable_auto_if(host_machine.system() == 'windows')
+if use_wasapi.enabled()
+    windows_runtime_object = compiler.find_library('RuntimeObject', required : true)
+    driver_dependencies += declare_dependency(
+        dependencies : [ boost, fmt, windows_runtime_object ],
+        compile_args : [ '-DAUDIO_WASAPI=1' ],
+        sources : files('mollytime' / 'backend' / 'wasapi_stream.cpp'),
+    )
+endif
+
+alsa = compiler.find_library('asound', required : false)
+use_alsa = get_option('midi_driver_alsa').enable_auto_if(alsa.found())
+if use_alsa.enabled()
+    driver_dependencies += declare_dependency(
+        dependencies : [ boost, fmt, alsa ],
+        compile_args : [ '-DMIDI_ALSA=1' ],
+        sources : files('mollytime' / 'backend' / 'alsa_midi.cpp')
+    )
+endif
+
+winmm = compiler.find_library('Winmm', required : false)
+use_winmm = get_option('midi_driver_mmeapi').enable_auto_if(winmm.found())
+if use_winmm.enabled()
+    driver_dependencies += declare_dependency(
+        dependencies : [ boost, fmt, winmm ],
+        compile_args : [ '-DMIDI_MMEAPI=1' ],
+        sources : files('mollytime' / 'backend' / 'mmeapi_midi.cpp')
+    )
+endif
 
 # Compile and install the extension module in `<install root>/mollytime/`.
 cpp_module = python_install.extension_module(
     'backend',
     backend_source_files,
-    dependencies : dependencies,
+    dependencies : [ libm, libdl, boost, fmt, glm, pybind11, sdl3, sdl3_ttf, tracy ] + driver_dependencies,
     install : true,
     subdir : 'mollytime'
 )

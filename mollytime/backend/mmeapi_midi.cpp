@@ -13,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef MIDI_MMEAPI
-
 #include "mmeapi_midi.h"
 
 #define WIN32_LEAN_AND_MEAN
@@ -173,5 +171,3 @@ void MmeApiMidiDriver::ProcessEvents(MidiHandler* Handler)
 	}
 	PendingPackets.clear();
 }
-
-#endif

@@ -13,9 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef ENABLE_JACK
-
-#include "audio_backend.h"
+#include "audio_driver.h"
 #include "jack_stream.h"
 
 #include <cassert>
@@ -246,5 +244,3 @@ void JackStream::ProgramChange(ScratchUniquePtr&& NewProgram)
         }
     }
 }
-
-#endif

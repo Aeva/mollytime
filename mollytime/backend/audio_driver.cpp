@@ -13,16 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "audio_backend.h"
+#include "audio_driver.h"
 #include "midi.h"
+
+#if defined(ENABLE_JACK)
+#include "jack_stream.h"
+#endif
+
+#if defined(AUDIO_WASAPI)
+#include "wasapi_stream.h"
+#endif
 
 #if defined(AUDIO_SDL)
 #include "sdl_stream.h"
-#elif defined(ENABLE_JACK)
-#include "jack_stream.h"
-#elif defined(AUDIO_WASAPI)
-#include "wasapi_stream.h"
-
 #endif
 
 #include <fmt/format.h>
@@ -173,12 +176,12 @@ AudioStream* Audio::GetStream()
 
 void Audio::Init(int SampleRate)
 {
-#if defined(AUDIO_SDL)
-    Stream = std::make_unique<SDLStream>(SampleRate);
-#elif defined(ENABLE_JACK)
+#if defined(ENABLE_JACK)
     Stream = std::make_unique<JackStream>(SampleRate);
 #elif defined(AUDIO_WASAPI)
     Stream = std::make_unique<WasapiStream>(SampleRate);
+#elif defined(AUDIO_SDL)
+    Stream = std::make_unique<SDLStream>(SampleRate);
 #else
     fmt::println("No audio stream implementation is available.");
     Stream = std::make_unique<StubStream>();
