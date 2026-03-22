@@ -293,7 +293,10 @@ class midi_settings_screen(editor_screen):
             frame = editor.reset_settings_area()
 
             for channel, rect in enumerate(self.channel_rects):
-                label = str(channel)
+                if channel == 9:
+                    label = "10\n(drums)"
+                else:
+                    label = str(channel + 1)
                 if editor.patch.get_channel_mask(channel):
                     editor.selected_tile_bg.draw(frame, rect, label)
                 else:
