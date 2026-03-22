@@ -1866,7 +1866,8 @@ static inline bool ChannelMatch(const uint32_t Lane, const double EventChannel, 
         return true;
     }
 
-    const int Channel = int(EventChannel);
+    const int Channel = int(EventChannel) + 1;
+    assert(Channel >= 1 && Channel <= 16);
     for (const double* ChannelMask : MaskVector)
     {
         const int Mask = int(ChannelMask[Lane]);
@@ -1875,7 +1876,7 @@ static inline bool ChannelMatch(const uint32_t Lane, const double EventChannel, 
         {
             return true;
         }
-        else if (Mask >= 0 && Mask == Channel)
+        else if (Mask > 0 && Mask == Channel)
         {
             return true;
         }

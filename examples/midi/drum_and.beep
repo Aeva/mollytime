@@ -39,7 +39,7 @@
 		<tile id="36" symbol="mul" x="2" y="0"/>
 		<tile id="37" symbol="out" x="3" y="0"/>
 		<tile id="38" symbol="go" x="-4" y="-6"/>
-		<tile id="39" symbol="const" x="-4" y="-7" value="-9.0"/>
+		<tile id="39" symbol="const" x="-4" y="-7" value="-10.0"/>
 		<tile id="40" symbol="gate" x="3" y="5"/>
 		<tile id="41" symbol="note" x="0" y="4"/>
 		<tile id="42" symbol="bend" x="-6" y="-6"/>
@@ -66,7 +66,7 @@
 		<tile id="63" symbol="mix" x="4" y="4"/>
 		<tile id="64" symbol="gate" x="7" y="5"/>
 		<tile id="65" symbol="go" x="5" y="8"/>
-		<tile id="66" symbol="const" x="4" y="8" value="9.0"/>
+		<tile id="66" symbol="const" x="4" y="8" value="10.0"/>
 		<tile id="67" symbol="tptsvf_highpass" x="4" y="2"/>
 		<tile id="68" symbol="const" x="3" y="2" value="55.0"/>
 		<tile id="69" symbol="tweak" x="5" y="2" value="0.9600000000000006"/>
