@@ -1859,16 +1859,28 @@ struct RandomSequenceThunk : public InstructionThunk
 };
 
 
-static inline bool ChannelMatch(int Mask, int Channel)
+static inline bool ChannelMatch(const uint32_t Lane, const double EventChannel, const std::vector<double*>& MaskVector)
 {
-    if (Mask < 0 && -Mask != Channel)
+    if (EventChannel == -1.0 || MaskVector.size() == 0)
     {
         return true;
     }
-    else if (Mask >= 0 && Mask == Channel)
+
+    const int Channel = int(EventChannel);
+    for (const double* ChannelMask : MaskVector)
     {
-        return true;
+        const int Mask = int(ChannelMask[Lane]);
+
+        if (Mask < 0 && -Mask != Channel)
+        {
+            return true;
+        }
+        else if (Mask >= 0 && Mask == Channel)
+        {
+            return true;
+        }
     }
+
     return false;
 }
 
@@ -1893,21 +1905,10 @@ struct GateThunk : public InstructionThunk
         double* Gate = Registers.OutputPtr(0);
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
-            MidiNoteState& State = Program->MidiLanes[Lane];
-            if (State.Channel == -1.0 || !Registers.InputConnected(0))
+            const MidiNoteState& State = Program->MidiLanes[Lane];
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
             {
                 Gate[Lane] = State.Gate;
-            }
-            else if (Registers.InputConnected(0))
-            {
-                for (const double* ChannelMask : Registers.InputVector(0))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        Gate[Lane] = State.Gate;
-                        break;
-                    }
-                }
             }
         }
     }
@@ -1937,20 +1938,9 @@ struct NoteThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (State.Channel == -1.0 || !Registers.InputConnected(0))
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
             {
                 Note[Lane] = State.Note;
-            }
-            else if (Registers.InputConnected(0))
-            {
-                for (const double* ChannelMask : Registers.InputVector(0))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        Note[Lane] = State.Note;
-                        break;
-                    }
-                }
             }
         }
     }
@@ -1990,20 +1980,9 @@ struct VelocityThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (State.Channel == -1.0 || !Registers.InputConnected(0))
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
             {
                 Velocity[Lane] = State.Velocity;
-            }
-            else if (Registers.InputConnected(0))
-            {
-                for (const double* ChannelMask : Registers.InputVector(0))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        Velocity[Lane] = State.Velocity;
-                        break;
-                    }
-                }
             }
         }
     }
@@ -2033,20 +2012,9 @@ struct PressureThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (State.Channel == -1.0 || !Registers.InputConnected(0))
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
             {
                 Pressure[Lane] = State.Pressure;
-            }
-            else if (Registers.InputConnected(0))
-            {
-                for (const double* ChannelMask : Registers.InputVector(0))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        Pressure[Lane] = State.Pressure;
-                        break;
-                    }
-                }
             }
         }
     }
@@ -2079,20 +2047,9 @@ struct ControlChangeThunk : public InstructionThunk
             double* Value = Registers.OutputPtr(0);
             MidiNoteState& State = Program->MidiLanes[Lane];
             double Channel = -1.0;
-            if (!Registers.InputConnected(1))
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(1)))
             {
                 Channel = State.Channel;
-            }
-            else if (Registers.InputConnected(1))
-            {
-                for (const double* ChannelMask : Registers.InputVector(1))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        Channel = State.Channel;
-                        break;
-                    }
-                }
             }
             if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
             {
@@ -2127,20 +2084,9 @@ struct KikiThunk : public InstructionThunk
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
             double Channel = -1.0;
-            if (!Registers.InputConnected(0))
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
             {
                 Channel = State.Channel;
-            }
-            else if (Registers.InputConnected(0))
-            {
-                for (const double* ChannelMask : Registers.InputVector(0))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        Channel = State.Channel;
-                        break;
-                    }
-                }
             }
             if (Channel >= 0.0 && Channel < 16)
             {
@@ -2185,20 +2131,9 @@ struct PitchBendThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (State.Channel == -1.0 || !Registers.InputConnected(0))
+            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
             {
                 PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
-            }
-            else if (Registers.InputConnected(0))
-            {
-                for (const double* ChannelMask : Registers.InputVector(0))
-                {
-                    if (ChannelMatch(int(ChannelMask[Lane]), int(State.Channel)))
-                    {
-                        PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
-                        break;
-                    }
-                }
             }
         }
     }
