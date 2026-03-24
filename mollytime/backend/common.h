@@ -15,8 +15,8 @@
 
 #pragma once
 
-#if _MSC_VER
+#if _WIN32
 #define MOLLY_API __declspec(dllexport)
 #else
-#define MOLLY_API __attribute__ ((dllexport))
+#define MOLLY_API
 #endif
