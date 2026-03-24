@@ -21,6 +21,7 @@
 #include <mutex>
 #include <chrono>
 
+#include "common.h"
 #include "patch.h"
 
 #pragma clang diagnostic push
@@ -90,7 +91,7 @@ namespace Audio
 {
     AudioStream* GetStream();
 
-    void Init(int SampleRate);
-    void Shutdown();
-    float GetTemporalPressure();
+    MOLLY_API void Init(int SampleRate);
+    MOLLY_API void Shutdown();
+    MOLLY_API float GetTemporalPressure();
 };

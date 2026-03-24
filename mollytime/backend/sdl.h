@@ -9,6 +9,8 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "common.h"
+
 struct ColorPoint;
 
 struct SDL_Renderer;
@@ -22,7 +24,7 @@ struct TTF_Font;
 using Point = std::tuple<float, float>;
 using Size = std::tuple<float, float>;
 
-struct Rect
+struct MOLLY_API Rect
 {
     float X;
     float Y;
@@ -78,7 +80,7 @@ struct Rect
 
 namespace Time
 {
-    class Clock
+    class MOLLY_API Clock
     {
         uint64_t LastTick;
         
@@ -138,7 +140,7 @@ namespace Events
         KeyCode Key;
     };
 
-    struct MouseMotionEvent
+    struct MOLLY_API MouseMotionEvent
     {
         EventType Type;
 
@@ -151,7 +153,7 @@ namespace Events
         Point GetRelativePosition() const { return { XRelative, YRelative }; }
     };
 
-    struct MouseButtonEvent
+    struct MOLLY_API MouseButtonEvent
     {
         EventType Type;
 
@@ -164,7 +166,7 @@ namespace Events
         Point GetPosition() const { return { X, Y }; }
     };
 
-    struct MouseWheelEvent
+    struct MOLLY_API MouseWheelEvent
     {
         EventType Type;
 
@@ -204,12 +206,12 @@ namespace Events
         TouchFingerEvent Touch;
     };
 
-    std::vector<Event> Get();
+    MOLLY_API std::vector<Event> Get();
 }
 
 namespace Mouse
 {
-    std::tuple<float, float> GetPosition();
+    MOLLY_API std::tuple<float, float> GetPosition();
 }
 
 namespace Draw
@@ -235,7 +237,7 @@ namespace Draw
         ~TextureCaddy();
     };
 
-    class Texture
+    class MOLLY_API Texture
     {
         std::shared_ptr<TextureCaddy> Handle;
         int Width, Height;
@@ -263,17 +265,17 @@ namespace Draw
         SDL_Texture* GetTexture() const;
     };
 
-    void Init();
-    void Flip();
-    const std::string_view GetRendererName();
-    bool GetRendererReady();
-    Texture GetRenderingSurface();
+    MOLLY_API void Init();
+    MOLLY_API void Flip();
+    MOLLY_API const std::string_view GetRendererName();
+    MOLLY_API bool GetRendererReady();
+    MOLLY_API Texture GetRenderingSurface();
     
-    void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
-    void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth = 0, float Alpha = 1.0f); // Fills if BorderWidth <= 0
-    void DrawPie(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Angle, float Arc, float Alpha = 1.0f);
-    void DrawCircle(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Alpha = 1.0f);
-    void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Points, float Alpha = 1.0f);
+    MOLLY_API void DrawLine(Texture& Texture, const ColorPoint& Color, const Point& Start, const Point& End, float Width, float Alpha = 1.0f);
+    MOLLY_API void DrawRect(Texture& Texture, const ColorPoint& Color, const Rect& Rect, int BorderWidth = 0, float Alpha = 1.0f); // Fills if BorderWidth <= 0
+    MOLLY_API void DrawPie(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Angle, float Arc, float Alpha = 1.0f);
+    MOLLY_API void DrawCircle(Texture& Texture, const ColorPoint& Color, const Point& Center, float Radius, float Alpha = 1.0f);
+    MOLLY_API void DrawPolygon(Texture& Texture, const ColorPoint& Color, const std::vector<Point>& Points, float Alpha = 1.0f);
 
     // Internal
     SDL_Renderer* GetRenderer();
@@ -287,28 +289,28 @@ namespace Display
         Borderless = (1 << 1)
     };
     
-    void Init(int ForceFullscreen);
+    MOLLY_API void Init(int ForceFullscreen);
     
-    int GetCurrentDisplayIndex();
-    std::vector<Size> GetDesktopSizes();
-    std::vector<Size> ListModes(int DisplayIndex);
+    MOLLY_API int GetCurrentDisplayIndex();
+    MOLLY_API std::vector<Size> GetDesktopSizes();
+    MOLLY_API std::vector<Size> ListModes(int DisplayIndex);
     
-    void SetCaption(const std::string_view& Title);
-    void SetIcon(const Draw::Texture& Texture);
+    MOLLY_API void SetCaption(const std::string_view& Title);
+    MOLLY_API void SetIcon(const Draw::Texture& Texture);
 
-    void ToggleFullscreen();
-    float GetResolutionScale();
+    MOLLY_API void ToggleFullscreen();
+    MOLLY_API float GetResolutionScale();
     
     // Internal
     SDL_Window* GetWindow();
 
-    void ShowLoadDialog(const std::string_view& PatchDir);
-    void ShowSaveDialog(const std::string_view& PatchDir);
-    std::tuple<int, std::string_view> GetLoadDialogResult();
-    std::tuple<int, std::string_view> GetSaveDialogResult();
+    MOLLY_API void ShowLoadDialog(const std::string_view& PatchDir);
+    MOLLY_API void ShowSaveDialog(const std::string_view& PatchDir);
+    MOLLY_API std::tuple<int, std::string_view> GetLoadDialogResult();
+    MOLLY_API std::tuple<int, std::string_view> GetSaveDialogResult();
 }
 
-class Font
+class MOLLY_API Font
 {
     TTF_Font* SDLFont;
 

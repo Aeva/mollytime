@@ -29,6 +29,7 @@
 #include <mutex>
 #endif
 
+#include "common.h"
 #include "perf.h"
 
 
@@ -118,9 +119,9 @@ struct MidiDriver
 
 namespace Midi
 {
-    void PatchReset();
-    void ReleaseHeldNotes(uint16_t ChannelMask = 0xFFFF);
-    void ProcessEvents(MidiHandler* Handler);
-    void Init();
-    void Shutdown();
+    MOLLY_API void PatchReset();
+    MOLLY_API void ReleaseHeldNotes(uint16_t ChannelMask = 0xFFFF);
+    MOLLY_API void ProcessEvents(MidiHandler* Handler);
+    MOLLY_API void Init();
+    MOLLY_API void Shutdown();
 }

@@ -29,6 +29,7 @@
 #include <memory>
 #include <cmath>
 
+#include "common.h"
 #include "thunks.h"
 #include "alsa_midi.h"
 
@@ -42,18 +43,18 @@ using PortHandle = uint64_t;
 using WireHandle = std::tuple<PortHandle, PortHandle>;
 
 
-PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber);
-TileHandle PortHandleTilePart(PortHandle Handle);
-uint32_t PortHandlePortIndexPart(PortHandle Handle);
+MOLLY_API PortHandle MakePortHandle(TileHandle TileId, uint32_t PortNumber);
+MOLLY_API TileHandle PortHandleTilePart(PortHandle Handle);
+MOLLY_API uint32_t PortHandlePortIndexPart(PortHandle Handle);
 
 
-double EncodeSampleHandle(uint32_t SampleHandle);
-uint32_t DecodeSampleHandle(double WireValue);
+MOLLY_API double EncodeSampleHandle(uint32_t SampleHandle);
+MOLLY_API uint32_t DecodeSampleHandle(double WireValue);
 
 
-std::string GetDefaultName(OpCode Symbol);
+MOLLY_API std::string GetDefaultName(OpCode Symbol);
 
-void SetDefaultPolyphony(int Polyphony);
+MOLLY_API void SetDefaultPolyphony(int Polyphony);
 
 
 struct RegisterAllocation
@@ -114,7 +115,7 @@ private:
 using ScratchUniquePtr = std::unique_ptr<Scratch>;
 
 
-struct Patch
+struct MOLLY_API Patch
 {
     std::unordered_map<TileHandle, OpCode> TileSymbols;
     std::unordered_map<TileHandle, double> TileConstants;

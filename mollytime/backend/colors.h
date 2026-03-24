@@ -20,10 +20,12 @@
 #include <string>
 #include <vector>
 #include <variant>
+
+#include "common.h"
 #include "errors.h"
 
 
-void SetGamma(float NewGamma);
+MOLLY_API void SetGamma(float NewGamma);
 
 
 enum class ColorSpace : int
@@ -38,11 +40,11 @@ enum class ColorSpace : int
 };
 
 
-std::string ColorSpaceName(ColorSpace Encoding);
-bool FindColorSpace(std::string Name, ColorSpace& OutEncoding);
+MOLLY_API std::string ColorSpaceName(ColorSpace Encoding);
+MOLLY_API bool FindColorSpace(std::string Name, ColorSpace& OutEncoding);
 
 
-struct ColorPoint
+struct MOLLY_API ColorPoint
 {
 	ColorSpace Encoding;
 	glm::vec3 Channels;
@@ -162,7 +164,7 @@ struct ColorPoint
 };
 
 
-ColorPoint MixLCHAB(ColorPoint LHS, ColorPoint RHS, float Alpha, float ChromaWeight);
+MOLLY_API ColorPoint MixLCHAB(ColorPoint LHS, ColorPoint RHS, float Alpha, float ChromaWeight);
 
 
 struct ColorPointCmp
@@ -171,7 +173,7 @@ struct ColorPointCmp
 };
 
 
-struct ColorRamp
+struct MOLLY_API ColorRamp
 {
 	ColorSpace Encoding;
 	std::vector<ColorPoint> Stops;
@@ -192,16 +194,16 @@ struct ColorRamp
 using ColorSampler = std::variant<ColorPoint, ColorRamp>;
 
 
-glm::vec3 SampleColor(ColorSampler Color, ColorSpace Encoding = ColorSpace::sRGB);
+MOLLY_API glm::vec3 SampleColor(ColorSampler Color, ColorSpace Encoding = ColorSpace::sRGB);
 
 
-glm::vec3 SampleColor(ColorSampler Color, float Alpha, ColorSpace Encoding = ColorSpace::sRGB);
+MOLLY_API glm::vec3 SampleColor(ColorSampler Color, float Alpha, ColorSpace Encoding = ColorSpace::sRGB);
 
 
-StatusCode ParseColor(std::string ColorString, ColorPoint& OutColor);
+MOLLY_API StatusCode ParseColor(std::string ColorString, ColorPoint& OutColor);
 
 
-StatusCode ParseColor(std::string ColorString, glm::vec3& OutColor);
+MOLLY_API StatusCode ParseColor(std::string ColorString, glm::vec3& OutColor);
 
 
-ColorPoint ParseColor(std::string ColorString);
+MOLLY_API ColorPoint ParseColor(std::string ColorString);
