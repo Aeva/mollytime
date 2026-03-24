@@ -26,6 +26,7 @@
 #include <string>
 #include <memory>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #ifndef NDEBUG
 #include <algorithm>
