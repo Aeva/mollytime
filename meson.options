@@ -7,3 +7,4 @@ option('midi_driver_mmeapi', type : 'feature', value : 'auto')
 
 option('boost_stacktrace', type : 'feature', value : 'auto')
 option('tracy', type : 'feature', value: 'disabled')
+option('asan', type : 'feature', value : 'disabled')

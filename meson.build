@@ -78,7 +78,6 @@ backend_source_files = files(
     'mollytime' / 'backend' / 'moon.cpp',
     'mollytime' / 'backend' / 'patch.cpp',
     'mollytime' / 'backend' / 'perf.cpp',
-    'mollytime' / 'backend' / 'py_api.cpp',
     'mollytime' / 'backend' / 'sdl_display.cpp',
     'mollytime' / 'backend' / 'sdl_draw.cpp',
     'mollytime' / 'backend' / 'sdl_events.cpp',
@@ -148,7 +147,7 @@ sdl3_ttf = dependency('sdl3_ttf', required : true, default_options : { 'warning_
 tracy = dependency('tracy', required : get_option('tracy'))
 
 # ---
-# Targets
+# Drivers
 
 driver_dependencies = []
 
@@ -200,14 +199,51 @@ if use_winmm.enabled()
     )
 endif
 
-# Compile and install the extension module in `<install root>/mollytime/`.
-cpp_module = python_install.extension_module(
-    'backend',
-    backend_source_files,
-    dependencies : [ libm, libdl, boost, fmt, glm, pybind11, sdl3, sdl3_ttf, tracy ] + driver_dependencies,
-    install : true,
-    subdir : 'mollytime'
-)
+# ---
+# Targets
+
+backend_dependencies = [ libm, libdl, boost, fmt, glm, sdl3, sdl3_ttf, tracy ]
+
+if get_option('asan').enabled()
+    if host_machine.system() == 'windows'
+        asan_dependency = declare_dependency(
+            dependencies : [
+                compiler.find_library('clang_rt.asan_dynamic-x86_64', required : true),
+                compiler.find_library('clang_rt.asan_dynamic_runtime_thunk-x86_64', required : true)
+            ]
+        )
+    else
+        asan_dependency = declare_dependency(
+            compile_args : [ '-shared-libasan' ]
+        )
+    endif
+
+    backend_sanitized = shared_library(
+        'backend_sanitized',
+        backend_source_files,
+        dependencies : backend_dependencies + driver_dependencies + asan_dependency,
+        override_options : [ 'b_sanitize=address' ]
+    )
+
+    # Compile and install the extension module in `<install root>/mollytime/`.
+    cpp_module = python_install.extension_module(
+        'backend',
+        files('mollytime' / 'backend' / 'py_api.cpp'),
+        dependencies : backend_dependencies + pybind11,
+        link_with : backend_sanitized,
+        install : true,
+        subdir : 'mollytime'
+    )
+else
+    # Compile and install the extension module in `<install root>/mollytime/`.
+    cpp_module = python_install.extension_module(
+        'backend',
+        backend_source_files + files('mollytime' / 'backend' / 'py_api.cpp'),
+        dependencies : backend_dependencies + driver_dependencies + pybind11,
+        install : true,
+        subdir : 'mollytime'
+    )
+endif
 
 # Install the Python source files in `<install root>/<source file path>`, preserving
 # relative directories. This means that e.g. `mollytime/screens/calc.py` will map to
