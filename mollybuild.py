@@ -108,6 +108,11 @@ def develop(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             install_args += [ f"-Csetup-args={toolchain_arg}" ]
             install_args += _HACK_extract_override_overrides(toolchain_file)
+    
+    # Apply Meson options.
+    meson_options: list[str] = args_dict.get("meson_options", [])  # pyright: ignore[reportAny]
+    for option in meson_options:
+        install_args += [f"-Csetup-args=-D{option}"]
 
     # Go.
     install_args += [ "-v", "--editable", "." ]
@@ -149,6 +154,11 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
         if toolchain_file != None:
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             setup_args += [ f"-Csetup-args={toolchain_arg}" ]
+    
+    # Apply Meson options.
+    meson_options: list[str] = args_dict.get("meson_options", [])  # pyright: ignore[reportAny]
+    for option in meson_options:
+        setup_args += [f"-Csetup-args=-D{option}"]
     
     # Build the source distribution & wheel.
     package_result = subprocess.run(setup_args, stdout = PIPE)
@@ -261,26 +271,36 @@ if __name__ == "__main__":
     develop_parser = subparsers.add_parser("develop", help = "Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
     develop_parser.set_defaults(command = develop)
     _ = develop_parser.add_argument(
-        "mode",
+        "--mode", "-m",
         help = "Build mode. If unspecified, uses `debug`.",
         choices = modes.keys(),
-        nargs = "?"
+        required = False
     )
     _ = develop_parser.add_argument(
-        "toolchain",
+        "--toolchain", "-t",
         help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
         choices = toolchains.keys(),
-        nargs = "?"
+        required = False
+    )
+    _ = develop_parser.add_argument(
+        "meson_options",
+        help = "Option overrides to pass to Meson, in the form `option=value`.",
+        nargs = "*"
     )
 
     # `package` command
     package_parser = subparsers.add_parser("package", help = "Build a distributable Python package (sdist and wheel), and Pyinstaller executable.")
     package_parser.set_defaults(command = package)
     _ = package_parser.add_argument(
-        "toolchain",
+        "--toolchain", "-t",
         help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
         choices = toolchains.keys(),
-        nargs = "?"
+        required = False
+    )
+    _ = package_parser.add_argument(
+        "meson_options",
+        help = "Option overrides to pass to Meson, in the form `option=value`.",
+        nargs = "*"
     )
 
     # Go
