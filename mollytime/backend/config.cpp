@@ -21,9 +21,15 @@
 
 #include "config.h"
 
+// Generic folders specified by the OS:
 static std::filesystem::path HomeFolder;
+static std::filesystem::path DataFolder;
 static std::filesystem::path ConfigFolder;
+
+// Game-specific folders within above:
+static std::filesystem::path GameDataFolder;
 static std::filesystem::path GameConfigFolder;
+
 static bool ReadOnlyMode = true;
 
 
@@ -128,6 +134,65 @@ void Config::Init(const char* ApplicationName)
     assert(std::filesystem::exists(ConfigFolder));
     assert(ConfigFolder.is_absolute());
 
+    {
+        const char* PossibleDataVars[] = \
+        {
+            // Windows-specific vars, unlikely to be set on other operating systems:
+            "LocalAppData",
+
+            // Recommended by https://specifications.freedesktop.org/basedir/latest/,
+            // but may be unset if the user prefers the default location:
+            "XDG_DATA_HOME",
+        };
+
+        for (const char* DataVar : PossibleDataVars)
+        {
+            char* Found = std::getenv(DataVar);
+            if (Found)
+            {
+                std::filesystem::path MaybeDataFolder = Found;
+                if (!MaybeDataFolder.empty())
+                {
+                    if (MaybeDataFolder.is_relative())
+                    {
+                        MaybeDataFolder = HomeFolder / MaybeDataFolder;
+                    }
+                    if (MaybeDataFolder.is_absolute() && std::filesystem::exists(MaybeDataFolder))
+                    {
+                        DataFolder = MaybeDataFolder;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (DataFolder.empty())
+        {
+            // https://specifications.freedesktop.org/basedir/latest/ states this should be used if
+            // XDG_DATA_HOME is unset, which is probably as good a default as anything.
+            DataFolder = HomeFolder / ".local" / "share";
+        }
+
+        assert(!DataFolder.empty());
+        if (!std::filesystem::exists(DataFolder))
+        {
+            DataFolder = HomeFolder;
+            GameDataFolder = DataFolder / fmt::format(".{}", ApplicationName);
+        }
+        else
+        {
+            GameDataFolder = DataFolder / ApplicationName;
+        }
+    }
+
+    if (!std::filesystem::exists(GameDataFolder))
+    {
+        if (!std::filesystem::create_directory(GameDataFolder))
+        {
+            fmt::print("WARNING: Unable create data folder, settings will not be saved: {}\n", GameDataFolder.c_str());
+        }
+    }
+
     if (!std::filesystem::exists(GameConfigFolder))
     {
         if (!std::filesystem::create_directory(GameConfigFolder))
@@ -136,6 +201,23 @@ void Config::Init(const char* ApplicationName)
         }
     }
 
-    ReadOnlyMode = !std::filesystem::exists(GameConfigFolder);
+    ReadOnlyMode = !(std::filesystem::exists(GameDataFolder) && std::filesystem::exists(GameConfigFolder));
 }
 
+
+std::string_view Config::GetGameDataFolder()
+{
+    return GameDataFolder.native();
+}
+
+
+std::string_view Config::GetGameConfigFolder()
+{
+    return GameConfigFolder.native();
+}
+
+
+bool Config::GetReadOnly()
+{
+    return ReadOnlyMode;
+}

@@ -273,6 +273,9 @@ PYBIND11_MODULE(backend, m) {
 		.def("set_channel_mask", &Patch::SetChannelMask);
 
 	m.def("init_config", &Config::Init);
+	m.def("get_game_data_folder", &Config::GetGameDataFolder);
+	m.def("get_game_config_folder", &Config::GetGameConfigFolder);
+	m.def("get_read_only_mode", &Config::GetReadOnly);
 
 	m.def("init_audio", &Audio::Init);
 	m.def("shutdown_audio", &Audio::Shutdown);

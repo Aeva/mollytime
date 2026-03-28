@@ -15,7 +15,12 @@
 
 #pragma once
 
+#include <string_view>
+
 namespace Config
 {
     void Init(const char* ApplicationName);
+    std::string_view GetGameDataFolder();
+    std::string_view GetGameConfigFolder();
+    bool GetReadOnly();
 }
