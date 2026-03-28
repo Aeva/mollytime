@@ -14,12 +14,35 @@ from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
 from pathlib import Path
 from subprocess import PIPE
+from typing import Any
 from zipfile import ZipFile
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
     pip_result = subprocess.run(pip_args)
     pip_result.check_returncode()
+
+def _get_mode_name(args_dict: dict[str, Any]):  # pyright: ignore[reportExplicitAny]
+    mode_name: str | None = args_dict.get("mode", None)
+    return mode_name if mode_name != None else "debug"
+
+def _get_toolchain_name(args_dict: dict[str, Any]):  # pyright: ignore[reportExplicitAny]
+    default_toolchain: str | None
+    match sys.platform:
+        case "win32":
+            default_toolchain = "win32-msvc"
+        case "linux":
+            default_toolchain = "linux-gcc"
+        case _:
+            default_toolchain = None
+            print(
+                f"WARNING: Mollytime doesn't officially support your platform, '{sys.platform}'."
+                + "\nMeson will try to find a working C++ toolchain, but it might fail.",
+                file = sys.stderr
+            )
+
+    toolchain_name: str | None = args_dict.get("toolchain", None)
+    return toolchain_name if toolchain_name != None else default_toolchain
 
 # HACK: UGH: So, meson-python "helpfully" overrides some built-in Meson options:
 # - `buildtype  = release`
@@ -70,16 +93,15 @@ def develop(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     install_args += [ "-Ceditable-verbose=true" ]
     
     # Gather mode config, if specified.
-    mode_name: str | None = args_dict.get("mode", None)
-    if mode_name != None:
-        mode_file = modes.get(mode_name, None)
-        if mode_file != None:
-            mode_arg = f"--native-file={mode_file.resolve()}"
-            install_args += [ f"-Csetup-args={mode_arg}" ]
-            install_args += _HACK_extract_override_overrides(mode_file)
-    
+    mode_name = _get_mode_name(args_dict)
+    mode_file = modes.get(mode_name, None)
+    if mode_file != None:
+        mode_arg = f"--native-file={mode_file.resolve()}"
+        install_args += [ f"-Csetup-args={mode_arg}" ]
+        install_args += _HACK_extract_override_overrides(mode_file)
+
     # Gather toolchain config, if specified.
-    toolchain_name: str | None = args_dict.get("toolchain", None)
+    toolchain_name = _get_toolchain_name(args_dict)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
@@ -121,7 +143,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     setup_args += [ f"-Csetup-args={mode_arg}" ]
     
     # Gather toolchain config, if specified.
-    toolchain_name: str | None = args_dict.get("toolchain", None)
+    toolchain_name = _get_toolchain_name(args_dict)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
@@ -241,12 +263,14 @@ if __name__ == "__main__":
     _ = develop_parser.add_argument(
         "mode",
         help = "Build mode. If unspecified, uses `debug`.",
-        choices = modes.keys()
+        choices = modes.keys(),
+        nargs = "?"
     )
     _ = develop_parser.add_argument(
         "toolchain",
-        help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
-        choices = toolchains.keys()
+        help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
+        choices = toolchains.keys(),
+        nargs = "?"
     )
 
     # `package` command
@@ -254,8 +278,9 @@ if __name__ == "__main__":
     package_parser.set_defaults(command = package)
     _ = package_parser.add_argument(
         "toolchain",
-        help = "Toolchain to build with. If unspecified, uses your system default.",
-        choices = toolchains.keys()
+        help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
+        choices = toolchains.keys(),
+        nargs = "?"
     )
 
     # Go
