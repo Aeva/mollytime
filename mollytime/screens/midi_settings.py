@@ -248,7 +248,7 @@ class midi_settings_screen(editor_screen):
             1 * editor.grid_size * 3,
             editor.grid_size * 2, editor.grid_size * 2)
 
-        active_icon = editor.settings_active
+        active_icon = editor.midi_active
 
         self.side_bar_targets = [
             (goto_inspect_rect, goto_inspect_icon, self.goto_inspect_screen),
