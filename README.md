@@ -38,10 +38,10 @@ please let me know and I'll write them down here.
 ## "I want to work on / quickly try out the project!"
 
 Run this:
-- `python mollybuild.py build <mode> <toolchain>`
+- `python mollybuild.py develop <mode> <toolchain>`
 
 You can see supported `<mode>`s and `<toolchain>`s by checking command help:
-- `python mollybuild.py build -h`
+- `python mollybuild.py develop -h`
 
 That's it! Now just run `python -m mollytime` to launch the project. When you do,
 the C++ extension module will be automatically recompiled if you've changed any

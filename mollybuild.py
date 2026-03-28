@@ -55,7 +55,7 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     
     return args
 
-def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+def develop(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
     _get_dependencies([ "meson", "meson-python", "ninja" ])
 
@@ -229,28 +229,28 @@ if __name__ == "__main__":
         prog = "mollybuild",
         description = \
             "Concise build helper." +
-            "\nRun `init` after cloning the project. Then, for an iterative 'development' workflow, first run `build`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
-            "\nWhen you're ready to distribute, run `package` to build a wheel, or `exe` to build a Pyinstaller distribution.",
+            "\nFor an iterative development workflow, first run `develop`. Then, just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
+            "\nWhen you're ready to distribute, run `package` to build a wheel and Pyinstaller distribution.",
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
 
-    # `build` command
-    build_parser = subparsers.add_parser("build", help = "Development: Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
-    build_parser.set_defaults(command = build)
-    _ = build_parser.add_argument(
+    # `develop` command
+    develop_parser = subparsers.add_parser("develop", help = "Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
+    develop_parser.set_defaults(command = develop)
+    _ = develop_parser.add_argument(
         "mode",
         help = "Build mode. If unspecified, uses `debug`.",
         choices = modes.keys()
     )
-    _ = build_parser.add_argument(
+    _ = develop_parser.add_argument(
         "toolchain",
         help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
         choices = toolchains.keys()
     )
 
     # `package` command
-    package_parser = subparsers.add_parser("package", help = "Release: Build a distributable Python package (sdist and wheel).")
+    package_parser = subparsers.add_parser("package", help = "Build a distributable Python package (sdist and wheel), and Pyinstaller executable.")
     package_parser.set_defaults(command = package)
     _ = package_parser.add_argument(
         "toolchain",
