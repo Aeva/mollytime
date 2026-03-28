@@ -56,6 +56,8 @@ def main():
         else:
             print(f"Ignoring unknown arg: {arg}")
 
+    backend.init_config("mollytime")
+
     backend.init_midi()
     backend.init_audio(48000)
 

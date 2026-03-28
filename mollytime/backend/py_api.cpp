@@ -37,6 +37,7 @@
 #include "alsa_midi.h"
 #include "perf.h"
 #include "sdl.h"
+#include "config.h"
 
 namespace py = pybind11;
 
@@ -270,6 +271,8 @@ PYBIND11_MODULE(backend, m) {
 		.def("get_special_input", &Patch::GetSpecialInput)
 		.def("get_channel_mask", &Patch::GetChannelMask)
 		.def("set_channel_mask", &Patch::SetChannelMask);
+
+	m.def("init_config", &Config::Init);
 
 	m.def("init_audio", &Audio::Init);
 	m.def("shutdown_audio", &Audio::Shutdown);
