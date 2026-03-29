@@ -55,7 +55,7 @@ namespace Display
         return DisplayIDs;
     }
 
-    static std::vector<SDL_DisplayMode*> GetDisplayModes(SDL_DisplayID DisplayId)
+    static std::vector<SDL_DisplayMode> GetDisplayModes(SDL_DisplayID DisplayId)
     {
         int DisplayModeCount;
         SDL_DisplayMode** DisplayModesPtr = SDL_GetFullscreenDisplayModes(DisplayId, &DisplayModeCount);
@@ -67,11 +67,12 @@ namespace Display
         {
             throw std::runtime_error("No display modes found.");
         }
-        std::vector<SDL_DisplayMode*> DisplayModes(DisplayModeCount);
+        std::vector<SDL_DisplayMode> DisplayModes(DisplayModeCount);
         for (int DisplayModeIndex = 0; DisplayModeIndex < DisplayModeCount; ++DisplayModeIndex)
         {
-            assert(DisplayModesPtr[DisplayModeIndex] != nullptr);
-            DisplayModes[DisplayModeIndex] = DisplayModesPtr[DisplayModeIndex];
+            SDL_DisplayMode* DisplayMode = DisplayModesPtr[DisplayModeIndex];
+            assert(DisplayMode != nullptr);
+            DisplayModes[DisplayModeIndex] = *DisplayMode;
         }
         SDL_free(DisplayModesPtr);
         return DisplayModes;
@@ -193,13 +194,12 @@ namespace Display
     {
         const std::vector<SDL_DisplayID> DisplayIds = GetDisplayIds();
         const SDL_DisplayID DisplayId = DisplayIds.at(DisplayIndex);
-        const std::vector<SDL_DisplayMode*> DisplayModes = GetDisplayModes(DisplayId);
+        const std::vector<SDL_DisplayMode> DisplayModes = GetDisplayModes(DisplayId);
 
         std::vector<Size> Sizes;
-        for(SDL_DisplayMode* Mode : DisplayModes)
+        for(const SDL_DisplayMode& Mode : DisplayModes)
         {
-            assert(Mode != nullptr);
-            Sizes.emplace_back(static_cast<float>(Mode->w), static_cast<float>(Mode->h));
+            Sizes.emplace_back(static_cast<float>(Mode.w), static_cast<float>(Mode.h));
         }
 
         return Sizes;
