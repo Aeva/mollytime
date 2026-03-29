@@ -16,11 +16,12 @@
 #pragma once
 
 #include <string_view>
+#include "common.h"
 
 namespace Config
 {
-    void Init(const char* ApplicationName);
-    std::string_view GetGameDataFolder();
-    std::string_view GetGameConfigFolder();
-    bool GetReadOnly();
+    MOLLY_API void Init(const char* ApplicationName);
+    MOLLY_API std::string_view GetGameDataFolder();
+    MOLLY_API std::string_view GetGameConfigFolder();
+    MOLLY_API bool GetReadOnly();
 }
