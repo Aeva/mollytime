@@ -186,7 +186,7 @@ struct MOLLY_API Patch
 private:
     uint64_t Identity;
     uint32_t MidiPolyphony;
-    uint16_t ChannelMask = 0xFFFF;
+    uint16_t ChannelMask = 0xFFFF ^ 0x200; // Channel 10 is off by default.
 
     void ReplaceConstantOutput(TileHandle Tile, double NewValue);
 
