@@ -134,7 +134,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 
     const std::chrono::duration<double> EvalDelta = EvalEnd - EvalStart;
     const std::chrono::duration<double> Interval(SampleInterval * double(Frame.SampleCount));
-    const double Pressure = EvalDelta.count() / Interval.count();
+    const double Pressure = std::min(EvalDelta.count() / Interval.count(), 1.0);
     FramePressure[FramePressureIndex++] = float(Pressure);
 
     FramePressureCount = std::max(FramePressureIndex, FramePressureCount);
@@ -149,7 +149,14 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
                 TemporalPressure += FramePressure[Index];
             }
             TemporalPressure /= float(FramePressureCount);
-            BufferState->TemporalPressure.store(TemporalPressure);
+            if (std::isfinite(TemporalPressure))
+            {
+                BufferState->TemporalPressure.store(TemporalPressure);
+            }
+            else
+            {
+                BufferState->TemporalPressure.store(1.0);
+            }
         }
         else
         {
