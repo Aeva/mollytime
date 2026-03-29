@@ -483,8 +483,14 @@ class program_card:
         self.load_target = plate_bg(self.grid_size, self.tile_color, "load\npatch")
         self.load_active = plate_bg(self.grid_size, self.select_color, "load\npatch")
 
-        self.settings_target = plate_bg(self.grid_size, self.tile_color, "midi")
-        self.settings_active = plate_bg(self.grid_size, self.select_color, "midi")
+        self.settings_target = plate_bg(self.grid_size, self.tile_color, "config")
+        self.settings_active = plate_bg(self.grid_size, self.select_color, "config")
+
+        self.midi_target = plate_bg(self.grid_size, self.tile_color, "midi")
+        self.midi_active = plate_bg(self.grid_size, self.select_color, "midi")
+
+        self.misc_target = plate_bg(self.grid_size, self.tile_color, "misc")
+        self.misc_active = plate_bg(self.grid_size, self.select_color, "misc")
 
         self.calc_target = plate_bg(self.grid_size, self.tile_color, "calc")
         self.calc_active = plate_bg(self.grid_size, self.select_color, "calc")

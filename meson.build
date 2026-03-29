@@ -71,6 +71,7 @@ endif
 backend_source_files = files(
     'mollytime' / 'backend' / 'audio_driver.cpp',
     'mollytime' / 'backend' / 'colors.cpp',
+    'mollytime' / 'backend' / 'config.cpp',
     'mollytime' / 'backend' / 'errors.cpp',
     'mollytime' / 'backend' / 'midi.cpp',
     'mollytime' / 'backend' / 'moon.cpp',
