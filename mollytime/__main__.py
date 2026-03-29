@@ -57,6 +57,9 @@ def main():
             print(f"Ignoring unknown arg: {arg}")
 
     backend.init_config("mollytime")
+    #print(f"data folder: {backend.get_game_data_folder()}")
+    #print(f"config folder: {backend.get_game_config_folder()}")
+    #print(f"read only mode: {backend.get_read_only_mode()}")
 
     backend.init_midi()
     backend.init_audio(48000)

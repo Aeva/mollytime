@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <cstdlib>
 #include <cassert>
+#include <string>
 
 #include <fmt/format.h>
 
@@ -31,6 +32,42 @@ static std::filesystem::path GameDataFolder;
 static std::filesystem::path GameConfigFolder;
 
 static bool ReadOnlyMode = true;
+
+
+#if defined(_MSC_VER)
+// Microsoft decided to deprecate std::getenv, which is not actually deprecated in any C++ standard,
+// and worse, it'll refuse to compile if you use it, which appears to be a gross misunderstanding
+// of what "deprecation" means.
+#include <stdlib.h>
+static void GetEnvironmentVar(const char* Name, std::filesystem::path& Value)
+{
+    char* Found;
+    size_t NumberOfElements;
+    _dupenv_s(&Found, &NumberOfElements, Name);
+    if (Found != nullptr && NumberOfElements > 0)
+    {
+        Value = Found;
+    }
+    else
+    {
+        Value.clear();
+    }
+    free(Found);
+}
+#else
+static void GetEnvironmentVar(const char* Name, std::filesystem::path& Value)
+{
+    char* Found = std::getenv(Name);
+    if (Found != nullptr)
+    {
+        Value = Found;
+    }
+    else
+    {
+        Value.clear();
+    }
+}
+#endif
 
 
 void Config::Init(const char* ApplicationName)
@@ -55,15 +92,12 @@ void Config::Init(const char* ApplicationName)
 
         for (const char* HomeVar : PossibleHomeVars)
         {
-            char* Found = std::getenv(HomeVar);
-            if (Found)
+            std::filesystem::path MaybeHomeFolder;
+            GetEnvironmentVar(HomeVar, MaybeHomeFolder);
+            if (!MaybeHomeFolder.empty() && MaybeHomeFolder.is_absolute() && std::filesystem::exists(MaybeHomeFolder))
             {
-                std::filesystem::path MaybeHomeFolder = Found;
-                if (!MaybeHomeFolder.empty() && MaybeHomeFolder.is_absolute() && std::filesystem::exists(MaybeHomeFolder))
-                {
-                    HomeFolder = MaybeHomeFolder;
-                    break;
-                }
+                HomeFolder = MaybeHomeFolder;
+                break;
             }
         }
 
@@ -73,7 +107,7 @@ void Config::Init(const char* ApplicationName)
             fmt::print(
                 "WARNING: Unable to determine the user home folder from standard environment vars!\n"
                 "\tThe current working directory will be used instead: {}\n",
-                HomeFolder.c_str());
+                HomeFolder.string());
         }
     }
 
@@ -93,21 +127,19 @@ void Config::Init(const char* ApplicationName)
 
         for (const char* ConfigVar : PossibleConfigVars)
         {
-            char* Found = std::getenv(ConfigVar);
-            if (Found)
+            std::filesystem::path MaybeConfigFolder;
+            GetEnvironmentVar(ConfigVar, MaybeConfigFolder);
+
+            if (!MaybeConfigFolder.empty())
             {
-                std::filesystem::path MaybeConfigFolder = Found;
-                if (!MaybeConfigFolder.empty())
+                if (MaybeConfigFolder.is_relative())
                 {
-                    if (MaybeConfigFolder.is_relative())
-                    {
-                        MaybeConfigFolder = HomeFolder / MaybeConfigFolder;
-                    }
-                    if (MaybeConfigFolder.is_absolute() && std::filesystem::exists(MaybeConfigFolder))
-                    {
-                        ConfigFolder = MaybeConfigFolder;
-                        break;
-                    }
+                    MaybeConfigFolder = HomeFolder / MaybeConfigFolder;
+                }
+                if (MaybeConfigFolder.is_absolute() && std::filesystem::exists(MaybeConfigFolder))
+                {
+                    ConfigFolder = MaybeConfigFolder;
+                    break;
                 }
             }
         }
@@ -147,21 +179,19 @@ void Config::Init(const char* ApplicationName)
 
         for (const char* DataVar : PossibleDataVars)
         {
-            char* Found = std::getenv(DataVar);
-            if (Found)
+            std::filesystem::path MaybeDataFolder;
+            GetEnvironmentVar(DataVar, MaybeDataFolder);
+
+            if (!MaybeDataFolder.empty())
             {
-                std::filesystem::path MaybeDataFolder = Found;
-                if (!MaybeDataFolder.empty())
+                if (MaybeDataFolder.is_relative())
                 {
-                    if (MaybeDataFolder.is_relative())
-                    {
-                        MaybeDataFolder = HomeFolder / MaybeDataFolder;
-                    }
-                    if (MaybeDataFolder.is_absolute() && std::filesystem::exists(MaybeDataFolder))
-                    {
-                        DataFolder = MaybeDataFolder;
-                        break;
-                    }
+                    MaybeDataFolder = HomeFolder / MaybeDataFolder;
+                }
+                if (MaybeDataFolder.is_absolute() && std::filesystem::exists(MaybeDataFolder))
+                {
+                    DataFolder = MaybeDataFolder;
+                    break;
                 }
             }
         }
@@ -189,7 +219,7 @@ void Config::Init(const char* ApplicationName)
     {
         if (!std::filesystem::create_directory(GameDataFolder))
         {
-            fmt::print("WARNING: Unable create data folder, settings will not be saved: {}\n", GameDataFolder.c_str());
+            fmt::print("WARNING: Unable create data folder, settings will not be saved: {}\n", GameDataFolder.string());
         }
     }
 
@@ -197,7 +227,7 @@ void Config::Init(const char* ApplicationName)
     {
         if (!std::filesystem::create_directory(GameConfigFolder))
         {
-            fmt::print("WARNING: Unable create config folder, settings will not be saved: {}\n", GameConfigFolder.c_str());
+            fmt::print("WARNING: Unable create config folder, settings will not be saved: {}\n", GameConfigFolder.string());
         }
     }
 
@@ -207,13 +237,19 @@ void Config::Init(const char* ApplicationName)
 
 std::string_view Config::GetGameDataFolder()
 {
-    return GameDataFolder.native();
+    // Windows paths use 16 bit characters >:(
+    static std::string ThisIsInAvoidanceOfLongCompileTimesInOtherFiles;
+    ThisIsInAvoidanceOfLongCompileTimesInOtherFiles = GameDataFolder.string();
+    return ThisIsInAvoidanceOfLongCompileTimesInOtherFiles;
 }
 
 
 std::string_view Config::GetGameConfigFolder()
 {
-    return GameConfigFolder.native();
+    // Windows paths use 16 bit characters >:(
+    static std::string ThisIsInAvoidanceOfLongCompileTimesInOtherFiles;
+    ThisIsInAvoidanceOfLongCompileTimesInOtherFiles = GameConfigFolder.string();
+    return ThisIsInAvoidanceOfLongCompileTimesInOtherFiles;
 }
 
 
