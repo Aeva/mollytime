@@ -118,7 +118,7 @@ void Config::Init(const char* ApplicationName)
         const char* PossibleConfigVars[] = \
         {
             // Windows-specific vars, unlikely to be set on other operating systems:
-            "LocalAppData",
+            "AppData",
 
             // Recommended by https://specifications.freedesktop.org/basedir/latest/,
             // but may be unset if the user prefers the default location:
@@ -170,7 +170,7 @@ void Config::Init(const char* ApplicationName)
         const char* PossibleDataVars[] = \
         {
             // Windows-specific vars, unlikely to be set on other operating systems:
-            "LocalAppData",
+            "AppData",
 
             // Recommended by https://specifications.freedesktop.org/basedir/latest/,
             // but may be unset if the user prefers the default location:
