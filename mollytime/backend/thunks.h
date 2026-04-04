@@ -79,6 +79,7 @@ enum class OpCode : uint32_t
     STU,
     UTS,
     MIX,
+    WTN,
     BAL,
     PLS,
     FLP,

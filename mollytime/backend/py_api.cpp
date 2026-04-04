@@ -189,6 +189,7 @@ PYBIND11_MODULE(backend, m) {
 		.value("STU", OpCode::STU)
 		.value("UTS", OpCode::UTS)
 		.value("MIX", OpCode::MIX)
+		.value("WTN", OpCode::WTN)
 		.value("BAL", OpCode::BAL)
 		.value("PLS", OpCode::PLS)
 		.value("FLP", OpCode::FLP)
