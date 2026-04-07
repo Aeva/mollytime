@@ -1728,6 +1728,10 @@ void Scratch::PumpMidi()
         {
             State = MidiNoteState();
         }
+        for (double& PitchBend : ChannelPitchBend)
+        {
+            PitchBend = 0.0;
+        }
         for (InstructionThunkSharedPtr& Thunk : Program)
         {
             assert(Thunk != nullptr);
@@ -1743,6 +1747,13 @@ void Scratch::PumpMidi()
                 // Leave the velocity alone so the adsr can ring out properly.
                 State.Gate = 0.0;
                 State.Pressure = 0.0;
+            }
+        }
+        for (uint8_t Channel = 0; Channel < 16; ++Channel)
+        {
+            if (Message.Channel & (1 << Channel))
+            {
+                ChannelPitchBend[Channel] = 0.0;
             }
         }
     }

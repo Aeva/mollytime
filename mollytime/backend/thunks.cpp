@@ -999,16 +999,47 @@ struct MixThunk : public InstructionThunk
         THUNK_TRACEABLE_NAMED_SCOPE("MixThunk");
         CrankLanes([&](uint32_t Lane)
         {
-            double Left = Registers.CombineInput(Lane, 0);
-            double Right = Registers.CombineInput(Lane, 1);
+            double Low = Registers.CombineInput(Lane, 0);
+            double High = Registers.CombineInput(Lane, 1);
             double Alpha = Registers.CombineInput(Lane, 2, 0.5);
             double& Output = Registers.OutputRef(Lane, 0);
 
-            Output = (1.0 - Alpha) * Left + Alpha * Right;
+            Output = (1.0 - Alpha) * Low + Alpha * High;
         });
     }
 
     virtual ~MixThunk() {};
+};
+
+
+struct WithinThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<3, 1, 0> Info = \
+    {
+        OpCode::WTN, "within",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"low", 0.0, InputCombiner::ADD},
+            {"high", 1.0, InputCombiner::ADD},
+        }},
+        {"balance"}
+    };
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("WithinThunk");
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Low = Registers.CombineInput(Lane, 1);
+            double High = Registers.CombineInput(Lane, 2, 1.0);
+            double& Output = Registers.OutputRef(Lane, 0);
+            double Range = High - Low;
+            Output = (Sample - Low) / Range;
+        });
+    }
+
+    virtual ~WithinThunk() {};
 };
 
 
@@ -2438,6 +2469,7 @@ SymbolInfo::SymbolInfo()
     SetBasic<ToUnipolarThunk>();
     SetBasic<ToBipolarThunk>();
     SetBasic<MixThunk>();
+    SetBasic<WithinThunk>();
     SetBasic<StereoBalanceThunk>();
     SetBasic<PulseThunk>();
     SetBasic<FlipFlopThunk>();
