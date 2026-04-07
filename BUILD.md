@@ -10,7 +10,7 @@ self-contained executable (via [Pyinstaller](https://pyinstaller.org/en/stable/)
 As much of this as possible is automated using `mollybuild.py`, a project-
 specific build script. End-users Shouldn't™ have to care about anything more
 than:
-- `python mollybuild.py build` - Build an iterative development environment.
+- `python mollybuild.py develop` - Build an iterative development environment.
 - `python -m mollytime` - Run from the development environment, auto-recompiling if needed.
 - `python mollybuild.py package` - Package the project into source distribution, wheel, and self-contained executable.
 
@@ -23,7 +23,7 @@ Building a development environment for the project requires:
 - `pip install meson-python` - [Meson backend for building Python wheels.](https://mesonbuild.com/meson-python/)
 - `pip install ninja` - [C++ backend used by Meson.](https://ninja-build.org/)
 
-`mollybuild.py build` acquires all of these automatically.
+`mollybuild.py develop` and `mollybuild.py package` acquire all of these automatically.
 
 Packaging the project requires:
 - `pip install build` - [Top-level Python packaging tool.](https://pypi.org/project/build/)
@@ -105,7 +105,7 @@ covered here, like whether or not to emit optimized builds.
 
 > IMPORTANT: On Linux, you'll need to disable Meson's `b_asneeded` and `b_lundef` options.
 
-`mollybuild.py build` handles all of this automatically.
+`mollybuild.py develop` handles all of this automatically.
 
 ## 4. Running the project
 

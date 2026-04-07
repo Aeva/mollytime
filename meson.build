@@ -6,8 +6,6 @@ project('mollytime', 'cpp',
     ]
 )
 
-cmake = import('cmake')
-fs = import('fs')
 py = import('python')
 
 compiler = meson.get_compiler('cpp')

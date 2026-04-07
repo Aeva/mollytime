@@ -14,12 +14,35 @@ from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
 from pathlib import Path
 from subprocess import PIPE
+from typing import Any
 from zipfile import ZipFile
 
 def _get_dependencies(dependencies: list[str]):
     pip_args = [ sys.executable, "-m", "pip", "install" ] + dependencies
     pip_result = subprocess.run(pip_args)
     pip_result.check_returncode()
+
+def _get_mode_name(args_dict: dict[str, Any]):  # pyright: ignore[reportExplicitAny]
+    mode_name: str | None = args_dict.get("mode", None)
+    return mode_name if mode_name != None else "debug"
+
+def _get_toolchain_name(args_dict: dict[str, Any]):  # pyright: ignore[reportExplicitAny]
+    default_toolchain: str | None
+    match sys.platform:
+        case "win32":
+            default_toolchain = "win32-msvc"
+        case "linux":
+            default_toolchain = "linux-gcc"
+        case _:
+            default_toolchain = None
+            print(
+                f"WARNING: Mollytime doesn't officially support your platform, '{sys.platform}'."
+                + "\nMeson will try to find a working C++ toolchain, but it might fail.",
+                file = sys.stderr
+            )
+
+    toolchain_name: str | None = args_dict.get("toolchain", None)
+    return toolchain_name if toolchain_name != None else default_toolchain
 
 # HACK: UGH: So, meson-python "helpfully" overrides some built-in Meson options:
 # - `buildtype  = release`
@@ -55,26 +78,7 @@ def _HACK_extract_override_overrides(native_file: Path) -> list[str]:
     
     return args
 
-def clean(_modes: dict[str, Path], _toolchains: dict[str, Path], _args: Namespace):
-    build_dir = Path("build")
-    dist_dir = Path("dist")
-    third_party_dir = Path("third_party")
-
-    shutil.rmtree(build_dir, True)
-    shutil.rmtree(dist_dir, True)
-
-    for submodule_dir in third_party_dir.iterdir():
-        # HACK
-        if submodule_dir.name == "VAStateVariableFilter":
-            continue
-        
-        for everything in submodule_dir.iterdir():
-            if everything.is_dir():
-                shutil.rmtree(everything, True)
-            else:
-                os.remove(everything)
-
-def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+def develop(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     # Grab dependencies.
     _get_dependencies([ "meson", "meson-python", "ninja" ])
 
@@ -89,22 +93,26 @@ def build(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
     install_args += [ "-Ceditable-verbose=true" ]
     
     # Gather mode config, if specified.
-    mode_name: str | None = args_dict.get("mode", None)
-    if mode_name != None:
-        mode_file = modes.get(mode_name, None)
-        if mode_file != None:
-            mode_arg = f"--native-file={mode_file.resolve()}"
-            install_args += [ f"-Csetup-args={mode_arg}" ]
-            install_args += _HACK_extract_override_overrides(mode_file)
-    
+    mode_name = _get_mode_name(args_dict)
+    mode_file = modes.get(mode_name, None)
+    if mode_file != None:
+        mode_arg = f"--native-file={mode_file.resolve()}"
+        install_args += [ f"-Csetup-args={mode_arg}" ]
+        install_args += _HACK_extract_override_overrides(mode_file)
+
     # Gather toolchain config, if specified.
-    toolchain_name: str | None = args_dict.get("toolchain", None)
+    toolchain_name = _get_toolchain_name(args_dict)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             install_args += [ f"-Csetup-args={toolchain_arg}" ]
             install_args += _HACK_extract_override_overrides(toolchain_file)
+    
+    # Apply Meson options.
+    meson_options: list[str] = args_dict.get("meson_options", [])  # pyright: ignore[reportAny]
+    for option in meson_options:
+        install_args += [f"-Csetup-args=-D{option}"]
 
     # Go.
     install_args += [ "-v", "--editable", "." ]
@@ -140,12 +148,17 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     setup_args += [ f"-Csetup-args={mode_arg}" ]
     
     # Gather toolchain config, if specified.
-    toolchain_name: str | None = args_dict.get("toolchain", None)
+    toolchain_name = _get_toolchain_name(args_dict)
     if toolchain_name != None:
         toolchain_file = toolchains.get(toolchain_name, None)
         if toolchain_file != None:
             toolchain_arg = f"--native-file={toolchain_file.resolve()}"
             setup_args += [ f"-Csetup-args={toolchain_arg}" ]
+    
+    # Apply Meson options.
+    meson_options: list[str] = args_dict.get("meson_options", [])  # pyright: ignore[reportAny]
+    for option in meson_options:
+        setup_args += [f"-Csetup-args=-D{option}"]
     
     # Build the source distribution & wheel.
     package_result = subprocess.run(setup_args, stdout = PIPE)
@@ -248,37 +261,46 @@ if __name__ == "__main__":
         prog = "mollybuild",
         description = \
             "Concise build helper." +
-            "\nRun `init` after cloning the project. Then, for an iterative 'development' workflow, first run `build`, then just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
-            "\nWhen you're ready to distribute, run `package` to build a wheel, or `exe` to build a Pyinstaller distribution.",
+            "\nFor an iterative development workflow, first run `develop`. Then, just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run." +
+            "\nWhen you're ready to distribute, run `package` to build a wheel and Pyinstaller distribution.",
         argument_default = "-h"
     )
     subparsers = parser.add_subparsers(title = "Commands")
 
-    # `clean` command
-    clean_parser = subparsers.add_parser("clean")
-    clean_parser.set_defaults(command = clean)
-
-    # `build` command
-    build_parser = subparsers.add_parser("build", help = "Development: Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
-    build_parser.set_defaults(command = build)
-    _ = build_parser.add_argument(
-        "mode",
+    # `develop` command
+    develop_parser = subparsers.add_parser("develop", help = "Build a working environment. Once complete, you can just run the project with `python -m mollytime`. C++ changes will be automatically recompiled when you run.")
+    develop_parser.set_defaults(command = develop)
+    _ = develop_parser.add_argument(
+        "--mode", "-m",
         help = "Build mode. If unspecified, uses `debug`.",
-        choices = modes.keys()
+        choices = modes.keys(),
+        required = False
     )
-    _ = build_parser.add_argument(
-        "toolchain",
-        help = "Toolchain to build with. If unspecified, uses your system default, which might not be in this list.",
-        choices = toolchains.keys()
+    _ = develop_parser.add_argument(
+        "--toolchain", "-t",
+        help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
+        choices = toolchains.keys(),
+        required = False
+    )
+    _ = develop_parser.add_argument(
+        "meson_options",
+        help = "Option overrides to pass to Meson, in the form `option=value`.",
+        nargs = "*"
     )
 
     # `package` command
-    package_parser = subparsers.add_parser("package", help = "Release: Build a distributable Python package (sdist and wheel).")
+    package_parser = subparsers.add_parser("package", help = "Build a distributable Python package (sdist and wheel), and Pyinstaller executable.")
     package_parser.set_defaults(command = package)
     _ = package_parser.add_argument(
-        "toolchain",
-        help = "Toolchain to build with. If unspecified, uses your system default.",
-        choices = toolchains.keys()
+        "--toolchain", "-t",
+        help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
+        choices = toolchains.keys(),
+        required = False
+    )
+    _ = package_parser.add_argument(
+        "meson_options",
+        help = "Option overrides to pass to Meson, in the form `option=value`.",
+        nargs = "*"
     )
 
     # Go

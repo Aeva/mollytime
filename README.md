@@ -38,10 +38,10 @@ please let me know and I'll write them down here.
 ## "I want to work on / quickly try out the project!"
 
 Run this:
-- `python mollybuild.py build <mode> <toolchain>`
+- `python mollybuild.py develop -m <mode> -t <toolchain>`
 
 You can see supported `<mode>`s and `<toolchain>`s by checking command help:
-- `python mollybuild.py build -h`
+- `python mollybuild.py develop -h`
 
 That's it! Now just run `python -m mollytime` to launch the project. When you do,
 the C++ extension module will be automatically recompiled if you've changed any
@@ -50,7 +50,7 @@ source files since the last run.
 ## "I want to package the project!"
 
 Run this:
-- `python mollybuild.py package <toolchain>`
+- `python mollybuild.py package -t <toolchain>`
 
 You can see supported `<toolchain>`s by checking command help:
 - `python mollybuild.py package -h`
@@ -62,4 +62,11 @@ using [Pyinstaller](https://pyinstaller.org/).
 
 ## "I need to do things to the build system..."
 
-With sincere condolences, consult `BUILD.md` for more details.
+If you just need to configure Meson options -- whether built-in options like the `cpp`
+compiler, or Mollytime-specific options like which audio drivers to include -- you can
+pass these to `mollybuild.py` as extra positional arguments, in the form `option=value`.
+
+E.g.:
+- `python mollybuild.py develop -m debug cpp=g++ audio_driver_jack=disabled`
+
+For anything further, consult `BUILD.md` for more details, with sincere condolences.
