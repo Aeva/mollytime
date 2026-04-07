@@ -31,6 +31,9 @@
 #include <algorithm>
 #endif
 
+// GCC needs this to call forth Malloc, the dark god
+#include <cstring>
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
