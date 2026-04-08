@@ -23,10 +23,10 @@ Size Rect::GetSize() const
     return { Width, Height };
 }
 
-void Rect::SetSize(const Size& Size)
+void Rect::SetSize(const Size& InSize)
 {
-    Width = std::get<0>(Size);
-    Height = std::get<1>(Size);
+    Width = std::get<0>(InSize);
+    Height = std::get<1>(InSize);
 }
 
 float Rect::GetLeft() const

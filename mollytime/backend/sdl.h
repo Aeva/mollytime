@@ -33,7 +33,7 @@ struct Rect
     Rect(const Point& Position, const Size& InSize);
     
     Size GetSize() const;
-    void SetSize(const Size& Size);
+    void SetSize(const Size& InSize);
     
     float GetLeft() const;
     void SetLeft(float Left);
