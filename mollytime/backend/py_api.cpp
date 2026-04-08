@@ -114,7 +114,14 @@ static ColorPoint MakeHSL(float H, float S, float L)
 }
 
 
-PYBIND11_MODULE(backend, m) {
+// HACK: Suppress an otherwise-unsuppressable GCC `-pedantic `warning by passing an (unused) value
+// to PYBIND11_MODULE's variadic macro parameter. (If this isn't one of pybind11's defined
+// options, it won't alter program beahvior.)
+//
+// The warning is: "ISO C++11 requires at least one argument for the "..." in a variadic macro"
+// This is nonetheless supported in every C and C++ compiler since forever. Clang and MSVC allow
+// us to suppress this with individual pragmas, but GCC doesn't.
+PYBIND11_MODULE(backend, m, 0) {
 	m.doc() = "mollytime c++ internals";
 
 	py::native_enum<ColorSpace>(m, "ColorSpace", "enum.Enum")
