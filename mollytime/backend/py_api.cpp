@@ -23,12 +23,15 @@
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 #pragma warning(push)
 #pragma warning(disable : 4191 4355 4371 4464 4686 4868 5039)
 #include <pybind11/pybind11.h>
 #include <pybind11/native_enum.h>
 #include <pybind11/stl.h>
 #pragma warning(pop)
+#pragma GCC diagnostic pop
 #pragma clang diagnostic pop
 
 #include "colors.h"

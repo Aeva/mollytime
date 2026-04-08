@@ -82,9 +82,9 @@ namespace Draw
         SetBlendMode();
     }
 
-    Texture::Texture(int Width, int Height) :
-        Width(Width),
-        Height(Height)
+    Texture::Texture(int InWidth, int InHeight) :
+        Width(InWidth),
+        Height(InHeight)
     {
         assert(Width + Height >= 1);
 

@@ -33,6 +33,9 @@
 #include <memory>
 
 
+using Clock = std::chrono::steady_clock;
+using TimePoint = std::chrono::time_point<Clock>;
+
 
 static std::unique_ptr<AudioStream> Stream;
 
