@@ -16,7 +16,7 @@ void Font::Init()
     }
 }
 
-Font::Font(const std::string_view& FilePath, float Size)
+Font::Font(const std::string_view& FilePath, float InSize)
 {
     SDL_IOStream* IO = SDL_IOFromFile(FilePath.data(), "rb");
     if (IO == nullptr)
@@ -24,7 +24,7 @@ Font::Font(const std::string_view& FilePath, float Size)
         throw std::runtime_error(fmt::format("Failed to open font file '{}'. SDL error: {}", FilePath, SDL_GetError()));
     }
 
-    SDLFont = TTF_OpenFontIO(IO, true, Size);
+    SDLFont = TTF_OpenFontIO(IO, true, InSize);
     if(SDLFont == nullptr)
     {
         throw std::runtime_error(fmt::format("Failed to load font file '{}'. SDL error: {}", FilePath, SDL_GetError()));

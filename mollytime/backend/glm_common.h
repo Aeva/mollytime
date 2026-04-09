@@ -29,6 +29,8 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma clang diagnostic ignored "-Wnested-anon-types"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 #pragma warning(push)
 #pragma warning(disable : 4201 4464)
 #include <glm/vec3.hpp>
@@ -39,6 +41,7 @@
 #include <glm/gtx/extended_min_max.hpp>
 #include <glm/gtx/quaternion.hpp>
 #pragma warning(pop)
+#pragma GCC diagnostic pop
 #pragma clang diagnostic pop
 
 

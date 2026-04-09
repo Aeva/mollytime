@@ -29,11 +29,11 @@ struct Rect
     float Width;
     float Height;
     
-    Rect(float X, float Y, float Width, float Height);
-    Rect(const Point& Position, const Size& Size);
+    Rect(float InX, float InY, float InWidth, float InHeight);
+    Rect(const Point& Position, const Size& InSize);
     
     Size GetSize() const;
-    void SetSize(const Size& Size);
+    void SetSize(const Size& InSize);
     
     float GetLeft() const;
     void SetLeft(float Left);
@@ -68,7 +68,7 @@ struct Rect
     Point GetCenter() const;
     void SetCenter(const Point& Center);
     
-    bool ContainsPoint(const Point& Point) const;
+    bool ContainsPoint(const Point& InPoint) const;
     
     std::tuple<Point, Point> IntersectLine(const Point& Start, const Point& End) const;
     
@@ -244,8 +244,8 @@ namespace Draw
         // When passed no arguments, this allows drawing and blitting on the rendering surface.
         Texture();
         Texture(SDL_Surface* Surface);
-        Texture(int Width, int Height);
-        Texture(const Size& Size);
+        Texture(int InWidth, int InHeight);
+        Texture(const Size& InSize);
         
         float GetWidth() const;
         float GetHeight() const;
@@ -315,7 +315,7 @@ class Font
 public:
     static void Init();
     
-    explicit Font(const std::string_view& FilePath, float Size);
+    explicit Font(const std::string_view& FilePath, float InSize);
 
     ~Font();
     

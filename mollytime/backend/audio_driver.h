@@ -32,10 +32,6 @@
 #pragma clang diagnostic pop
 
 
-using Clock = std::chrono::steady_clock;
-using TimePoint = std::chrono::time_point<Clock>;
-
-
 struct AudioThreadShared
 {
     DECLARE_TRACEABLE_MUTEX(Mutex);

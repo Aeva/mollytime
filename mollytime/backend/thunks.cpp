@@ -1774,7 +1774,7 @@ struct InputSequenceThunk : public InstructionThunk
                 // Modulating the index happens at the start of this thunk, because the patch may
                 // have been modified between calls, which could result in the sequence changing
                 // length.
-                const int Period = static_cast<const int>(Sequence.size());
+                const int Period = static_cast<int>(Sequence.size());
                 int Index = int(Cursor) % Period;
                 OutValue = Sequence[Index][Lane];
 
