@@ -608,10 +608,10 @@ private:
     {
         SetCommon<ThunkT>();
         BasicCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures)
+            std::vector<double>* RegisterFile, auto& InInputs, auto& InOutputs, auto& InClosures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Registers.Connect(InInputs, InOutputs, InClosures, RegisterFile);
             Thunk->Reset();
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
@@ -622,10 +622,10 @@ private:
     {
         SetCommon<ThunkT>();
         MidiCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, struct Scratch* Program, auto& Inputs, auto& Outputs, auto& Closures)
+            std::vector<double>* RegisterFile, struct Scratch* Program, auto& InInputs, auto& InOutputs, auto& InClosures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Registers.Connect(InInputs, InOutputs, InClosures, RegisterFile);
             Thunk->Reset();
             Thunk->Program = Program;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
@@ -637,12 +637,12 @@ private:
     {
         SetCommon<ThunkT>();
         WidgetCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, auto& Inputs, auto& Outputs, auto& Closures, auto& SpecialInput)
+            std::vector<double>* RegisterFile, auto& InInputs, auto& InOutputs, auto& InClosures, auto& InSpecialInput)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Registers.Connect(InInputs, InOutputs, InClosures, RegisterFile);
             Thunk->Reset();
-            Thunk->Input = SpecialInput;
+            Thunk->Input = InSpecialInput;
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }
@@ -652,10 +652,10 @@ private:
     {
         SetCommon<ThunkT>();
         TapeCreateAndConnect[(int)ThunkT::Info.Symbol] = [](
-            std::vector<double>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& Inputs, auto& Outputs, auto& Closures)
+            std::vector<double>* RegisterFile, std::vector<MagicTapeUniquePtr>* TapeFile, std::ptrdiff_t TapeIndex, auto& InInputs, auto& InOutputs, auto& InClosures)
         {
             auto Thunk = std::make_shared<ThunkT>();
-            Thunk->Registers.Connect(Inputs, Outputs, Closures, RegisterFile);
+            Thunk->Registers.Connect(InInputs, InOutputs, InClosures, RegisterFile);
             Thunk->Reset();
             Thunk->TapeFile = TapeFile;
             Thunk->TapeIndex = TapeIndex;

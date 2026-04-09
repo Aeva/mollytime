@@ -4,18 +4,18 @@
 
 #include <cassert>
 
-Rect::Rect(float X, float Y, float Width, float Height) :
-    X(X),
-    Y(Y),
-    Width(Width),
-    Height(Height)
+Rect::Rect(float InX, float InY, float InWidth, float InHeight) :
+    X(InX),
+    Y(InY),
+    Width(InWidth),
+    Height(InHeight)
 { }
 
-Rect::Rect(const Point& Position, const Size& Size) :
+Rect::Rect(const Point& Position, const Size& InSize) :
     X(std::get<0>(Position)),
     Y(std::get<1>(Position)),
-    Width(std::get<0>(Size)),
-    Height(std::get<1>(Size))
+    Width(std::get<0>(InSize)),
+    Height(std::get<1>(InSize))
 { }
 
 Size Rect::GetSize() const
@@ -23,10 +23,10 @@ Size Rect::GetSize() const
     return { Width, Height };
 }
 
-void Rect::SetSize(const Size& Size)
+void Rect::SetSize(const Size& InSize)
 {
-    Width = std::get<0>(Size);
-    Height = std::get<1>(Size);
+    Width = std::get<0>(InSize);
+    Height = std::get<1>(InSize);
 }
 
 float Rect::GetLeft() const
@@ -146,9 +146,9 @@ void Rect::SetCenter(const Point& Center)
     SetCenterY(CenterY);
 }
 
-bool Rect::ContainsPoint(const Point& Point) const
+bool Rect::ContainsPoint(const Point& InPoint) const
 {
-    const auto [PointX, PointY] = Point;
+    const auto [PointX, PointY] = InPoint;
     const SDL_FPoint SDLPoint { PointX, PointY };
     const SDL_FRect SDLRect { X, Y, Width, Height };
 
