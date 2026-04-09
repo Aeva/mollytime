@@ -71,7 +71,7 @@ class pick_and_place_screen(editor_screen):
                 [OpCode.AUX, OpCode.LOUD_FUDGE, OpCode.VELO, OpCode.PRES, OpCode.CTRL, OpCode.KIKI],
             ]),
             ("XD", [
-                [OpCode.GO, OpCode.QNTZ, OpCode.ISQN, None, OpCode.LANE_COUNT, None],
+                [OpCode.GO, OpCode.QNTZ, OpCode.ISQN, None, OpCode.LANE_COUNT, OpCode.CHAN],
                 [OpCode.RNG, None, OpCode.RSQN, None, OpCode.ADD_LANES, OpCode.LEAD_LANE],
             ]),
             (":3", [

@@ -208,6 +208,7 @@ PYBIND11_MODULE(backend, m) {
 		.value("VELO", OpCode::VELO)
 		.value("PRES", OpCode::PRES)
 		.value("CTRL", OpCode::CTRL)
+		.value("CHAN", OpCode::CHAN)
 		.value("KIKI", OpCode::KIKI)
 		.value("BEND", OpCode::BEND)
 		.value("LANE_COUNT", OpCode::LANE_COUNT)

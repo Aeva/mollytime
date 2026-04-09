@@ -775,7 +775,7 @@ ScratchUniquePtr Patch::Compile()
 
             if (Symbol == OpCode::GATE || Symbol == OpCode::NOTE || Symbol == OpCode::VELO ||
                 Symbol == OpCode::PRES || Symbol == OpCode::CTRL || Symbol == OpCode::KIKI ||
-                Symbol == OpCode::BEND)
+                Symbol == OpCode::BEND || Symbol == OpCode::CHAN)
             {
                 Partial->DynamicPolyphony = false;
                 Partial->Polyphony = MidiPolyphony;

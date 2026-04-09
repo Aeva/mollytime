@@ -1890,41 +1890,12 @@ struct RandomSequenceThunk : public InstructionThunk
 };
 
 
-static inline bool ChannelMatch(const uint32_t Lane, const double EventChannel, const std::vector<double*>& MaskVector)
-{
-    if (EventChannel == -1.0 || MaskVector.size() == 0)
-    {
-        return true;
-    }
-
-    const int Channel = int(EventChannel) + 1;
-    assert(Channel >= 1 && Channel <= 16);
-    for (const double* ChannelMask : MaskVector)
-    {
-        const int Mask = int(ChannelMask[Lane]);
-
-        if (Mask < 0 && -Mask != Channel)
-        {
-            return true;
-        }
-        else if (Mask > 0 && Mask == Channel)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
 struct GateThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::GATE, "gate",
-        {{
-            {"channel", 0.0, InputCombiner::DIRECT},
-        }},
+        {},
         {"gate"}
     };
 
@@ -1938,10 +1909,7 @@ struct GateThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             const MidiNoteState& State = Program->MidiLanes[Lane];
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
-            {
-                Gate[Lane] = State.Gate;
-            }
+            Gate[Lane] = State.Gate;
         }
     }
 
@@ -1954,9 +1922,7 @@ struct NoteThunk : public InstructionThunk
     static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::NOTE, "note",
-        {{
-            {"channel", 0.0, InputCombiner::DIRECT},
-        }},
+        {},
         {"note"}
     };
 
@@ -1970,10 +1936,7 @@ struct NoteThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
-            {
-                Note[Lane] = State.Note;
-            }
+			Note[Lane] = State.Note;
         }
     }
 
@@ -1996,9 +1959,7 @@ struct VelocityThunk : public InstructionThunk
     static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::VELO, "velocity",
-        {{
-            {"channel", 0.0, InputCombiner::DIRECT},
-        }},
+        {},
         {"velocity"}
     };
 
@@ -2012,10 +1973,7 @@ struct VelocityThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
-            {
-                Velocity[Lane] = State.Velocity;
-            }
+            Velocity[Lane] = State.Velocity;
         }
     }
 
@@ -2028,9 +1986,7 @@ struct PressureThunk : public InstructionThunk
     static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::PRES, "pressure",
-        {{
-            {"channel", 0.0, InputCombiner::DIRECT},
-        }},
+        {},
         {"pressure"}
     };
 
@@ -2044,10 +2000,7 @@ struct PressureThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
-            {
-                Pressure[Lane] = State.Pressure;
-            }
+            Pressure[Lane] = State.Pressure;
         }
     }
 
@@ -2062,7 +2015,6 @@ struct ControlChangeThunk : public InstructionThunk
         OpCode::CTRL, "control\nchange",
         {{
             {"control", 0.0, InputCombiner::ADD},
-            {"channel", 0.0, InputCombiner::DIRECT},
         }},
         {"value"}
     };
@@ -2078,14 +2030,9 @@ struct ControlChangeThunk : public InstructionThunk
             double Control = Registers.CombineInput(Lane, 0);
             double* Value = Registers.OutputPtr(0);
             MidiNoteState& State = Program->MidiLanes[Lane];
-            double Channel = -1.0;
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(1)))
+            if (Control >= 0.0 && Control < 128.0)
             {
-                Channel = State.Channel;
-            }
-            if (Channel >= 0.0 && Channel < 16.0 && Control >= 0.0 && Control < 128.0)
-            {
-                Value[Lane] = Program->ChannelControls[uint8_t(Channel)][uint8_t(Control)];
+                Value[Lane] = Program->ChannelControls[uint8_t(State.Channel)][uint8_t(Control)];
             }
         }
     }
@@ -2094,14 +2041,71 @@ struct ControlChangeThunk : public InstructionThunk
 };
 
 
+struct ChannelThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<1, 1, 0> Info = \
+    {
+        OpCode::CHAN, "channel",
+        {{
+            {"channel", 0.0, InputCombiner::DIRECT},
+        }},
+        {"active"}
+    };
+
+    Scratch* Program;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("ChannelThunk");
+
+        double* Active = Registers.OutputPtr(0);
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
+        {
+            MidiNoteState& State = Program->MidiLanes[Lane];
+            const double EventChannel = State.Channel;
+			const std::vector<double*>& MaskVector = Registers.InputVector(0);
+
+			if (EventChannel == -1.0 || MaskVector.size() == 0)
+			{
+				Active[Lane] = 1.0;
+				continue;
+			}
+
+			Active[Lane] = 0.0;
+
+			const int Channel = int(EventChannel) + 1;
+			assert(Channel >= 1 && Channel <= 16);
+			for (const double* ChannelMask : MaskVector)
+			{
+				const int Mask = int(ChannelMask[Lane]);
+				if (Channel == Mask)
+				{
+					Active[Lane] = 1.0;
+					break;
+				}
+			}
+		}
+	}
+
+    virtual void Reset() override
+    {
+        CrankLanes([&](uint32_t Lane)
+        {
+            Registers.ZeroOut(Lane);
+            Registers.OutputRef(Lane, 0) = 0.0;
+        });
+    }
+
+    virtual ~ChannelThunk() {};
+};
+
+
 struct KikiThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::KIKI, "kiki",
-        {{
-            {"channel", 0.0, InputCombiner::DIRECT},
-        }},
+        {},
         {"kiki"}
     };
 
@@ -2115,16 +2119,8 @@ struct KikiThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            double Channel = -1.0;
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
-            {
-                Channel = State.Channel;
-            }
-            if (Channel >= 0.0 && Channel < 16)
-            {
-                uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(Channel)];
-                Kiki[Lane] = KikiTable[ProgramNumber];
-            }
+			uint8_t ProgramNumber = Program->ChannelPrograms[uint8_t(State.Channel)];
+			Kiki[Lane] = KikiTable[ProgramNumber];
         }
     }
 
@@ -2147,9 +2143,7 @@ struct PitchBendThunk : public InstructionThunk
     static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::BEND, "bend",
-        {{
-            {"channel", 0.0, InputCombiner::DIRECT},
-        }},
+        {},
         {"bend"}
     };
 
@@ -2163,10 +2157,7 @@ struct PitchBendThunk : public InstructionThunk
         for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
         {
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (ChannelMatch(Lane, State.Channel, Registers.InputVector(0)))
-            {
-                PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
-            }
+            PitchBend[Lane] = Program->ChannelPitchBend[uint8_t(State.Channel)];
         }
     }
 
@@ -2495,6 +2486,7 @@ SymbolInfo::SymbolInfo()
     SetMidi<VelocityThunk>();
     SetMidi<PressureThunk>();
     SetMidi<ControlChangeThunk>();
+    SetMidi<ChannelThunk>();
     SetMidi<KikiThunk>();
     SetMidi<PitchBendThunk>();
 

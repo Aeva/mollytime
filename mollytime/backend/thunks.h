@@ -101,6 +101,7 @@ enum class OpCode : uint32_t
     VELO,
     PRES,
     CTRL,
+    CHAN,
     KIKI,
     BEND,
     LANE_COUNT,
