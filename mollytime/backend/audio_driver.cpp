@@ -87,7 +87,7 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
     }
 
     TimePoint EvalStart = Clock::now();
-    if (Program && Program->Program.size() > 0)
+    if (Program && Program->Live)
     {
         for (int SampleIndex = 0; SampleIndex < Frame.SampleCount; ++SampleIndex)
         {

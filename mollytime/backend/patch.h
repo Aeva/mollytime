@@ -89,6 +89,7 @@ struct Scratch final : public MidiHandler
     std::vector<std::ptrdiff_t> Outputs;
     std::map<TileHandle, std::ptrdiff_t> Inputs;
     std::map<TileHandle, std::ptrdiff_t> AuxOutputs;
+    bool Live = false;
 
     bool ProbeConnected = false;
     std::ptrdiff_t ProbeInput;

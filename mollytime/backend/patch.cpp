@@ -1522,6 +1522,7 @@ ScratchUniquePtr Patch::Compile()
             ++OutputIndex;
         }
     }
+    Program->Live = OutputTiles.size() > 0 || AuxTiles.size() > 0;
 
 #ifndef NDEBUG
     {
