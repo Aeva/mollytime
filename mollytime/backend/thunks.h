@@ -597,9 +597,14 @@ private:
         for (const InputInfo& InputPort : ThunkT::Info.InputPorts)
         {
             std::string InputName = std::string(InputPort.Name);
+            assert(InputName.size() > 0);
             InputNames[ThunkIndex].push_back(InputName);
         }
         OutputNames[ThunkIndex] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
+        for (const std::string& OutputName : OutputNames[ThunkIndex])
+        {
+            assert(OutputName.size() > 0);
+        }
         Closures[ThunkIndex] = ThunkT::Info.ClosureCount;
     }
 

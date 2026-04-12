@@ -1892,7 +1892,7 @@ struct RandomSequenceThunk : public InstructionThunk
 
 struct GateThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = \
+    static constexpr InstructionInfo<0, 1, 0> Info = \
     {
         OpCode::GATE, "gate",
         {},
@@ -1919,7 +1919,7 @@ struct GateThunk : public InstructionThunk
 
 struct NoteThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = \
+    static constexpr InstructionInfo<0, 1, 0> Info = \
     {
         OpCode::NOTE, "note",
         {},
@@ -1956,7 +1956,7 @@ struct NoteThunk : public InstructionThunk
 
 struct VelocityThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = \
+    static constexpr InstructionInfo<0, 1, 0> Info = \
     {
         OpCode::VELO, "velocity",
         {},
@@ -1983,7 +1983,7 @@ struct VelocityThunk : public InstructionThunk
 
 struct PressureThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = \
+    static constexpr InstructionInfo<0, 1, 0> Info = \
     {
         OpCode::PRES, "pressure",
         {},
@@ -2010,7 +2010,7 @@ struct PressureThunk : public InstructionThunk
 
 struct ControlChangeThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<2, 1, 0> Info = \
+    static constexpr InstructionInfo<1, 1, 0> Info = \
     {
         OpCode::CTRL, "control\nchange",
         {{
@@ -2102,7 +2102,7 @@ struct ChannelThunk : public InstructionThunk
 
 struct KikiThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = \
+    static constexpr InstructionInfo<0, 1, 0> Info = \
     {
         OpCode::KIKI, "kiki",
         {},
@@ -2140,7 +2140,7 @@ struct KikiThunk : public InstructionThunk
 
 struct PitchBendThunk : public InstructionThunk
 {
-    static constexpr InstructionInfo<1, 1, 0> Info = \
+    static constexpr InstructionInfo<0, 1, 0> Info = \
     {
         OpCode::BEND, "bend",
         {},
