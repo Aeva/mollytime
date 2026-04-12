@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="1" symbol="out" x="5" y="-2"/>
+		<tile id="3" symbol="sin" x="-3" y="-1"/>
+		<tile id="4" symbol="min" x="-2" y="-2"/>
+		<tile id="5" symbol="max" x="-2" y="0"/>
+		<tile id="7" symbol="const" x="-2" y="-1" value="0.0"/>
+		<tile id="9" symbol="floor" x="-1" y="-2"/>
+		<tile id="10" symbol="ceil" x="-1" y="-1"/>
+		<tile id="11" symbol="scope" x="3" y="3"/>
+		<tile id="12" symbol="const" x="-4" y="-1" value="220.0"/>
+		<tile id="13" symbol="adsr" x="-1" y="1"/>
+		<tile id="14" symbol="rcp" x="-2" y="1"/>
+		<tile id="17" symbol="const" x="-1" y="3" value="0.0"/>
+		<tile id="23" symbol="abs" x="0" y="-2"/>
+		<tile id="30" symbol="mul" x="-2" y="2"/>
+		<tile id="31" symbol="const" x="-3" y="2" value="0.5"/>
+		<tile id="40" symbol="adsr" x="0" y="2"/>
+		<tile id="41" symbol="add" x="1" y="1"/>
+		<tile id="47" symbol="rng" x="2" y="-2"/>
+		<tile id="48" symbol="rng" x="2" y="-1"/>
+		<tile id="49" symbol="mul" x="3" y="-2"/>
+		<tile id="50" symbol="const" x="3" y="-3" value="-1.0"/>
+		<tile id="51" symbol="mix" x="3" y="1"/>
+		<tile id="52" symbol="stu" x="5" y="1"/>
+		<tile id="53" symbol="sin" x="5" y="-1"/>
+		<tile id="54" symbol="mix" x="5" y="0"/>
+		<tile id="55" symbol="const" x="4" y="0" value="200.0"/>
+		<tile id="56" symbol="const" x="6" y="0" value="300.0"/>
+		<wire from="7:0" to="4:0"/>
+		<wire from="23:0" to="47:0"/>
+		<wire from="50:0" to="49:0"/>
+		<wire from="49:0" to="51:1"/>
+		<wire from="3:0" to="4:0"/>
+		<wire from="41:0" to="51:2"/>
+		<wire from="7:0" to="5:0"/>
+		<wire from="47:0" to="49:0"/>
+		<wire from="52:0" to="54:2"/>
+		<wire from="53:0" to="1:0"/>
+		<wire from="17:0" to="40:3"/>
+		<wire from="56:0" to="54:1"/>
+		<wire from="30:0" to="40:1"/>
+		<wire from="10:0" to="13:0"/>
+		<wire from="3:0" to="5:0"/>
+		<wire from="40:0" to="41:0"/>
+		<wire from="12:0" to="14:0"/>
+		<wire from="48:0" to="51:0"/>
+		<wire from="17:0" to="40:2"/>
+		<wire from="17:0" to="13:1"/>
+		<wire from="51:0" to="52:0"/>
+		<wire from="55:0" to="54:0"/>
+		<wire from="54:0" to="53:0"/>
+		<wire from="30:0" to="13:2"/>
+		<wire from="13:0" to="41:0"/>
+		<wire from="51:0" to="11:0"/>
+		<wire from="12:0" to="3:0"/>
+		<wire from="17:0" to="40:4"/>
+		<wire from="17:0" to="13:3"/>
+		<wire from="14:0" to="30:0"/>
+		<wire from="23:0" to="40:0"/>
+		<wire from="9:0" to="23:0"/>
+		<wire from="31:0" to="30:0"/>
+		<wire from="10:0" to="48:0"/>
+		<wire from="5:0" to="10:0"/>
+		<wire from="4:0" to="9:0"/>
+	</patch>
+</mollytime>
