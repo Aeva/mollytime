@@ -2030,7 +2030,7 @@ struct ControlChangeThunk : public InstructionThunk
             double Control = Registers.CombineInput(Lane, 0);
             double* Value = Registers.OutputPtr(0);
             MidiNoteState& State = Program->MidiLanes[Lane];
-            if (Control >= 0.0 && Control < 128.0)
+            if (Control >= 0.0 && Control < 128.0 && State.Channel >= 0.0 && State.Channel < 16)
             {
                 Value[Lane] = Program->ChannelControls[uint8_t(State.Channel)][uint8_t(Control)];
             }
