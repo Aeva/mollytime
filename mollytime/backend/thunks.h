@@ -601,10 +601,12 @@ private:
             InputNames[ThunkIndex].push_back(InputName);
         }
         OutputNames[ThunkIndex] = std::vector<std::string>(ThunkT::Info.OutputNames.begin(), ThunkT::Info.OutputNames.end());
+#ifndef NDEBUG
         for (const std::string& OutputName : OutputNames[ThunkIndex])
         {
             assert(OutputName.size() > 0);
         }
+#endif
         Closures[ThunkIndex] = ThunkT::Info.ClosureCount;
     }
 
