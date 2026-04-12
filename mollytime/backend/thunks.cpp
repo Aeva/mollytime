@@ -2417,6 +2417,148 @@ struct TapeLoopThunk : public InstructionThunk
 };
 
 
+struct MillThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<5, 1, 5> Info = \
+    {
+        OpCode::MILL, "mill",
+        {{
+            {"sample", 0.0, InputCombiner::ADD},
+            {"length", 0.0, InputCombiner::ADD},
+            {"grain", 0.0, InputCombiner::ADD},
+            {"record", 1.0, InputCombiner::ADD},
+            {"reset", 0.0, InputCombiner::ADD},
+        }},
+        {"sample"}
+    };
+
+    std::vector<MagicTapeUniquePtr>* TapeFile;
+    std::ptrdiff_t TapeIndex;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("MillThunk");
+        CrankLanes([&](uint32_t Lane)
+        {
+            double Sample = Registers.CombineInput(Lane, 0);
+            double Seconds = Registers.CombineInput(Lane, 1);
+            double Grain = Registers.CombineInput(Lane, 2);
+            double Record = Registers.CombineInput(Lane, 3);
+            double Reset = Registers.CombineInput(Lane, 4);
+
+            double& Output = Registers.OutputRef(Lane, 0);
+
+            double& ReadHead1 = Registers.ClosureRef(Lane, 0);
+            double& ReadHead2 = Registers.ClosureRef(Lane, 1);
+            double& ReadCursor = Registers.ClosureRef(Lane, 2);
+
+            double& WriteHead = Registers.ClosureRef(Lane, 3);
+            double& LastReset = Registers.ClosureRef(Lane, 4);
+
+            uint64_t ReadStart1 = bit_cast<uint64_t, double>(ReadHead1);
+            uint64_t ReadStart2 = bit_cast<uint64_t, double>(ReadHead2);
+            uint64_t ReadOffset = bit_cast<uint64_t, double>(ReadCursor);
+            uint64_t WriteIndex = bit_cast<uint64_t, double>(WriteHead);
+
+            BlankTape* Tape;
+            {
+                MagicTapeUniquePtr& Found = TapeFile->at(TapeIndex + Lane);
+                Tape = (BlankTape*)Found.get();
+            }
+
+            if (!Tape)
+            {
+                return;
+            }
+
+            if (Seconds != Tape->Seconds)
+            {
+                Tape->Reset(Seconds);
+                ReadStart1 = 0;
+                ReadStart2 = 0;
+                ReadOffset = uint64_t(-1);
+                WriteIndex = 0;
+            }
+
+            const uint64_t SampleCount = Tape->Samples.size();
+
+            uint64_t GrainSamples = 0;
+            if (Grain > 0.0)
+            {
+                if (Grain >= Seconds)
+                {
+                    GrainSamples = SampleCount;
+                }
+                else
+                {
+                    GrainSamples = uint64_t(Grain * double(Tape->SampleRate));
+                }
+                GrainSamples = GrainSamples >> 1;
+
+                if (GrainSamples % 2 == 1)
+                {
+                    --GrainSamples;
+                }
+            }
+
+            if (SampleCount > 0 && GrainSamples > 1)
+            {
+                if (LastReset <= 0.0 && Reset >= 1.0)
+                {
+                    Tape->Reset(Seconds);
+                    ReadStart1 = 0;
+                    ReadStart2 = 0;
+                    ReadOffset = uint64_t(-1);
+                    WriteIndex = 0;
+                    Output = 0.0;
+                }
+                LastReset = Reset;
+
+                if (SampleCount > GrainSamples)
+                {
+                    uint64_t HalfPoint = GrainSamples >> 1;
+
+                    if (ReadOffset >= HalfPoint)
+                    {
+                        ReadStart1 = ReadStart2 + HalfPoint;
+                        ReadStart2 = uint64_t(Roll() * double(SampleCount - GrainSamples));
+                        ReadStart2 = SampleCount + WriteIndex - ReadStart2;
+                        ReadOffset = 0;
+                    }
+                    double Alpha = double(ReadOffset) / double(HalfPoint - 1);
+
+                    uint64_t ReadIndex1 = (ReadStart1 + ReadOffset) % SampleCount;
+                    uint64_t ReadIndex2 = (ReadStart2 + ReadOffset) % SampleCount;
+
+                    double Sample1 = Tape->ReadAt(ReadIndex1);
+                    double Sample2 = Tape->ReadAt(ReadIndex2);
+                    ReadOffset += 1;
+
+                    Output = (1.0 - Alpha) * Sample1 + Alpha * Sample2;
+                }
+
+
+                ReadHead1 = bit_cast<double, uint64_t>(ReadStart1);
+                ReadHead2 = bit_cast<double, uint64_t>(ReadStart2);
+                ReadCursor = bit_cast<double, uint64_t>(ReadOffset);
+
+                if (Record >= 1.0)
+                {
+                    Tape->WriteAndAdvance(WriteIndex, Sample);
+                    WriteHead = bit_cast<double, uint64_t>(WriteIndex);
+                }
+            }
+            else
+            {
+                Output = 0.0;
+            }
+        });
+    }
+
+    virtual ~MillThunk() {};
+};
+
+
 SymbolInfo::SymbolInfo()
 {
     DefaultNames.resize((int)OpCode::Count);
@@ -2495,6 +2637,7 @@ SymbolInfo::SymbolInfo()
     SetBasic<AddLanesThunk>();
 
     SetTape<TapeLoopThunk>();
+    SetTape<MillThunk>();
 }
 
 SymbolInfo SymbolInfoMap;

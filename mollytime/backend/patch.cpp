@@ -795,7 +795,7 @@ ScratchUniquePtr Patch::Compile()
 
             if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI || Symbol == OpCode::SAW || Symbol == OpCode::NOI ||
                 Symbol == OpCode::PHASE || Symbol == OpCode::PLS || Symbol == OpCode::FLP || Symbol == OpCode::RNG || Symbol == OpCode::ADSR ||
-                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP)
+                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP || Symbol == OpCode::MILL)
             {
                 Partial->Frequency = EvalFrequency::LIVE;
             }
@@ -858,6 +858,7 @@ ScratchUniquePtr Patch::Compile()
                     AuxTiles.push_back(Tile);
                     break;
                 case OpCode::TAPE_LOOP:
+                case OpCode::MILL:
                     TapeTiles.push_back(Tile);
                     break;
                 default:

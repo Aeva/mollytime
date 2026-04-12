@@ -229,6 +229,7 @@ PYBIND11_MODULE(backend, m, 0) {
 		.value("BOOP", OpCode::BOOP)
 		.value("TWEAK", OpCode::TWEAK)
 		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
+		.value("MILL", OpCode::MILL)
 		.value("MOON", OpCode::MOON)
 		.value("Count", OpCode::Count)
 		.finalize();

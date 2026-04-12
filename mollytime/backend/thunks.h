@@ -112,6 +112,7 @@ enum class OpCode : uint32_t
     BOOP,
     TWEAK,
     TAPE_LOOP,
+    MILL,
     MOON,
     Count
 };
@@ -154,6 +155,7 @@ struct MagicTape
     {
     }
     virtual size_t FindSample(double Position) = 0;
+    virtual double ReadAt(uint64_t Index) = 0;
     virtual double ReadAndAdvance(uint64_t& Index) = 0;
     virtual void WriteAndAdvance(uint64_t& Index, double NewSample) = 0;
     virtual ~MagicTape()
@@ -194,6 +196,18 @@ struct BlankTape : public MagicTape
         else
         {
             return 0;
+        }
+    }
+
+    virtual double ReadAt(uint64_t Index) override
+    {
+        if (Index < Samples.size())
+        {
+            return Samples[Index];
+        }
+        else
+        {
+            return 0.0;
         }
     }
 

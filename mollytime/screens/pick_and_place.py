@@ -76,7 +76,7 @@ class pick_and_place_screen(editor_screen):
             ]),
             (":3", [
                 [OpCode.INV, None, OpCode.FLD, OpCode.GRAD, OpCode.SPOW, OpCode.ABS],
-                [OpCode.TAPE_LOOP, None, None, OpCode.BAL, OpCode.POW, OpCode.SIGN],
+                [OpCode.TAPE_LOOP, OpCode.MILL, None, OpCode.BAL, OpCode.POW, OpCode.SIGN],
             ]),
             (":y", [
                 [OpCode.TPTSVF_LOWPASS, OpCode.TPTSVF_BANDPASS, OpCode.TPTSVF_HIGHPASS, OpCode.TPTSVF_NOTCH, None, OpCode.MOON],
