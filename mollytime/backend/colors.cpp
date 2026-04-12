@@ -543,10 +543,13 @@ glm::vec3 ColorRamp::Eval(ColorSpace OutEncoding, float Alpha)
 	{
 		float WedgeCount = float(Stops.size() - 1);
 		float WedgeSpan = 1.0f / WedgeCount;
-		float LowStop = glm::floor(WedgeCount * Alpha);
+		float LowStop = std::min(glm::floor(WedgeCount * Alpha), float(Stops.size() - 2));
 		float WedgeAlpha = (Alpha - (LowStop * WedgeSpan)) / WedgeSpan;
 		size_t LowIndex = size_t(LowStop);
 		size_t HighIndex = LowIndex + 1;
+		assert(LowIndex < Stops.size());
+		assert(HighIndex < Stops.size());
+		assert(LowIndex <= HighIndex);
 		ColorPoint Intermediary(Encoding, glm::mix(Stops[LowIndex].Channels, Stops[HighIndex].Channels, WedgeAlpha));
 		return Intermediary.Eval(OutEncoding);
 	}
