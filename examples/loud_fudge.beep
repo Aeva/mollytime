@@ -12,11 +12,13 @@
 		<tile id="9" symbol="sin" x="2" y="1"/>
 		<tile id="10" symbol="tri" x="-2" y="0"/>
 		<tile id="11" symbol="stu" x="-1" y="0"/>
+		<tile id="12" symbol="tweak" x="2" y="0" value="0.24896052874624808"/>
 		<wire from="8:0" to="7:0"/>
 		<wire from="1:0" to="10:0"/>
 		<wire from="4:0" to="2:1"/>
 		<wire from="10:0" to="11:0"/>
 		<wire from="11:0" to="2:2"/>
+		<wire from="12:0" to="8:0"/>
 		<wire from="6:0" to="5:0"/>
 		<wire from="3:0" to="2:0"/>
 		<wire from="2:0" to="6:0"/>

@@ -28,6 +28,7 @@
 		<tile id="25" symbol="mix" x="2" y="1"/>
 		<tile id="26" symbol="const" x="1" y="1" value="0.125"/>
 		<tile id="27" symbol="const" x="3" y="1" value="0.5"/>
+		<tile id="28" symbol="tweak" x="3" y="-1" value="0.2887942109256979"/>
 		<wire from="22:0" to="23:1"/>
 		<wire from="19:0" to="20:0"/>
 		<wire from="11:0" to="6:0"/>
@@ -47,6 +48,7 @@
 		<wire from="12:0" to="25:2"/>
 		<wire from="17:0" to="18:0"/>
 		<wire from="15:0" to="5:0"/>
+		<wire from="28:0" to="15:0"/>
 		<wire from="9:0" to="10:0"/>
 		<wire from="18:0" to="19:0"/>
 		<wire from="3:0" to="2:0"/>
