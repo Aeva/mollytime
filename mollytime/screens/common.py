@@ -243,14 +243,24 @@ class program_card:
                             out_tile_name = self.patch.get_tile_name(out_tile).replace("\n", " ")
                             old_out_port = patch_child.attrib["from"]
                             old_in_port = patch_child.attrib["to"]
-                            print(f"Unable to connect {old_out_port} to {old_in_port}!")
+                            print(f"Unable to connect {old_out_port} to {old_in_port}! (these are the numbers you will see in the patch file)")
                             print(f" - translated to {out_tile}:{out_index} -> {in_tile}:{in_index} aka {out_port} -> {in_port}")
-                            print(f" - tile {out_tile} is a {in_tile_name} ({self.patch.get_tile_symbol(out_tile)})")
-                            for name in self.patch.get_tile_output_ports(out_tile):
-                                print(f"   - {name} --->")
-                            print(f" - tile {in_tile} is a {out_tile_name} ({self.patch.get_tile_symbol(in_tile)})")
-                            for name in self.patch.get_tile_input_ports(out_tile):
-                                print(f"   ---> {name}")
+                            print(f" - tile {out_tile} is a {out_tile_name} (symbol {self.patch.get_tile_symbol(out_tile)})")
+                            print(f" - tile {in_tile} is a {in_tile_name} (symbol {self.patch.get_tile_symbol(in_tile)})")
+                            output_names = self.patch.get_tile_output_ports(out_tile)
+                            if output_names:
+                                print(f"output tile \"{out_tile_name}\" has these outputs:")
+                                for index, name in enumerate(output_names):
+                                    print(f"    {index}: {name}")
+                            else:
+                                print(f"output tile \"{out_tile_name}\" has no outputs!!!")
+                            input_names = self.patch.get_tile_input_ports(in_tile)
+                            if input_names:
+                                print(f"input tile \"{in_tile_name}\" has these inputs:")
+                                for index, name in enumerate(input_names):
+                                    print(f"    {index}: {name}")
+                            else:
+                                print(f"input tile \"{in_tile_name}\" has no inputs!!!")
                             raise
         self.recenter()
 
