@@ -39,6 +39,7 @@
 		<tile id="36" symbol="const" x="-3" y="4" value="2.0"/>
 		<tile id="37" symbol="const" x="-3" y="3" value="20.0"/>
 		<tile id="38" symbol="rcp" x="-2" y="4"/>
+		<tile id="39" symbol="tweak" x="5" y="-1" value="0.2501321058347818"/>
 		<wire from="16:0" to="13:0"/>
 		<wire from="36:0" to="38:0"/>
 		<wire from="33:0" to="31:0"/>
@@ -51,6 +52,7 @@
 		<wire from="10:0" to="6:0"/>
 		<wire from="34:0" to="24:2"/>
 		<wire from="12:0" to="13:0"/>
+		<wire from="39:0" to="3:0"/>
 		<wire from="14:0" to="18:2"/>
 		<wire from="13:0" to="14:0"/>
 		<wire from="23:0" to="24:0"/>
