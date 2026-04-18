@@ -15,6 +15,7 @@
 
 #include <random>
 #include <utility>
+#include <algorithm>
 
 #include "thunks.h"
 #include "patch.h"
@@ -40,6 +41,9 @@ double Roll()
 // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
 /* constexpr */ double MidiNoteToHz(double Note)
 {
+    // We clamp to the legal MIDI note range here, because it seems this conversion
+    // function otherwise can shoot the moon when passed in moderately large numbers.
+    Note = std::clamp(Note, 0.0, 127.0);
     double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
     return Hz;
 }
@@ -1308,6 +1312,10 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
             // terms.  This is the highest double precision value where integers can be exactly represented,
             // which serves no other purpose than to be an improbably high value.
             const double VeryLargeNumber = std::pow(2.0, 53);
+
+            // The "shooting the moon" bug might have been due to excessive frequencies being passed in
+            // from the "midi to hz" tile prior to introducing clamping.  This is an experimental mitigation.
+            Cutoff = std::min(Cutoff, 20000.0);
 
             // TODO: Is this section actually worth the two extra RunningState vars and the branch?
             if (Cutoff != LastCutoff || Resonance != LastResonance)
