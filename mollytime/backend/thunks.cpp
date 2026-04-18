@@ -41,9 +41,12 @@ double Roll()
 // NOTE: std::pow not constexpr until C++26, and Clang 2c doesn't have it yet
 /* constexpr */ double MidiNoteToHz(double Note)
 {
-    // We clamp to the legal MIDI note range here, because it seems this conversion
-    // function otherwise can shoot the moon when passed in moderately large numbers.
-    Note = std::clamp(Note, 0.0, 127.0);
+    // We clamp to the MIDI note range here such that the upper bound doesn't exceed 20 khz.
+    // The lower bound is arbitrarily set to zero, though there may be a case for lowering it
+    // further.  MIDI note numbers corresponding to frequencies above 20 khz are unlikely to
+    // be useful, but they are likely to jump over the Nyquist frequency and cause problems
+    // elsewhere.
+    Note = std::clamp(Note, 0.0, 138.0);
     double Hz = std::pow(2.0, ((Note - 69.0) / 12.0)) * 440.0;
     return Hz;
 }
@@ -1313,9 +1316,11 @@ struct TopologyPreservingTransformStateVariableFilterThunk : public InstructionT
             // which serves no other purpose than to be an improbably high value.
             const double VeryLargeNumber = std::pow(2.0, 53);
 
-            // The "shooting the moon" bug might have been due to excessive frequencies being passed in
-            // from the "midi to hz" tile prior to introducing clamping.  This is an experimental mitigation.
-            Cutoff = std::min(Cutoff, 20000.0);
+            // When the filter cutoff exceeds the Nyquist frequency (or, coincidentally, when it exceeds 24000)
+            // by a small(ish) amount (e.g. 24100.0), the filter output will shoot the moon.  The cutoff is clamped
+            // to the Nyquist frequency to prevent this.
+            const double NyquistFrequency = (0.5 / SampleInterval);
+            Cutoff = std::clamp(Cutoff, -NyquistFrequency, NyquistFrequency);
 
             // TODO: Is this section actually worth the two extra RunningState vars and the branch?
             if (Cutoff != LastCutoff || Resonance != LastResonance)
