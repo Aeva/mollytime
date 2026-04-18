@@ -20,22 +20,22 @@
 		<tile id="17" symbol="tptsvf_lowpass" x="1" y="1"/>
 		<tile id="18" symbol="const" x="1" y="-2" value="24.0"/>
 		<tile id="19" symbol="midi_hz" x="1" y="-1"/>
-		<tile id="20" symbol="add_lanes" x="2" y="1"/>
-		<tile id="21" symbol="lane_count" x="2" y="-1"/>
-		<tile id="22" symbol="rcp" x="2" y="0"/>
-		<tile id="23" symbol="tweak" x="3" y="-1" value="0.2436884217336771"/>
-		<tile id="24" symbol="mix" x="3" y="0"/>
-		<tile id="25" symbol="mul" x="3" y="1"/>
-		<tile id="26" symbol="const" x="4" y="0" value="1.0"/>
-		<tile id="27" symbol="out" x="4" y="1"/>
+		<tile id="20" symbol="add_lanes" x="3" y="1"/>
+		<tile id="21" symbol="lane_count" x="3" y="-1"/>
+		<tile id="22" symbol="rcp" x="3" y="0"/>
+		<tile id="23" symbol="tweak" x="4" y="-1" value="0.2436884217336771"/>
+		<tile id="24" symbol="mix" x="4" y="0"/>
+		<tile id="25" symbol="mul" x="4" y="1"/>
+		<tile id="26" symbol="const" x="5" y="0" value="1.0"/>
+		<tile id="27" symbol="out" x="5" y="1"/>
 		<tile id="28" symbol="tweak" x="2" y="2" value="0.3631894773244855"/>
 		<tile id="29" symbol="stu" x="-2" y="2"/>
 		<tile id="30" symbol="const" x="-4" y="-1" value="8.0"/>
 		<tile id="31" symbol="sin" x="-3" y="1"/>
 		<tile id="32" symbol="mul" x="-3" y="-1"/>
-		<tile id="33" symbol="mul" x="2" y="-2"/>
-		<tile id="34" symbol="const" x="2" y="-3" value="24.0"/>
-		<tile id="35" symbol="velo" x="3" y="-2"/>
+		<tile id="33" symbol="mul" x="2" y="-1"/>
+		<tile id="34" symbol="const" x="2" y="-2" value="24.0"/>
+		<tile id="35" symbol="velo" x="2" y="0"/>
 		<tile id="36" symbol="mix" x="-2" y="3"/>
 		<tile id="37" symbol="mix" x="0" y="3"/>
 		<tile id="38" symbol="tweak" x="-2" y="4" value="0.002343157865106997"/>
