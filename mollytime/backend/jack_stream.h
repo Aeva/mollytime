@@ -54,6 +54,16 @@ class JackStream final : public AudioStream
 public:
     JackStream(int SampleRate);
     virtual ~JackStream() override;
+
+    virtual bool ImplementsInput() override
+    {
+        return true;
+    }
+
+    virtual bool ImplementsAux() override
+    {
+        return true;
+    }
     
     virtual float GetTemporalPressure() override;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;

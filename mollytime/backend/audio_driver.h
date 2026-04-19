@@ -77,6 +77,16 @@ struct AudioStream
 {
     virtual ~AudioStream() {}
 
+    virtual bool ImplementsInput()
+    {
+        return false;
+    }
+
+    virtual bool ImplementsAux()
+    {
+        return false;
+    }
+
     virtual float GetTemporalPressure() = 0;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) = 0;
 };

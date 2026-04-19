@@ -53,6 +53,8 @@ uint32_t DecodeSampleHandle(double WireValue);
 
 std::string GetDefaultName(OpCode Symbol);
 
+bool GetTileAvailability(OpCode Symbol);
+
 void SetDefaultPolyphony(int Polyphony);
 
 

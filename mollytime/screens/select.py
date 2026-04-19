@@ -303,9 +303,13 @@ class select_screen(editor_screen):
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
+                symbol = editor.patch.get_tile_symbol(tile_id)
+
                 if editor.is_selected(tile_id):
                     pattern = editor.selected_tile_bg if tile_id == editor.lhs_selection() else editor.selected_tile_bg2
-                elif self.draw_clip and editor.patch.get_tile_symbol(tile_id) == OpCode.OUT:
+                elif symbol not in editor.available_symbols:
+                    pattern = editor.unavailable_tile_bg
+                elif self.draw_clip and symbol == OpCode.OUT:
                     pattern = editor.clip_tile
                 else:
                     polyphony = editor.patch.get_tile_polyphony(tile_id)

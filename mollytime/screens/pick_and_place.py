@@ -121,6 +121,7 @@ class pick_and_place_screen(editor_screen):
                     if archetile is not None:
                         hit_rect = backend.Rect(align_x + x * tile_stride, align_y + y * tile_stride, tile_span, tile_span)
                         palette[archetile] = hit_rect
+                        pattern = editor.tile_bg
 
                         if type(archetile) in (int, float):
                             label = f"{archetile}"
@@ -128,8 +129,10 @@ class pick_and_place_screen(editor_screen):
                         else:
                             label = get_symbol_name(archetile)
                             coverage.add(archetile)
+                            if archetile not in editor.available_symbols:
+                                pattern = editor.unavailable_tile_bg
                         draw_rect = backend.Rect(padding + x * tile_stride, padding + y * tile_stride, tile_span, tile_span)
-                        editor.tile_bg.draw(palette_surface, draw_rect, label)
+                        pattern.draw(palette_surface, draw_rect, label)
                     x += 1
                 y += 1
 
@@ -352,9 +355,12 @@ class pick_and_place_screen(editor_screen):
             for tile_id, tile_xy in editor.tile_positions.items():
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
+                symbol = editor.patch.get_tile_symbol(tile_id)
 
                 if tile_id == self.grabbed_tile:
                     editor.initial_placement.draw(frame, rect, label)
+                elif symbol not in editor.available_symbols:
+                    editor.unavailable_tile_bg.draw(frame, rect, label)
                 else:
                     polyphony = editor.patch.get_tile_polyphony(tile_id)
                     is_constant = editor.patch.get_tile_is_constant(tile_id)
@@ -415,26 +421,29 @@ class pick_and_place_screen(editor_screen):
             self.request_extra_draws()
 
             rect = backend.Rect(editor.grid_size, editor.grid_size, editor.grid_size * 2, editor.grid_size * 2)
+            pattern = editor.tile_bg
 
             if self.prospective_tile is not None:
                 if type(self.prospective_tile) in (int, float):
                     label = f"{self.prospective_tile}"
                 else:
                     label = get_symbol_name(self.prospective_tile)
+                    if self.prospective_tile not in editor.available_symbols:
+                        pattern = editor.unavailable_tile_bg
             else:
                 label = editor.patch.get_tile_label(self.grabbed_tile)
 
             if self.drop_deletes:
                 if self.prospective_tile is not None:
-                    editor.tile_bg.draw(overlay, rect, "drop\nto\ncancel")
+                    pattern.draw(overlay, rect, "drop\nto\ncancel")
                 else:
                     symbol = editor.patch.get_tile_symbol(self.grabbed_tile)
                     if symbol == OpCode.CONST and editor.patch.get_constant(self.grabbed_tile) == 1337:
-                        editor.tile_bg.draw(overlay, rect, "DROP\n&\nRUN")
+                        pattern.draw(overlay, rect, "DROP\n&\nRUN")
                     else:
-                        editor.tile_bg.draw(overlay, rect, "drop\nto\ndelete")
+                        pattern.draw(overlay, rect, "drop\nto\ndelete")
             elif self.last_valid_position == self.last_hover_position:
-                editor.tile_bg.draw(overlay, rect, label)
+                pattern.draw(overlay, rect, label)
             else:
                 editor.invalid_placement.draw(overlay, rect, label)
 

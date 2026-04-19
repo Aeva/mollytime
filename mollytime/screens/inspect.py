@@ -387,7 +387,9 @@ class inspect_screen(editor_screen):
                 rect = editor.get_tile_rect(tile_id)
                 label = editor.patch.get_tile_label(tile_id)
                 symbol = editor.patch.get_tile_symbol(tile_id)
-                if self.draw_clip and symbol == OpCode.OUT:
+                if symbol not in editor.available_symbols:
+                    editor.unavailable_tile_bg.draw(frame, rect, label)
+                elif self.draw_clip and symbol == OpCode.OUT:
                     editor.clip_tile.draw(frame, rect, label)
                 else:
                     if symbol == OpCode.TWEAK:

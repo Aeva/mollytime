@@ -27,6 +27,25 @@
 #include "audio_driver.h"
 
 
+bool GetTileAvailability(OpCode Symbol)
+{
+    AudioStream* Stream = Audio::GetStream();
+    if (Stream == nullptr)
+    {
+        return false;
+    }
+    if (Symbol == OpCode::IN)
+    {
+        return Stream->ImplementsInput();
+    }
+    if (Symbol == OpCode::AUX)
+    {
+        return Stream->ImplementsAux();
+    }
+    return true;
+}
+
+
 extern SymbolInfo SymbolInfoMap;
 
 

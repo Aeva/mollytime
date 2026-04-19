@@ -239,6 +239,8 @@ PYBIND11_MODULE(backend, m, 0) {
 	m.def("get_symbol_name", &GetDefaultName);
 	m.def("set_default_polyphony", &SetDefaultPolyphony);
 
+	m.def("get_tile_availability", &GetTileAvailability);
+
 	py::class_<Patch>(m, "Patch")
 		.def(py::init<>())
 		.def_property("midi_lanes", &Patch::GetPolyphony, &Patch::SetPolyphony)

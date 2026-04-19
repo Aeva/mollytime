@@ -45,6 +45,8 @@ class program_card:
         self.patch = Patch()
         self.tile_positions = {}
 
+        self.available_symbols = {Symbol for Symbol in OpCode if backend.get_tile_availability(Symbol)}
+
         def quick_connect(lhs, rhs):
             wire = self.patch.get_implicit_wire(lhs, rhs)
             assert(wire)
@@ -455,6 +457,8 @@ class program_card:
         self.poly_tile_bg = plate_bg(self.grid_size, parse_color("#be9ad3"))
         self.const_tile_bg = plate_bg(self.grid_size, parse_color("#d7e6d2"))
         self.disconnected_tile_bg = plate_bg(self.grid_size, parse_color("#d1e7f0"))
+
+        self.unavailable_tile_bg = plate_bg(self.grid_size, parse_color("#a6a8ae"))
 
         self.initial_placement = plate_outline(self.grid_size, parse_color("#888"))
         self.valid_placement = plate_outline(self.grid_size, parse_color("#080"))
