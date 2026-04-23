@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="2" symbol="rcp" x="-2" y="1"/>
+		<tile id="3" symbol="rcp" x="2" y="-1"/>
+		<tile id="5" symbol="out" x="-1" y="-2"/>
+		<tile id="6" symbol="out" x="1" y="2"/>
+		<tile id="7" symbol="rng" x="-1" y="1"/>
+		<tile id="8" symbol="rng" x="1" y="-1"/>
+		<tile id="9" symbol="mul" x="1" y="-2"/>
+		<tile id="10" symbol="mul" x="-1" y="2"/>
+		<tile id="11" symbol="tweak" x="0" y="0" value="0.49938552737235914"/>
+		<tile id="12" symbol="phase" x="-2" y="-1"/>
+		<tile id="13" symbol="phase" x="2" y="1"/>
+		<tile id="14" symbol="sqr_train" x="0" y="1"/>
+		<tile id="15" symbol="sqr_train" x="0" y="-1"/>
+		<tile id="16" symbol="pwm" x="-1" y="-1"/>
+		<tile id="17" symbol="pwm" x="1" y="1"/>
+		<tile id="18" symbol="uts" x="-1" y="0"/>
+		<tile id="19" symbol="uts" x="1" y="0"/>
+		<wire from="9:0" to="5:0"/>
+		<wire from="17:0" to="14:0"/>
+		<wire from="19:0" to="16:1"/>
+		<wire from="18:0" to="17:1"/>
+		<wire from="14:0" to="7:0"/>
+		<wire from="10:0" to="6:0"/>
+		<wire from="15:0" to="8:0"/>
+		<wire from="7:0" to="18:0"/>
+		<wire from="16:0" to="15:0"/>
+		<wire from="15:0" to="9:0"/>
+		<wire from="8:0" to="19:0"/>
+		<wire from="11:0" to="9:0"/>
+		<wire from="2:0" to="12:0"/>
+		<wire from="3:0" to="13:0"/>
+		<wire from="11:0" to="10:0"/>
+		<wire from="7:0" to="2:0"/>
+		<wire from="14:0" to="10:0"/>
+		<wire from="13:0" to="17:0"/>
+		<wire from="12:0" to="16:0"/>
+		<wire from="8:0" to="3:0"/>
+	</patch>
+</mollytime>
