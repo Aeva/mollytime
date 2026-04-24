@@ -1219,6 +1219,15 @@ struct RandomThunk : public InstructionThunk
         });
     }
 
+    virtual void Reset() override
+    {
+        CrankLanes([&](uint32_t Lane)
+        {
+            double& Output = Registers.OutputRef(Lane, 0);
+            Output = Roll();
+        });
+    }
+
     virtual ~RandomThunk() {};
 };
 
