@@ -171,19 +171,19 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     if (match := package_report_pattern.match(package_report)):
         wheel_name = match.group("name")
     else:
-        print("Can't infer wheel name from package report. Inferring...")
+        print("Can't infer wheel name from package report. Scanning for any built wheels...")
         maybe_wheel_names = glob.glob((output_dir / "*.whl").as_posix())
         if len(maybe_wheel_names) < 1:
             raise RuntimeError(f"Couldn't find any built *.whl files in {output_dir}.")
         
-        wheel_name = maybe_wheel_names[0]
+        wheel_name = Path(maybe_wheel_names[0]).name
         print(f"...Inferred {wheel_name}")
     
     wheel_path = output_dir.resolve() / wheel_name
     if not wheel_path.exists():
         raise RuntimeError(f"I seem to have messed up finding the wheel. I think it's at: '{wheel_path}'")
     
-    print(f"Building a Pyinstaller executable from {wheel_path}.")
+    print(f"Building a Pyinstaller executable from {wheel_path}...")
 
     # Create a temporary directory to work in.
     this_dir = Path(__file__).parent
