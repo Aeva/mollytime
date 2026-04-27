@@ -50,7 +50,7 @@ source files since the last run.
 ## "I want to package the project!"
 
 Run this:
-- `python mollybuild.py package -t <toolchain>`
+- `python mollybuild.py package -t <toolchain> -n <build_name>`
 
 You can see supported `<toolchain>`s by checking command help:
 - `python mollybuild.py package -h`
@@ -58,7 +58,8 @@ You can see supported `<toolchain>`s by checking command help:
 This executes [`build`](https://build.pypa.io/en/latest/) on the project, with all
 required settings pre-configured. A source distribution archive and wheel will be output
 to a `dist` subfolder. Then, it'll also emit a standalone executable based on the wheel,
-using [Pyinstaller](https://pyinstaller.org/).
+using [Pyinstaller](https://pyinstaller.org/), bundled with example patches & other
+important files. A custom name for the bundled .zip file can be provided, if you like.
 
 ## "I need to do things to the build system..."
 
