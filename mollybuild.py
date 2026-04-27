@@ -168,7 +168,11 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     
     # Build the source distribution & wheel.
     package_result = subprocess.run(setup_args, stdout = PIPE)
-    package_result.check_returncode()
+    try:
+        package_result.check_returncode()
+    except Exception as e:
+        print(package_result.stdout.decode())
+        raise e
 
     # Dig out the name of the built wheel.
     package_stdout = package_result.stdout.decode().strip()
