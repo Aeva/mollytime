@@ -84,18 +84,12 @@ pip install
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/toolchain-<toolchain>.ini
     -Csetup-args=--native-file=<absolute>/<path>/<to>/build_native/mode-<mode>.ini
     -Csetup-args=-Dbuildtype=<mode>
-    -Ccompile-args=-mollytime<python-extension-suffix>
     --editable .
 ```
 Note that you have to manually specify the `buildtype`. This is due to an oversight in
 meson-python: its [built-in option overrides](https://mesonbuild.com/meson-python/explanations/default-options.html)
 are hardcoded as CLI args, meaning they always take priority over our native files.
 We have to claim even-higher priority by passing in our own CLI override.
-
-Further note the need for an extension suffix on the the `compiler-args`. Without this,
-meson-python will unnecessarily build the Pyinstaller target, wasting a minute or more
-of time. Getting that suffix is up to you; or just omit the args, if you don't mind the
-wait.
 
 If you want to, you can omit or override the native config files, and provide your own
 arguments. Look at `meson.options` to see available build options. You'll probably want
