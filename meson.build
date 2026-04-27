@@ -19,7 +19,9 @@ python = python_install.full_path()
 # Warning wrangling 🤠
 if compiler.get_argument_syntax() == 'gcc'
     add_project_arguments(
+        '-Wnewline-eof',
         '-Wshadow',
+        '-Wshadow-field-in-constructor',
         '-Wno-unused-parameter',
         '-Wno-unknown-pragmas',
         language: 'cpp'
