@@ -1,5 +1,7 @@
 project('mollytime', 'cpp',
     meson_version : '>=1.3.0',
+    license : 'Apache-2.0',
+    license_files : 'LICENSE.txt',
     default_options : [
         'cpp_std=c++17',
         'warning_level=3'   # GCC-style: `-Wall -Wextra -pedantic`; MSVC-style: `/W4`
