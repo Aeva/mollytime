@@ -217,3 +217,11 @@ install_data(
     install_tag : 'python-runtime',
     preserve_path : true
 )
+
+# Install remaining informational files directly to the install root.
+install_data(
+    meson.project_license_files(),
+    'CONTRIBUTORS.txt',
+    install_dir : python_install.get_install_dir(),
+    install_tag : 'python-runtime'
+)
