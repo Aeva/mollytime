@@ -19,9 +19,7 @@ python = python_install.full_path()
 # Warning wrangling 🤠
 if compiler.get_argument_syntax() == 'gcc'
     add_project_arguments(
-        '-Wnewline-eof',
         '-Wshadow',
-        '-Wshadow-field-in-constructor',
         '-Wno-unused-parameter',
         '-Wno-unknown-pragmas',
         language: 'cpp'
@@ -30,6 +28,13 @@ elif compiler.get_argument_syntax() == 'msvc'
     add_project_arguments(
         '/wd4068',  # Disable 'Unused parameter'
         '/wd4100',  # Disable 'Unknown pragma'
+        language: 'cpp'
+    )
+endif
+if compiler.get_id() == 'clang'
+    add_project_arguments(
+        '-Wnewline-eof',
+        '-Wshadow-field-in-constructor',
         language: 'cpp'
     )
 endif
