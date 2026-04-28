@@ -1,5 +1,7 @@
 project('mollytime', 'cpp',
     meson_version : '>=1.3.0',
+    license : 'Apache-2.0',
+    license_files : 'LICENSE.txt',
     default_options : [
         'cpp_std=c++17',
         'warning_level=3'   # GCC-style: `-Wall -Wextra -pedantic`; MSVC-style: `/W4`
@@ -17,7 +19,9 @@ python = python_install.full_path()
 # Warning wrangling 🤠
 if compiler.get_argument_syntax() == 'gcc'
     add_project_arguments(
+        '-Wnewline-eof',
         '-Wshadow',
+        '-Wshadow-field-in-constructor',
         '-Wno-unused-parameter',
         '-Wno-unknown-pragmas',
         language: 'cpp'
@@ -212,4 +216,12 @@ install_data(
     install_dir : python_install.get_install_dir(),
     install_tag : 'python-runtime',
     preserve_path : true
+)
+
+# Install remaining informational files directly to the install root.
+install_data(
+    meson.project_license_files(),
+    'CONTRIBUTORS.txt',
+    install_dir : python_install.get_install_dir(),
+    install_tag : 'python-runtime'
 )

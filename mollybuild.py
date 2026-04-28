@@ -12,6 +12,7 @@ import venv
 
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
+from datetime import datetime
 from pathlib import Path
 from subprocess import PIPE
 from typing import Any
@@ -134,12 +135,17 @@ def develop(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
                 print(f"Copied {file} to {output_path_actual}.")
 
 def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace):
+    # Output here:
+    output_dir = Path("dist")
+    exe_archive_name: str = args.build_name  # pyright: ignore[reportAny]
+    exe_archive_timestamp = datetime.today().strftime("%Y.%m.%d")
+    exe_archive_dir = output_dir / f"{exe_archive_name}-{exe_archive_timestamp}"
+
     # Grab dependencies.
     _get_dependencies([ "build" ])
 
     # Prepare to execute `py(thon) -m build`.
     args_dict = vars(args)
-    output_dir = Path("dist")
     setup_args = [ sys.executable, "-m", "build", "--outdir", output_dir ]
 
     # Always package in `release` mode.
@@ -162,7 +168,11 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     
     # Build the source distribution & wheel.
     package_result = subprocess.run(setup_args, stdout = PIPE)
-    package_result.check_returncode()
+    try:
+        package_result.check_returncode()
+    except Exception as e:
+        print(package_result.stdout.decode())
+        raise e
 
     # Dig out the name of the built wheel.
     package_stdout = package_result.stdout.decode().strip()
@@ -171,19 +181,19 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     if (match := package_report_pattern.match(package_report)):
         wheel_name = match.group("name")
     else:
-        print("Can't infer wheel name from package report. Inferring...")
+        print("Can't infer wheel name from package report. Scanning for any built wheels...")
         maybe_wheel_names = glob.glob((output_dir / "*.whl").as_posix())
         if len(maybe_wheel_names) < 1:
             raise RuntimeError(f"Couldn't find any built *.whl files in {output_dir}.")
         
-        wheel_name = maybe_wheel_names[0]
+        wheel_name = Path(maybe_wheel_names[0]).name
         print(f"...Inferred {wheel_name}")
     
     wheel_path = output_dir.resolve() / wheel_name
     if not wheel_path.exists():
         raise RuntimeError(f"I seem to have messed up finding the wheel. I think it's at: '{wheel_path}'")
     
-    print(f"Building a Pyinstaller executable from {wheel_path}.")
+    print(f"Building a Pyinstaller executable from {wheel_path}...")
 
     # Create a temporary directory to work in.
     this_dir = Path(__file__).parent
@@ -218,7 +228,7 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
         venv_pyinstaller_main = shutil.copy(this_dir / "pyinstaller_main.py", wheel_out_path / "pyinstaller_main.py")
         venv_pyinstaller_command = [
             (venv_scripts / "pyinstaller.exe") if os.name == "nt" else "pyinstaller",
-            "--distpath", output_dir,
+            "--distpath", exe_archive_dir,
             "--specpath", temp_dir / ".pyinstaller",
             "--workpath", temp_dir / ".pyinstaller" / "work",
             "--onefile",
@@ -235,6 +245,19 @@ def package(modes: dict[str, Path], toolchains: dict[str, Path], args: Namespace
     finally:
         # Clean out the temporary work dir.
         shutil.rmtree(temp_dir, ignore_errors = True)
+    
+    print(f"Bundling Pyinstaller executable with supporting files...")
+
+    # Copy over supporting files.
+    for item in ( Path(item) for item in ("LICENSE.txt", "CONTRIBUTORS.txt", "examples") ):
+        if item.is_dir():
+            _ = shutil.copytree(this_dir / item, exe_archive_dir / item, dirs_exist_ok = True)
+        else:
+            _ = shutil.copyfile(this_dir / item, exe_archive_dir / item)
+    
+    # Zip it up For Your Convenience.
+    archive = shutil.make_archive(str(output_dir / exe_archive_dir.name), "zip", exe_archive_dir)
+    print(f"Successfully packaged executable into '{Path(archive)}'.")
 
 if __name__ == "__main__":
     working_dir = Path(__file__).parent
@@ -295,6 +318,12 @@ if __name__ == "__main__":
         "--toolchain", "-t",
         help = "Toolchain to build with. If unspecified, uses `win32-msvc` on Windows, `linux-gcc` on Linux, and Meson's best guess on other platforms.",
         choices = toolchains.keys(),
+        required = False
+    )
+    _ = package_parser.add_argument(
+        "--build-name", "-n",
+        help = "Name for the executable archive. If unspecified, uses `mollytime`.",
+        default = "mollytime",
         required = False
     )
     _ = package_parser.add_argument(
