@@ -17,6 +17,8 @@
 
 #include "midi.h"
 
+#include <string_view>
+
 struct _snd_seq;    // Forward declares `typedef struct _snd_seq snd_seq_t` from <alsa/seq.h>.
 
 class AlsaMidiDriver final : public MidiDriver
