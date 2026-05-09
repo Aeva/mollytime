@@ -16,18 +16,6 @@
 #include "audio_driver.h"
 #include "midi.h"
 
-#if defined(ENABLE_JACK)
-#include "jack_stream.h"
-#endif
-
-#if defined(AUDIO_WASAPI)
-#include "wasapi_stream.h"
-#endif
-
-#if defined(AUDIO_SDL)
-#include "sdl_stream.h"
-#endif
-
 #include <fmt/format.h>
 
 #include <memory>
@@ -169,33 +157,16 @@ void RealTimeAudioThread::AdvanceFrames(FramePointers& Frame)
 }
 
 
-// This no-op stub is used if no AudioStream is available.  This is
-// primarily intended to aid in porting Mollytime to new platforms.
-struct StubStream final : AudioStream
-{
-    virtual float GetTemporalPressure() override { return 0.0f; }
-    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override {}
-};
-
-
 AudioStream* Audio::GetStream()
 {
     return Stream.get();
 }
 
 
-void Audio::Init(int SampleRate)
+void Audio::Init(std::unique_ptr<AudioStream>&& InStream)
 {
-#if defined(ENABLE_JACK)
-    Stream = std::make_unique<JackStream>(SampleRate);
-#elif defined(AUDIO_WASAPI)
-    Stream = std::make_unique<WasapiStream>(SampleRate);
-#elif defined(AUDIO_SDL)
-    Stream = std::make_unique<SDLStream>(SampleRate);
-#else
-    fmt::println("No audio stream implementation is available.");
-    Stream = std::make_unique<StubStream>();
-#endif
+    assert(InStream);
+    Stream = std::move(InStream);
 }
 
 

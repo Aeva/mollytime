@@ -15,12 +15,7 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
-#include <atomic>
-#include <mutex>
-#include <chrono>
-
 #include "patch.h"
 
 #pragma clang diagnostic push
@@ -96,7 +91,7 @@ namespace Audio
 {
     AudioStream* GetStream();
 
-    void Init(int SampleRate);
+    void Init(std::unique_ptr<AudioStream>&& AudioStream);
     void Shutdown();
     float GetTemporalPressure();
 };

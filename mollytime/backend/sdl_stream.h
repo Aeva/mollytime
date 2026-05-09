@@ -49,6 +49,20 @@ class SDLStream final : public AudioStream
 public:
     SDLStream(int SampleRate);
 
+    static constexpr bool IsAvailable()
+    {
+#if defined(AUDIO_SDL)
+        return true;
+#else
+        return false;
+#endif        
+    }
+
+    static std::string_view GetName()
+    {
+        return "SDL";
+    }
+
     virtual float GetTemporalPressure() override;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
 };
