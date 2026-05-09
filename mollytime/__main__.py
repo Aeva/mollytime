@@ -28,27 +28,43 @@ from .screens.common import program_card
 from .screens.inspect import inspect_screen
 
 def _select_audio_driver(driver_name, sample_rate):
-    driver_types = (backend.SDLStream, backend.JackStream, backend.WasapiStream, backend.StubStream)
-    driver_name = driver_name.casefold()
-    driver_type = None
+    assert backend.StubStream.is_available()
 
+    # Determine the default driver for this platform & build.
+    if platform.system() == "Linux" and backend.JackStream.is_available():
+        default_driver_type = backend.JackStream
+    elif platform.system() == "Windows" and backend.WasapiStream.is_available():
+        default_driver_type = backend.WasapiStream
+    elif backend.SDLStream.is_available():
+        default_driver_type = backend.SDLStream
+    else:
+        default_driver_type = backend.StubStream
+    
+    # If no driver was requested, we can just use the default.
+    if driver_name is None:
+        return default_driver_type(sample_rate)
+    
+    # Find the driver that matches the requested name.
+    driver_types = (backend.SDLStream, backend.JackStream, backend.WasapiStream, backend.StubStream)
+    driver_type = None
     for type in driver_types:
-        if type.get_name().casefold() == driver_name:
+        if type.get_name().casefold() == driver_name.casefold():
             driver_type = type
             break
     
+    # If we got a match, great! Use that.
     if driver_type is not None and driver_type.is_available():
         return driver_type(sample_rate)
     
-    fallback_type = backend.SDLStream if backend.SDLStream.is_available() else backend.StubStream
+    # We didn't get a match. Inform the user of their wrongness, and use the default driver.
     fallback_reason = "not valid" if driver_type is None else "not available"
-    print(f"Audio driver \"{driver_name}\" is {fallback_reason}.  Falling back to {fallback_type.get_name()}.")
+    print(f"Audio driver \"{driver_name}\" is {fallback_reason}.  Falling back to {default_driver_type.get_name()}.")
     print("The following are the audio drivers available on this system:")
     for type in driver_types:
         if type.is_available():
             print(f"- {type.get_name()}")
     
-    return fallback_type(sample_rate)
+    return default_driver_type(sample_rate)
 
 def main():
     operating_system = platform.system()
@@ -62,7 +78,7 @@ def main():
     force_fullscreen = 0
     dump_icon = False
     vertical_inches = None
-    audio_driver_name = "SDL" if backend.SDLStream.is_available() else "Stub"
+    audio_driver_name = None
 
     while args:
         arg = args.pop(0)
