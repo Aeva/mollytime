@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <memory>
 #ifdef MIDI_ALSA
 // Polling for MIDI events happens on the audio thread.
 #define MIDI_NEEDS_LOCKS 0
@@ -121,6 +122,6 @@ namespace Midi
     void PatchReset();
     void ReleaseHeldNotes(uint16_t ChannelMask = 0xFFFF);
     void ProcessEvents(MidiHandler* Handler);
-    void Init();
+    void Init(std::unique_ptr<MidiDriver>&& InDriver);
     void Shutdown();
 }

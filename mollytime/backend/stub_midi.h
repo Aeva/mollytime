@@ -1,4 +1,3 @@
-
 // Copyright 2025 Aeva Palecek
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,36 +15,18 @@
 #pragma once
 
 #include "midi.h"
-#include <vector>
-#include <cstdint>
 
-
-class MmeApiMidiDriver final : public MidiDriver
+struct StubMidiDriver final : public MidiDriver
 {
-    std::vector<uint32_t> PendingPackets;
-    DECLARE_TRACEABLE_MUTEX(PendingPacketsCrit);
-
-    void CloseInputPort(int Port);
-    bool OpenInputPort(int Port);
-
-public:
-    MmeApiMidiDriver();
-    virtual ~MmeApiMidiDriver() override;
-
     static constexpr bool IsAvailable()
     {
-#if defined(MIDI_MMEAPI)
         return true;
-#else
-        return false;
-#endif
     }
 
     static constexpr std::string_view GetName()
     {
-        return "MmeApi";
+        return "Stub";
     }
 
-    virtual void ProcessEvents(MidiHandler* Handler) override;
-    void NewMidiInputPacket(uint32_t Packet);
+    virtual void ProcessEvents(MidiHandler*) override { }
 };

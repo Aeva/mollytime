@@ -30,5 +30,19 @@ public:
     AlsaMidiDriver();
     virtual ~AlsaMidiDriver() override;
 
+    static constexpr bool IsAvailable()
+    {
+#if defined(MIDI_ALSA)
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    static constexpr std::string_view GetName()
+    {
+        return "Alsa";
+    }
+
     void ProcessEvents(MidiHandler* Handler) override;
 };

@@ -27,6 +27,43 @@ from .patterns import *
 from .screens.common import program_card
 from .screens.inspect import inspect_screen
 
+def _select_midi_driver(driver_name):
+    # Determine the default driver for this build.
+    if backend.AlsaMidiDriver.is_available():
+        default_driver_type = backend.AlsaMidiDriver
+    elif backend.MmeApiMidiDriver.is_available():
+        default_driver_type = backend.MmeApiMidiDriver
+    else:
+        default_driver_type = None
+    
+    # If no driver was requested, we can just use the default.
+    if driver_name is None:
+        return default_driver_type() if default_driver_type is not None else None
+    
+    # Find the driver that matches the requested name.
+    driver_types = (backend.AlsaMidiDriver, backend.MmeApiMidiDriver, backend.StubMidiDriver)
+    driver_type = None
+    for type in driver_types:
+        if type.get_name().casefold() == driver_name.casefold():
+            driver_type = type
+            break
+    
+    # If we got a match, great! Use that.
+    if driver_type is not None and driver_type.is_available():
+        return driver_type()
+    
+    # We didn't get a match. Inform the user of their wrongness, and use the default driver.
+    fallback_reason = "not valid" if driver_type is None else "not available"
+    default_name = default_driver_type.get_name() if default_driver_type is not None else "None"
+
+    print(f"MIDI driver \"{driver_name}\" is {fallback_reason}.  Falling back to {default_name}.")
+    print("The following are the MIDI drivers available on this system:")
+    for type in driver_types:
+        if type.is_available():
+            print(f"- {type.get_name()}")
+    
+    return default_driver_type() if default_driver_type is not None else None
+
 def _select_audio_driver(driver_name, sample_rate):
     assert backend.StubStream.is_available()
 
@@ -78,6 +115,7 @@ def main():
     force_fullscreen = 0
     dump_icon = False
     vertical_inches = None
+    midi_driver_name = None
     audio_driver_name = None
 
     while args:
@@ -92,6 +130,8 @@ def main():
             vertical_inches = float(args.pop(0))
         elif arg == "-p":
             backend.set_default_polyphony(int(args.pop(0)))
+        elif arg in ("-m" "--midi-driver"):
+            midi_driver_name = args.pop(0)
         elif arg in ("-a" "--audio-driver"):
             audio_driver_name = args.pop(0)
         else:
@@ -102,7 +142,12 @@ def main():
     #print(f"config folder: {backend.get_game_config_folder()}")
     #print(f"read only mode: {backend.get_read_only_mode()}")
 
-    backend.init_midi()
+    midi_driver = _select_midi_driver(midi_driver_name)
+    if midi_driver is not None:
+        print(f"Midi driver: {midi_driver.get_name()}")
+        backend.init_midi(midi_driver)
+    else:
+        print("No MIDI driver is available.")
 
     audio_driver = _select_audio_driver(audio_driver_name, 48000)
     print(f"Audio driver: {audio_driver.get_name()}")
