@@ -1,4 +1,3 @@
-
 // Copyright 2025 Aeva Palecek
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,39 +16,20 @@
 
 #include "audio_driver.h"
 
-#include <vector>
-
-
-struct WasapiThreadShared final : AudioThreadShared
+struct StubStream final : AudioStream
 {
-    std::vector<float> OutputSamplesLeft;
-    std::vector<float> OutputSamplesRight;
-};
-
-
-class WasapiStream final : public AudioStream
-{
-    WasapiThreadShared BufferState;
-    std::unique_ptr<class WasapiRealTimeThread> RealTimeThread;
-
-public:
-    WasapiStream(int SampleRate);
-    ~WasapiStream();
+    StubStream(int) { }
 
     static constexpr bool IsAvailable()
     {
-#if defined(AUDIO_WASAPI)
         return true;
-#else
-        return false;
-#endif        
     }
 
     static constexpr std::string_view GetName()
     {
-        return "Wasapi";
+        return "Stub";
     }
 
-    virtual float GetTemporalPressure() override;
-    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
+    virtual float GetTemporalPressure() override { return 0.0f; }
+    virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override {}
 };

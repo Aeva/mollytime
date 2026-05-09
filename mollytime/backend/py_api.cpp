@@ -37,10 +37,15 @@
 #include "colors.h"
 #include "patch.h"
 #include "audio_driver.h"
-#include "alsa_midi.h"
 #include "perf.h"
 #include "sdl.h"
 #include "config.h"
+
+#include "jack_stream.h"
+#include "sdl_stream.h"
+#include "stub_stream.h"
+#include "wasapi_stream.h"
+
 
 namespace py = pybind11;
 
@@ -113,6 +118,24 @@ static ColorPoint MakeHSL(float H, float S, float L)
 	return ColorPoint(ColorSpace::HSL, glm::vec3(H, S, L));
 }
 
+template<typename T>
+static void BindAudioDriver(py::module_& Module, const std::string_view& ClassName)
+{
+    if constexpr (T::IsAvailable())
+    {
+        py::classh<T, AudioStream>(Module, ClassName.data())
+            .def(py::init<int>())
+            .def_static("is_available", &T::IsAvailable)
+            .def_static("get_name", &T::GetName);
+    }
+    else
+    {
+        class UndefinedPlaceholder { UndefinedPlaceholder(); };
+        py::classh<UndefinedPlaceholder>(Module, ClassName.data())
+            .def_static("is_available", &T::IsAvailable)
+            .def_static("get_name", &T::GetName);
+    }
+}
 
 // HACK: Suppress an otherwise-unsuppressable GCC `-pedantic `warning by passing an (unused) value
 // to PYBIND11_MODULE's variadic macro parameter. (If this isn't one of pybind11's defined
@@ -290,6 +313,12 @@ PYBIND11_MODULE(backend, m, 0) {
 	m.def("get_game_data_folder", &Config::GetGameDataFolder);
 	m.def("get_game_config_folder", &Config::GetGameConfigFolder);
 	m.def("get_read_only_mode", &Config::GetReadOnly);
+
+    py::classh<AudioStream> _AudioStream(m, "AudioStream");
+    BindAudioDriver<SDLStream>(m, "SDLStream");
+    BindAudioDriver<JackStream>(m, "JackStream");
+    BindAudioDriver<WasapiStream>(m, "WasapiStream");
+    BindAudioDriver<StubStream>(m, "StubStream");
 
 	m.def("init_audio", &Audio::Init);
 	m.def("shutdown_audio", &Audio::Shutdown);

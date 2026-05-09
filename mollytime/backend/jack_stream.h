@@ -55,6 +55,20 @@ public:
     JackStream(int SampleRate);
     virtual ~JackStream() override;
 
+    static constexpr bool IsAvailable()
+    {
+#if defined(ENABLE_JACK)
+        return true;
+#else
+        return false;
+#endif        
+    }
+
+    static constexpr std::string_view GetName()
+    {
+        return "Jack";
+    }
+
     virtual bool ImplementsInput() override
     {
         return true;
@@ -64,7 +78,7 @@ public:
     {
         return true;
     }
-    
+
     virtual float GetTemporalPressure() override;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
 };

@@ -15,8 +15,25 @@
 
 #include "wasapi_stream.h"
 
-#include <cassert>
+#define WIN32_LEAN_AND_MEAN
+#define VC_EXTRALEAN
+#define NOMINMAX
+#include <Audioclient.h>
+#include <mmdeviceapi.h>
+#define WINRT_LEAN_AND_MEAN
+#define _SILENCE_CLANG_COROUTINE_MESSAGE
+#include <winrt/base.h>
+#undef _SILENCE_CLANG_COROUTINE_MESSAGE
+#undef WINRT_LEAN_AND_MEAN
+#undef NOMINMAX
+#undef VC_EXTRALEAN
+#undef WIN32_LEAN_AND_MEAN
 
+#include <cassert>
+#include <thread>
+
+template<typename T>
+using ComPtr = winrt::com_ptr<T>;
 
 #define CheckHResult winrt::check_hresult
 
@@ -25,6 +42,28 @@
 const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 const IID IID_IAudioClient = __uuidof(IAudioClient);
 #pragma clang diagnostic pop
+
+
+class WasapiRealTimeThread final : public RealTimeAudioThread
+{
+    ComPtr<IMMDevice> Device;
+    ComPtr<IAudioClient> AudioClient;
+    ComPtr<IAudioRenderClient> RenderClient;
+    ComPtr<IAudioClock> AudioClock;
+    UINT32 BufferSize;
+    HANDLE EventHandle = nullptr;
+
+    std::thread LoopThread;
+    std::atomic<bool> IsRunning;
+    void Loop();
+
+public:
+    WasapiRealTimeThread(WasapiThreadShared* WasapiBufferState, int SampleRate);
+    virtual ~WasapiRealTimeThread() override;
+
+    virtual void BeginFrame(FramePointers& Frame) override;
+    virtual void EndFrame(FramePointers& Frame) override;
+};
 
 
 WasapiRealTimeThread::WasapiRealTimeThread(WasapiThreadShared* WasapiBufferState, int SampleRate)
@@ -175,7 +214,11 @@ void WasapiRealTimeThread::Loop()
 
 WasapiStream::WasapiStream(int SampleRate) :
     BufferState(),
-    RealTimeThread(&BufferState, SampleRate)
+    RealTimeThread(std::make_unique<WasapiRealTimeThread>(&BufferState, SampleRate))
+{ }
+
+
+WasapiStream::~WasapiStream()
 { }
 
 

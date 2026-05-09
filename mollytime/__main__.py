@@ -27,6 +27,44 @@ from .patterns import *
 from .screens.common import program_card
 from .screens.inspect import inspect_screen
 
+def _select_audio_driver(driver_name, sample_rate):
+    assert backend.StubStream.is_available()
+
+    # Determine the default driver for this platform & build.
+    if platform.system() == "Linux" and backend.JackStream.is_available():
+        default_driver_type = backend.JackStream
+    elif platform.system() == "Windows" and backend.WasapiStream.is_available():
+        default_driver_type = backend.WasapiStream
+    elif backend.SDLStream.is_available():
+        default_driver_type = backend.SDLStream
+    else:
+        default_driver_type = backend.StubStream
+    
+    # If no driver was requested, we can just use the default.
+    if driver_name is None:
+        return default_driver_type(sample_rate)
+    
+    # Find the driver that matches the requested name.
+    driver_types = (backend.SDLStream, backend.JackStream, backend.WasapiStream, backend.StubStream)
+    driver_type = None
+    for type in driver_types:
+        if type.get_name().casefold() == driver_name.casefold():
+            driver_type = type
+            break
+    
+    # If we got a match, great! Use that.
+    if driver_type is not None and driver_type.is_available():
+        return driver_type(sample_rate)
+    
+    # We didn't get a match. Inform the user of their wrongness, and use the default driver.
+    fallback_reason = "not valid" if driver_type is None else "not available"
+    print(f"Audio driver \"{driver_name}\" is {fallback_reason}.  Falling back to {default_driver_type.get_name()}.")
+    print("The following are the audio drivers available on this system:")
+    for type in driver_types:
+        if type.is_available():
+            print(f"- {type.get_name()}")
+    
+    return default_driver_type(sample_rate)
 
 def main():
     operating_system = platform.system()
@@ -40,6 +78,7 @@ def main():
     force_fullscreen = 0
     dump_icon = False
     vertical_inches = None
+    audio_driver_name = None
 
     while args:
         arg = args.pop(0)
@@ -53,6 +92,8 @@ def main():
             vertical_inches = float(args.pop(0))
         elif arg == "-p":
             backend.set_default_polyphony(int(args.pop(0)))
+        elif arg in ("-a" "--audio-driver"):
+            audio_driver_name = args.pop(0)
         else:
             print(f"Ignoring unknown arg: {arg}")
 
@@ -62,7 +103,10 @@ def main():
     #print(f"read only mode: {backend.get_read_only_mode()}")
 
     backend.init_midi()
-    backend.init_audio(48000)
+
+    audio_driver = _select_audio_driver(audio_driver_name, 48000)
+    print(f"Audio driver: {audio_driver.get_name()}")
+    backend.init_audio(audio_driver)
 
     backend.display.init(force_fullscreen)
     backend.draw.init()
