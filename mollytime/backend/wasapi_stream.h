@@ -45,7 +45,7 @@ public:
 #endif        
     }
 
-    static std::string_view GetName()
+    static constexpr std::string_view GetName()
     {
         return "Wasapi";
     }
