@@ -17,26 +17,7 @@
 
 #include "audio_driver.h"
 
-#include <thread>
 #include <vector>
-
-#define WIN32_LEAN_AND_MEAN
-#define VC_EXTRALEAN
-#define NOMINMAX
-#include <Audioclient.h>
-#include <mmdeviceapi.h>
-#define WINRT_LEAN_AND_MEAN
-#define _SILENCE_CLANG_COROUTINE_MESSAGE
-#include <winrt/base.h>
-#undef _SILENCE_CLANG_COROUTINE_MESSAGE
-#undef WINRT_LEAN_AND_MEAN
-#undef NOMINMAX
-#undef VC_EXTRALEAN
-#undef WIN32_LEAN_AND_MEAN
-
-
-template<typename T>
-using ComPtr = winrt::com_ptr<T>;
 
 
 struct WasapiThreadShared final : AudioThreadShared
@@ -46,35 +27,28 @@ struct WasapiThreadShared final : AudioThreadShared
 };
 
 
-class WasapiRealTimeThread final : public RealTimeAudioThread
-{
-    ComPtr<IMMDevice> Device;
-    ComPtr<IAudioClient> AudioClient;
-    ComPtr<IAudioRenderClient> RenderClient;
-    ComPtr<IAudioClock> AudioClock;
-    UINT32 BufferSize;
-    HANDLE EventHandle = nullptr;
-
-    std::thread LoopThread;
-    std::atomic<bool> IsRunning;
-    void Loop();
-
-public:
-    WasapiRealTimeThread(WasapiThreadShared* WasapiBufferState, int SampleRate);
-    virtual ~WasapiRealTimeThread() override;
-
-    virtual void BeginFrame(FramePointers& Frame) override;
-    virtual void EndFrame(FramePointers& Frame) override;
-};
-
-
 class WasapiStream final : public AudioStream
 {
     WasapiThreadShared BufferState;
-    WasapiRealTimeThread RealTimeThread;
+    std::unique_ptr<class WasapiRealTimeThread> RealTimeThread;
 
 public:
     WasapiStream(int SampleRate);
+    ~WasapiStream();
+
+    static constexpr bool IsAvailable()
+    {
+#if defined(AUDIO_WASAPI)
+        return true;
+#else
+        return false;
+#endif        
+    }
+
+    static std::string_view GetName()
+    {
+        return "Wasapi";
+    }
 
     virtual float GetTemporalPressure() override;
     virtual void ProgramChange(ScratchUniquePtr&& NewProgram) override;
