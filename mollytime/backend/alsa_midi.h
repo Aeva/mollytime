@@ -17,6 +17,8 @@
 
 #include "midi.h"
 
+#include <string_view>
+
 struct _snd_seq;    // Forward declares `typedef struct _snd_seq snd_seq_t` from <alsa/seq.h>.
 
 class AlsaMidiDriver final : public MidiDriver
@@ -29,6 +31,20 @@ class AlsaMidiDriver final : public MidiDriver
 public:
     AlsaMidiDriver();
     virtual ~AlsaMidiDriver() override;
+
+    static constexpr bool IsAvailable()
+    {
+#if defined(MIDI_ALSA)
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    static constexpr std::string_view GetName()
+    {
+        return "Alsa";
+    }
 
     void ProcessEvents(MidiHandler* Handler) override;
 };

@@ -41,6 +41,10 @@
 #include "sdl.h"
 #include "config.h"
 
+#include "alsa_midi.h"
+#include "mmeapi_midi.h"
+#include "stub_midi.h"
+
 #include "jack_stream.h"
 #include "sdl_stream.h"
 #include "stub_stream.h"
@@ -118,6 +122,7 @@ static ColorPoint MakeHSL(float H, float S, float L)
 	return ColorPoint(ColorSpace::HSL, glm::vec3(H, S, L));
 }
 
+
 template<typename T>
 static void BindAudioDriver(py::module_& Module, const std::string_view& ClassName)
 {
@@ -136,6 +141,27 @@ static void BindAudioDriver(py::module_& Module, const std::string_view& ClassNa
             .def_static("get_name", &T::GetName);
     }
 }
+
+
+template<typename T>
+static void BindMidiDriver(py::module_& Module, const std::string_view& ClassName)
+{
+    if constexpr (T::IsAvailable())
+    {
+        py::classh<T, MidiDriver>(Module, ClassName.data())
+            .def(py::init<>())
+            .def_static("is_available", &T::IsAvailable)
+            .def_static("get_name", &T::GetName);
+    }
+    else
+    {
+        class UndefinedPlaceholder { UndefinedPlaceholder(); };
+        py::classh<UndefinedPlaceholder>(Module, ClassName.data())
+            .def_static("is_available", &T::IsAvailable)
+            .def_static("get_name", &T::GetName);
+    }
+}
+
 
 // HACK: Suppress an otherwise-unsuppressable GCC `-pedantic `warning by passing an (unused) value
 // to PYBIND11_MODULE's variadic macro parameter. (If this isn't one of pybind11's defined
@@ -323,6 +349,11 @@ PYBIND11_MODULE(backend, m, 0) {
 	m.def("init_audio", &Audio::Init);
 	m.def("shutdown_audio", &Audio::Shutdown);
 	m.def("get_temporal_pressure", &Audio::GetTemporalPressure);
+
+    py::classh<MidiDriver> _MidiDriver(m, "MidiDriver");
+    BindMidiDriver<AlsaMidiDriver>(m, "AlsaMidiDriver");
+    BindMidiDriver<MmeApiMidiDriver>(m, "MmeApiMidiDriver");
+    BindMidiDriver<StubMidiDriver>(m, "StubMidiDriver");
 
 	m.def("init_midi", &Midi::Init);
 	m.def("shutdown_midi", &Midi::Shutdown);

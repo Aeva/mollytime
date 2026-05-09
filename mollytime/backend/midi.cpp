@@ -15,19 +15,12 @@
 
 #include "midi.h"
 
-#if defined(MIDI_ALSA)
-#include "alsa_midi.h"
-#endif
-
-#if defined(MIDI_MMEAPI)
-#include "mmeapi_midi.h"
-#endif
-
 #include <fmt/format.h>
 
-#include <utility>
+#include <cassert>
 #include <atomic>
 #include <memory>
+#include <utility>
 
 
 static std::unique_ptr<MidiDriver> Driver;
@@ -210,15 +203,10 @@ void Midi::ProcessEvents(MidiHandler* Handler)
 }
 
 
-void Midi::Init()
+void Midi::Init(std::unique_ptr<MidiDriver>&& InDriver)
 {
-#if defined(MIDI_ALSA)
-    Driver = std::make_unique<AlsaMidiDriver>();
-#elif defined(MIDI_MMEAPI)
-    Driver = std::make_unique<MmeApiMidiDriver>();
-#else
-    fmt::println("No MIDI driver is available.");
-#endif
+    assert(InDriver);
+    Driver = std::move(InDriver);
 }
 
 
