@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="8" symbol="const" x="-4" y="0" value="128.0"/>
+		<tile id="9" symbol="ctrl" x="-2" y="0"/>
+		<tile id="10" symbol="scope" x="0" y="0"/>
+		<tile id="13" symbol="phase" x="-3" y="1"/>
+		<tile id="14" symbol="const" x="-4" y="1" value="1.0"/>
+		<tile id="15" symbol="mix" x="-3" y="0"/>
+		<tile id="16" symbol="const" x="-4" y="-1" value="1.0"/>
+		<tile id="17" symbol="round" x="-3" y="-1"/>
+		<tile id="18" symbol="add_lanes" x="-1" y="1"/>
+		<tile id="19" symbol="ceil" x="-2" y="-1"/>
+		<tile id="20" symbol="add_lanes" x="-1" y="-2"/>
+		<tile id="21" symbol="rcp" x="-1" y="-1"/>
+		<tile id="22" symbol="mul" x="-1" y="0"/>
+		<tile id="23" symbol="min" x="-2" y="-2"/>
+		<tile id="24" symbol="const" x="-3" y="-2" value="1.0"/>
+		<tile id="26" symbol="add_lanes" x="3" y="0"/>
+		<tile id="27" symbol="min" x="2" y="0"/>
+		<tile id="28" symbol="const" x="2" y="1" value="1.0"/>
+		<tile id="29" symbol="ctrl" x="3" y="-1"/>
+		<tile id="30" symbol="const" x="3" y="-2" value="64.0"/>
+		<tile id="31" symbol="scope" x="1" y="0"/>
+		<tile id="32" symbol="mul" x="-2" y="1"/>
+		<tile id="33" symbol="lead_lane" x="2" y="-1"/>
+		<tile id="34" symbol="scope" x="1" y="-1"/>
+		<wire from="32:0" to="18:0"/>
+		<wire from="14:0" to="13:0"/>
+		<wire from="21:0" to="22:0"/>
+		<wire from="20:0" to="21:0"/>
+		<wire from="24:0" to="23:0"/>
+		<wire from="17:0" to="9:0"/>
+		<wire from="13:0" to="32:0"/>
+		<wire from="22:0" to="10:0"/>
+		<wire from="9:0" to="19:0"/>
+		<wire from="16:0" to="15:0"/>
+		<wire from="9:0" to="32:0"/>
+		<wire from="18:0" to="22:0"/>
+		<wire from="27:0" to="31:0"/>
+		<wire from="29:0" to="26:0"/>
+		<wire from="8:0" to="15:1"/>
+		<wire from="19:0" to="23:0"/>
+		<wire from="29:0" to="33:0"/>
+		<wire from="33:0" to="34:0"/>
+		<wire from="15:0" to="17:0"/>
+		<wire from="28:0" to="27:0"/>
+		<wire from="23:0" to="20:0"/>
+		<wire from="13:0" to="15:2"/>
+		<wire from="26:0" to="27:0"/>
+		<wire from="30:0" to="29:0"/>
+	</patch>
+</mollytime>
