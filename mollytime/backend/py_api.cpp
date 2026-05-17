@@ -20,18 +20,17 @@
 #include <fmt/format.h>
 
 #pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#pragma warning(push)
-#pragma warning(disable : 4191 4355 4371 4464 4686 4868 5039)
-#include <pybind11/pybind11.h>
-#include <pybind11/native_enum.h>
-#include <pybind11/stl.h>
-#pragma warning(pop)
-#pragma GCC diagnostic pop
+
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/array.h>
+#include <nanobind/stl/set.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/string_view.h>
+#include <nanobind/stl/tuple.h>
+#include <nanobind/stl/unique_ptr.h>
+#include <nanobind/stl/vector.h>
 #pragma clang diagnostic pop
 
 #include "colors.h"
@@ -51,7 +50,7 @@
 #include "wasapi_stream.h"
 
 
-namespace py = pybind11;
+namespace nb = nanobind;
 
 using ColorTuple = std::tuple<float, float, float>;
 using ColorArray = std::array<float, 3>;
@@ -68,7 +67,7 @@ static int ColorPointGetItem(ColorPoint& Color, int Index)
 		return std::min(std::max(int(Color.Channels[Index] * 255.0f), 0), 255);
 	}
 
-	throw pybind11::index_error(fmt::format("Index out of range: {}\n", Index));
+	throw nb::index_error(fmt::format("Index out of range: {}\n", Index).c_str());
 }
 
 
@@ -124,19 +123,22 @@ static ColorPoint MakeHSL(float H, float S, float L)
 
 
 template<typename T>
-static void BindAudioDriver(py::module_& Module, const std::string_view& ClassName)
+static void BindAudioDriver(nb::module_& Module, const std::string_view& ClassName)
 {
     if constexpr (T::IsAvailable())
     {
-        py::classh<T, AudioStream>(Module, ClassName.data())
-            .def(py::init<int>())
+        nb::class_<T, AudioStream>(Module, ClassName.data())
+            .def(nb::init<int>())
             .def_static("is_available", &T::IsAvailable)
             .def_static("get_name", &T::GetName);
     }
     else
     {
+#pragma warning(push)
+#pragma warning(disable : 5046) // "Symbol involving type with internal linkage not defined" - This is deliberate. The type cannot be instantiated.
         class UndefinedPlaceholder { UndefinedPlaceholder(); };
-        py::classh<UndefinedPlaceholder>(Module, ClassName.data())
+#pragma warning(pop)
+        nb::class_<UndefinedPlaceholder>(Module, ClassName.data(), nb::never_destruct())
             .def_static("is_available", &T::IsAvailable)
             .def_static("get_name", &T::GetName);
     }
@@ -144,56 +146,51 @@ static void BindAudioDriver(py::module_& Module, const std::string_view& ClassNa
 
 
 template<typename T>
-static void BindMidiDriver(py::module_& Module, const std::string_view& ClassName)
+static void BindMidiDriver(nb::module_& Module, const std::string_view& ClassName)
 {
     if constexpr (T::IsAvailable())
     {
-        py::classh<T, MidiDriver>(Module, ClassName.data())
-            .def(py::init<>())
+        nb::class_<T, MidiDriver>(Module, ClassName.data())
+            .def(nb::init<>())
             .def_static("is_available", &T::IsAvailable)
             .def_static("get_name", &T::GetName);
     }
     else
     {
+#pragma warning(push)
+#pragma warning(disable : 5046) // "Symbol involving type with internal linkage not defined" - This is deliberate. The type cannot be instantiated.
         class UndefinedPlaceholder { UndefinedPlaceholder(); };
-        py::classh<UndefinedPlaceholder>(Module, ClassName.data())
+#pragma warning(pop)
+        nb::class_<UndefinedPlaceholder>(Module, ClassName.data(), nb::never_destruct())
             .def_static("is_available", &T::IsAvailable)
             .def_static("get_name", &T::GetName);
     }
 }
 
 
-// HACK: Suppress an otherwise-unsuppressable GCC `-pedantic `warning by passing an (unused) value
-// to PYBIND11_MODULE's variadic macro parameter. (If this isn't one of pybind11's defined
-// options, it won't alter program beahvior.)
-//
-// The warning is: "ISO C++11 requires at least one argument for the "..." in a variadic macro"
-// This is nonetheless supported in every C and C++ compiler since forever. Clang and MSVC allow
-// us to suppress this with individual pragmas, but GCC doesn't.
-PYBIND11_MODULE(backend, m, 0) {
+NB_MODULE(backend, m) {
 	m.doc() = "mollytime c++ internals";
 
-	py::native_enum<ColorSpace>(m, "ColorSpace", "enum.Enum")
+	nb::enum_<ColorSpace>(m, "ColorSpace")
 		.value("sRGB", ColorSpace::sRGB)
 		.value("LinearRGB", ColorSpace::LinearRGB)
 		.value("OkLAB", ColorSpace::OkLAB)
 		.value("OkLCH", ColorSpace::OkLCH)
-		.value("HSL", ColorSpace::HSL)
-		.finalize();
+		.value("HSL", ColorSpace::HSL);
 
-	py::class_<ColorPoint>(m, "ColorPoint")
-		.def(py::init<>())
-        .def(py::init<std::tuple<uint8_t, uint8_t, uint8_t>>())
-        .def(py::init<std::tuple<float, float, float>>())
+	nb::class_<ColorPoint>(m, "ColorPoint")
+		.def(nb::init<>())
+        .def(nb::init<std::tuple<uint8_t, uint8_t, uint8_t>>())
+        .def(nb::init<std::tuple<float, float, float>>())
 		.def("__len__", [](const ColorPoint& Self) -> int { return 3; })
 		.def("__getitem__", &ColorPointGetItem)
 		.def("__repr__", &ColorPointRepr)
-		.def_property_readonly("channels", &ColorPointGetChannels)
-		.def_readonly("encoding", &ColorPoint::Encoding)
+		.def_prop_ro("channels", &ColorPointGetChannels)
+		.def_ro("encoding", &ColorPoint::Encoding)
 		.def("encode", &ColorPoint::Encode);
 
-	py::class_<ColorRamp>(m, "ColorRamp")
-		.def(py::init<std::vector<ColorPoint> &>())
+	nb::class_<ColorRamp>(m, "ColorRamp")
+		.def(nb::init<std::vector<ColorPoint> &>())
 		.def("sample", &ColorRamp::Sample);
 
 	m.def("convert_color", &ConvertColor, "color space converter");
@@ -205,14 +202,14 @@ PYBIND11_MODULE(backend, m, 0) {
 	m.def("mix_lchab", &MixLCHAB, "Color blending in both OkLCH and OkLAB space");
 
 	m.def("profiling_enabled", &IsProfilingEnabled);
-	m.def("profiling_scope", [](const char* Name, py::function Thunk) -> py::object
+	m.def("profiling_scope", [](const char* Name, nb::handle Thunk) -> nb::object
 	{
-		py::object Result;
+		nb::object Result;
 		PerfTrampoline(Name, Thunk, Result);
 		return Result;
 	});
 
-	py::native_enum<OpCode>(m, "OpCode", "enum.IntEnum")
+	nb::enum_<OpCode>(m, "OpCode", nb::is_arithmetic())
 		.value("GO", OpCode::GO)
 		.value("CONST", OpCode::CONST)
 		.value("SCOPE", OpCode::SCOPE)
@@ -279,8 +276,7 @@ PYBIND11_MODULE(backend, m, 0) {
 		.value("TWEAK", OpCode::TWEAK)
 		.value("TAPE_LOOP", OpCode::TAPE_LOOP)
 		.value("MOON", OpCode::MOON)
-		.value("Count", OpCode::Count)
-		.finalize();
+		.value("Count", OpCode::Count);
 
 	m.def("make_port_handle", &MakePortHandle);
 	m.def("decode_port_tile", &PortHandleTilePart);
@@ -290,10 +286,10 @@ PYBIND11_MODULE(backend, m, 0) {
 
 	m.def("get_tile_availability", &GetTileAvailability);
 
-	py::class_<Patch>(m, "Patch")
-		.def(py::init<>())
-		.def_property("midi_lanes", &Patch::GetPolyphony, &Patch::SetPolyphony)
-		.def_readonly("wires", &Patch::Wires)
+	nb::class_<Patch>(m, "Patch")
+		.def(nb::init<>())
+		.def_prop_rw("midi_lanes", &Patch::GetPolyphony, &Patch::SetPolyphony)
+		.def_ro("wires", &Patch::Wires)
 		.def("make_tile", [](Patch& Self, OpCode Symbol) -> TileHandle
 		{
 			return Self.MakeTile(Symbol);
@@ -340,7 +336,7 @@ PYBIND11_MODULE(backend, m, 0) {
 	m.def("get_game_config_folder", &Config::GetGameConfigFolder);
 	m.def("get_read_only_mode", &Config::GetReadOnly);
 
-    py::classh<AudioStream> _AudioStream(m, "AudioStream");
+    nb::class_<AudioStream> _AudioStream(m, "AudioStream");
     BindAudioDriver<SDLStream>(m, "SDLStream");
     BindAudioDriver<JackStream>(m, "JackStream");
     BindAudioDriver<WasapiStream>(m, "WasapiStream");
@@ -350,7 +346,7 @@ PYBIND11_MODULE(backend, m, 0) {
 	m.def("shutdown_audio", &Audio::Shutdown);
 	m.def("get_temporal_pressure", &Audio::GetTemporalPressure);
 
-    py::classh<MidiDriver> _MidiDriver(m, "MidiDriver");
+    nb::class_<MidiDriver> _MidiDriver(m, "MidiDriver");
     BindMidiDriver<AlsaMidiDriver>(m, "AlsaMidiDriver");
     BindMidiDriver<MmeApiMidiDriver>(m, "MmeApiMidiDriver");
     BindMidiDriver<StubMidiDriver>(m, "StubMidiDriver");
@@ -361,31 +357,31 @@ PYBIND11_MODULE(backend, m, 0) {
     // ---
     // Core types
     
-    py::implicitly_convertible<std::tuple<uint8_t, uint8_t, uint8_t>, ColorPoint>();
-    py::implicitly_convertible<std::tuple<float, float, float>, ColorPoint>();
+    nb::implicitly_convertible<std::tuple<uint8_t, uint8_t, uint8_t>, ColorPoint>();
+    nb::implicitly_convertible<std::tuple<float, float, float>, ColorPoint>();
 
-    py::class_<Rect>(m, "Rect")
-        .def(py::init<float, float, float, float>())
-        .def(py::init<Point, Size>())
+    nb::class_<Rect>(m, "Rect")
+        .def(nb::init<float, float, float, float>())
+        .def(nb::init<Point, Size>())
         .def("copy", [](const Rect& rect) { return Rect(rect); })
-        .def_readwrite("x", &Rect::X)
-        .def_readwrite("y", &Rect::Y)
-        .def_readwrite("w", &Rect::Width)
-        .def_readwrite("width", &Rect::Width)
-        .def_readwrite("h", &Rect::Height)
-        .def_readwrite("height", &Rect::Height)
-        .def_property("size", &Rect::GetSize, &Rect::SetSize)
-        .def_property("left", &Rect::GetLeft, &Rect::SetLeft)
-        .def_property("right", &Rect::GetRight, &Rect::SetRight)
-        .def_property("top", &Rect::GetTop, &Rect::SetTop)
-        .def_property("bottom", &Rect::GetBottom, &Rect::SetBottom)
-        .def_property("topleft", &Rect::GetTopLeft, &Rect::SetTopLeft)
-        .def_property("topright", &Rect::GetTopRight, &Rect::SetTopRight)
-        .def_property("bottomleft", &Rect::GetBottomLeft, &Rect::SetBottomLeft)
-        .def_property("bottomright", &Rect::GetBottomRight, &Rect::SetBottomRight)
-        .def_property("centerx", &Rect::GetCenterX, &Rect::SetCenterX)
-        .def_property("centery", &Rect::GetCenterY, &Rect::SetCenterY)
-        .def_property("center", &Rect::GetCenter, &Rect::SetCenter)
+        .def_rw("x", &Rect::X)
+        .def_rw("y", &Rect::Y)
+        .def_rw("w", &Rect::Width)
+        .def_rw("width", &Rect::Width)
+        .def_rw("h", &Rect::Height)
+        .def_rw("height", &Rect::Height)
+        .def_prop_rw("size", &Rect::GetSize, &Rect::SetSize)
+        .def_prop_rw("left", &Rect::GetLeft, &Rect::SetLeft)
+        .def_prop_rw("right", &Rect::GetRight, &Rect::SetRight)
+        .def_prop_rw("top", &Rect::GetTop, &Rect::SetTop)
+        .def_prop_rw("bottom", &Rect::GetBottom, &Rect::SetBottom)
+        .def_prop_rw("topleft", &Rect::GetTopLeft, &Rect::SetTopLeft)
+        .def_prop_rw("topright", &Rect::GetTopRight, &Rect::SetTopRight)
+        .def_prop_rw("bottomleft", &Rect::GetBottomLeft, &Rect::SetBottomLeft)
+        .def_prop_rw("bottomright", &Rect::GetBottomRight, &Rect::SetBottomRight)
+        .def_prop_rw("centerx", &Rect::GetCenterX, &Rect::SetCenterX)
+        .def_prop_rw("centery", &Rect::GetCenterY, &Rect::SetCenterY)
+        .def_prop_rw("center", &Rect::GetCenter, &Rect::SetCenter)
         .def("collidepoint", &Rect::ContainsPoint)
         .def("clipline", &Rect::IntersectLine)
         .def("union", &Rect::Union)
@@ -394,17 +390,17 @@ PYBIND11_MODULE(backend, m, 0) {
     // ---
     // Time
 
-    py::module_ time = m.def_submodule("time");
-    py::class_<Time::Clock>(time, "Clock")
-        .def(py::init<>())
+    nb::module_ time = m.def_submodule("time");
+    nb::class_<Time::Clock>(time, "Clock")
+        .def(nb::init<>())
         .def("tick", &Time::Clock::Tick);
     
     // ---
     // Events
 
-    py::module_ events = m.def_submodule("events");
+    nb::module_ events = m.def_submodule("events");
 
-    py::native_enum<Events::EventType>(events, "Type", "enum.IntEnum")
+    nb::enum_<Events::EventType>(events, "Type", nb::is_arithmetic())
         .value("QUIT",              Events::EventType::Quit)
         .value("WINDOWRESIZE",      Events::EventType::WindowResized)
         .value("PIXELSIZECHANGED",  Events::EventType::WindowPixelSizeChanged)
@@ -417,89 +413,85 @@ PYBIND11_MODULE(backend, m, 0) {
         .value("FINGERDOWN",        Events::EventType::FingerDown)
         .value("FINGERUP",          Events::EventType::FingerUp)
         .value("FINGERMOTION",      Events::EventType::FingerMotion)
-        .export_values()
-        .finalize();
+        .export_values();
     
-    py::native_enum<Events::KeyCode>(events, "KeyCode", "enum.IntFlag")
+    nb::enum_<Events::KeyCode>(events, "KeyCode", nb::is_arithmetic(), nb::is_flag())
         .value("K_ESCAPE", Events::KeyCode::Escape)
         .value("K_F", Events::KeyCode::F)
         .value("K_F11", Events::KeyCode::F11)
-        .export_values()
-        .finalize();
+        .export_values();
     
-    py::native_enum<Events::MouseButton>(events, "MouseButton", "enum.IntFlag")
+    nb::enum_<Events::MouseButton>(events, "MouseButton", nb::is_arithmetic(), nb::is_flag())
         .value("BUTTON_LEFT", Events::MouseButton::Left)
-        .export_values()
-        .finalize();
+        .export_values();
 
-    py::class_<Events::ResizeEvent>(events, "ResizeEvent")
-        .def_readonly("Width", &Events::ResizeEvent::Width)
-        .def_readonly("Height", &Events::ResizeEvent::Height);
+    nb::class_<Events::ResizeEvent>(events, "ResizeEvent")
+        .def_ro("Width", &Events::ResizeEvent::Width)
+        .def_ro("Height", &Events::ResizeEvent::Height);
     
-    py::class_<Events::KeyboardEvent>(events, "KeyboardEvent")
-        .def_readonly("key", &Events::KeyboardEvent::Key);
+    nb::class_<Events::KeyboardEvent>(events, "KeyboardEvent")
+        .def_ro("key", &Events::KeyboardEvent::Key);
     
-    py::class_<Events::MouseMotionEvent>(events, "MouseMotionEvent")
-        .def_readonly("x", &Events::MouseMotionEvent::X)
-        .def_readonly("y", &Events::MouseMotionEvent::X)
-        .def_readonly("xrel", &Events::MouseMotionEvent::XRelative)
-        .def_readonly("yrel", &Events::MouseMotionEvent::YRelative)
-        .def_property_readonly("pos", &Events::MouseMotionEvent::GetPosition)
-        .def_property_readonly("rel", &Events::MouseMotionEvent::GetRelativePosition);
+    nb::class_<Events::MouseMotionEvent>(events, "MouseMotionEvent")
+        .def_ro("x", &Events::MouseMotionEvent::X)
+        .def_ro("y", &Events::MouseMotionEvent::X)
+        .def_ro("xrel", &Events::MouseMotionEvent::XRelative)
+        .def_ro("yrel", &Events::MouseMotionEvent::YRelative)
+        .def_prop_ro("pos", &Events::MouseMotionEvent::GetPosition)
+        .def_prop_ro("rel", &Events::MouseMotionEvent::GetRelativePosition);
     
-    py::class_<Events::MouseButtonEvent>(events, "MouseButtonEvent")
-        .def_readonly("x", &Events::MouseButtonEvent::X)
-        .def_readonly("y", &Events::MouseButtonEvent::Y)
-        .def_readonly("button", &Events::MouseButtonEvent::Button)
-        .def_readonly("touch", &Events::MouseButtonEvent::IsTouch)
-        .def_property_readonly("pos", &Events::MouseButtonEvent::GetPosition);
+    nb::class_<Events::MouseButtonEvent>(events, "MouseButtonEvent")
+        .def_ro("x", &Events::MouseButtonEvent::X)
+        .def_ro("y", &Events::MouseButtonEvent::Y)
+        .def_ro("button", &Events::MouseButtonEvent::Button)
+        .def_ro("touch", &Events::MouseButtonEvent::IsTouch)
+        .def_prop_ro("pos", &Events::MouseButtonEvent::GetPosition);
 
-		py::class_<Events::MouseWheelEvent>(events, "MouseWheelEvent")
-		.def_readonly("horizontal", &Events::MouseWheelEvent::Horizontal)
-		.def_readonly("vertical", &Events::MouseWheelEvent::Vertical)
-		.def_readonly("cursor_x", &Events::MouseWheelEvent::CursorX)
-		.def_readonly("cursor_y", &Events::MouseWheelEvent::CursorY)
-		.def_property_readonly("pos", &Events::MouseWheelEvent::GetPosition);
+		nb::class_<Events::MouseWheelEvent>(events, "MouseWheelEvent")
+		.def_ro("horizontal", &Events::MouseWheelEvent::Horizontal)
+		.def_ro("vertical", &Events::MouseWheelEvent::Vertical)
+		.def_ro("cursor_x", &Events::MouseWheelEvent::CursorX)
+		.def_ro("cursor_y", &Events::MouseWheelEvent::CursorY)
+		.def_prop_ro("pos", &Events::MouseWheelEvent::GetPosition);
     
-    py::class_<Events::TouchFingerEvent>(events, "TouchFingerEvent")
-        .def_readonly("x", &Events::TouchFingerEvent::X)
-        .def_readonly("y", &Events::TouchFingerEvent::Y)
-        .def_readonly("touch_id", &Events::TouchFingerEvent::TouchID)
-        .def_readonly("finger_id", &Events::TouchFingerEvent::FingerID);
+    nb::class_<Events::TouchFingerEvent>(events, "TouchFingerEvent")
+        .def_ro("x", &Events::TouchFingerEvent::X)
+        .def_ro("y", &Events::TouchFingerEvent::Y)
+        .def_ro("touch_id", &Events::TouchFingerEvent::TouchID)
+        .def_ro("finger_id", &Events::TouchFingerEvent::FingerID);
     
-    py::class_<Events::Event>(events, "Event")
-        .def_readonly("type", &Events::Event::Type)
-        .def_readonly("resize", &Events::Event::Resize)
-        .def_readonly("key", &Events::Event::Key)
-        .def_readonly("motion", &Events::Event::Motion)
-        .def_readonly("button", &Events::Event::Button)
-		.def_readonly("wheel", &Events::Event::Wheel)
-        .def_readonly("tfinger", &Events::Event::Touch);
+    nb::class_<Events::Event>(events, "Event")
+        .def_ro("type", &Events::Event::Type)
+        .def_ro("resize", &Events::Event::Resize)
+        .def_ro("key", &Events::Event::Key)
+        .def_ro("motion", &Events::Event::Motion)
+        .def_ro("button", &Events::Event::Button)
+		.def_ro("wheel", &Events::Event::Wheel)
+        .def_ro("tfinger", &Events::Event::Touch);
     
     events.def("get", &Events::Get);
     
     // ---
     // Mouse
 
-    py::module_ mouse = m.def_submodule("mouse")
+    nb::module_ mouse = m.def_submodule("mouse")
         .def("get_pos", &Mouse::GetPosition);
 
     // ---
     // Display
 
-    py::module_ display = m.def_submodule("display");
+    nb::module_ display = m.def_submodule("display");
 
-    py::native_enum<Display::WindowFlags>(display, "WindowFlags", "enum.IntFlag")
+    nb::enum_<Display::WindowFlags>(display, "WindowFlags", nb::is_arithmetic(), nb::is_flag())
         .value("FULLSCREEN", Display::WindowFlags::Fullscreen)
         .value("BORDERLESS", Display::WindowFlags::Borderless)
-        .export_values()
-        .finalize();
+        .export_values();
     
     display
         .def("init", &Display::Init)
         .def("get_current_display_index", &Display::GetCurrentDisplayIndex)
         .def("get_desktop_sizes", &Display::GetDesktopSizes)
-        .def("list_modes", &Display::ListModes, py::arg("display"))
+        .def("list_modes", &Display::ListModes, nb::arg("display"))
         .def("set_caption", &Display::SetCaption)
         .def("set_icon", &Display::SetIcon)
         .def("toggle_fullscreen", &Display::ToggleFullscreen)
@@ -512,12 +504,12 @@ PYBIND11_MODULE(backend, m, 0) {
     // ---
     // Draw
 
-    py::module_ draw = m.def_submodule("draw");
+    nb::module_ draw = m.def_submodule("draw");
 
     using BlitRectFunc = void (Draw::Texture::*)(const Draw::Texture&, const Rect&);
     using BlitPointFunc = void (Draw::Texture::*)(const Draw::Texture&, const Point&);
 
-	py::native_enum<Draw::BlendModeType>(draw, "Type", "enum.IntEnum")
+	nb::enum_<Draw::BlendModeType>(draw, "Type", nb::is_arithmetic(), nb::is_flag())
 		.value("none", Draw::BlendModeType::None)
 		.value("alpha", Draw::BlendModeType::Alpha)
 		.value("premultiplied_alpha", Draw::BlendModeType::PremultipliedAlpha)
@@ -527,20 +519,19 @@ PYBIND11_MODULE(backend, m, 0) {
 		.value("multiply", Draw::BlendModeType::Multiply)
 		.value("eraser", Draw::BlendModeType::Eraser)
 		.value("inverse_eraser", Draw::BlendModeType::InverseEraser)
-		.export_values()
-		.finalize();
+		.export_values();
 
-    py::class_<Draw::Texture>(draw, "Texture")
-        .def(py::init<int, int>())
-        .def(py::init<const Size&>())
+    nb::class_<Draw::Texture>(draw, "Texture")
+        .def(nb::init<int, int>())
+        .def(nb::init<const Size&>())
         .def("get_width", &Draw::Texture::GetWidth)
         .def("get_height", &Draw::Texture::GetHeight)
         .def("get_rect", &Draw::Texture::GetRect)
         .def("copy", &Draw::Texture::Copy)
         .def("set_alpha", &Draw::Texture::SetAlpha)
         .def("set_blend_mode", &Draw::Texture::SetBlendMode)
-        .def("fill", &Draw::Texture::Fill, py::arg("color"), py::arg("alpha") = 1.0f)
-        .def("fill_rect", &Draw::Texture::FillRect, py::arg("color"), py::arg("rect"), py::arg("alpha") = 1.0f)
+        .def("fill", &Draw::Texture::Fill, nb::arg("color"), nb::arg("alpha") = 1.0f)
+        .def("fill_rect", &Draw::Texture::FillRect, nb::arg("color"), nb::arg("rect"), nb::arg("alpha") = 1.0f)
         .def("blit", static_cast<BlitRectFunc>(&Draw::Texture::Blit))
         .def("blit", static_cast<BlitPointFunc>(&Draw::Texture::Blit));
     
@@ -550,20 +541,20 @@ PYBIND11_MODULE(backend, m, 0) {
         .def("get_renderer_name", &Draw::GetRendererName)
         .def("get_renderer_ready", &Draw::GetRendererReady)
         .def("get_rendering_surface", &Draw::GetRenderingSurface)
-        .def("line", &Draw::DrawLine, py::arg("texture"), py::arg("color"), py::arg("start"), py::arg("end"), py::arg("width") = 1.0f, py::arg("alpha") = 1.0f)
-        .def("rect", &Draw::DrawRect, py::arg("texture"), py::arg("color"), py::arg("rect"), py::arg("depth") = 0, py::arg("alpha") = 1.0f)
-        .def("pie", &Draw::DrawPie, py::arg("texture"), py::arg("color"), py::arg("center"), py::arg("radius"), py::arg("angre"), py::arg("arc"), py::arg("alpha") = 1.0f)
-        .def("circle", &Draw::DrawCircle, py::arg("texture"), py::arg("color"), py::arg("center"), py::arg("radius"), py::arg("alpha") = 1.0f)
-        .def("polygon", &Draw::DrawPolygon, py::arg("texture"), py::arg("color"), py::arg("points"), py::arg("alpha") = 1.0f);
+        .def("line", &Draw::DrawLine, nb::arg("texture"), nb::arg("color"), nb::arg("start"), nb::arg("end"), nb::arg("width") = 1.0f, nb::arg("alpha") = 1.0f)
+        .def("rect", &Draw::DrawRect, nb::arg("texture"), nb::arg("color"), nb::arg("rect"), nb::arg("depth") = 0, nb::arg("alpha") = 1.0f)
+        .def("pie", &Draw::DrawPie, nb::arg("texture"), nb::arg("color"), nb::arg("center"), nb::arg("radius"), nb::arg("angre"), nb::arg("arc"), nb::arg("alpha") = 1.0f)
+        .def("circle", &Draw::DrawCircle, nb::arg("texture"), nb::arg("color"), nb::arg("center"), nb::arg("radius"), nb::arg("alpha") = 1.0f)
+        .def("polygon", &Draw::DrawPolygon, nb::arg("texture"), nb::arg("color"), nb::arg("points"), nb::arg("alpha") = 1.0f);
 
     // ---
     // Font
 
-    py::module_ font = m.def_submodule("font")
+    nb::module_ font = m.def_submodule("font")
         .def("init", &Font::Init);
     
-    py::class_<Font> (font, "Font")
-        .def(py::init<const std::string_view&, float>())
+    nb::class_<Font> (font, "Font")
+        .def(nb::init<const std::string_view&, float>())
         .def("get_ascent", &Font::GetAscent)
         .def("get_descent", &Font::GetDescent)
         .def("estimate_glyph_height", &Font::EstimateGlyphHeight)

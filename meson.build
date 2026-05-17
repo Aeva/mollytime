@@ -138,7 +138,7 @@ libdl = compiler.find_library('dl', required : false)
 boost = dependency('boost', required : true, version : '>=1.90.0', default_options : 'modules=atomic,stacktrace')
 fmt = dependency('fmt', required : true, version : '>=12.0.0', default_options : 'header-only=true')
 glm = dependency('glm', required : true, version : '>=1.0.1')
-pybind11 = dependency('pybind11', required : true, version : '>=3.0.0')
+nanobind = dependency('nanobind', required : true, version : '>=2.11.0', default_options : { 'warning_level' : '0' })
 sdl3 = dependency('sdl3', required : true, version : '>=3.4.0', default_options : { 'warning_level' : '0' })
 sdl3_ttf = dependency('sdl3_ttf', required : true, version : '>=3.2.0', default_options : { 'warning_level' : '0' })
 tracy = dependency('tracy', version : '>=0.13.0', required : get_option('tracy'))
@@ -200,7 +200,7 @@ endif
 cpp_module = python_install.extension_module(
     'backend',
     backend_source_files,
-    dependencies : [ libm, libdl, boost, fmt, glm, pybind11, sdl3, sdl3_ttf, tracy ] + driver_dependencies,
+    dependencies : [ libm, libdl, boost, fmt, glm, nanobind, sdl3, sdl3_ttf, tracy ] + driver_dependencies,
     install : true,
     subdir : 'mollytime'
 )

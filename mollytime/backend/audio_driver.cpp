@@ -25,7 +25,7 @@ using Clock = std::chrono::steady_clock;
 using TimePoint = std::chrono::time_point<Clock>;
 
 
-static std::unique_ptr<AudioStream> Stream;
+static std::unique_ptr<AudioStream, nanobind::deleter<AudioStream>> Stream;
 
 
 void RealTimeAudioThread::ResetFramePressure()
@@ -163,7 +163,7 @@ AudioStream* Audio::GetStream()
 }
 
 
-void Audio::Init(std::unique_ptr<AudioStream>&& InStream)
+void Audio::Init(std::unique_ptr<AudioStream, nanobind::deleter<AudioStream>>&& InStream)
 {
     assert(InStream);
     Stream = std::move(InStream);

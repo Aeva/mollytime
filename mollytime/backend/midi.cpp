@@ -23,7 +23,7 @@
 #include <utility>
 
 
-static std::unique_ptr<MidiDriver> Driver;
+static std::unique_ptr<MidiDriver, nanobind::deleter<MidiDriver>> Driver;
 static std::atomic_bool SendPatchReset = false;
 static std::atomic<uint16_t> SendReleaseHeldNotes = 0;
 
@@ -203,7 +203,7 @@ void Midi::ProcessEvents(MidiHandler* Handler)
 }
 
 
-void Midi::Init(std::unique_ptr<MidiDriver>&& InDriver)
+void Midi::Init(std::unique_ptr<MidiDriver, nanobind::deleter<MidiDriver>>&& InDriver)
 {
     assert(InDriver);
     Driver = std::move(InDriver);
