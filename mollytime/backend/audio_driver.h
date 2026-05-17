@@ -26,6 +26,14 @@
 #undef BOOST_ATOMIC_NO_LIB
 #pragma clang diagnostic pop
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#include <nanobind/stl/unique_ptr.h>
+#pragma GCC diagnostic pop
+#pragma clang diagnostic pop
 
 struct AudioThreadShared
 {
@@ -91,7 +99,7 @@ namespace Audio
 {
     AudioStream* GetStream();
 
-    void Init(std::unique_ptr<AudioStream>&& AudioStream);
+    void Init(std::unique_ptr<AudioStream, nanobind::deleter<AudioStream>>&& AudioStream);
     void Shutdown();
     float GetTemporalPressure();
 };

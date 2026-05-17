@@ -30,6 +30,15 @@
 #include <mutex>
 #endif
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#include <nanobind/stl/unique_ptr.h>
+#pragma GCC diagnostic pop
+#pragma clang diagnostic pop
+
 #include "perf.h"
 
 
@@ -122,6 +131,6 @@ namespace Midi
     void PatchReset();
     void ReleaseHeldNotes(uint16_t ChannelMask = 0xFFFF);
     void ProcessEvents(MidiHandler* Handler);
-    void Init(std::unique_ptr<MidiDriver>&& InDriver);
+    void Init(std::unique_ptr<MidiDriver, nanobind::deleter<MidiDriver>>&& InDriver);
     void Shutdown();
 }
