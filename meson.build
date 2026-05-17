@@ -147,7 +147,6 @@ nanobind_source = dependency('nanobind', required : true, version : '>=2.11.0')
 nanobind_lib = static_library(
     'nanobind_lib',
     dependencies : nanobind_source,
-    cpp_args : nanobind_disable_warnings,
     override_options : { 'warning_level' : '0' }
 )
 nanobind = declare_dependency(
