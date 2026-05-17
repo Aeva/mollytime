@@ -17,26 +17,24 @@ python_install = py.find_installation(pure : false)
 python = python_install.full_path()
 
 # Warning wrangling 🤠
+extra_warnings = []
 if compiler.get_argument_syntax() == 'gcc'
-    add_project_arguments(
+    extra_warnings += [
         '-Wshadow',
         '-Wno-unused-parameter',
         '-Wno-unknown-pragmas',
-        language: 'cpp'
-    )
+    ]
 elif compiler.get_argument_syntax() == 'msvc'
-    add_project_arguments(
+    extra_warnings += [
         '/wd4068',  # Disable 'Unused parameter'
         '/wd4100',  # Disable 'Unknown pragma'
-        language: 'cpp'
-    )
+    ]
 endif
 if compiler.get_id() == 'clang'
-    add_project_arguments(
+    extra_warnings += [
         '-Wnewline-eof',
-        '-Wshadow-field-in-constructor',
-        language: 'cpp'
-    )
+        '-Wshadow-field-in-constructor'
+    ]
 endif
 
 # HACK: I want to disable *all* warnings for *external dependencies only*, but Meson doesn't permit this.
@@ -138,10 +136,23 @@ libdl = compiler.find_library('dl', required : false)
 boost = dependency('boost', required : true, version : '>=1.90.0', default_options : 'modules=atomic,stacktrace')
 fmt = dependency('fmt', required : true, version : '>=12.0.0', default_options : 'header-only=true')
 glm = dependency('glm', required : true, version : '>=1.0.1')
-nanobind = dependency('nanobind', required : true, version : '>=2.11.0', default_options : { 'warning_level' : '0' })
 sdl3 = dependency('sdl3', required : true, version : '>=3.4.0', default_options : { 'warning_level' : '0' })
 sdl3_ttf = dependency('sdl3_ttf', required : true, version : '>=3.2.0', default_options : { 'warning_level' : '0' })
 tracy = dependency('tracy', version : '>=0.13.0', required : get_option('tracy'))
+
+# HACK: Nanobind is intended to integrate directly into the source tree. Compile it as a separate
+# library anyway, so its warnings can be separately managed.
+# We wouldn't have to do this if Meson's handling of subproject warnings wasn't *utterly* deranged.
+nanobind_source = dependency('nanobind', required : true, version : '>=2.11.0')
+nanobind_lib = static_library(
+    'nanobind_lib',
+    dependencies : nanobind_source,
+    override_options : { 'warning_level' : '0' }
+)
+nanobind = declare_dependency(
+    dependencies : nanobind_source.partial_dependency(includes : true),
+    link_with : nanobind_lib
+)
 
 # ---
 # Targets
@@ -151,7 +162,7 @@ driver_dependencies = []
 if get_option('audio_driver_sdl').allowed()
     driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, sdl3 ],
-        compile_args : [ '-DAUDIO_SDL=1' ],
+        compile_args : [ '-DAUDIO_SDL=1' ] + extra_warnings,
         sources : files('mollytime' / 'backend' / 'sdl_stream.cpp')
     )
 endif
@@ -161,7 +172,7 @@ use_jack = get_option('audio_driver_jack').enable_auto_if(jack.found())
 if use_jack.enabled()
     driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, jack ],
-        compile_args : [ '-DENABLE_JACK=1' ],
+        compile_args : [ '-DENABLE_JACK=1' ] + extra_warnings,
         sources : files('mollytime' / 'backend' / 'jack_stream.cpp')
     )
 endif
@@ -171,7 +182,7 @@ if use_wasapi.enabled()
     windows_runtime_object = compiler.find_library('RuntimeObject', required : true)
     driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, windows_runtime_object ],
-        compile_args : [ '-DAUDIO_WASAPI=1' ],
+        compile_args : [ '-DAUDIO_WASAPI=1' ] + extra_warnings,
         sources : files('mollytime' / 'backend' / 'wasapi_stream.cpp'),
     )
 endif
@@ -181,7 +192,7 @@ use_alsa = get_option('midi_driver_alsa').enable_auto_if(alsa.found())
 if use_alsa.enabled()
     driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, alsa ],
-        compile_args : [ '-DMIDI_ALSA=1' ],
+        compile_args : [ '-DMIDI_ALSA=1' ] + extra_warnings,
         sources : files('mollytime' / 'backend' / 'alsa_midi.cpp')
     )
 endif
@@ -191,7 +202,7 @@ use_winmm = get_option('midi_driver_mmeapi').enable_auto_if(winmm.found())
 if use_winmm.enabled()
     driver_dependencies += declare_dependency(
         dependencies : [ boost, fmt, winmm ],
-        compile_args : [ '-DMIDI_MMEAPI=1' ],
+        compile_args : [ '-DMIDI_MMEAPI=1' ] + extra_warnings,
         sources : files('mollytime' / 'backend' / 'mmeapi_midi.cpp')
     )
 endif
@@ -201,6 +212,7 @@ cpp_module = python_install.extension_module(
     'backend',
     backend_source_files,
     dependencies : [ libm, libdl, boost, fmt, glm, nanobind, sdl3, sdl3_ttf, tracy ] + driver_dependencies,
+    cpp_args : extra_warnings,
     install : true,
     subdir : 'mollytime'
 )
