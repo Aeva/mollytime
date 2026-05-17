@@ -22,7 +22,8 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/set.h>
@@ -31,6 +32,7 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/unique_ptr.h>
 #include <nanobind/stl/vector.h>
+#pragma GCC diagnostic pop
 #pragma clang diagnostic pop
 
 #include "colors.h"
