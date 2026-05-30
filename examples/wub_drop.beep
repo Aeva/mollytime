@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<mollytime version="2025.07.13">
+	<patch>
+		<tile id="2" symbol="noi" x="0" y="0"/>
+		<tile id="3" symbol="adsr" x="-3" y="2"/>
+		<tile id="4" symbol="tweak" x="-4" y="2" value="0.9021157772466539"/>
+		<tile id="5" symbol="const" x="-3" y="1" value="0.0"/>
+		<tile id="11" symbol="midi_hz" x="0" y="-2"/>
+		<tile id="12" symbol="tri" x="1" y="-1"/>
+		<tile id="13" symbol="mul" x="-2" y="-1"/>
+		<tile id="14" symbol="tweak" x="-3" y="-1" value="0.34508736729621886"/>
+		<tile id="20" symbol="tptsvf_lowpass" x="3" y="-1"/>
+		<tile id="21" symbol="tptsvf_lowpass" x="4" y="-1"/>
+		<tile id="22" symbol="tweak" x="4" y="-2" value="0.5365831574797629"/>
+		<tile id="23" symbol="tweak" x="3" y="0" value="0.6936321055889131"/>
+		<tile id="24" symbol="mul" x="4" y="0"/>
+		<tile id="25" symbol="mul" x="2" y="0"/>
+		<tile id="26" symbol="tweak" x="2" y="1" value="1.0"/>
+		<tile id="27" symbol="out" x="4" y="1"/>
+		<tile id="28" symbol="add" x="2" y="-1"/>
+		<tile id="30" symbol="mul" x="0" y="-1"/>
+		<tile id="33" symbol="const" x="3" y="-2" value="18000.0"/>
+		<tile id="34" symbol="tweak" x="2" y="-3" value="0.0"/>
+		<tile id="37" symbol="mix" x="2" y="-2"/>
+		<tile id="38" symbol="const" x="1" y="-2" value="10.0"/>
+		<tile id="40" symbol="mul" x="1" y="1"/>
+		<tile id="41" symbol="tweak" x="2" y="2" value="0.467167106308042"/>
+		<tile id="42" symbol="pow" x="0" y="1"/>
+		<tile id="43" symbol="const" x="0" y="2" value="7.0"/>
+		<tile id="44" symbol="mix" x="-1" y="-2"/>
+		<tile id="45" symbol="tweak" x="-2" y="-2" value="0.04159105330705675"/>
+		<tile id="46" symbol="const" x="-2" y="-3" value="21.0"/>
+		<tile id="47" symbol="const" x="-1" y="-3" value="69.0"/>
+		<tile id="48" symbol="const" x="-1" y="0" value="333.0"/>
+		<tile id="57" symbol="boop" x="-3" y="3"/>
+		<tile id="59" symbol="tri_train" x="-1" y="1"/>
+		<tile id="60" symbol="pwm" x="-2" y="2"/>
+		<tile id="61" symbol="tweak" x="-3" y="0" value="0.02079552728682777"/>
+		<tile id="62" symbol="uts" x="-2" y="1"/>
+		<tile id="65" symbol="mul" x="-1" y="2"/>
+		<tile id="66" symbol="const" x="-1" y="3" value="0.5"/>
+		<tile id="67" symbol="inv" x="-2" y="0"/>
+		<wire from="42:0" to="40:0"/>
+		<wire from="41:0" to="40:0"/>
+		<wire from="40:0" to="37:2"/>
+		<wire from="47:0" to="44:1"/>
+		<wire from="3:0" to="60:0"/>
+		<wire from="14:0" to="13:0"/>
+		<wire from="30:0" to="12:0"/>
+		<wire from="20:0" to="21:0"/>
+		<wire from="22:0" to="20:2"/>
+		<wire from="60:0" to="65:0"/>
+		<wire from="67:0" to="62:0"/>
+		<wire from="4:0" to="3:2"/>
+		<wire from="23:0" to="24:0"/>
+		<wire from="22:0" to="21:2"/>
+		<wire from="34:0" to="37:2"/>
+		<wire from="61:0" to="67:0"/>
+		<wire from="11:0" to="12:0"/>
+		<wire from="44:0" to="11:0"/>
+		<wire from="57:0" to="3:0"/>
+		<wire from="21:0" to="24:0"/>
+		<wire from="5:0" to="3:1"/>
+		<wire from="26:0" to="25:0"/>
+		<wire from="59:0" to="42:0"/>
+		<wire from="46:0" to="44:0"/>
+		<wire from="28:0" to="20:0"/>
+		<wire from="37:0" to="20:1"/>
+		<wire from="4:0" to="3:4"/>
+		<wire from="2:0" to="25:0"/>
+		<wire from="33:0" to="37:1"/>
+		<wire from="48:0" to="2:0"/>
+		<wire from="12:0" to="28:0"/>
+		<wire from="40:0" to="25:0"/>
+		<wire from="37:0" to="21:1"/>
+		<wire from="5:0" to="3:3"/>
+		<wire from="24:0" to="27:0"/>
+		<wire from="11:0" to="30:0"/>
+		<wire from="38:0" to="37:0"/>
+		<wire from="59:0" to="13:0"/>
+		<wire from="13:0" to="30:0"/>
+		<wire from="43:0" to="42:1"/>
+		<wire from="45:0" to="44:2"/>
+		<wire from="62:0" to="60:1"/>
+		<wire from="66:0" to="65:0"/>
+		<wire from="65:0" to="59:0"/>
+		<wire from="25:0" to="28:0"/>
+	</patch>
+</mollytime>
