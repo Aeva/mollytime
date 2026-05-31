@@ -120,6 +120,8 @@ namespace Events
     {
         // From SDL_mouse.h / SDL_touch.h
         Left = 1,
+        Middle = 2,
+        Right = 3,
         Touch = static_cast<uint32_t>(-1)
     };
 

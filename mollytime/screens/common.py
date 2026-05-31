@@ -617,6 +617,12 @@ class editor_screen:
     def on_scroll(self, editor, event):
         pass
 
+    def on_r_press(self, editor, pos, event):
+        pass
+
+    def on_r_release(self, editor, pos, event):
+        pass
+
     def touch_start(self, editor, key, pos, event):
         self.force_redraw = True
         editor_screen.touch_points[key] = pos
@@ -766,6 +772,12 @@ class editor_screen:
 
             elif event.type == backend.events.MOUSEBUTTONUP and event.button.button == backend.events.BUTTON_LEFT:
                 self.on_release(editor, event.button.pos, event)
+
+            elif event.type == backend.events.MOUSEBUTTONDOWN and event.button.button == backend.events.BUTTON_RIGHT:
+                self.on_r_press(editor, event.button.pos, event)
+
+            elif event.type == backend.events.MOUSEBUTTONUP and event.button.button == backend.events.BUTTON_RIGHT:
+                self.on_r_release(editor, event.button.pos, event)
 
             elif event.type == backend.events.MOUSEWHEEL:
                 self.on_scroll(editor, event.wheel)

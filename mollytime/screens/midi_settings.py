@@ -282,6 +282,19 @@ class midi_settings_screen(editor_screen):
     def on_release(self, editor, pos, event):
         self.press_start = None
 
+    def on_r_press(self, editor, pos, event):
+        if editor.play_rect.collidepoint(pos):
+            any_match = False
+            for _, rect in enumerate(self.channel_rects):
+                if rect.collidepoint(pos):
+                    any_match = True
+                    break;
+            if any_match:
+                for channel, _ in enumerate(self.channel_rects):
+                    listening = editor.patch.get_channel_mask(channel)
+                    editor.patch.set_channel_mask(channel, not listening)
+                self.update_play_area = True
+
     def draw(self, editor):
         update_anything = False
 

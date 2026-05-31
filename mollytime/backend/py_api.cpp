@@ -427,6 +427,14 @@ NB_MODULE(backend, m) {
         .value("BUTTON_LEFT", Events::MouseButton::Left)
         .export_values();
 
+    nb::enum_<Events::MouseButton>(events, "MouseButton", nb::is_arithmetic(), nb::is_flag())
+        .value("BUTTON_MIDDLE", Events::MouseButton::Middle)
+        .export_values();
+
+    nb::enum_<Events::MouseButton>(events, "MouseButton", nb::is_arithmetic(), nb::is_flag())
+        .value("BUTTON_RIGHT", Events::MouseButton::Right)
+        .export_values();
+
     nb::class_<Events::ResizeEvent>(events, "ResizeEvent")
         .def_ro("Width", &Events::ResizeEvent::Width)
         .def_ro("Height", &Events::ResizeEvent::Height);
