@@ -42,6 +42,7 @@
 #undef BOOST_ATOMIC_NO_LIB
 #pragma clang diagnostic pop
 
+#include "midi.h"
 #include "perf.h"
 
 
@@ -104,7 +105,7 @@ enum class OpCode : uint32_t
     CHAN,
     KIKI,
     BEND,
-    SEND,
+    SEND_NOTE,
     LANE_COUNT,
     LEAD_LANE,
     ADD_LANES,
@@ -509,7 +510,13 @@ struct InstructionThunk
         }
     };
 
-    virtual void Crank(double SampleInterval) = 0;
+    virtual void Crank(double SampleInterval)
+    {
+    }
+
+    virtual void Crank(std::vector<MidiMessage>& Outbox)
+    {
+    }
 
     virtual void Reset()
     {
@@ -635,7 +642,7 @@ private:
             auto Thunk = std::make_shared<ThunkT>();
             Thunk->Registers.Connect(InInputs, InOutputs, InClosures, RegisterFile);
             Thunk->Reset();
-            Thunk->Program = Program;
+            Thunk->Program = Program; // TODO turns out this is a fabulously bad idea who knew
             return std::static_pointer_cast<InstructionThunk>(Thunk);
         };
     }

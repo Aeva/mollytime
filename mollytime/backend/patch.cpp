@@ -649,11 +649,23 @@ ScratchUniquePtr Patch::Compile()
         LANE_MERGE,
     };
 
+    // Eval frequency propagates downward starting from the leaf tiles.
     enum class EvalFrequency : uint8_t
     {
         UNKNOWN,
         ONCE,
         LIVE,
+    };
+
+    // TODO : Maybe this should replace or be merged with EvalFrequency, and have the
+    // tracks be UNKNOWN, CONSTANT, MIDI_EVENT, SYNTHESIZER, and SEQUENCER?  This would
+    // essentially split SYNTHESIZER and SEQUENCER out from EvalFrequency::LIVE.
+    // MIDI_EVENT would be similar to CONSTANT, except that the evals only happen when
+    // new midi events are processed, and only for the affected lanes.
+    enum class EvalTrack : uint8_t
+    {
+        SYNTHESIZER,
+        SEQUENCER,
     };
 
     struct TilePartial
@@ -662,6 +674,7 @@ ScratchUniquePtr Patch::Compile()
         TileHandle Tile; // Must be non-zero if the type is PartialType::TILE, and zero otherwise.
         bool DynamicPolyphony; // True indicates the tile's polyphony is determined via propagation, not by its symbol.
         EvalFrequency Frequency = EvalFrequency::UNKNOWN;
+        EvalTrack Track = EvalTrack::SYNTHESIZER;
         uint32_t Polyphony = 1;
 
         // This is NOT redundant to Patch::ByInput, because its elements are ordered,
@@ -814,9 +827,15 @@ ScratchUniquePtr Patch::Compile()
 
             if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI || Symbol == OpCode::SAW || Symbol == OpCode::NOI ||
                 Symbol == OpCode::PHASE || Symbol == OpCode::PLS || Symbol == OpCode::FLP || Symbol == OpCode::RNG || Symbol == OpCode::ADSR ||
-                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP || Symbol == OpCode::SEND)
+                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP)
             {
                 Partial->Frequency = EvalFrequency::LIVE;
+            }
+
+            if (Symbol == OpCode::SEND_NOTE)
+            {
+                Partial->Frequency = EvalFrequency::LIVE;
+                Partial->Track = EvalTrack::SEQUENCER;
             }
 
             for (int PortIndex = 0; PortIndex < static_cast<int>(InputCount); ++PortIndex)
@@ -880,7 +899,7 @@ ScratchUniquePtr Patch::Compile()
                 case OpCode::TAPE_LOOP:
                     TapeTiles.push_back(Tile);
                     break;
-                case OpCode::SEND:
+                case OpCode::SEND_NOTE:
                     SendTiles.push_back(Tile);
                     break;
                 default:
@@ -1336,9 +1355,13 @@ ScratchUniquePtr Patch::Compile()
                 {
                     ConstantProgram.push_back(Thunk);
                 }
+                else if (Partial->Track == EvalTrack::SEQUENCER)
+                {
+                    Program->Sequencer.push_back(Thunk);
+                }
                 else
                 {
-                    Program->Program.push_back(Thunk);
+                    Program->Synthesizer.push_back(Thunk);
                 }
             };
 #else
@@ -1349,9 +1372,13 @@ ScratchUniquePtr Patch::Compile()
                 {
                     ConstantProgram.push_back(Thunk);
                 }
+                else if (Partial->Track == EvalTrack::SEQUENCER)
+                {
+                    Program->Sequencer.push_back(Thunk);
+                }
                 else
                 {
-                    Program->Program.push_back(Thunk);
+                    Program->Synthesizer.push_back(Thunk);
                 }
             };
 #endif
@@ -1479,13 +1506,15 @@ ScratchUniquePtr Patch::Compile()
                     if (Symbol == OpCode::ADSR && Partial->Polyphony > 1)
                     {
                         Thunk->Retriggerable = true;
-                        uint32_t ThunkIndex = static_cast<uint32_t>(Program->Program.size()) - 1;
-                        assert(Program->Program[ThunkIndex] == Thunk);
+#ifndef NDEBUG
+                        uint32_t ThunkIndex = static_cast<uint32_t>(Program->Synthesizer.size()) - 1;
+                        assert(Program->Synthesizer[ThunkIndex] == Thunk);
+#endif
                         if (Partial->Frequency != EvalFrequency::ONCE)
                         {
                             // TODO: figure out some means of determining if the trigger is directly or indirectly
-                            // connected to a gate tile inntead of using the ADSR's polyphony as a proxy for this.
-                            Program->Retriggerables.push_back(ThunkIndex);
+                            // connected to a gate tile instead of using the ADSR's polyphony as a proxy for this.
+                            Program->Retriggerables.push_back(Thunk);
                         }
                     }
                     else if (Symbol == OpCode::ADD_LANES)
@@ -1546,14 +1575,22 @@ ScratchUniquePtr Patch::Compile()
             ++OutputIndex;
         }
     }
-    Program->Live = OutputTiles.size() > 0 || AuxTiles.size() > 0 || Program->ProbeConnected;
+    Program->Live = OutputTiles.size() > 0 || AuxTiles.size() > 0 || SendTiles.size() > 0 || Program->ProbeConnected;
 
 #ifndef NDEBUG
     {
         fmt::print("\n\n##############################################################################\n");
-        fmt::print("Patch compiled:\n");
+        fmt::print("SYNTHESIZER TRACK:\n");
         uint32_t ThunkIndex = 0;
-        for (InstructionThunkSharedPtr& Thunk : Program->Program)
+        for (InstructionThunkSharedPtr& Thunk : Program->Synthesizer)
+        {
+            assert(Thunk != nullptr);
+            assert(Thunk->Registers.Polyphony > 0);
+            fmt::print("{} {}:\n", ThunkIndex++, Thunk->DebugName);
+        }
+        fmt::print("SEQUENCER TRACK:\n");
+        ThunkIndex = 0;
+        for (InstructionThunkSharedPtr& Thunk : Program->Sequencer)
         {
             assert(Thunk != nullptr);
             assert(Thunk->Registers.Polyphony > 0);
@@ -1620,9 +1657,8 @@ void Scratch::Migrate(Scratch& Old)
     assert(MidiLanes.size() == Polyphony);
 
 #ifndef NDEBUG
-    for (uint32_t ThunkIndex : Retriggerables)
+    for (InstructionThunkSharedPtr& Thunk : Retriggerables)
     {
-        InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
         assert(Thunk != nullptr);
         assert(Thunk->Retriggerable);
     }
@@ -1751,7 +1787,12 @@ void Scratch::PumpMidi(MidiMessage Message)
         {
             PitchBend = 0.0;
         }
-        for (InstructionThunkSharedPtr& Thunk : Program)
+        for (InstructionThunkSharedPtr& Thunk : Synthesizer)
+        {
+            assert(Thunk != nullptr);
+            Thunk->Reset();
+        }
+        for (InstructionThunkSharedPtr& Thunk : Sequencer)
         {
             assert(Thunk != nullptr);
             Thunk->Reset();
@@ -1921,9 +1962,8 @@ void Scratch::PumpMidi(MidiMessage Message)
                 State.Channel = double(Channel);
                 State.Age = 0;
 
-                for (uint32_t ThunkIndex : Retriggerables)
+                for (InstructionThunkSharedPtr& Thunk : Retriggerables)
                 {
-                    InstructionThunkSharedPtr& Thunk = Program.at(ThunkIndex);
                     assert(Thunk != nullptr);
                     assert(Thunk->Retriggerable);
                     Thunk->Retrigger(AssignedLane);
@@ -1985,10 +2025,15 @@ void Scratch::Crank(double SampleInterval, float& OutLeft, float& OutRight)
     }
     {
         TRACEABLE_NAMED_SCOPE("CRANK PHASE");
-        for (InstructionThunkSharedPtr& Thunk : Program)
+        for (InstructionThunkSharedPtr& Thunk : Synthesizer)
         {
             assert(Thunk != nullptr);
             Thunk->Crank(SampleInterval);
+        }
+        for (InstructionThunkSharedPtr& Thunk : Sequencer)
+        {
+            assert(Thunk != nullptr);
+            Thunk->Crank(MidiOutbox);
         }
     }
     {

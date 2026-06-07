@@ -88,7 +88,8 @@ struct Scratch final : public MidiHandler
     std::vector<MagicTapeUniquePtr> TapeFile;
     std::map<PortHandle, RegisterAllocation> PersistentTapes;
 
-    std::vector<InstructionThunkSharedPtr> Program;
+    std::vector<InstructionThunkSharedPtr> Synthesizer;
+    std::vector<InstructionThunkSharedPtr> Sequencer;
     std::vector<std::ptrdiff_t> Outputs;
     std::map<TileHandle, std::ptrdiff_t> Inputs;
     std::map<TileHandle, std::ptrdiff_t> AuxOutputs;
@@ -101,7 +102,7 @@ struct Scratch final : public MidiHandler
 
     std::vector<MidiNoteState> MidiLanes;
     std::vector<MidiMessage> MidiOutbox;
-    std::vector<uint32_t> Retriggerables;
+    std::vector<InstructionThunkSharedPtr> Retriggerables;
     std::array<uint8_t, 16> ChannelPrograms;
     std::array<double, 16> ChannelPitchBend;
     std::array<std::array<double, 128>, 16> ChannelControls;

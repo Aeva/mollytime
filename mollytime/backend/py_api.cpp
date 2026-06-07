@@ -269,7 +269,7 @@ NB_MODULE(backend, m) {
 		.value("CHAN", OpCode::CHAN)
 		.value("KIKI", OpCode::KIKI)
 		.value("BEND", OpCode::BEND)
-		.value("SEND", OpCode::SEND)
+		.value("SEND_NOTE", OpCode::SEND_NOTE)
 		.value("LANE_COUNT", OpCode::LANE_COUNT)
 		.value("LEAD_LANE", OpCode::LEAD_LANE)
 		.value("ADD_LANES", OpCode::ADD_LANES)
