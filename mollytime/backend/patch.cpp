@@ -814,7 +814,7 @@ ScratchUniquePtr Patch::Compile()
 
             if (Symbol == OpCode::SIN || Symbol == OpCode::SQR || Symbol == OpCode::TRI || Symbol == OpCode::SAW || Symbol == OpCode::NOI ||
                 Symbol == OpCode::PHASE || Symbol == OpCode::PLS || Symbol == OpCode::FLP || Symbol == OpCode::RNG || Symbol == OpCode::ADSR ||
-                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP)
+                Symbol == OpCode::ISQN || Symbol == OpCode::RSQN || Symbol == OpCode::TAPE_LOOP || Symbol == OpCode::SEND)
             {
                 Partial->Frequency = EvalFrequency::LIVE;
             }
@@ -865,6 +865,7 @@ ScratchUniquePtr Patch::Compile()
     std::vector<TileHandle> TapeTiles;
     std::vector<TileHandle> OutputTiles;
     std::vector<TileHandle> AuxTiles;
+    std::vector<TileHandle> SendTiles;
     {
         for (const auto& [Tile, Symbol] : TileSymbols)
         {
@@ -878,6 +879,9 @@ ScratchUniquePtr Patch::Compile()
                     break;
                 case OpCode::TAPE_LOOP:
                     TapeTiles.push_back(Tile);
+                    break;
+                case OpCode::SEND:
+                    SendTiles.push_back(Tile);
                     break;
                 default:
                     break;
@@ -895,6 +899,7 @@ ScratchUniquePtr Patch::Compile()
         SortAndStep(TapeTiles);
         SortAndStep(OutputTiles);
         SortAndStep(AuxTiles);
+        SortAndStep(SendTiles);
     }
 
     Program->ProbeConnected = false;
@@ -1734,14 +1739,8 @@ void Scratch::Migrate(Scratch& Old)
 }
 
 
-void Scratch::PumpMidi()
+void Scratch::PumpMidi(MidiMessage Message)
 {
-    MidiMessage Message;
-    if (!PopMidiMessage(Message))
-    {
-        return;
-    }
-
     if (Message.Type == MidiMessageType::PatchReset)
     {
         for (MidiNoteState& State : MidiLanes)
@@ -1946,6 +1945,27 @@ void Scratch::PumpMidi()
                 const double Pressure = Message.Param2;
                 State.Pressure = Pressure;
             }
+        }
+    }
+}
+
+
+void Scratch::PumpMidi()
+{
+    if (!MidiOutbox.empty())
+    {
+        for (MidiMessage& Message : MidiOutbox)
+        {
+            PumpMidi(Message);
+        }
+        MidiOutbox.clear();
+    }
+
+    {
+        MidiMessage Message;
+        if (PopMidiMessage(Message))
+        {
+            PumpMidi(Message);
         }
     }
 }

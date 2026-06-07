@@ -22,6 +22,7 @@
 
 #include "moon.h"
 #include "audio_driver.h"
+#include "midi.h"
 #include "kiki.inl"
 
 constexpr double Pi = 3.141592653589793;    // Not standard until C++20 😔
@@ -2187,6 +2188,82 @@ struct PitchBendThunk : public InstructionThunk
 };
 
 
+struct MidiSendThunk : public InstructionThunk
+{
+    static constexpr InstructionInfo<4, 0, 3> Info = \
+    {
+        OpCode::SEND, "send",
+        {{
+            {"gate", 0.0, InputCombiner::ADD},
+            {"note", 50.0, InputCombiner::ADD},
+            {"velocity", 1.0, InputCombiner::ADD},
+            {"pressure", 1.0, InputCombiner::ADD},
+        }},
+        {},
+    };
+
+    Scratch* Program;
+
+    virtual void Crank(double SampleInterval) override
+    {
+        THUNK_TRACEABLE_NAMED_SCOPE("MidiSendThunk");
+        for (uint32_t Lane = 0; Lane < Registers.Polyphony; ++Lane)
+        {
+            double Gate = Registers.CombineInput(Lane, 0);
+            double Note = Registers.CombineInput(Lane, 1);
+            double Velocity = Registers.CombineInput(Lane, 2);
+            double Pressure = Registers.CombineInput(Lane, 3);
+            double& LastGate = Registers.ClosureRef(Lane, 0);
+            double& LastPressure = Registers.ClosureRef(Lane, 1);
+            double& ActiveNote = Registers.ClosureRef(Lane, 2);
+
+            if (Gate >= 1.0 && LastGate <= 0.0)
+            {
+                // Send note on
+                ActiveNote = Note;
+                Program->MidiOutbox.push_back({
+                    MidiMessageType::Note,
+                    Program->ChannelMask,
+                    Note,
+                    Velocity,
+                });
+            }
+            else if (Gate <= 0.0)
+            {
+                Pressure = 0.0;
+            }
+
+            if (Pressure != LastPressure)
+            {
+                // Send polyphonic pressure
+                Program->MidiOutbox.push_back({
+                    MidiMessageType::PolyPress,
+                    Program->ChannelMask,
+                    ActiveNote,
+                    Pressure,
+                });
+            }
+
+            if (Gate <= 0.0 && LastGate >= 1.0)
+            {
+                // Send note off
+                Program->MidiOutbox.push_back({
+                    MidiMessageType::Note,
+                    Program->ChannelMask,
+                    ActiveNote,
+                    0.0,
+                });
+            }
+
+            LastGate = Gate;
+            LastPressure = Pressure;
+        }
+    }
+
+    virtual ~MidiSendThunk() {};
+};
+
+
 struct LeadLaneThunk : public InstructionThunk
 {
     static constexpr InstructionInfo<1, 1, 0> Info = \
@@ -2511,6 +2588,7 @@ SymbolInfo::SymbolInfo()
     SetMidi<ChannelThunk>();
     SetMidi<KikiThunk>();
     SetMidi<PitchBendThunk>();
+    SetMidi<MidiSendThunk>();
 
     Set(OpCode::LANE_COUNT, "lane\ncount", {}, {"#"});
     SetMidi<LeadLaneThunk>();

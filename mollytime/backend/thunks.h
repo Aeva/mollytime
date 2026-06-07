@@ -104,6 +104,7 @@ enum class OpCode : uint32_t
     CHAN,
     KIKI,
     BEND,
+    SEND,
     LANE_COUNT,
     LEAD_LANE,
     ADD_LANES,

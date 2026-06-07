@@ -30,6 +30,7 @@
 #include <cmath>
 
 #include "thunks.h"
+#include "midi.h"
 #include "alsa_midi.h"
 
 
@@ -99,6 +100,7 @@ struct Scratch final : public MidiHandler
     ProbeRunningStateSharedPtr ScopeProbe;
 
     std::vector<MidiNoteState> MidiLanes;
+    std::vector<MidiMessage> MidiOutbox;
     std::vector<uint32_t> Retriggerables;
     std::array<uint8_t, 16> ChannelPrograms;
     std::array<double, 16> ChannelPitchBend;
@@ -107,6 +109,7 @@ struct Scratch final : public MidiHandler
 
     void Migrate(Scratch& Old);
 
+    void PumpMidi(MidiMessage Message);
     void PumpMidi();
     void Crank(double SampleInterval, float& OutLeft, float& OutRight);
 
