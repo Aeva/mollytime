@@ -425,13 +425,7 @@ NB_MODULE(backend, m) {
     
     nb::enum_<Events::MouseButton>(events, "MouseButton", nb::is_arithmetic(), nb::is_flag())
         .value("BUTTON_LEFT", Events::MouseButton::Left)
-        .export_values();
-
-    nb::enum_<Events::MouseButton>(events, "MouseButton", nb::is_arithmetic(), nb::is_flag())
         .value("BUTTON_MIDDLE", Events::MouseButton::Middle)
-        .export_values();
-
-    nb::enum_<Events::MouseButton>(events, "MouseButton", nb::is_arithmetic(), nb::is_flag())
         .value("BUTTON_RIGHT", Events::MouseButton::Right)
         .export_values();
 
